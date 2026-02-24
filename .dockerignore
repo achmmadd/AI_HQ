@@ -1,0 +1,15 @@
+# Omega AI-Holding — exclude van Docker build
+.git
+.env
+.env.zwartehand
+.env.*
+venv
+__pycache__
+*.pyc
+*.log
+logs
+.gitignore
+.dockerignore
+*.md
+docs
+terminals

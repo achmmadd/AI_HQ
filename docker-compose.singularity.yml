@@ -1,0 +1,113 @@
+# Omega Holding: 1Panel Edition — Singularity stack
+# Industrieel stabiel, bestuurbaar via Telegram + 1Panel-stijl Dashboard.
+# Persistentie: koppel omega_data aan /opt/1panel/apps/omega-holding/data op de host (zie onder).
+#
+# Build: docker compose -f docker-compose.singularity.yml build
+# Run:   docker compose -f docker-compose.singularity.yml up -d
+# 1Panel: Container → Compose → Create → dit bestand kiezen.
+#
+# Vereist: .env (TELEGRAM_BOT_TOKEN, GOOGLE_API_KEY); optioneel .env.1panel (1Panel API).
+
+version: "3.8"
+
+services:
+  omega_core:
+    build: .
+    image: omega-holding:latest
+    container_name: omega_core
+    working_dir: /app
+    command: ["sh", "scripts/omega_core_entrypoint.sh"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - omega_data:/app/data
+      - omega_logs:/app/logs
+      - omega_holding:/app/holding
+    restart: unless-stopped
+    networks:
+      - omega-net
+    read_only: false
+
+  omega_dashboard:
+    image: omega-holding:latest
+    container_name: omega_dashboard
+    working_dir: /app
+    command: ["streamlit", "run", "dashboard.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - omega_data:/app/data
+      - omega_logs:/app/logs
+      - omega_holding:/app/holding
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    networks:
+      - omega-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8501/_stcore/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
+
+  bu_marketing:
+    image: alpine:3.18
+    container_name: bu_marketing
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    volumes:
+      - omega_holding:/app/holding
+      - bu_marketing_workspace:/workspace
+    restart: unless-stopped
+    networks:
+      - omega-net
+    labels:
+      - "omega.bu=marketing"
+
+  bu_app_studio:
+    image: alpine:3.18
+    container_name: bu_app_studio
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    volumes:
+      - omega_holding:/app/holding
+      - bu_app_studio_workspace:/workspace
+    restart: unless-stopped
+    networks:
+      - omega-net
+    labels:
+      - "omega.bu=app_studio"
+
+  bu_finance:
+    image: alpine:3.18
+    container_name: bu_finance
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    volumes:
+      - omega_holding:/app/holding
+      - bu_finance_workspace:/workspace
+    restart: unless-stopped
+    networks:
+      - omega-net
+    labels:
+      - "omega.bu=finance"
+
+volumes:
+  omega_data:
+    # Koppel aan host voor 1Panel-persistentie:
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /opt/1panel/apps/omega-holding/data
+  omega_logs:
+  omega_holding:
+  bu_marketing_workspace:
+  bu_app_studio_workspace:
+  bu_finance_workspace:
+
+networks:
+  omega-net:
+    driver: bridge

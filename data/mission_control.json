@@ -1,0 +1,59 @@
+{
+  "missions": [
+    {
+      "id": "1bb62d6b",
+      "title": "Test Cursor run",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T04:14:00.585523+00:00",
+      "updated_at": "2026-02-23T23:46:48.987605+00:00",
+      "source": "test",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "edbafcbf",
+      "title": "k verzamel 5 goeie content idee\u00ebn voor een lunchroom/koffiezaak en met content idee\u00ebn bedoel ik bijv series die ik kan starten zoals pov latte arts of acai topping of how to make a\u2026..",
+      "status": "COMPLETED",
+      "assigned_specialist": "vision",
+      "created_at": "2026-02-21T09:22:18.424564+00:00",
+      "updated_at": "2026-02-23T23:46:50.491247+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door vision (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "7ac13da5",
+      "title": "k",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-21T17:48:02.712073+00:00",
+      "updated_at": "2026-02-23T23:47:02.001057+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "e29d9193",
+      "title": "k verzamel 5 goeie content idee\u00ebn voor een lunchroom/koffiezaak en met content idee\u00ebn bedoel ik bijv series die ik kan starten zoals pov latte arts of acai topping of how to make a\u2026..",
+      "status": "COMPLETED",
+      "assigned_specialist": "vision",
+      "created_at": "2026-02-24T00:10:05.537458+00:00",
+      "updated_at": "2026-02-24T00:10:13.765777+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door vision (worker placeholder).",
+      "progress": 1.0
+    }
+  ],
+  "state": {
+    "daily_spend_eur": 0.001,
+    "spend_limit_eur": 10.0,
+    "last_reset_date": "2026-02-24",
+    "circuit_breaker_tripped": false,
+    "tunnel_url": "https://reliance-movers-lines-must.trycloudflare.com"
+  }
+}

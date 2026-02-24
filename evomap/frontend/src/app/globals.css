@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────
+   Design Tokens — Apple Glassmorphism Cockpit
+   Tailwind CSS 4.0 @theme (CSS-first config)
+───────────────────────────────────────────── */
+@theme {
+  /* OKLCH Apple Palette */
+  --color-apple-blue:    oklch(60% 0.15 250);
+  --color-apple-blue-dim: oklch(45% 0.12 250);
+  --color-apple-purple:  oklch(58% 0.18 295);
+  --color-apple-green:   oklch(65% 0.17 145);
+  --color-apple-amber:   oklch(72% 0.18 75);
+  --color-apple-red:     oklch(58% 0.20 25);
+
+  /* Glass surface values */
+  --color-glass-surface: oklch(100% 0 0 / 0.07);
+  --color-glass-border:  oklch(100% 0 0 / 0.14);
+  --color-glass-thin:    oklch(100% 0 0 / 0.04);
+  --color-glass-border-thin: oklch(100% 0 0 / 0.08);
+
+  /* Base UI */
+  --color-background: oklch(7% 0.02 250);
+  --color-foreground: oklch(96% 0.005 250);
+  --color-muted:      oklch(55% 0.01 250);
+
+  /* Typography — Apple system stack */
+  --font-sans: -apple-system, "SF Pro Display", "SF Pro Text",
+               BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+
+  /* Blur values */
+  --blur-glass: blur(20px);
+  --blur-glass-thin: blur(12px);
+
+  /* Radii */
+  --radius-widget: 1.5rem;
+  --radius-pill:   9999px;
+}
+
+/* ─────────────────────────────────────────────
+   Base Reset
+───────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Deep space gradient background */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, oklch(30% 0.12 270 / 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, oklch(25% 0.10 295 / 0.30) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, oklch(7% 0.02 250) 40%, oklch(5% 0.03 250) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─────────────────────────────────────────────
+   Glassmorphism Utility Classes
+───────────────────────────────────────────── */
+@layer utilities {
+  /* regular-glass: primary panel surface */
+  .glass {
+    background: var(--color-glass-surface);
+    backdrop-filter: var(--blur-glass);
+    -webkit-backdrop-filter: var(--blur-glass);
+    border: 1px solid var(--color-glass-border);
+  }
+
+  /* thin-glass: secondary / overlay surface */
+  .glass-thin {
+    background: var(--color-glass-thin);
+    backdrop-filter: var(--blur-glass-thin);
+    -webkit-backdrop-filter: var(--blur-glass-thin);
+    border: 1px solid var(--color-glass-border-thin);
+  }
+
+  /* Inset highlight — top edge light refraction */
+  .glass-highlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      oklch(100% 0 0 / 0.10) 0%,
+      transparent 40%
+    );
+    pointer-events: none;
+  }
+
+  /* Pill button shape */
+  .pill {
+    border-radius: var(--radius-pill);
+  }
+
+  /* Apple glow ring */
+  .glow-blue {
+    box-shadow: 0 0 20px oklch(60% 0.15 250 / 0.40),
+                0 0 60px oklch(60% 0.15 250 / 0.15);
+  }
+  .glow-purple {
+    box-shadow: 0 0 20px oklch(58% 0.18 295 / 0.40),
+                0 0 60px oklch(58% 0.18 295 / 0.15);
+  }
+  .glow-green {
+    box-shadow: 0 0 20px oklch(65% 0.17 145 / 0.40),
+                0 0 60px oklch(65% 0.17 145 / 0.15);
+  }
+  .glow-amber {
+    box-shadow: 0 0 20px oklch(72% 0.18 75 / 0.40),
+                0 0 60px oklch(72% 0.18 75 / 0.15);
+  }
+  .glow-red {
+    box-shadow: 0 0 20px oklch(58% 0.20 25 / 0.40),
+                0 0 60px oklch(58% 0.20 25 / 0.15);
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(100% 0 0 / 0.15) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: oklch(100% 0 0 / 0.15);
+    border-radius: 2px;
+  }
+
+  /* Text utilities */
+  .text-muted { color: var(--color-muted); }
+  .text-apple-blue   { color: var(--color-apple-blue); }
+  .text-apple-purple { color: var(--color-apple-purple); }
+  .text-apple-green  { color: var(--color-apple-green); }
+  .text-apple-amber  { color: var(--color-apple-amber); }
+  .text-apple-red    { color: var(--color-apple-red); }
+}
+
+/* ─────────────────────────────────────────────
+   React Flow Overrides
+───────────────────────────────────────────── */
+.react-flow__attribution { display: none; }
+
+.react-flow__background {
+  background-color: transparent !important;
+}
+
+.react-flow__controls {
+  background: var(--color-glass-surface) !important;
+  backdrop-filter: var(--blur-glass-thin) !important;
+  border: 1px solid var(--color-glass-border) !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: transparent !important;
+  border-bottom: 1px solid var(--color-glass-border-thin) !important;
+  color: var(--color-foreground) !important;
+  transition: background 0.15s;
+}
+.react-flow__controls-button:hover {
+  background: var(--color-glass-thin) !important;
+}
+.react-flow__controls-button svg { fill: var(--color-foreground) !important; }
+
+.react-flow__minimap {
+  background: var(--color-glass-surface) !important;
+  backdrop-filter: var(--blur-glass-thin) !important;
+  border: 1px solid var(--color-glass-border) !important;
+  border-radius: 0.75rem !important;
+}
+
+.react-flow__edge-path {
+  stroke: oklch(100% 0 0 / 0.20) !important;
+  stroke-width: 1.5 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--color-apple-blue) !important;
+  stroke-width: 2 !important;
+}
+
+/* Evomap: nieuwe nodes invliegen */
+@keyframes evomap-node-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.evomap-node-enter {
+  animation: evomap-node-enter 0.3s ease-out forwards;
+}

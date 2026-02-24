@@ -1,0 +1,165 @@
+# Omega AI-Holding — 1Panel-ready stack
+# Import in 1Panel: Container → Compose → Create → plak inhoud of kies dit bestand
+# Build: docker compose build
+# Run: docker compose up -d
+# Vereist: .env met TELEGRAM_BOT_TOKEN, GOOGLE_API_KEY (of OPENAI/Ollama elders)
+
+services:
+  omega-bridge:
+    build: .
+    image: omega-holding:latest
+    container_name: omega-telegram-bridge
+    working_dir: /app
+    command: ["python3", "telegram_bridge.py"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - ./holding/data:/app/data
+      - ./holding/output:/app/output
+      - omega_logs:/app/logs
+      - ./holding:/app/holding
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    networks:
+      - omega-net
+
+  heartbeat:
+    image: omega-holding:latest
+    container_name: omega-heartbeat
+    working_dir: /app
+    command: ["python3", "heartbeat.py"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - omega_data:/app/data
+      - omega_logs:/app/logs
+    restart: always
+    networks:
+      - omega-net
+
+  omega-mission-control:
+    image: omega-holding:latest
+    container_name: omega-mission-control
+    working_dir: /app
+    command: ["streamlit", "run", "dashboard.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - ./holding/data:/app/data
+      - ./holding/output:/app/output
+      - omega_logs:/app/logs
+      - ./holding:/app/holding
+    ports:
+      - "8501:8501"
+    restart: always
+    networks:
+      - omega-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8501/_stcore/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
+
+  resource-warden:
+    image: omega-holding:latest
+    container_name: omega-resource-warden
+    working_dir: /app
+    command: ["python3", "resource_warden.py"]
+    env_file:
+      - .env
+      - .env.1panel
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - omega_data:/app/data
+      - omega_logs:/app/logs
+    restart: always
+    networks:
+      - omega-net
+
+  agent-workers:
+    image: omega-holding:latest
+    # OpenClaw alle kracht die hij nodig heeft, veilig: 1 core + 1 GB (NUC blijft stabiel)
+    cpus: "1.0"
+    mem_limit: 1g
+    container_name: omega-agent-workers
+    working_dir: /app
+    command: ["python3", "scripts/agent_workers.py"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - ./holding/data:/app/data
+      - ./holding/output:/app/output
+      - omega_logs:/app/logs
+      - ./holding:/app/holding
+    restart: always
+    networks:
+      - omega-net
+    depends_on:
+      - omega-bridge
+
+  engineer:
+    image: omega-holding:latest
+    container_name: omega-engineer
+    working_dir: /app
+    command: ["python3", "scripts/engineer_daemon.py"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - omega_data:/app/data
+      - omega_logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    networks:
+      - omega-net
+    depends_on:
+      - omega-bridge
+
+  # Cloudflare Quick Tunnel — tunnel --url http://omega-mission-control:8501
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: omega-cloudflared
+    command: ["tunnel", "--no-autoupdate", "--url", "http://omega-mission-control:8501"]
+    restart: always
+    networks:
+      - omega-net
+    depends_on:
+      - omega-mission-control
+    profiles:
+      - with-tunnel
+
+  tunnel-watcher:
+    image: omega-holding:latest
+    container_name: omega-tunnel-watcher
+    working_dir: /app
+    command: ["python3", "scripts/tunnel_watcher.py"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    networks:
+      - omega-net
+
+volumes:
+  omega_data:
+  omega_logs:
+  omega_holding:
+
+networks:
+  omega-net:
+    driver: bridge

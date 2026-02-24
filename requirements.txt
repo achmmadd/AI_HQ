@@ -1,0 +1,19 @@
+# Omega AI-Holding — minimaal om te starten (Telegram + AI + Dashboard)
+# pip install -r requirements.txt   (bijv. in venv)
+
+python-telegram-bot>=21.0
+google-generativeai>=0.8.0
+streamlit>=1.28.0
+requests>=2.28.0
+pandas>=2.0.0
+streamlit-antd-components>=0.3.0
+streamlit-autorefresh>=0.0.1
+
+# Omega DB + RAG (sqlite-vec)
+sqlite-vec>=0.1.6
+
+# Optioneel: echte RAG-embeddings (anders placeholder)
+# sentence-transformers>=2.2.0
+
+# Optioneel: OpenAI als fallback naast Gemini
+# openai>=1.0.0

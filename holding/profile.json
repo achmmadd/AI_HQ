@@ -1,0 +1,16 @@
+{
+  "brand": {
+    "name": "Omega Holding",
+    "tone_of_voice": "professioneel, helder, Nederlands",
+    "doelgroep": "Vul aan"
+  },
+  "kpis": {
+    "winstgevend": ["omzet", "vraag", "aanbod"],
+    "omzet_doel": "Vul aan of verwijder",
+    "vraag_aanbod_notitie": "Jarvis rapporteert hoe hoog vraag en aanbod zijn in trendrapporten"
+  },
+  "grenzen": {
+    "jarvis_autonoom": true,
+    "toestemming_voor": ["grote campagnes", "contracten", "grote brand-wijzigingen", "deploy productie"]
+  }
+}

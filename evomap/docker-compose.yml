@@ -1,0 +1,88 @@
+# AI-Holding Evomap — NUC-geoptimaliseerde stack
+# Resource-limieten voorkomen OOM op 8GB NUC
+# Start: docker compose -f evomap/docker-compose.yml up -d
+# Of vanuit evomap/: docker compose up -d
+
+services:
+  evomap-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: evomap-backend:latest
+    container_name: evomap-backend
+    working_dir: /app
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    env_file:
+      - ../.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_PATH=/data/evomap.db
+      - GEMINI_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - evomap_data:/data
+      - evomap_logs:/app/logs
+      - ./agents:/app/agents
+    ports:
+      - "8000:8000"
+    # Service-level limits (werken bij docker compose up zonder Swarm; 1Panel)
+    cpus: "1.5"
+    mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    restart: always
+    networks:
+      - evomap-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 2
+      start_period: 15s
+
+  evomap-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: evomap-frontend:latest
+    container_name: evomap-frontend
+    working_dir: /app
+    command: ["npm", "run", "start"]
+    environment:
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - evomap_frontend_cache:/app/.next
+    ports:
+      - "3001:3000"
+    # Service-level limits (werken bij docker compose up zonder Swarm; 1Panel)
+    cpus: "0.5"
+    mem_limit: 512m
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    restart: always
+    networks:
+      - evomap-net
+    depends_on:
+      evomap-backend:
+        condition: service_healthy
+
+volumes:
+  evomap_data:
+  evomap_logs:
+  evomap_frontend_cache:
+
+networks:
+  evomap-net:
+    driver: bridge

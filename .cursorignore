@@ -1,0 +1,12 @@
+# Cursor: niet indexeren (sneller, minder ruis)
+venv/
+__pycache__/
+*.pyc
+.env
+.env.zwartehand
+.env.*
+logs/*.log
+*.log
+data/pending_approvals.json
+.git/
+node_modules/

@@ -1,0 +1,9 @@
+[0;1;32m●[0m omega-holding.service - Omega AI Holding — 24/7 Dashboard, Heartbeat, Telegram
+     Loaded: loaded (]8;;file://openclaw-nuc/home/pietje/.config/systemd/user/omega-holding.service/home/pietje/.config/systemd/user/omega-holding.service]8;;; [0;1;38;5;185mdisabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (exited)[0m since Fri 2026-02-13 19:21:18 UTC; 9ms ago
+    Process: 774734 ExecStart=/usr/bin/bash /home/pietje/AI_HQ/scripts/launch_factory_for_systemd.sh (code=exited, status=0/SUCCESS)
+   Main PID: 774734 (code=exited, status=0/SUCCESS)
+        CPU: 5ms
+
+Feb 13 19:21:18 openclaw-nuc systemd[1049]: Starting omega-holding.service - Omega AI Holding — 24/7 Dashboard, Heartbeat, Telegram...
+Feb 13 19:21:18 openclaw-nuc systemd[1049]: Finished omega-holding.service - Omega AI Holding — 24/7 Dashboard, Heartbeat, Telegram.

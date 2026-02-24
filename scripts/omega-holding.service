@@ -1,0 +1,28 @@
+# Omega Holding — systemd user unit.
+# Installeren: mkdir -p ~/.config/systemd/user && cp scripts/omega-holding.service ~/.config/systemd/user/ && systemctl --user daemon-reload
+# Starten: systemctl --user start omega-holding.service
+# Bij inloggen: systemctl --user enable omega-holding.service
+
+[Unit]
+Description=Omega AI Holding — 24/7 Dashboard, Heartbeat, Telegram
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/pietje/AI_HQ
+Environment=HOME=/home/pietje
+Environment=PATH=/home/pietje/AI_HQ/venv/bin:/home/pietje/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Laad .env zodat token e.d. beschikbaar zijn (min = niet falen als bestand ontbreekt)
+EnvironmentFile=-/home/pietje/AI_HQ/.env
+
+StandardOutput=journal
+StandardError=journal
+ExecStart=/usr/bin/bash /home/pietje/AI_HQ/scripts/launch_factory_for_systemd.sh
+
+ExecStop=/usr/bin/bash /home/pietje/AI_HQ/scripts/stop_holding.sh
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

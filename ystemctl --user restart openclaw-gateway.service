@@ -1,0 +1,17 @@
+[0;1;31m×[0m openclaw-gateway.service
+     Loaded: [0;1;31mnot-found[0m (Reason: Unit openclaw-gateway.service not found.)
+     Active: [0;1;31mfailed[0m (Result: exit-code) since Fri 2026-02-13 14:43:47 UTC; 5s ago
+   Duration: 3.703s
+   Main PID: 694741 (code=exited, status=1/FAILURE)
+        CPU: 5.465s
+
+Feb 13 14:43:47 openclaw-nuc node[694741]: ◇  Doctor ──────────────────────────────────────────────╮
+Feb 13 14:43:47 openclaw-nuc node[694741]: │                                                       │
+Feb 13 14:43:47 openclaw-nuc node[694741]: │  Run "openclaw doctor --fix" to apply these changes.  │
+Feb 13 14:43:47 openclaw-nuc node[694741]: │                                                       │
+Feb 13 14:43:47 openclaw-nuc node[694741]: ├───────────────────────────────────────────────────────╯
+Feb 13 14:43:47 openclaw-nuc node[694741]: 2026-02-13T14:43:47.556Z Gateway auth is set to token, but no token is configured.
+Feb 13 14:43:47 openclaw-nuc node[694741]: Set gateway.auth.token (or OPENCLAW_GATEWAY_TOKEN), or pass --token.
+Feb 13 14:43:47 openclaw-nuc systemd[1049]: [0;1;39m[0;1;31m[0;1;39mopenclaw-gateway.service: Main process exited, code=exited, status=1/FAILURE[0m
+Feb 13 14:43:47 openclaw-nuc systemd[1049]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mopenclaw-gateway.service: Failed with result 'exit-code'.[0m
+Feb 13 14:43:47 openclaw-nuc systemd[1049]: openclaw-gateway.service: Consumed 5.465s CPU time, 536.0K memory peak, 0B memory swap peak.

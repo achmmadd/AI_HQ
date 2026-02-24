@@ -1,0 +1,50 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Data / runtime
+data/omega.db
+data/omega.db-wal
+data/omega.db-shm
+*.db-wal
+*.db-shm
+logs/*.log
+
+# Media / large files
+Movies/
+Music/
+Pictures/
+*.tar.gz
+*.zip
+*.mp4
+*.mkv
+*.avi
+
+# Node
+node_modules/
+.next/
+
+# Docker
+evomap_data/
+evomap_logs/
+
+# IDE / OS
+.cursor/
+.ssh/
+.streamlit/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 1Panel installer
+1panel-*/

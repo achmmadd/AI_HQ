@@ -1,0 +1,8 @@
+# AI-Holding Evomap Backend
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+websockets>=14.0
+aiosqlite>=0.20.0
+google-genai>=1.14.0
+# MCP optioneel voor externe tools (GitHub, Gitee, etc.)
+mcp>=1.0.0

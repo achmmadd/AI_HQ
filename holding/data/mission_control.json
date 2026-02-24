@@ -1,0 +1,131 @@
+{
+  "missions": [
+    {
+      "id": "fd73aad4",
+      "title": "Test controle",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T03:49:29.184214+00:00",
+      "updated_at": "2026-02-19T03:49:31.363037+00:00",
+      "source": "check",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "6348f87e",
+      "title": "Test van Cursor",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T03:53:00.498435+00:00",
+      "updated_at": "2026-02-19T03:53:16.286202+00:00",
+      "source": "test",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "7bb05e07",
+      "title": "Test Cursor run",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T04:14:21.979071+00:00",
+      "updated_at": "2026-02-19T04:14:24.968676+00:00",
+      "source": "test",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "3994752c",
+      "title": "k Jarvis, start Operatie Marktverkenning. Ik wil dat Shuri onderzoek doet naar de top 5 meest gezochte AI-oplossingen voor e-commerce in 2026. Daarna moet Vision op basis van dat onderzoek 3 sterke productnamen en een eerste marketing-hook bedenken. Rapporteer als alles in de 'COMPLETED' kolom staat.",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T12:03:30.768063+00:00",
+      "updated_at": "2026-02-19T12:03:42.070638+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "c5dcf45f",
+      "title": "Test Output Schatkist",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T12:14:12.542296+00:00",
+      "updated_at": "2026-02-19T12:14:23.736843+00:00",
+      "source": "test",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "77babc9b",
+      "title": "k Jarvis, voer 'Project BlueOcean' uit. Laat Shuri de 5 snelst groeiende micro-SaaS niches van dit moment onderzoeken (focus op 2026 trends). Laat Vision daarna op basis van de winnende niche een merknaam, een elevator pitch en een plan voor de eerste 10 TikTok-video's bedenken. Ik verwacht een strategisch rapport in de output-map.",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T12:20:38.073878+00:00",
+      "updated_at": "2026-02-19T12:20:40.767557+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "ebb1a539",
+      "title": "k Jarvis, laat Friday een volledige systeem-audit doen van onze NUC. Check het diskgebruik, de gemiddelde temperatuur van de afgelopen uren en kijk of er Docker-containers zijn die onnodig veel RAM verbruiken. Laat hem ook een advies schrijven voor wekelijkse back-ups van onze data-map.",
+      "status": "COMPLETED",
+      "assigned_specialist": "friday",
+      "created_at": "2026-02-19T12:20:57.377444+00:00",
+      "updated_at": "2026-02-19T12:21:02.282506+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door friday (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "90368c23",
+      "title": "k Jarvis, laat Vision een 'Content Strategy' schrijven voor onze eigen Omega AI-Holding. Hoe gaan we onszelf positioneren? Bedenk een unieke stijl (bijv. 'Cyberpunk Business') en schrijf de teksten voor onze toekomstige 'About Us' pagina en de eerste 5 Instagram posts.",
+      "status": "COMPLETED",
+      "assigned_specialist": "vision",
+      "created_at": "2026-02-19T12:21:33.229996+00:00",
+      "updated_at": "2026-02-19T12:21:43.800312+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door vision (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "455bfc26",
+      "title": "k Jarvis, start Operatie Marktverkenning. Ik wil dat Shuri onderzoek doet naar de top 5 meest gezochte AI-oplossingen voor e-commerce in 2026. Daarna moet Vision op basis van dat onderzoek 3 sterke productnamen en een eerste marketing-hook bedenken. Rapporteer als alles in de 'COMPLETED' kolom staat.",
+      "status": "COMPLETED",
+      "assigned_specialist": "shuri",
+      "created_at": "2026-02-19T13:40:40.757193+00:00",
+      "updated_at": "2026-02-19T13:40:50.282069+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door shuri (worker placeholder).",
+      "progress": 1.0
+    },
+    {
+      "id": "9dc564df",
+      "title": "k verzamel 5 goeie content idee\u00ebn voor een lunchroom/koffiezaak en met content idee\u00ebn bedoel ik bijv series die ik kan starten zoals pov latte arts of acai topping of how to make a\u2026..",
+      "status": "COMPLETED",
+      "assigned_specialist": "vision",
+      "created_at": "2026-02-23T22:18:36.510446+00:00",
+      "updated_at": "2026-02-23T22:18:46.385730+00:00",
+      "source": "telegram",
+      "payload": {},
+      "result": "Afgehandeld door vision (worker placeholder).",
+      "progress": 1.0
+    }
+  ],
+  "state": {
+    "daily_spend_eur": 0.002,
+    "spend_limit_eur": 10.0,
+    "last_reset_date": "2026-02-23",
+    "circuit_breaker_tripped": false,
+    "tunnel_url": "https://reliance-movers-lines-must.trycloudflare.com"
+  }
+}
