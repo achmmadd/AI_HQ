@@ -35,7 +35,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
-      - omega_data:/app/data
+      - ./holding/data:/app/data
       - omega_logs:/app/logs
     restart: always
     networks:
@@ -79,7 +79,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
-      - omega_data:/app/data
+      - ./holding/data:/app/data
       - omega_logs:/app/logs
     restart: always
     networks:
@@ -118,7 +118,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
-      - omega_data:/app/data
+      - ./holding/data:/app/data
       - omega_logs:/app/logs
       - /var/run/docker.sock:/var/run/docker.sock
     restart: always
