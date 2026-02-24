@@ -71,7 +71,7 @@ def list_tasks(status: str = "open") -> dict:
     import omega_db
     omega_db.init_schema()
     tasks = omega_db.task_list(status=status, limit=50)
-    return {"ok": True, "tasks": tasks, "message": f"{len(tasks)} taak/taken" if tasks else "Geen taken gevonden."}
+    return {"ok": True, "tasks": tasks, "count": len(tasks), "message": f"{len(tasks)} taak/taken" if tasks else "Geen taken gevonden."}
 
 
 def complete_task(task_id: str) -> dict:
@@ -99,10 +99,20 @@ def list_notes(limit: int = 10) -> dict:
 
 
 def read_note(filename: str) -> dict:
-    """Lees de inhoud van één notitie. filename is het id uit list_notes (bijv. 20250211_123456_titel.txt)."""
+    """Lees de inhoud van één notitie. filename is het id uit list_notes (bijv. 20250211_123456_titel.txt) of een titelzoekterm."""
     import omega_db
     omega_db.init_schema()
     n = omega_db.note_get(filename)
+    if not n:
+        notes = omega_db.note_list(limit=50)
+        q = filename.lower()
+        q_norm = q.replace(" ", "_")
+        for note in notes:
+            nid = (note.get("id") or "").lower()
+            ntitle = (note.get("title") or "").lower()
+            if q in nid or q in ntitle or q_norm in nid or q_norm in ntitle:
+                n = note
+                break
     if not n:
         return {"ok": False, "error": "Notitie niet gevonden of ongeldig id."}
     return {"ok": True, "content": (n.get("content") or "")[:4000], "filename": n.get("id", filename)}
@@ -597,7 +607,7 @@ def git_commit(message: str) -> dict:
             cwd=str(ROOT),
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=120,
         )
         if r.returncode != 0:
             return {"ok": False, "error": (r.stderr or r.stdout or "git add faalde").strip()[:500]}
@@ -606,7 +616,7 @@ def git_commit(message: str) -> dict:
             cwd=str(ROOT),
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=60,
         )
         if r.returncode == 0:
             return {"ok": True, "message": f"Commit: {msg}"}

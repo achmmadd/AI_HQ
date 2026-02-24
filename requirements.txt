@@ -12,8 +12,12 @@ streamlit-autorefresh>=0.0.1
 # Omega DB + RAG (sqlite-vec)
 sqlite-vec>=0.1.6
 
-# Optioneel: echte RAG-embeddings (anders placeholder)
-# sentence-transformers>=2.2.0
+# RAG-embeddings
+sentence-transformers>=2.2.0
+
+# Code audit tools
+bandit>=1.7.0
+pylint>=3.0.0
 
 # Optioneel: OpenAI als fallback naast Gemini
 # openai>=1.0.0

@@ -71,10 +71,9 @@ def execute_mission(mission: dict) -> None:
 
 
 def run():
-    logger.info("Agent watchers started (poll %s every %ds by Agent_ID)", MISSION_JSON_PATH, POLL_INTERVAL)
+    logger.info("Agent watchers started (poll omega_db every %ds)", POLL_INTERVAL)
     while True:
         try:
-            print(f"[agent_workers] POLL READ {MISSION_JSON_PATH}", flush=True)
             for spec in SPECIALISTS:
                 if spec == "jarvis":
                     continue
