@@ -1,0 +1,33 @@
+name: Holding Checks
+on:
+  pull_request:
+    branches: [dev, main, master]
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt pyyaml
+      - run: python -m py_compile holding/src/tenant_context.py
+      - run: python -m py_compile holding/src/agent_registry.py
+      - run: python -m py_compile holding/src/task_pipeline.py
+      - run: python -m py_compile holding/src/correction_engine.py
+      - run: python -m py_compile holding/src/llm_router.py
+      - run: python -m py_compile holding/src/cost_tracker.py
+      - run: python -m py_compile omega_db.py
+
+  tenant-isolation-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check tenant isolation
+        run: |
+          echo "Checking for tenant isolation violations..."
+          if grep -rn "SELECT.*FROM holding_\|FROM tenants\|FROM corrections\|FROM cost_log" holding/src/ | grep -v "tenant_id"; then
+            echo "Query zonder tenant_id gevonden!"
+            exit 1
+          fi
+          echo "Tenant isolatie intact"

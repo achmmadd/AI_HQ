@@ -19,5 +19,9 @@ sentence-transformers>=2.2.0
 bandit>=1.7.0
 pylint>=3.0.0
 
+# Holding module
+pyyaml>=6.0
+psutil>=5.9.0
+
 # Optioneel: OpenAI als fallback naast Gemini
 # openai>=1.0.0

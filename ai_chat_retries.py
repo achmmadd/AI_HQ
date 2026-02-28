@@ -10,10 +10,11 @@ import time
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
-GEMINI_RETRIES = 2
-GEMINI_RETRY_DELAY = 2.0
-OLLAMA_RETRIES = 2
-OLLAMA_RETRY_DELAY = 1.5
+GEMINI_RETRIES = 3
+GEMINI_RETRY_DELAY = 3.0
+OLLAMA_RETRIES = 3
+OLLAMA_RETRY_DELAY = 2.0
+OLLAMA_TIMEOUT = 120  # grote taken kunnen lang duren
 
 # Laad .env voor AI-keys als ze nog ontbreken of leeg zijn (voorkomt "soms wel, soms niet")
 def _ensure_env_loaded():
@@ -197,7 +198,7 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
                     ],
                     "stream": False,
                 },
-                timeout=90,
+                timeout=OLLAMA_TIMEOUT,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -208,6 +209,7 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
             logger.warning("Ollama call failed: %s", e)
             time.sleep(OLLAMA_RETRY_DELAY)
     return (
-        "AI reageert niet (Gemini en Ollama mislukt). Probeer over een minuut opnieuw. "
-        "Controleer .env: GOOGLE_API_KEY; of Ollama: ollama run llama3:8b"
+        "AI reageert niet na meerdere pogingen (Gemini + Ollama). "
+        "Probeer het over een minuut opnieuw, of stel een kortere vraag. "
+        "Controleer .env: GOOGLE_API_KEY; Ollama: ollama run llama3:8b"
     )

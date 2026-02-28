@@ -15,9 +15,17 @@ venv/
 data/omega.db
 data/omega.db-wal
 data/omega.db-shm
+holding/data/omega.db
+holding/data/omega.db-wal
+holding/data/omega.db-shm
 *.db-wal
 *.db-shm
-logs/*.log
+state.json
+data/*.json
+data/report_chat_id.txt
+data/tasks/
+data/heartbeat_history.json
+logs/
 
 # Media / large files
 Movies/
@@ -48,3 +56,6 @@ Thumbs.db
 
 # 1Panel installer
 1panel-*/
+
+# Models (Ollama, lokale LLMs)
+/models/

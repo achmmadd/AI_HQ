@@ -666,3 +666,64 @@ def get_soul_context(agent_id: str) -> dict:
         except Exception as e:
             return {"ok": False, "error": str(e)}
     return {"ok": False, "error": f"SOUL niet gevonden: {safe_id} (data/souls of holding/departments)"}
+
+
+# ——— Holding tools (Fase 0) ———
+
+def create_holding_task(tenant_id: str, task_type: str, title: str,
+                        description: str = "") -> dict:
+    """Maak een nieuwe taak aan voor een holding agent. tenant_id: 'lunchroom' of 'webshop'. task_type: bijv. 'instagram', 'product_descriptions', 'keyword_research', 'local_seo'."""
+    try:
+        from holding.src.task_pipeline import create_task
+        task_id = create_task(tenant_id, task_type, title, description)
+        return {"ok": True, "task_id": task_id, "message": f"Holding taak aangemaakt: {title[:80]}"}
+    except Exception as e:
+        logger.warning("create_holding_task: %s", e)
+        return {"ok": False, "error": str(e)}
+
+
+def get_holding_status() -> dict:
+    """Haal status op van alle holding tenants, agents en taken."""
+    try:
+        import omega_db
+        omega_db.init_schema()
+        tenants = omega_db.tenant_list()
+        agents = omega_db.holding_agent_list()
+        tasks = omega_db.holding_task_list(limit=100)
+        active = [t for t in tasks if t["status"] in ("pending", "in_progress", "review")]
+        summary = []
+        for t in tenants:
+            t_agents = [a for a in agents if a["tenant_id"] == t["id"]]
+            t_active = [tk for tk in active if tk["tenant_id"] == t["id"]]
+            summary.append({
+                "tenant": t["name"], "tenant_id": t["id"],
+                "agents": len(t_agents), "active_tasks": len(t_active),
+                "agent_list": [{"name": a["name"], "role": a["role"], "status": a["status"]} for a in t_agents],
+            })
+        return {"ok": True, "tenants": summary, "total_agents": len(agents), "total_active_tasks": len(active)}
+    except Exception as e:
+        logger.warning("get_holding_status: %s", e)
+        return {"ok": False, "error": str(e)}
+
+
+def review_holding_task(task_id: str, action: str, feedback: str = "") -> dict:
+    """Review en beoordeel een holding taak. action: 'approve' of 'reject'. feedback: optionele reden bij reject."""
+    try:
+        import omega_db
+        omega_db.init_schema()
+        task = omega_db.holding_task_get(task_id)
+        if not task:
+            return {"ok": False, "error": f"Taak {task_id} niet gevonden"}
+        if action == "approve":
+            omega_db.holding_task_update_status(task_id, "approved")
+            omega_db.holding_audit_log("ai_approved", details={"task_id": task_id})
+            return {"ok": True, "message": f"Taak {task_id} goedgekeurd."}
+        elif action == "reject":
+            omega_db.holding_task_update_status(task_id, "rejected")
+            omega_db.holding_audit_log("ai_rejected", details={"task_id": task_id, "feedback": feedback})
+            return {"ok": True, "message": f"Taak {task_id} afgekeurd: {feedback}"}
+        else:
+            return {"ok": False, "error": f"Onbekende actie: {action}. Gebruik 'approve' of 'reject'."}
+    except Exception as e:
+        logger.warning("review_holding_task: %s", e)
+        return {"ok": False, "error": str(e)}

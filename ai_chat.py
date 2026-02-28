@@ -2,18 +2,12 @@
 Eén gebruikerbericht naar de AI (Gemini, OpenAI of Ollama) en antwoord terug.
 Wordt o.a. door telegram_bridge gebruikt.
 Volgorde: Gemini (gratis tier) → OpenAI → Ollama.
-Retries bij tijdelijke fouten (rate limit, timeout).
 """
 import os
 import logging
-import time
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
-GEMINI_RETRIES = 2
-GEMINI_RETRY_DELAY = 2.0
-OLLAMA_RETRIES = 2
-OLLAMA_RETRY_DELAY = 1.5
 
 # Laad .env voor AI-keys als ze nog ontbreken of leeg zijn (voorkomt "soms wel, soms niet")
 def _ensure_env_loaded():
@@ -21,7 +15,7 @@ def _ensure_env_loaded():
     env_file = root / ".env"
     if not env_file.exists():
         return
-    want = ("GOOGLE_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GEMINI_MODEL", "OLLAMA_HOST", "OLLAMA_MODEL")
+    want = ("GOOGLE_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GEMINI_MODEL")
     with open(env_file) as f:
         for line in f:
             line = line.strip()
@@ -90,6 +84,7 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
                 container_list, container_logs, container_restart,
                 create_subdomain,
                 approval_chat_id,
+                create_holding_task, get_holding_status, review_holding_task,
             )
 
             genai.configure(api_key=api_key)
@@ -121,6 +116,9 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
                     genai.types.FunctionDeclaration.from_function(container_logs),
                     genai.types.FunctionDeclaration.from_function(container_restart),
                     genai.types.FunctionDeclaration.from_function(create_subdomain),
+                    genai.types.FunctionDeclaration.from_function(create_holding_task),
+                    genai.types.FunctionDeclaration.from_function(get_holding_status),
+                    genai.types.FunctionDeclaration.from_function(review_holding_task),
                 ]
                 tool = genai.types.Tool(function_declarations=decls)
                 model = genai.GenerativeModel(
@@ -130,15 +128,7 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
                     generation_config=genai.types.GenerationConfig(max_output_tokens=1024),
                 )
                 chat = model.start_chat(enable_automatic_function_calling=True)
-                r = None
-                for _ in range(GEMINI_RETRIES):
-                    try:
-                        r = chat.send_message(msg)
-                        if r and r.text:
-                            break
-                    except Exception as e:
-                        logger.warning("Gemini attempt failed: %s", e)
-                        time.sleep(GEMINI_RETRY_DELAY)
+                r = chat.send_message(msg)
                 if r and r.text:
                     try:
                         record_spend(0.001)  # ~€0.001 per Gemini call (gratis tier)
@@ -179,35 +169,33 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
         except Exception as e:
             logger.warning("OpenAI call failed: %s", e)
 
-    # 3. Ollama (fallback, met retry)
-    import requests
-    url = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-    model = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
-    if ":" not in model:
-        model = "llama3.2:3b"
-    for _ in range(OLLAMA_RETRIES):
-        try:
-            resp = requests.post(
-                f"{url}/api/chat",
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": SYSTEM},
-                        {"role": "user", "content": msg},
-                    ],
-                    "stream": False,
-                },
-                timeout=90,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            content = (data.get("message") or {}).get("content") or ""
-            out = content.strip()
-            return out[:max_length] if len(out) > max_length else out
-        except Exception as e:
-            logger.warning("Ollama call failed: %s", e)
-            time.sleep(OLLAMA_RETRY_DELAY)
-    return (
-        "AI reageert niet (Gemini en Ollama mislukt). Probeer over een minuut opnieuw. "
-        "Controleer .env: GOOGLE_API_KEY; of Ollama: ollama run llama3:8b"
-    )
+    # 3. Ollama (localhost, gratis)
+    try:
+        import requests
+        url = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+        model = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+        if ":" not in model:
+            model = "llama3.2:3b"
+        resp = requests.post(
+            f"{url}/api/chat",
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM},
+                    {"role": "user", "content": msg},
+                ],
+                "stream": False,
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content = (data.get("message") or {}).get("content") or ""
+        out = content.strip()
+        return out[:max_length] if len(out) > max_length else out
+    except Exception as e:
+        logger.warning("Ollama call failed: %s", e)
+        return (
+            "AI reageert nu niet. Controleer .env: GOOGLE_API_KEY (Gemini, gratis) of OPENAI_API_KEY; "
+            "of start Ollama lokaal: ollama run llama3.2:3b. Bij tijdelijke fout: even later opnieuw proberen."
+        )

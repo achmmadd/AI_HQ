@@ -1,0 +1,25 @@
+lunchroom:
+  id: "lunchroom"
+  name: "De Lunchroom"
+  type: "lunchroom"
+  brand_voice: >
+    Warm, uitnodigend, lokaal, persoonlijk. Alsof een vriend je tipt
+    over een leuke plek. Emoji's spaarzaam (1-3 per post). Nederlands,
+    informeel maar niet slordig.
+  target_audience: >
+    Lokale bewoners, kantoormedewerkers (lunch break),
+    gezinnen in het weekend, foodies op Instagram
+  industry: "horeca"
+
+webshop:
+  id: "webshop"
+  name: "De Webshop"
+  type: "webshop"
+  brand_voice: >
+    Professioneel maar toegankelijk. Informatief, betrouwbaar.
+    Focus op waarde en kwaliteit. Geen overdreven verkooppraatjes.
+    Nederlands. Actieve taal, spreek de lezer direct aan.
+  target_audience: >
+    Online shoppers NL/BE, 25-55 jaar, kwaliteitsbewust,
+    vergelijken voor ze kopen, lezen reviews
+  industry: "e-commerce"

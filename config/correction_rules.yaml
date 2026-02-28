@@ -1,0 +1,27 @@
+auto_approve:
+  confidence: ">= 0.9"
+  verdict: "pass"
+  task_types:
+    - hashtag_research
+    - comment_reply
+    - internal_report
+
+send_back:
+  confidence: "< 0.8"
+  verdict: "needs_revision"
+  max_revisions: 3
+
+escalate_to_human:
+  task_types:
+    - pricing_change
+    - brand_voice_change
+    - legal_content
+  confidence: "< 0.6"
+  revision_count: ">= 3"
+  cross_tenant: true
+
+openclaw_corrects_owner:
+  missed_approvals: "> 3 dagen"
+  budget_alert: "> 80% maandbudget"
+  brand_inconsistency: "across tenants"
+  opportunity: "competitor action detected"

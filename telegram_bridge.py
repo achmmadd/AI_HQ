@@ -44,9 +44,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 try:
-    from ai_chat import get_ai_reply
+    from ai_chat_retries import get_ai_reply
 except ImportError:
-    get_ai_reply = None  # fallback: alleen echo
+    try:
+        from ai_chat import get_ai_reply
+    except ImportError:
+        get_ai_reply = None  # fallback: alleen echo
 
 try:
     from mission_control import add_mission as mc_add_mission, set_tunnel_url as mc_set_tunnel_url
@@ -449,14 +452,151 @@ async def handle_text(update, context):
 
     try:
         await update.message.chat.send_action("typing")
+
+        async def send_busy_after(sec: float):
+            await asyncio.sleep(sec)
+            try:
+                await update.message.reply_text("⏳ Dit kan even duren bij grote opdrachten…")
+            except Exception:
+                pass
+
         if get_ai_reply:
-            reply = await asyncio.to_thread(get_ai_reply, msg, 3500, chat_id)
-            await update.message.reply_text(reply or "Geen antwoord van de AI.")
+            busy_task = asyncio.create_task(send_busy_after(12))
+            try:
+                reply = await asyncio.to_thread(get_ai_reply, msg, 3500, chat_id)
+                await update.message.reply_text(reply or "Geen antwoord van de AI.")
+            finally:
+                busy_task.cancel()
         else:
             await update.message.reply_text(f"Ontvangen: {msg[:200]}")
     except Exception as e:
         logger.exception("handle_text: %s", e)
         await update.message.reply_text(f"Fout: {e}")
+
+
+async def cmd_holding(update, context):
+    """Handler voor /holding — multi-tenant holding management."""
+    if update.message is None:
+        return
+    args = context.args or []
+    sub = args[0].lower() if args else "status"
+    rest = " ".join(args[1:]).strip() if len(args) > 1 else ""
+
+    try:
+        import omega_db
+        omega_db.init_schema()
+
+        if sub == "status":
+            tenants = omega_db.tenant_list()
+            agents = omega_db.holding_agent_list()
+            tasks = omega_db.holding_task_list(limit=100)
+            active = [t for t in tasks if t["status"] in ("pending", "in_progress", "review")]
+            lines = ["Holding Status:"]
+            for t in tenants:
+                t_agents = [a for a in agents if a["tenant_id"] == t["id"]]
+                t_tasks = [tk for tk in active if tk["tenant_id"] == t["id"]]
+                lines.append(f"\n{t['name']} ({t['id']}): {len(t_agents)} agents, {len(t_tasks)} actieve taken")
+                for a in t_agents:
+                    lines.append(f"  {a['role']:10s} {a['name']} [{a['status']}]")
+            await update.message.reply_text("\n".join(lines) or "Geen tenants gevonden. Run seed eerst.")
+
+        elif sub == "tasks":
+            tenant_filter = rest if rest in ("lunchroom", "webshop") else None
+            tasks = omega_db.holding_task_list(tenant_id=tenant_filter, limit=20)
+            if not tasks:
+                await update.message.reply_text("Geen holding taken gevonden.")
+                return
+            lines = [f"Holding taken ({len(tasks)}):"]
+            for t in tasks:
+                lines.append(f"  [{t['status']:12s}] {t['id']}: {t['title'][:60]}")
+            await update.message.reply_text("\n".join(lines))
+
+        elif sub == "review":
+            task_id = rest
+            if not task_id:
+                tasks = omega_db.holding_task_list(status="review", limit=5)
+                if not tasks:
+                    await update.message.reply_text("Geen taken in review.")
+                    return
+                lines = ["Taken in review:"]
+                for t in tasks:
+                    out = (t.get("output_data") or {}).get("content", "")[:100]
+                    lines.append(f"  {t['id']}: {t['title'][:50]}\n    {out}...")
+                await update.message.reply_text("\n".join(lines))
+            else:
+                t = omega_db.holding_task_get(task_id)
+                if not t:
+                    await update.message.reply_text(f"Taak {task_id} niet gevonden.")
+                    return
+                out = (t.get("output_data") or {}).get("content", "")[:800]
+                await update.message.reply_text(
+                    f"Taak: {t['title']}\nStatus: {t['status']}\n"
+                    f"Agent: {t.get('assigned_to', '-')}\nRevisies: {t.get('revision_count', 0)}\n\n{out}")
+
+        elif sub == "approve":
+            task_id = rest
+            if not task_id:
+                await update.message.reply_text("Gebruik: /holding approve <task_id>")
+                return
+            ok = omega_db.holding_task_update_status(task_id, "approved")
+            omega_db.holding_audit_log("human_approved", details={"task_id": task_id})
+            await update.message.reply_text(f"Taak {task_id} goedgekeurd." if ok else f"Taak {task_id} niet gevonden.")
+
+        elif sub == "reject":
+            parts = rest.split(" ", 1)
+            task_id = parts[0] if parts else ""
+            feedback = parts[1] if len(parts) > 1 else "Afgekeurd door eigenaar"
+            if not task_id:
+                await update.message.reply_text("Gebruik: /holding reject <task_id> <feedback>")
+                return
+            omega_db.holding_task_update_status(task_id, "rejected")
+            omega_db.holding_audit_log("human_rejected", details={"task_id": task_id, "feedback": feedback})
+            await update.message.reply_text(f"Taak {task_id} afgekeurd: {feedback}")
+
+        elif sub == "costs":
+            from holding.src.cost_tracker import summary, total_cost
+            rows = summary()
+            if not rows:
+                await update.message.reply_text("Nog geen kosten gelogd.")
+                return
+            lines = ["Kosten overzicht:"]
+            for r in rows:
+                lines.append(f"  {r['tenant_id']:10s} | {r['agent_id']:12s} | {r.get('call_count', 0)} calls | ${r.get('total_cost', 0):.4f}")
+            lines.append(f"\nTotaal: ${total_cost():.4f}")
+            await update.message.reply_text("\n".join(lines))
+
+        elif sub == "health":
+            import psutil
+            mem = psutil.virtual_memory()
+            disk = psutil.disk_usage("/")
+            cpu = psutil.cpu_percent(interval=1)
+            await update.message.reply_text(
+                f"NUC Health:\n"
+                f"  CPU: {cpu}%\n"
+                f"  RAM: {mem.used // (1024**2)}MB / {mem.total // (1024**2)}MB ({mem.percent}%)\n"
+                f"  Disk: {disk.used // (1024**3)}GB / {disk.total // (1024**3)}GB ({disk.percent}%)\n"
+                f"  RAM beschikbaar: {mem.available // (1024**2)}MB")
+
+        elif sub == "seed":
+            from holding.src.agent_registry import seed_tenants_and_agents
+            result = seed_tenants_and_agents()
+            await update.message.reply_text(f"Seed voltooid: {result['tenants']} tenants, {result['agents']} agents aangemaakt.")
+
+        else:
+            await update.message.reply_text(
+                "Holding commands:\n"
+                "/holding status — overzicht tenants + agents\n"
+                "/holding tasks [lunchroom|webshop] — taken\n"
+                "/holding review [task_id] — review bekijken\n"
+                "/holding approve <task_id> — goedkeuren\n"
+                "/holding reject <task_id> <feedback> — afkeuren\n"
+                "/holding costs — kosten per tenant\n"
+                "/holding health — NUC CPU/RAM/disk\n"
+                "/holding seed — tenants + agents seeden")
+
+    except Exception as e:
+        logger.exception("cmd_holding: %s", e)
+        await update.message.reply_text(f"Holding fout: {e}")
 
 
 def main():
@@ -488,6 +628,7 @@ def main():
     app.add_handler(CommandHandler("lockdown", cmd_lockdown))
     app.add_handler(CommandHandler("tunnel", cmd_tunnel))
     app.add_handler(CommandHandler("task", cmd_task))
+    app.add_handler(CommandHandler("holding", cmd_holding))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
