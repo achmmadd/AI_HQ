@@ -78,7 +78,8 @@ async def cmd_start(update, context):
         "• Teksten vertalen\n"
         "• Creatieve taken (brainstormen, ideeën, suggesties)\n"
         "• Omega AI-Holding gerelateerde vragen\n\n"
-        "Commando's: /panel (1Panel), /restart <container>, /secure (WAF), /tunnel (Quick Tunnel-URL), /lockdown.\n\n"
+        "Commando's: /panel (1Panel), /restart <container>, /secure (WAF), /tunnel (Quick Tunnel-URL), /lockdown.\n"
+        "Holding: /holding status | tasks | costs | health | seed — multi-tenant agents.\n\n"
         "Supremacy: /task <omschrijving> of «taak: …» of spraak — Jarvis delegeert (geen zelf uitvoeren). /tunnel = Mission Control.\n\n"
         "Stuur gewoon een bericht met je vraag of opdracht."
     )
@@ -90,7 +91,7 @@ async def cmd_help(update, context):
     if update.message is None:
         return
     await update.message.reply_text(
-        "Help: /start (menu), /task <omschrijving> (delegatie), /panel (1Panel), /restart <naam>, /secure (WAF), /tunnel (Quick Tunnel-link), /lockdown. Of typ een opdracht."
+        "Help: /start (menu), /task (delegatie), /holding (status|tasks|costs|seed), /panel, /restart, /secure, /tunnel, /lockdown. Of typ een opdracht."
     )
 
 
