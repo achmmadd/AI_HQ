@@ -1,0 +1,120 @@
+{
+  "version": "1.0",
+  "description": "Batch configuratie voor social media productbeelden — Fumero.nl",
+  "brand": "Fumero.nl",
+  "batch_name": "social-media-batch",
+  "output_channels": ["instagram_feed", "instagram_story", "facebook_post", "whatsapp_status"],
+  "canva_template_map": {
+    "instagram_feed": "Fumero-Insta-Feed",
+    "instagram_story": "Fumero-Insta-Story",
+    "facebook_post": "Fumero-FB-Post",
+    "whatsapp_status": "Fumero-WA-Status"
+  },
+  "sizes": {
+    "instagram_feed": { "width": 1080, "height": 1080 },
+    "instagram_story": { "width": 1080, "height": 1920 },
+    "facebook_post": { "width": 1200, "height": 630 },
+    "whatsapp_status": { "width": 1080, "height": 1920 }
+  },
+  "export_settings": {
+    "format": "jpg",
+    "quality": 100,
+    "max_kb": 500,
+    "compress_after_export": true,
+    "compress_tool": "tinypng"
+  },
+  "naming_pattern": "{categorie}-{productnaam}-{kanaal}-fumero.jpg",
+  "products": [
+    {
+      "id": "vapes-001",
+      "categorie": "vapes",
+      "productnaam": "strawberry-pie",
+      "display_name": "Strawberry Pie Vape",
+      "prijs": "€12,95",
+      "tagline": "Vrij. Puur. Krachtig.",
+      "flair_prompt": "misty dark forest floor with soft morning dew, golden hour backlight, atmospheric depth, bokeh background, premium lifestyle product photography, ultra realistic, 8k, no text, no watermark, commercial photography",
+      "flair_style": "Photorealistic",
+      "canva_accent_color": "#1A1F36",
+      "input_file": "vapes-strawberry-pie-input.png"
+    },
+    {
+      "id": "vapes-002",
+      "categorie": "vapes",
+      "productnaam": "blue-razz",
+      "display_name": "Blue Razz Disposable",
+      "prijs": "€10,95",
+      "tagline": "Vrij. Puur. Krachtig.",
+      "flair_prompt": "neon-lit urban rooftop at night, city lights bokeh background, cinematic blue and purple tones, sleek modern aesthetic, ultra realistic, 8k, no text, commercial photography",
+      "flair_style": "Photorealistic",
+      "canva_accent_color": "#1A1F36",
+      "input_file": "vapes-blue-razz-input.png"
+    },
+    {
+      "id": "gummies-001",
+      "categorie": "gummies",
+      "productnaam": "tropical-mix",
+      "display_name": "Tropical Mix Gummies",
+      "prijs": "€8,95",
+      "tagline": "Zoet & Sappig.",
+      "flair_prompt": "sandy beach with tropical fruits and flowers, warm golden sunlight, turquoise water in background, colorful and fresh aesthetic, ultra realistic, 8k, no text, commercial photography",
+      "flair_style": "Photorealistic",
+      "canva_accent_color": "#FF6B6B",
+      "input_file": "gummies-tropical-mix-input.png"
+    },
+    {
+      "id": "cookies-001",
+      "categorie": "cookies",
+      "productnaam": "chocolate-chunk",
+      "display_name": "Chocolate Chunk Cookie",
+      "prijs": "€9,95",
+      "tagline": "Vers uit de oven.",
+      "flair_prompt": "rustic wooden kitchen table with flour dusting, warm soft afternoon sunlight through window, cozy bakery atmosphere, artisanal baking aesthetic, ultra realistic, 8k, no text, commercial photography",
+      "flair_style": "Photorealistic",
+      "canva_accent_color": "#E8A838",
+      "input_file": "cookies-chocolate-chunk-input.png"
+    },
+    {
+      "id": "truffels-001",
+      "categorie": "truffels",
+      "productnaam": "gold-magic",
+      "display_name": "Gold Magic Truffels",
+      "prijs": "€24,95",
+      "tagline": "Mystiek & Exclusief.",
+      "flair_prompt": "black velvet fabric background, single gold accent light, luxury premium presentation, dramatic shadows, exclusive high-end product shot, ultra realistic, 8k, no text, commercial photography",
+      "flair_style": "Photorealistic",
+      "canva_accent_color": "#4A1D6E",
+      "input_file": "truffels-gold-magic-input.png"
+    },
+    {
+      "id": "candy-001",
+      "categorie": "candy",
+      "productnaam": "rainbow-bites",
+      "display_name": "Rainbow Bites Candy",
+      "prijs": "€7,95",
+      "tagline": "Kleuren voor je smaak.",
+      "flair_prompt": "explosion of colorful candy and confetti, white background, vibrant saturated colors, fun and playful party atmosphere, ultra realistic, 8k, no text, commercial photography",
+      "flair_style": "Photorealistic",
+      "canva_accent_color": "#C2F03A",
+      "input_file": "candy-rainbow-bites-input.png"
+    }
+  ],
+  "workflow_steps": [
+    "1. Verzamel alle input_file PNG's in /fumero-ecom/input/",
+    "2. Open Flair AI → maak Collection 'Social Batch {datum}'",
+    "3. Upload alle input files",
+    "4. Pas flair_prompt per product toe (of gebruik categorie-prompt voor batch)",
+    "5. Genereer 4 varianten per product, selecteer beste",
+    "6. Download als ZIP → extraheer naar /fumero-ecom/output/raw/",
+    "7. Open Canva Pro → gebruik Bulk Create met dit JSON als databron",
+    "8. Exporteer per kanaal naar /fumero-ecom/output/{kanaal}/",
+    "9. Comprimeer met TinyPNG (max 500KB)",
+    "10. Upload naar social media platforms"
+  ],
+  "hashtag_sets": {
+    "vapes": "#fumero #fumeronl #vapes #vapesnederland #premiumvape #vrijpuurkrachtig",
+    "gummies": "#fumero #fumeronl #gummies #cbdgummies #naturalgummies #zoetenaturlijk",
+    "cookies": "#fumero #fumeronl #cookies #magiccookies #artisanal #versuitdeoven",
+    "truffels": "#fumero #fumeronl #truffels #magictruffels #mystiek #exclusief",
+    "candy": "#fumero #fumeronl #candy #premiumcandy #sweetlife #regenboogsmaak"
+  }
+}

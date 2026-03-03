@@ -1,0 +1,194 @@
+{
+  "version": "1.0",
+  "brand": "Fumero.nl",
+  "description": "Afmetingen per kanaal voor alle productbeelden",
+  "channels": {
+    "webshop": {
+      "product_main": {
+        "width": 1000,
+        "height": 1000,
+        "aspect_ratio": "1:1",
+        "format": "jpg",
+        "max_kb": 150,
+        "notes": "Hoofdproductfoto WooCommerce / Shopify"
+      },
+      "product_thumbnail": {
+        "width": 300,
+        "height": 300,
+        "aspect_ratio": "1:1",
+        "format": "jpg",
+        "max_kb": 30,
+        "notes": "Thumbnail in productoverzicht"
+      },
+      "product_zoom": {
+        "width": 2000,
+        "height": 2000,
+        "aspect_ratio": "1:1",
+        "format": "jpg",
+        "max_kb": 400,
+        "notes": "Hoge resolutie voor zoom-functie"
+      }
+    },
+    "instagram": {
+      "feed_square": {
+        "width": 1080,
+        "height": 1080,
+        "aspect_ratio": "1:1",
+        "format": "jpg",
+        "max_kb": 500,
+        "notes": "Instagram feed standaard vierkant"
+      },
+      "feed_portrait": {
+        "width": 1080,
+        "height": 1350,
+        "aspect_ratio": "4:5",
+        "format": "jpg",
+        "max_kb": 500,
+        "notes": "Instagram feed portrait (meer zichtbaar in feed)"
+      },
+      "story": {
+        "width": 1080,
+        "height": 1920,
+        "aspect_ratio": "9:16",
+        "format": "jpg",
+        "max_kb": 500,
+        "safe_zone": {
+          "top_px": 250,
+          "bottom_px": 250,
+          "notes": "Tekst/logo buiten top en bottom 250px plaatsen"
+        },
+        "notes": "Instagram Stories en Reels thumbnail"
+      },
+      "reels_cover": {
+        "width": 1080,
+        "height": 1920,
+        "aspect_ratio": "9:16",
+        "format": "jpg",
+        "max_kb": 500,
+        "notes": "Reels thumbnail / cover"
+      }
+    },
+    "facebook": {
+      "post": {
+        "width": 1200,
+        "height": 630,
+        "aspect_ratio": "1.91:1",
+        "format": "jpg",
+        "max_kb": 500,
+        "notes": "Facebook link preview en post afbeelding"
+      },
+      "story": {
+        "width": 1080,
+        "height": 1920,
+        "aspect_ratio": "9:16",
+        "format": "jpg",
+        "max_kb": 500,
+        "notes": "Facebook Stories"
+      },
+      "cover": {
+        "width": 820,
+        "height": 312,
+        "aspect_ratio": "2.63:1",
+        "format": "jpg",
+        "max_kb": 200,
+        "notes": "Facebook pagina omslagfoto"
+      },
+      "event_banner": {
+        "width": 1920,
+        "height": 1080,
+        "aspect_ratio": "16:9",
+        "format": "jpg",
+        "max_kb": 300,
+        "notes": "Facebook event banner"
+      }
+    },
+    "pinterest": {
+      "standard_pin": {
+        "width": 1000,
+        "height": 1500,
+        "aspect_ratio": "2:3",
+        "format": "jpg",
+        "max_kb": 300,
+        "notes": "Standaard Pinterest pin (meest gebruikt)"
+      },
+      "long_pin": {
+        "width": 1000,
+        "height": 2100,
+        "aspect_ratio": "1:2.1",
+        "format": "jpg",
+        "max_kb": 400,
+        "notes": "Lange Pinterest infographic pin"
+      }
+    },
+    "whatsapp": {
+      "status": {
+        "width": 1080,
+        "height": 1920,
+        "aspect_ratio": "9:16",
+        "format": "jpg",
+        "max_kb": 500,
+        "notes": "WhatsApp Status afbeelding"
+      },
+      "chat_preview": {
+        "width": 1200,
+        "height": 630,
+        "aspect_ratio": "1.91:1",
+        "format": "jpg",
+        "max_kb": 200,
+        "notes": "Preview bij delen in chat"
+      }
+    },
+    "blog": {
+      "header": {
+        "width": 1200,
+        "height": 628,
+        "aspect_ratio": "1.91:1",
+        "format": "jpg",
+        "max_kb": 200,
+        "notes": "Blog artikel header / Open Graph image"
+      },
+      "inline": {
+        "width": 800,
+        "height": 600,
+        "aspect_ratio": "4:3",
+        "format": "jpg",
+        "max_kb": 120,
+        "notes": "Afbeelding in blog artikel body"
+      },
+      "thumbnail": {
+        "width": 400,
+        "height": 300,
+        "aspect_ratio": "4:3",
+        "format": "jpg",
+        "max_kb": 50,
+        "notes": "Blog overzichtspagina thumbnail"
+      }
+    },
+    "email": {
+      "header": {
+        "width": 600,
+        "height": 300,
+        "aspect_ratio": "2:1",
+        "format": "jpg",
+        "max_kb": 100,
+        "notes": "Email nieuwsbrief header"
+      },
+      "product_block": {
+        "width": 300,
+        "height": 300,
+        "aspect_ratio": "1:1",
+        "format": "jpg",
+        "max_kb": 50,
+        "notes": "Product blok in email"
+      }
+    }
+  },
+  "naming_convention": "{categorie}-{productnaam}-{kanaal}-fumero.{ext}",
+  "examples": [
+    "vapes-strawberry-pie-insta-feed-fumero.jpg",
+    "gummies-tropical-mix-blog-header-fumero.jpg",
+    "cookies-chocolate-chunk-webshop-fumero.jpg",
+    "truffels-gold-magic-pinterest-fumero.jpg",
+    "candy-rainbow-bites-fb-post-fumero.jpg"
+  ]
+}
