@@ -44,6 +44,8 @@
 | `holding/` | Data, output, agents (o.a. SOUL.md per agent), swarm, marketing |
 | `holding/data` | Persistente data (o.a. ChromaDB als je die gebruikt) |
 | `holding/output` | Uitvoer van agents/rapporten |
+| `holding/src/prompts/fumero-ecom/` | **Fumero.nl blog-beeldenworkflow** — prompt-templates, batch-workflow, bestandsnaming, SEO alt-teksten |
+| `projects/fumero-ecom/` | Fumero projectconfig (profile.json, README) |
 | `mcp/` | MCP-servers/configuratie |
 | `evomap/` | AI-Holding Evomap — realtime agent-dashboard (Next.js + FastAPI). Bij tunnel/externe toegang: `EVOMAP_API_URL` in .env (Omega + seed); `NEXT_PUBLIC_WS_URL` bij build (frontend). Volumes: evomap_data, evomap_logs. |
 | `docs/` | Documentatie (NUC, 1Panel, Singularity, checklists) |
