@@ -1,0 +1,37 @@
+{
+  "mcpServers": {
+    "factory-os-github": {
+      "name": "Factory OS — GitHub",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "AI_HQ repo lezen en schrijven via GitHub"
+    },
+    "factory-os-memory": {
+      "name": "Factory OS — Geheugen",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "description": "Persistent geheugen tussen Cherry Studio sessies (lokaal op Mac)"
+    },
+    "factory-os-fetch": {
+      "name": "Factory OS — Web Fetch",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-fetch-server"
+      ],
+      "description": "URLs ophalen — o.a. NUC-services via Tailscale-IP (@modelcontextprotocol/server-fetch bestaat niet op npm; dit is community mcp-fetch-server)"
+    }
+  }
+}
