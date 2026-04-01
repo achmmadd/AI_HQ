@@ -30,7 +30,7 @@ Dieper werk volgt altijd via de gelinkte doc; details staan **niet** dubbel hier
 | [`factory-os/`](../factory-os/) | Klantdata, kennisbank, straks workflows — zie [`factory-os/README.md`](../factory-os/README.md) |
 | `factory-os/systeem/n8n-workflows/` | **Export/import** van n8n JSON (dispatcher, ping, …) — onderhoud hier i.p.v. losse copies |
 | [`scripts/factory_os_import_dispatcher_sprint2.sh`](../scripts/factory_os_import_dispatcher_sprint2.sh) | Import Sprint 2-dispatcher + oude MVP-dispatchers uit + `docker restart n8n` |
-| [`factory-os/systeem/cherry-studio/`](../factory-os/systeem/cherry-studio/) | Cherry Studio op Mac: MCP (GitHub, Memory, Fetch) + NUC via Tailscale — zie **INSTALLATIE.md** |
+| [`factory-os/systeem/cherry-studio/`](../factory-os/systeem/cherry-studio/) | Cherry Studio op Mac: MCP **Memory + Fetch** (geen GitHub); NUC via Tailscale — **INSTALLATIE.md** |
 
 ---
 
