@@ -77,7 +77,9 @@ npx -y @modelcontextprotocol/server-memory
 npx -y mcp-fetch-server
 ```
 
-Geen stacktrace bij start = meestal OK.
+Geen stacktrace bij start = meestal OK. Regels als `GitHub MCP Server running on stdio` / `Knowledge Graph MCP Server running on stdio` zijn goed. **Eerste keer** kan `npx` even **downloaden** (30–60 s) — geduld.
+
+**GitHub-package:** npm kan **deprecated** tonen; de server start vaak nog wel. Later vervanger volgen als MCP/GitHub dat aangeeft.
 
 ## Repo-sync
 
