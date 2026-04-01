@@ -10,6 +10,8 @@ Deze map staat in **AI_HQ op de NUC/repo**; **Cherry Studio en `npx` draaien op 
 ### GitHub MCP
 Leest/schrijft o.a. de **AI_HQ**-repo op GitHub (geen lokale clone nodig voor veel operaties).
 
+**Let op (npm):** `@modelcontextprotocol/server-github` geeft momenteel een **deprecated**-waarschuwing; de server start nog wél (`GitHub MCP Server running on stdio`). Houd upgrades in de gaten of gebruik een door Cherry/GitHub aanbevolen vervanger zodra die er is.
+
 **Vereist:** `GITHUB_TOKEN` in de omgeving van Cherry Studio (of in de env-velden per server).  
 Let op: `${GITHUB_TOKEN}` in JSON wordt **niet** automatisch overal ingevuld — zet de token in Cherry Studio onder **Env** of exporteer in de shell waarmee je Cherry start.
 
