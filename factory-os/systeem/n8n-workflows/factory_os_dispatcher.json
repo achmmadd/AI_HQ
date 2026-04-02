@@ -1,7 +1,7 @@
 [
   {
     "name": "Factory OS | MVP Dispatcher",
-    "active": false,
+    "active": true,
     "nodes": [
       {
         "parameters": {
@@ -36,26 +36,47 @@
       },
       {
         "parameters": {
-          "conditions": {
-            "string": [
+          "rules": {
+            "values": [
               {
-                "value1": "={{ $json.status }}",
-                "operation": "equal",
-                "value2": "config_error"
+                "conditions": {
+                  "options": {
+                    "version": 2,
+                    "leftValue": "",
+                    "caseSensitive": true,
+                    "typeValidation": "strict"
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "sw-ce",
+                      "leftValue": "={{ $json.status }}",
+                      "rightValue": "config_error",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ]
+                },
+                "renameOutput": true,
+                "outputKey": "config_error"
               }
             ]
           },
-          "combineOperation": "all",
-          "options": {}
+          "options": {
+            "fallbackOutput": "extra"
+          }
         },
-        "type": "n8n-nodes-base.if",
-        "typeVersion": 1,
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
         "position": [
           480,
           400
         ],
-        "id": "d3-if",
-        "name": "IF config_error"
+        "id": "d3-switch",
+        "name": "Switch config_error"
       },
       {
         "parameters": {
@@ -158,7 +179,9 @@
           480
         ],
         "id": "d6-dify-agent",
-        "name": "Factory OS Agent"
+        "name": "Factory OS Agent",
+        "continueOnFail": true,
+        "alwaysOutputData": true
       },
       {
         "parameters": {
@@ -206,25 +229,7 @@
         "main": [
           [
             {
-              "node": "IF config_error",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "IF config_error": {
-        "main": [
-          [
-            {
-              "node": "Respond config error",
-              "type": "main",
-              "index": 0
-            }
-          ],
-          [
-            {
-              "node": "CEO OpenClaw routing",
+              "node": "Switch config_error",
               "type": "main",
               "index": 0
             }
@@ -269,6 +274,24 @@
           [
             {
               "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch config_error": {
+        "main": [
+          [
+            {
+              "node": "Respond config error",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "CEO OpenClaw routing",
               "type": "main",
               "index": 0
             }
