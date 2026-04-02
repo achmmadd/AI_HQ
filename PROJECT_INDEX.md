@@ -4,6 +4,22 @@
 
 ---
 
+## Factory OS — n8n dispatcher (één Dify Agent)
+
+| Onderdeel | Locatie |
+|-----------|---------|
+| Workflow (geen Switch; alle afdelingen → zelfde app) | `factory-os/systeem/n8n-workflows/factory_os_dispatcher.json` |
+| Import / activeren (CLI) | `scripts/factory_os_import_dispatcher_sprint2.sh` |
+| Dify API-URL in n8n | `.env`: `FACTORY_OS_DIFY_API_BASE` of `DIFY_API_BASE` / `DIFY_BASE_URL` (zonder trailing slash); fallback in workflow: `http://docker-api-1:5001` |
+| App-key | `DIFY_AGENT_API_KEY` (Dify → Factory OS Agent → API Access); in `docker-compose.ai_hq.yml` onder service `n8n` → `environment` |
+| Stack WebUI + n8n (+ `DIFY_AGENT_API_KEY`) | `docker-compose.ai_hq.yml` — `docker compose -f docker-compose.ai_hq.yml up -d` |
+
+**Gedrag:** OpenClaw/Optimus bepaalt `afdeling` + `complexiteit` in JSON; daarna **één** HTTP-call naar Dify `/v1/chat-messages` met `inputs.klant`, `inputs.afdeling`, `response_mode: streaming` (SSE). Vereist `OPENAI_API_KEY` of `OPTIMUS_API_KEY` plus `DIFY_AGENT_API_KEY`.
+
+**Snel testen:** `curl -s -X POST http://127.0.0.1:5678/webhook/factory-os -H "Content-Type: application/json" -d '{"prompt":"test","klant":"fumero"}' | python3 -m json.tool` — zie ook `docs/E2E_DIFY_N8N_OPENCLAW.md`.
+
+---
+
 ## Wat dit project is
 
 - **Omega AI-Holding** = Telegram-bridge + dashboard + agent-workers + engineer + resource-warden, draaiend op een NUC.
@@ -45,6 +61,7 @@
 | `holding/data` | Persistente data (o.a. ChromaDB als je die gebruikt) |
 | `holding/output` | Uitvoer van agents/rapporten |
 | `mcp/` | MCP-servers/configuratie |
+| `factory-os/` | Factory OS: klanten, Open WebUI pipelines, n8n workflow-exports |
 | `evomap/` | AI-Holding Evomap — realtime agent-dashboard (Next.js + FastAPI). Bij tunnel/externe toegang: `EVOMAP_API_URL` in .env (Omega + seed); `NEXT_PUBLIC_WS_URL` bij build (frontend). Volumes: evomap_data, evomap_logs. |
 | `docs/` | Documentatie (NUC, 1Panel, Singularity, checklists) |
 | `scripts/` | Shell- en Python-scripts (start, stop, tunnel, sync, debug) |
@@ -56,8 +73,10 @@
 
 | Bestand | Doel |
 |---------|------|
-| `docker-compose.yml` | Stack-definitie; resource-limieten o.a. voor agent-workers |
-| `.env` | TELEGRAM_BOT_TOKEN, GOOGLE_API_KEY, evt. OPENAI/Ollama (niet in git) |
+| `docker-compose.yml` | Omega AI-Holding stack (bridge, dashboard, agent-workers, …) |
+| `docker-compose.ai_hq.yml` | Open WebUI + n8n voor Factory OS; webhooks op poort 5678 |
+| `docker-compose.singularity.yml` | Omega Singularity (omega_core, dashboard, BU’s) |
+| `.env` | Secrets en service-URL’s (niet in git); o.a. `DIFY_AGENT_API_KEY`, Optimus-keys |
 | `.env.1panel` | Optioneel: 1Panel API voor resource-warden |
 | `system_specs.md` | CPU, RAM, schijf van de NUC + resourcebeleid OpenClaw |
 | `PROJECT_INDEX.md` | Deze index |
@@ -69,6 +88,7 @@
 | Doc | Inhoud |
 |-----|--------|
 | `docs/INFRASTRUCTUUR.md` | Overzicht infrastructuur, “waar wat staat”, volgorde van uitbreidingen |
+| `docs/E2E_DIFY_N8N_OPENCLAW.md` | Dify + n8n + OpenClaw — URL’s en keys |
 | `docs/OMEGA_OP_NUC.md` | Omega draaien op de NUC |
 | `docs/INSTALL_NUC.md` | Installatiestappen NUC |
 | `docs/1PANEL_INTEGRATIE.md` | 1Panel-integratie |

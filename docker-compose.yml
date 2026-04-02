@@ -155,6 +155,8 @@ services:
     networks:
       - omega-net
 
+# Factory OS (Open WebUI + n8n, DIFY_AGENT_API_KEY): zie docker-compose.ai_hq.yml
+
 volumes:
   omega_data:
   omega_logs:

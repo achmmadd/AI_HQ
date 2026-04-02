@@ -1,0 +1,68 @@
+# AI_HQ — Open WebUI + n8n (Factory OS dispatcher)
+# Start:  cd ~/AI_HQ && docker compose -f docker-compose.ai_hq.yml up -d
+#
+# Los van de Omega-stack (`docker-compose.yml`). Vereist externe netwerken/volumes, zie comments.
+
+name: ai_hq
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.8.11
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    environment:
+      OPENAI_API_BASE_URL: http://omega-optimus-api:8890/v1
+      ENABLE_PERSISTENT_CONFIG: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - open_webui_data:/app/backend/data
+      - ./factory-os:/factory-os:ro
+    networks:
+      - omega_net
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env
+    environment:
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      NODE_FUNCTION_ALLOW_BUILTIN: "fs,crypto,child_process"
+      OPENAI_API_BASE_URL: http://omega-optimus-api:8890/v1
+      FACTORY_OS_OPTIMUS_MODEL: ${FACTORY_OS_OPTIMUS_MODEL:-optimus-router}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      JINA_API_KEY: ${JINA_API_KEY:-}
+      DIFY_AGENT_API_KEY: ${DIFY_AGENT_API_KEY:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./factory-os:/factory-os:rw
+    networks:
+      - omega_net
+      - dify_net
+      - n8n_default
+
+networks:
+  omega_net:
+    external: true
+    name: ai_hq_omega-net
+  dify_net:
+    external: true
+    name: docker_default
+  n8n_default:
+    external: true
+    name: ai_hq_default
+
+volumes:
+  open_webui_data:
+    external: true
+    name: ai_hq_open_webui_data
+  n8n_data:
+    external: true
+    name: ai_hq_n8n_data
