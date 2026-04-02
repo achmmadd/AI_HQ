@@ -11,23 +11,23 @@ echo "=== FACTORY OS FINALE TEST ==="
 echo ""
 
 echo "1. Ping:"
-if curl -s -f "http://127.0.0.1:5678/webhook/factory-os-ping" \
+if curl -sS -f --max-time 15 "http://127.0.0.1:5678/webhook/factory-os-ping" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK' if d.get('factory_os') else 'FOUT')"; then
   :
 else
-  echo "FOUT (webhook bereikbaar? workflow Ping actief?)"
+  echo "FOUT (webhook bereikbaar? workflow Ping actief? n8n net herstart? wacht 10s en opnieuw.)"
 fi
 
 echo ""
 echo "2. Research:"
-curl -s -X POST "http://127.0.0.1:5678/webhook/factory-os" \
+curl -sS --max-time 180 -X POST "http://127.0.0.1:5678/webhook/factory-os" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Analyseer fumero.nl","klant":"fumero"}' \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK -', d.get('afdeling','?'), '-', len(d.get('output','')),'chars')"
 
 echo ""
 echo "3. Marketing:"
-curl -s -X POST "http://127.0.0.1:5678/webhook/factory-os" \
+curl -sS --max-time 180 -X POST "http://127.0.0.1:5678/webhook/factory-os" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Schrijf een LinkedIn post voor Fumero","klant":"fumero"}' \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK -', d.get('afdeling','?'))"
@@ -43,7 +43,7 @@ fi
 
 echo ""
 echo "5. Bibliothecaris:"
-if curl -s -f -X POST "http://127.0.0.1:5678/webhook/factory-os-bibliothecaris" -o /dev/null; then
+if curl -sS -f --max-time 300 -X POST "http://127.0.0.1:5678/webhook/factory-os-bibliothecaris" -o /dev/null; then
   echo "OK - getriggerd (Telegram binnen ~30s als keys gezet zijn)"
 else
   echo "Check n8n UI — workflow actief?"

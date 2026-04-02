@@ -96,6 +96,8 @@ docker restart n8n
 
 Dit importeert en zet actief: dispatcher, bibliothecaris, **Factory OS | Ping** (`GET /webhook/factory-os-ping` → JSON met `factory_os: true`).
 
+**Direct na `docker restart n8n`:** wacht even (~10s) voordat je webhooks curl’t; anders kan n8n kort **“Active version not found”** geven tot de nieuwe workflows geregistreerd zijn. In de UI: schakel **oude** duplicaten met dezelfde webhook-path uit (bijv. een oud “Bibliothecaris” zonder “Fumero startset” in de naam).
+
 ---
 
 ## 6. Verify (Sprint 5)
