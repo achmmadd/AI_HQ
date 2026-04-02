@@ -1,0 +1,129 @@
+[
+  {
+    "name": "Factory OS | Bibliothecaris (Fumero startset)",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 2 * * *"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          300
+        ],
+        "id": "bib-cron-02",
+        "name": "Dagelijks 02:00"
+      },
+      {
+        "parameters": {
+          "path": "factory-os-bibliothecaris",
+          "httpMethod": "POST",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          480
+        ],
+        "id": "bib-webhook",
+        "name": "Webhook handmatig",
+        "webhookId": "factory-os-bibliothecaris"
+      },
+      {
+        "parameters": {
+          "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst ROOT = '/factory-os/klanten/fumero/kennisbank';\nconst listPath = path.join(ROOT, '_startset_urls.json');\n\nfunction slugForUrl(u) {\n  try {\n    const x = new URL(u);\n    const host = (x.hostname || 'site').replace(/\\./g, '_');\n    let p = (x.pathname || '/').replace(/^\\/+|\\/+$/g, '').replace(/\\//g, '__');\n    if (!p) p = 'root';\n    p = p.replace(/[^\\w-]+/g, '_');\n    return host + '__' + p;\n  } catch (e) {\n    return 'invalid';\n  }\n}\n\nlet URLS;\ntry {\n  URLS = JSON.parse(fs.readFileSync(listPath, 'utf8')).urls;\n} catch (e) {\n  URLS = ['https://fumero.nl/'];\n}\nif (!Array.isArray(URLS) || !URLS.length) URLS = ['https://fumero.nl/'];\n\nconst key = ($env.JINA_API_KEY || '').trim();\nconst results = [];\n\nfor (const target of URLS) {\n  const jinaUrl = 'https://r.jina.ai/' + target;\n  const headers = {\n    Accept: 'text/plain',\n    'User-Agent': 'Mozilla/5.0 (compatible; Factory-OS-Bibliothecaris/1.0)',\n  };\n  if (key) headers.Authorization = 'Bearer ' + key;\n  try {\n    const res = await fetch(jinaUrl, { headers, signal: AbortSignal.timeout(120000) });\n    if (!res.ok) {\n      results.push({ url: target, ok: false, error: 'HTTP ' + res.status });\n      continue;\n    }\n    const body = await res.text();\n    const slug = slugForUrl(target);\n    const fetched = new Date().toISOString();\n    const front = '---\\nsource_url: ' + target + '\\nfetched_at: ' + fetched + '\\nreader: jina\\n---\\n\\n';\n    fs.mkdirSync(ROOT, { recursive: true });\n    fs.writeFileSync(path.join(ROOT, slug + '.md'), front + body, 'utf8');\n    results.push({ url: target, file: slug + '.md', ok: true });\n  } catch (e) {\n    results.push({ url: target, ok: false, error: String(e.message || e) });\n  }\n}\n\nreturn [{\n  json: {\n    ok_count: results.filter((r) => r.ok).length,\n    fail_count: results.filter((r) => !r.ok).length,\n    results,\n    root: ROOT,\n  },\n}];\n",
+          "language": "javaScript"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          280,
+          380
+        ],
+        "id": "bib-jina-sync",
+        "name": "Jina → kennisbank (Fumero)"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'https://api.telegram.org/bot' + String($env.TELEGRAM_BOT_TOKEN || '').trim() + '/sendMessage' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  chat_id: String($env.TELEGRAM_CHAT_ID || '').trim(),\n  text: '🏭 *Factory OS*\\n✅ Kennisbank bijgewerkt\\n📚 Fumero scrape klaar\\nOK: ' + $json.ok_count + ' · mislukt: ' + $json.fail_count + '\\nSlaap lekker — de fabriek werkt door.',\n  parse_mode: 'Markdown',\n  disable_web_page_preview: true\n}) }}",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          520,
+          380
+        ],
+        "id": "bib-telegram",
+        "name": "Telegram — kennisbank klaar",
+        "continueOnFail": true,
+        "alwaysOutputData": true
+      }
+    ],
+    "connections": {
+      "Dagelijks 02:00": {
+        "main": [
+          [
+            {
+              "node": "Jina → kennisbank (Fumero)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook handmatig": {
+        "main": [
+          [
+            {
+              "node": "Jina → kennisbank (Fumero)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Jina → kennisbank (Fumero)": {
+        "main": [
+          [
+            {
+              "node": "Telegram — kennisbank klaar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "pinData": {}
+  }
+]

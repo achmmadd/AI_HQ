@@ -1,0 +1,40 @@
+[
+  {
+    "name": "Factory OS | Ping",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "path": "factory-os-ping",
+          "httpMethod": "GET",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [0, 300],
+        "id": "ping-wh",
+        "name": "Webhook",
+        "webhookId": "factory-os-ping"
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{ json: { factory_os: true, service: 'n8n', ts: new Date().toISOString() } }];",
+          "language": "javaScript"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [260, 300],
+        "id": "ping-code",
+        "name": "Ping body"
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [[{ "node": "Ping body", "type": "main", "index": 0 }]]
+      }
+    },
+    "settings": { "executionOrder": "v1" },
+    "pinData": {}
+  }
+]
