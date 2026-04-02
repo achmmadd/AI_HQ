@@ -40,6 +40,8 @@ services:
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       JINA_API_KEY: ${JINA_API_KEY:-}
       DIFY_AGENT_API_KEY: ${DIFY_AGENT_API_KEY:-}
+      # Fallback in n8n-workflow: DIFY_RESEARCH_API_KEY als DIFY_AGENT_API_KEY leeg is
+      DIFY_RESEARCH_API_KEY: ${DIFY_RESEARCH_API_KEY:-}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./factory-os:/factory-os:rw

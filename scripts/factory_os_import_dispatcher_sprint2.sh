@@ -41,5 +41,5 @@ docker exec n8n n8n publish:workflow --id="$NEW_ID" 2>/dev/null || true
 
 echo "Actief gezet: $NEW_ID ($LABEL). Herstart n8n:"
 echo "  docker restart n8n"
-echo "Benodigd in .env: OPENAI_API_KEY of OPTIMUS_API_KEY, DIFY_AGENT_API_KEY, FACTORY_OS_DIFY_API_BASE (of DIFY_API_BASE)."
+echo "Benodigd in .env: OPENAI_API_KEY of OPTIMUS_API_KEY; DIFY_AGENT_API_KEY of DIFY_RESEARCH_API_KEY; FACTORY_OS_DIFY_API_BASE (of DIFY_API_BASE)."
 echo "Test: curl -s -X POST http://127.0.0.1:5678/webhook/factory-os -H 'Content-Type: application/json' -d '{\"prompt\":\"test\",\"klant\":\"fumero\"}'"
