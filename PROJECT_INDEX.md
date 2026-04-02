@@ -8,13 +8,13 @@
 
 | Onderdeel | Locatie |
 |-----------|---------|
-| Workflow (geen Switch; alle afdelingen → zelfde app) | `factory-os/systeem/n8n-workflows/factory_os_dispatcher.json` |
+| Workflow (direct Dify; geen Optimus/CEO-router) | `factory-os/systeem/n8n-workflows/factory_os_dispatcher.json` |
 | Import / activeren (CLI) | `scripts/factory_os_import_dispatcher_sprint2.sh` |
 | Dify API-URL in n8n | `.env`: `FACTORY_OS_DIFY_API_BASE` of `DIFY_API_BASE` / `DIFY_BASE_URL` (zonder trailing slash); fallback in workflow: `http://docker-api-1:5001` |
 | App-key | `DIFY_AGENT_API_KEY` (voorkeur); **fallback** `DIFY_RESEARCH_API_KEY` als Agent-key leeg is (zelfde `app-…` mag). Zie `docker-compose.ai_hq.yml` → `n8n` → `environment` |
 | Stack WebUI + n8n | `docker-compose.ai_hq.yml` — `docker compose -f docker-compose.ai_hq.yml up -d` |
 
-**Gedrag:** OpenClaw/Optimus bepaalt `afdeling` + `complexiteit` in JSON; daarna **één** HTTP-call naar Dify `/v1/chat-messages` met `inputs.klant`, `inputs.afdeling`, `response_mode: streaming` (SSE). Vereist `OPENAI_API_KEY` of `OPTIMUS_API_KEY` plus `DIFY_AGENT_API_KEY` **of** `DIFY_RESEARCH_API_KEY`.
+**Gedrag:** Alleen **Dify** (all-in-one agent): `Prepare` checkt de app-key, daarna **één** `POST …/v1/chat-messages` met `inputs.klant` en `query` (streaming/SSE). **Geen** Optimus/OpenClaw-router meer in deze workflow. Vereist `DIFY_AGENT_API_KEY` **of** `DIFY_RESEARCH_API_KEY`.
 
 **Snel testen:** `curl -s -X POST http://127.0.0.1:5678/webhook/factory-os -H "Content-Type: application/json" -d '{"prompt":"test","klant":"fumero"}' | python3 -m json.tool` — zie ook `docs/E2E_DIFY_N8N_OPENCLAW.md`.
 

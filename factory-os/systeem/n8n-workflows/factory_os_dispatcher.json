@@ -22,7 +22,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const j = $input.first().json;\nconst b = j.body && typeof j.body === 'object' && !Array.isArray(j.body) ? j.body : j;\nconst prompt = String(b.prompt ?? '');\nconst klant = String(b.klant ?? 'algemeen');\nconst openaiKey = ($env.OPENAI_API_KEY || $env.OPTIMUS_API_KEY || '').trim();\nconst difyAgent = ($env.DIFY_AGENT_API_KEY || $env.DIFY_RESEARCH_API_KEY || '').trim();\nif (!openaiKey || !difyAgent) {\n  return [{\n    json: {\n      output: 'Factory OS: zet OPENAI_API_KEY (of OPTIMUS_API_KEY) en DIFY_AGENT_API_KEY of DIFY_RESEARCH_API_KEY in AI_HQ/.env (zelfde app-key mag), daarna docker compose up -d en docker restart n8n.',\n      status: 'config_error',\n      klant,\n      afdeling: 'n/a',\n      complexiteit: 'n/a',\n    },\n  }];\n}\nreturn [{ json: { prompt, klant, status: '__ok' } }];\n",
+          "jsCode": "const j = $input.first().json;\nconst b = j.body && typeof j.body === 'object' && !Array.isArray(j.body) ? j.body : j;\nconst prompt = String(b.prompt ?? '');\nconst klant = String(b.klant ?? 'algemeen');\nconst difyKey = ($env.DIFY_AGENT_API_KEY || $env.DIFY_RESEARCH_API_KEY || '').trim();\nif (!difyKey) {\n  return [{\n    json: {\n      output: 'Factory OS: zet DIFY_AGENT_API_KEY of DIFY_RESEARCH_API_KEY in AI_HQ/.env (Dify app → API Access), daarna docker compose up -d en docker restart n8n.',\n      status: 'config_error',\n      klant,\n      afdeling: 'n/a',\n      complexiteit: 'n/a',\n    },\n  }];\n}\nreturn [{ json: { prompt, klant, status: '__ok' } }];\n",
           "language": "javaScript"
         },
         "type": "n8n-nodes-base.code",
@@ -96,55 +96,6 @@
       {
         "parameters": {
           "method": "POST",
-          "url": "={{ (($env.OPENAI_API_BASE_URL || $env.OPENAI_API_BASE || 'http://omega-optimus-api:8890/v1').replace(/\\/+$/, '')) + '/chat/completions' }}",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "Authorization",
-                "value": "={{ 'Bearer ' + ($env.OPENAI_API_KEY || $env.OPTIMUS_API_KEY || '') }}"
-              },
-              {
-                "name": "Content-Type",
-                "value": "application/json"
-              }
-            ]
-          },
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "={{ JSON.stringify({\n  model: $env.FACTORY_OS_OPTIMUS_MODEL || 'optimus-router',\n  messages: [\n    { role: 'system', content: 'Retourneer ALLEEN JSON (geen andere tekst):\\n{\"afdeling\":\"fabriek/marketing/research/it/sales/finance\",\"complexiteit\":\"snel/normaal/diep\"}' },\n    { role: 'user', content: 'Klant: ' + $json.klant + '\\nVraag: ' + $json.prompt }\n  ],\n  stream: false\n}) }}",
-          "options": {
-            "timeout": 120000
-          }
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.2,
-        "position": [
-          720,
-          480
-        ],
-        "id": "d4-ceo",
-        "name": "CEO OpenClaw routing",
-        "continueOnFail": true,
-        "alwaysOutputData": true
-      },
-      {
-        "parameters": {
-          "jsCode": "const raw = $input.first().json;\nconst prep = $('Prepare').first().json;\nconst klant = prep.klant || 'algemeen';\nconst prompt = prep.prompt || '';\n\nif (raw.error) {\n  return [{\n    json: {\n      prompt,\n      klant,\n      afdeling: 'research',\n      complexiteit: 'normaal',\n      status: 'ok',\n      ceo_fallback: true,\n      ceo_error_hint: String(raw.error.message || JSON.stringify(raw.error)).slice(0, 400),\n    },\n  }];\n}\n\nconst content = (raw.choices && raw.choices[0] && raw.choices[0].message && raw.choices[0].message.content) || '';\nlet routing = { afdeling: 'research', complexiteit: 'normaal' };\ntry {\n  const m = content.match(/\\{[\\s\\S]*?\\}/);\n  if (m) {\n    const o = JSON.parse(m[0]);\n    if (o.afdeling) routing.afdeling = String(o.afdeling).trim().split(/\\s+/)[0];\n    if (o.complexiteit) routing.complexiteit = String(o.complexiteit).trim().split(/\\s+/)[0];\n  }\n} catch (e) {}\n\nconst afd = (routing.afdeling || 'research').toLowerCase();\nconst cx = (routing.complexiteit || 'normaal').toLowerCase();\nreturn [{\n  json: {\n    prompt,\n    klant,\n    afdeling: afd,\n    complexiteit: cx,\n    status: 'ok',\n  },\n}];\n",
-          "language": "javaScript"
-        },
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          960,
-          480
-        ],
-        "id": "d5-parse",
-        "name": "Parse routing"
-      },
-      {
-        "parameters": {
-          "method": "POST",
           "url": "={{ (($env.FACTORY_OS_DIFY_API_BASE || $env.DIFY_API_BASE || $env.DIFY_BASE_URL || 'http://docker-api-1:5001') + '').replace(/\\/+$/, '') + '/v1/chat-messages' }}",
           "sendHeaders": true,
           "headerParameters": {
@@ -161,7 +112,7 @@
           },
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "={{ JSON.stringify({\n  inputs: { klant: $json.klant, afdeling: $json.afdeling },\n  query: $json.prompt,\n  response_mode: 'streaming',\n  conversation_id: '',\n  user: 'factory-os'\n}) }}",
+          "jsonBody": "={{ JSON.stringify({\n  inputs: { klant: $json.klant },\n  query: $json.prompt,\n  response_mode: 'streaming',\n  conversation_id: '',\n  user: 'factory-os-n8n'\n}) }}",
           "options": {
             "timeout": 180000,
             "response": {
@@ -175,7 +126,7 @@
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "position": [
-          1200,
+          720,
           480
         ],
         "id": "d6-dify-agent",
@@ -185,13 +136,13 @@
       },
       {
         "parameters": {
-          "jsCode": "const inJson = $input.first().json;\nconst pr = $('Parse routing').first().json;\nlet answer = inJson.answer;\nif (answer == null && inJson.data && typeof inJson.data === 'object' && !Array.isArray(inJson.data) && inJson.data.outputs) {\n  const o = inJson.data.outputs;\n  answer = o.answer || o.text || o.result;\n}\nif (answer == null) answer = inJson.text || inJson.message || '';\n\nconst sseRaw = (typeof inJson.data === 'string' ? inJson.data : null) || (typeof inJson.body === 'string' ? inJson.body : '') || '';\nif (!answer && sseRaw.includes('data:')) {\n  let acc = '';\n  for (const line of sseRaw.split(/\\r?\\n/)) {\n    const s = line.trim();\n    if (!s.startsWith('data:')) continue;\n    const payload = s.slice(5).trim();\n    if (payload === '[DONE]') continue;\n    try {\n      const j = JSON.parse(payload);\n      if (j.event === 'agent_message' && typeof j.answer === 'string') acc += j.answer;\n      else if (j.event === 'message' && typeof j.answer === 'string') acc += j.answer;\n      else if (j.answer && typeof j.answer === 'string') acc += j.answer;\n    } catch (e) {}\n  }\n  answer = acc;\n}\n\nif (typeof answer !== 'string') answer = JSON.stringify(answer || '');\nif (!answer && inJson.error) answer = 'Dify/HTTP-fout: ' + String(inJson.error.message || JSON.stringify(inJson.error)).slice(0, 800);\nif (!answer) answer = 'Geen antwoord van Dify (check DIFY_AGENT_API_KEY of DIFY_RESEARCH_API_KEY, app/API-base).';\n\nconst klant = $('Prepare').first().json.klant || 'algemeen';\nconst afdeling = pr.afdeling || 'research';\nconst complexiteit = pr.complexiteit || 'normaal';\nconst datum = new Date().toLocaleDateString('nl-NL');\nconst ceoNote = pr.ceo_fallback ? ('\\n\\n---\\n_Let op: Optimus CEO overgeslagen (fout/ratelimit). Afdeling **research**; Factory OS Agent voert het werk uit._\\n') : '';\n\nconst lines = answer.split('\\n');\nconst summary = lines.slice(0, 3).join('\\n');\nconst isErr = !String(answer || '').trim() || String(answer).startsWith('Dify/HTTP-fout') || String(answer).includes('Geen antwoord van Dify');\n\nconst output = `# Factory OS Response\\n**Klant:** ${klant} · **Afdeling:** ${afdeling} · **Datum:** ${datum}\\n\\n## Samenvatting\\n${summary}\\n\\n## Volledige response\\n${answer}${ceoNote}\\n\\n---\\n*Factory OS · ${afdeling} · ${complexiteit}*`;\n\nconst model = pr.ceo_fallback ? 'ceo-fallback + factory-os-agent' : 'openclaw-routing + factory-os-agent';\nreturn [{\n  json: {\n    output,\n    answer_raw: answer,\n    afdeling,\n    complexiteit,\n    klant,\n    status: isErr ? 'error' : 'ok',\n    model,\n    ceo_fallback: !!pr.ceo_fallback,\n  },\n}];\n",
+          "jsCode": "const inJson = $input.first().json;\nconst prep = $('Prepare').first().json;\nconst klant = prep.klant || 'algemeen';\nconst afdeling = 'factory-os-agent';\nconst complexiteit = 'normaal';\n\nlet answer = inJson.answer;\nif (answer == null && inJson.data && typeof inJson.data === 'object' && !Array.isArray(inJson.data) && inJson.data.outputs) {\n  const o = inJson.data.outputs;\n  answer = o.answer || o.text || o.result;\n}\nif (answer == null) answer = inJson.text || inJson.message || '';\n\nconst sseRaw = (typeof inJson.data === 'string' ? inJson.data : null) || (typeof inJson.body === 'string' ? inJson.body : '') || '';\nif (!answer && sseRaw.includes('data:')) {\n  let acc = '';\n  for (const line of sseRaw.split(/\\r?\\n/)) {\n    const s = line.trim();\n    if (!s.startsWith('data:')) continue;\n    const payload = s.slice(5).trim();\n    if (payload === '[DONE]') continue;\n    try {\n      const j = JSON.parse(payload);\n      if (j.event === 'agent_message' && typeof j.answer === 'string') acc += j.answer;\n      else if (j.event === 'message' && typeof j.answer === 'string') acc += j.answer;\n      else if (j.answer && typeof j.answer === 'string') acc += j.answer;\n    } catch (e) {}\n  }\n  answer = acc;\n}\n\nif (typeof answer !== 'string') answer = JSON.stringify(answer || '');\nif (!answer && inJson.error) answer = 'Dify/HTTP-fout: ' + String(inJson.error.message || JSON.stringify(inJson.error)).slice(0, 800);\nif (!answer) answer = 'Geen antwoord van Dify (check DIFY_AGENT_API_KEY of DIFY_RESEARCH_API_KEY, FACTORY_OS_DIFY_API_BASE).';\n\nconst datum = new Date().toLocaleDateString('nl-NL');\nconst lines = answer.split('\\n');\nconst summary = lines.slice(0, 3).join('\\n');\nconst isErr = !String(answer || '').trim() || String(answer).startsWith('Dify/HTTP-fout') || String(answer).includes('Geen antwoord van Dify');\n\nconst output = `# Factory OS Response\\n**Klant:** ${klant} · **Agent:** ${afdeling} · **Datum:** ${datum}\\n\\n## Samenvatting\\n${summary}\\n\\n## Volledige response\\n${answer}\\n\\n---\\n*Factory OS · Dify all-in-one · ${complexiteit}*`;\n\nreturn [{\n  json: {\n    output,\n    answer_raw: answer,\n    afdeling,\n    complexiteit,\n    klant,\n    status: isErr ? 'error' : 'ok',\n    model: 'dify-factory-os-agent',\n  },\n}];\n",
           "language": "javaScript"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1440,
+          960,
           480
         ],
         "id": "d7-format",
@@ -206,7 +157,7 @@
         "type": "n8n-nodes-base.respondToWebhook",
         "typeVersion": 1.5,
         "position": [
-          1680,
+          1200,
           480
         ],
         "id": "d8-respond",
@@ -236,19 +187,15 @@
           ]
         ]
       },
-      "CEO OpenClaw routing": {
+      "Switch config_error": {
         "main": [
           [
             {
-              "node": "Parse routing",
+              "node": "Respond config error",
               "type": "main",
               "index": 0
             }
-          ]
-        ]
-      },
-      "Parse routing": {
-        "main": [
+          ],
           [
             {
               "node": "Factory OS Agent",
@@ -274,24 +221,6 @@
           [
             {
               "node": "Respond to Webhook",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Switch config_error": {
-        "main": [
-          [
-            {
-              "node": "Respond config error",
-              "type": "main",
-              "index": 0
-            }
-          ],
-          [
-            {
-              "node": "CEO OpenClaw routing",
               "type": "main",
               "index": 0
             }
