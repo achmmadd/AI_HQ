@@ -202,6 +202,26 @@ http_code() {
   curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$url" 2>/dev/null || echo "000"
 }
 
+# Dify op de host staat vaak achter nginx: /health → 404 terwijl de stack wél draait.
+# Accepteer: /health 200, of /console/api/setup 200, of POST /v1/chat-messages → 401/400.
+dify_reachable() {
+  local base="${DIFY_BASE_URL%/}"
+  local code
+  code=$(http_code "$base/health")
+  if [ "$code" = "200" ]; then
+    return 0
+  fi
+  code=$(http_code "$base/console/api/setup")
+  if [ "$code" = "200" ]; then
+    return 0
+  fi
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 -X POST "$base/v1/chat-messages" 2>/dev/null || echo "000")
+  if [ "$code" = "401" ] || [ "$code" = "400" ]; then
+    return 0
+  fi
+  return 1
+}
+
 deel2_health_gate() {
   echo "=== DEEL 2 — HEALTH + GATE ==="
   set -a
@@ -233,8 +253,14 @@ deel2_health_gate() {
 n8n|http://localhost:5678/healthz
 qdrant|http://localhost:6333/healthz
 ollama|http://localhost:11434/api/tags
-dify|${DIFY_BASE_URL%/}/health
 EOF
+
+  if dify_reachable; then
+    echo "✅ dify (${DIFY_BASE_URL%/} — health of console/setup of v1)"
+  else
+    echo "❌ dify — ${DIFY_BASE_URL%/} (geen /health, /console/api/setup of v1-antwoord)"
+    fail=1
+  fi
 
   code=$(http_code "http://localhost:3000")
   if [ "$code" = "200" ] || [ "$code" = "302" ]; then
@@ -295,8 +321,12 @@ deel3_finale() {
   [ "$code" = "200" ] && verified+=("qdrant health 200") || echo "❌ qdrant"
 
   : "${DIFY_BASE_URL:?}"
-  code=$(http_code "${DIFY_BASE_URL%/}/health")
-  [ "$code" = "200" ] && verified+=("dify health 200") || echo "❌ dify"
+  if dify_reachable; then
+    verified+=("dify bereikbaar (${DIFY_BASE_URL%/})")
+    echo "✅ dify bereikbaar"
+  else
+    echo "❌ dify niet bereikbaar"
+  fi
 
   if [ -f "$HOME/.openclaw/mcp.json" ]; then
     verified+=("~/.openclaw/mcp.json aanwezig")
