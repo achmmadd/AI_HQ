@@ -32,3 +32,7 @@ curl -s http://localhost:6333/collections/factory_os | python3 -c "import sys,js
 export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22
 python3 ~/AI_HQ/scripts/qdrant_ingest_kennisbank.py
 ```
+
+**OpenClaw MCP in `openclaw.json`:** staat los van `mcp.json`. Na install onder Node 22 zijn de servers geïmporteerd met `openclaw mcp set <naam> '<json>'` (uit `~/.openclaw/mcp.json`). `openclaw mcp list` toont nu o.a. dify, fetch, filesystem, memory, n8n, qdrant.
+
+**Let op:** bij het opbouwen van `openclaw.json` kan eerdere inhoud (modellen, Telegram in die file) zijn overschreven. Check `~/.openclaw/openclaw.json.bak*` en merge handmatig wat je nodig hebt.
