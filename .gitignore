@@ -21,6 +21,7 @@ holding/data/omega.db-shm
 *.db-wal
 *.db-shm
 state.json
+.factory_os_v3_ok
 data/*.json
 data/report_chat_id.txt
 data/tasks/
