@@ -59,3 +59,15 @@ Thumbs.db
 
 # Models (Ollama, lokale LLMs)
 /models/
+# Secrets
+*.key
+*.pem
+# Data
+*.db
+holding/data/
+# Tools
+# Archieven
+cherry-studio.archief/
+*.archief/
+# Logs
+*.log
