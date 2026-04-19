@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
 import {
   callFactoryN8n,
+  CHAT_OUTPUT_INSTRUCTION_PREFIX,
   extractMessage,
   normalizeContext,
   type ChatContextMsg,
 } from "@/lib/chat-n8n";
+import { scheduleConversationTitleUpdate } from "@/lib/chat-conversation-title";
+import { assertConversationForKlant } from "@/lib/chat-conversation-guard";
+import { getChatLearnedInstructionSuffix } from "@/lib/chat-learned";
 
 export const runtime = "nodejs";
 
@@ -18,13 +22,20 @@ export async function POST(req: NextRequest) {
       afdeling,
       agent_mode = false,
       context = [],
+      conversation_id: conversationIdRaw,
     } = body as {
       prompt?: string;
       klant?: string;
       afdeling?: string;
       agent_mode?: boolean;
       context?: ChatContextMsg[];
+      conversation_id?: number | null;
     };
+
+    const conversationId =
+      typeof conversationIdRaw === "number" && Number.isFinite(conversationIdRaw)
+        ? conversationIdRaw
+        : null;
 
     if (!prompt?.trim()) {
       return NextResponse.json(
@@ -36,15 +47,44 @@ export async function POST(req: NextRequest) {
     const afdelingStr =
       typeof afdeling === "string" && afdeling ? afdeling : null;
 
+    let firstTurnForTitle = false;
+    try {
+      assertConversationForKlant(klant, conversationId);
+      if (conversationId) {
+        const c = db
+          .prepare(
+            `SELECT COUNT(*) as n FROM chat_history WHERE conversation_id = ?`
+          )
+          .get(conversationId) as { n: number };
+        firstTurnForTitle = c.n === 0;
+      }
+    } catch (e: unknown) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Conversatiefout" },
+        { status: 400 }
+      );
+    }
+
     db.prepare(
-      `INSERT INTO chat_history (klant, role, content, afdeling)
-       VALUES (?, 'user', ?, ?)`
-    ).run(klant, prompt.trim(), afdelingStr);
+      `INSERT INTO chat_history (klant, role, content, afdeling, conversation_id)
+       VALUES (?, 'user', ?, ?, ?)`
+    ).run(klant, prompt.trim(), afdelingStr, conversationId);
+
+    if (conversationId) {
+      db.prepare(
+        `UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`
+      ).run(conversationId);
+    }
 
     const ctx = normalizeContext(context);
 
+    const promptForFactory =
+      CHAT_OUTPUT_INSTRUCTION_PREFIX +
+      getChatLearnedInstructionSuffix() +
+      prompt.trim();
+
     const { ok, status, data, rawText } = await callFactoryN8n({
-      prompt: prompt.trim(),
+      prompt: promptForFactory,
       klant,
       ...(afdelingStr ? { afdeling: afdelingStr } : {}),
       agent_mode: Boolean(agent_mode),
@@ -64,13 +104,21 @@ export async function POST(req: NextRequest) {
     const model =
       typeof data.model === "string" ? data.model : "factory-os";
 
-    db.prepare(
-      `INSERT INTO chat_history (klant, role, content, afdeling, model)
-       VALUES (?, 'assistant', ?, ?, ?)`
-    ).run(klant, message, outAfdeling, model);
+    const insAsst = db
+      .prepare(
+        `INSERT INTO chat_history (klant, role, content, afdeling, model, conversation_id)
+         VALUES (?, 'assistant', ?, ?, ?, ?)`
+      )
+      .run(klant, message, outAfdeling, model, conversationId);
+    const assistantMessageId = Number(insAsst.lastInsertRowid);
+
+    if (conversationId && firstTurnForTitle) {
+      scheduleConversationTitleUpdate(conversationId, klant, prompt.trim());
+    }
 
     return NextResponse.json({
       message,
+      assistant_message_id: assistantMessageId,
       klant,
       afdeling: outAfdeling,
       model,

@@ -12,6 +12,8 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   createdAt: number;
+  /** `chat_history.id` voor feedback (alleen assistant). */
+  chatHistoryId?: number;
 }
 
 export interface Department {

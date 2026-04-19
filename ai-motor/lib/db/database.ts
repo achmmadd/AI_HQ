@@ -11,6 +11,7 @@ if (!fs.existsSync(DB_DIR)) {
 }
 
 const db = new Database(DB_PATH);
+db.pragma("foreign_keys = ON");
 
 /** Alle tabellen aanmaken / migreren voor productie. */
 export function initDb(): void {
@@ -191,7 +192,60 @@ export function initDb(): void {
     klant TEXT DEFAULT 'system',
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT 'Nieuwe chat',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
+  const chatCols = db
+    .prepare(`SELECT name FROM pragma_table_info('chat_history')`)
+    .all() as { name: string }[];
+  if (!chatCols.some((c) => c.name === "conversation_id")) {
+    db.exec(
+      `ALTER TABLE chat_history ADD COLUMN conversation_id INTEGER REFERENCES conversations(id)`
+    );
+  }
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_conversations_klant ON conversations(klant);
+    CREATE INDEX IF NOT EXISTS idx_chat_history_conversation ON chat_history(conversation_id);
+  `);
+
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS message_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id INTEGER NOT NULL UNIQUE REFERENCES chat_history(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    reason TEXT,
+    klant TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS system_improvements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    issue TEXT NOT NULL,
+    reason_cluster TEXT,
+    count INTEGER NOT NULL DEFAULT 0,
+    suggested_fix TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'new'
+      CHECK (status IN ('new', 'reviewed', 'applied', 'rejected')),
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_message_feedback_klant ON message_feedback(klant);
+  CREATE INDEX IF NOT EXISTS idx_message_feedback_created ON message_feedback(created_at);
+  CREATE INDEX IF NOT EXISTS idx_system_improvements_status ON system_improvements(status);
+  `);
 }
 
 initDb();

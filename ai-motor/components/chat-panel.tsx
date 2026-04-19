@@ -1,15 +1,24 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Mic, Paperclip, Send, Sparkles } from "lucide-react";
+import { Mic, Paperclip, Send, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChat } from "@/hooks/useChat";
 import { useCompanyStore } from "@/stores/useCompanyStore";
 import { ChatMarkdown } from "@/components/chat-markdown";
+import { MessageFeedback } from "@/components/message-feedback";
 import { cn } from "@/lib/utils";
+
+type ConversationRow = {
+  id: number;
+  klant: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
 
 const QUICK_ACTIONS = [
   { label: "Samenvatting", prompt: "Geef een korte samenvatting van wat we bespraken." },
@@ -30,7 +39,58 @@ type SpeechRecCtor = new () => {
 
 export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
   const company = useCompanyStore((s) => s.company);
-  const { messages, send, streamingId, error, historyLoaded } = useChat(company);
+  const [conversations, setConversations] = useState<ConversationRow[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<
+    number | undefined
+  >(undefined);
+
+  const refreshConversations = useCallback(async () => {
+    const res = await fetch(
+      `/api/conversations?klant=${encodeURIComponent(company)}`
+    );
+    const data = (await res.json()) as { conversations?: ConversationRow[] };
+    const rows = data.conversations ?? [];
+    setConversations(rows);
+    return rows;
+  }, [company]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setActiveConversationId(undefined);
+    setConversations([]);
+    (async () => {
+      const res = await fetch(
+        `/api/conversations?klant=${encodeURIComponent(company)}`
+      );
+      const data = (await res.json()) as { conversations?: ConversationRow[] };
+      let rows = data.conversations ?? [];
+      if (rows.length === 0) {
+        const post = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ klant: company }),
+        });
+        if (post.ok) {
+          const row = (await post.json()) as ConversationRow;
+          rows = [row];
+        }
+      }
+      if (cancelled) return;
+      setConversations(rows);
+      if (rows[0]) setActiveConversationId(rows[0].id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [company]);
+
+  const { messages, send, streamingId, error, historyLoaded } = useChat(
+    company,
+    undefined,
+    activeConversationId,
+    { onStreamComplete: () => void refreshConversations() }
+  );
+
   const [text, setText] = useState("");
   const [agentMode, setAgentMode] = useState(false);
   const [listening, setListening] = useState(false);
@@ -39,6 +99,48 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
 
   const scrollBottom = () =>
     queueMicrotask(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }));
+
+  const newChat = async () => {
+    if (streamingId) return;
+    const res = await fetch("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ klant: company }),
+    });
+    if (!res.ok) return;
+    const row = (await res.json()) as ConversationRow;
+    setConversations((prev) => [row, ...prev]);
+    setActiveConversationId(row.id);
+  };
+
+  const deleteConversation = async (id: number) => {
+    if (streamingId) return;
+    const res = await fetch(
+      `/api/conversations/${id}?klant=${encodeURIComponent(company)}`,
+      { method: "DELETE" }
+    );
+    if (!res.ok) return;
+    const remaining = conversations.filter((c) => c.id !== id);
+    setConversations(remaining);
+    if (activeConversationId === id) {
+      if (remaining[0]) {
+        setActiveConversationId(remaining[0].id);
+      } else {
+        const post = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ klant: company }),
+        });
+        if (post.ok) {
+          const row = (await post.json()) as ConversationRow;
+          setConversations([row]);
+          setActiveConversationId(row.id);
+        } else {
+          setActiveConversationId(undefined);
+        }
+      }
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,12 +208,65 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
   return (
     <div
       className={cn(
-        "flex flex-col rounded-2xl border border-border bg-surface",
+        "flex min-h-0 rounded-2xl border border-border bg-surface",
         embedded
           ? "h-full min-h-[280px]"
           : "h-[calc(100vh-8.5rem)]"
       )}
     >
+      <aside
+        className={cn(
+          "flex min-h-0 w-52 shrink-0 flex-col border-r border-border bg-surface-elevated/40",
+          embedded && "w-44"
+        )}
+      >
+        <div className="border-b border-border p-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full rounded-xl text-xs"
+            disabled={!!streamingId || activeConversationId === undefined}
+            onClick={() => void newChat()}
+          >
+            + Nieuwe chat
+          </Button>
+        </div>
+        <ScrollArea className="min-h-0 flex-1">
+          <ul className="p-1.5 space-y-0.5">
+            {conversations.map((c) => (
+              <li key={c.id} className="group relative">
+                <button
+                  type="button"
+                  className={cn(
+                    "w-full rounded-lg px-2 py-2 pr-8 text-left text-xs leading-snug transition-colors hover:bg-surface-elevated",
+                    activeConversationId === c.id &&
+                      "bg-surface-elevated underline decoration-accent decoration-2 underline-offset-4"
+                  )}
+                  onClick={() => setActiveConversationId(c.id)}
+                >
+                  <span className="line-clamp-2">{c.title}</span>
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-secondary opacity-0 transition-opacity hover:bg-border hover:text-text-primary group-hover:opacity-100"
+                  )}
+                  title="Verwijderen"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void deleteConversation(c.id);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </ScrollArea>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col min-h-0">
       <div
         className={cn(
           "flex flex-wrap items-center gap-2 border-b border-border px-4 py-2",
@@ -137,7 +292,9 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
               variant="secondary"
               size="sm"
               className="rounded-xl text-xs"
-              disabled={!!streamingId}
+              disabled={
+                !!streamingId || activeConversationId === undefined
+              }
               onClick={() => void runQuick(a.prompt)}
             >
               {a.label}
@@ -145,14 +302,19 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
           ))}
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="min-h-0 flex-1 p-4">
         <div className="mx-auto max-w-3xl space-y-3">
-          {!historyLoaded && messages.length === 0 && (
+          {(activeConversationId === undefined ||
+            (!historyLoaded && messages.length === 0)) && (
             <p className="py-8 text-center text-sm text-text-secondary">
-              Geschiedenis laden…
+              {activeConversationId === undefined
+                ? "Conversaties laden…"
+                : "Geschiedenis laden…"}
             </p>
           )}
-          {historyLoaded && messages.length === 0 && (
+          {activeConversationId !== undefined &&
+            historyLoaded &&
+            messages.length === 0 && (
             <p className="py-12 text-center text-sm text-text-secondary">
               Stuur een bericht naar de factory-os webhook via de server. Geen
               keys in de browser.
@@ -183,7 +345,17 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
                     <span className="animate-pulse">Factory OS antwoordt…</span>
                   </span>
                 ) : (
-                  <ChatMarkdown content={m.content} variant={m.role === "user" ? "user" : "assistant"} />
+                  <>
+                    <ChatMarkdown content={m.content} variant={m.role === "user" ? "user" : "assistant"} />
+                    {m.role === "assistant" &&
+                      m.chatHistoryId != null &&
+                      m.content.trim() !== "" && (
+                        <MessageFeedback
+                          messageId={m.chatHistoryId}
+                          klant={company}
+                        />
+                      )}
+                  </>
                 )}
               </div>
             </motion.div>
@@ -213,7 +385,9 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
           className="rounded-2xl shrink-0"
           title="Bestand uploaden"
           onClick={() => fileRef.current?.click()}
-          disabled={!!streamingId}
+          disabled={
+            !!streamingId || activeConversationId === undefined
+          }
         >
           <Paperclip className="h-4 w-4" />
         </Button>
@@ -224,7 +398,9 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
           className={cn("rounded-2xl shrink-0", listening && "ring-2 ring-accent")}
           title="Spraak (Web Speech API)"
           onClick={startVoice}
-          disabled={!!streamingId}
+          disabled={
+            !!streamingId || activeConversationId === undefined
+          }
         >
           <Mic className="h-4 w-4" />
         </Button>
@@ -239,11 +415,12 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
           type="submit"
           size="icon"
           className="rounded-2xl shrink-0"
-          disabled={!!streamingId}
+          disabled={!!streamingId || activeConversationId === undefined}
         >
           <Send className="h-4 w-4" />
         </Button>
       </form>
+      </div>
     </div>
   );
 }

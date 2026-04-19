@@ -8,20 +8,46 @@ function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function useChat(company: CompanyId, afdeling?: string) {
+export type UseChatOptions = {
+  /** Na een geslaagde stream: o.a. conversatielijst verversen voor autotitel. */
+  onStreamComplete?: () => void;
+};
+
+export function useChat(
+  company: CompanyId,
+  afdeling?: string,
+  conversationId?: number | null,
+  opts?: UseChatOptions
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesRef = useRef<ChatMessage[]>([]);
+  const onStreamCompleteRef = useRef(opts?.onStreamComplete);
+  onStreamCompleteRef.current = opts?.onStreamComplete;
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
   useEffect(() => {
+    if (conversationId === undefined) {
+      setMessages([]);
+      setHistoryLoaded(false);
+      return;
+    }
+
     let cancelled = false;
-    fetch(`/api/chat/history?klant=${encodeURIComponent(company)}`)
+    setHistoryLoaded(false);
+    setMessages([]);
+
+    const url =
+      conversationId === null
+        ? `/api/chat/history?klant=${encodeURIComponent(company)}`
+        : `/api/conversations/${conversationId}/messages?klant=${encodeURIComponent(company)}`;
+
+    fetch(url)
       .then((r) => r.json())
       .then(
         (d: {
@@ -41,6 +67,8 @@ export function useChat(company: CompanyId, afdeling?: string) {
             createdAt: row.created_at
               ? Date.parse(row.created_at)
               : Date.now(),
+            chatHistoryId:
+              row.role === "assistant" ? row.id : undefined,
           }));
           setMessages(mapped);
         }
@@ -54,12 +82,13 @@ export function useChat(company: CompanyId, afdeling?: string) {
     return () => {
       cancelled = true;
     };
-  }, [company]);
+  }, [company, conversationId]);
 
   const send = useCallback(
-    async (prompt: string, opts?: { agentMode?: boolean }) => {
+    async (prompt: string, optsSend?: { agentMode?: boolean }) => {
+      if (conversationId === undefined) return;
       setError(null);
-      const agentMode = opts?.agentMode ?? false;
+      const agentMode = optsSend?.agentMode ?? false;
       const contextForApi = messagesRef.current
         .filter((m) => m.content.trim() !== "")
         .slice(-10)
@@ -84,13 +113,15 @@ export function useChat(company: CompanyId, afdeling?: string) {
       ]);
       setStreamingId(asstId);
       try {
-        await sendChatMessageStream(
+        const meta = await sendChatMessageStream(
           prompt,
           company,
           afdeling,
           {
             agentMode,
             context: contextForApi,
+            conversationId:
+              conversationId === null ? undefined : conversationId,
           },
           (accumulated) => {
             setMessages((m) =>
@@ -100,6 +131,15 @@ export function useChat(company: CompanyId, afdeling?: string) {
             );
           }
         );
+        const aid = meta.assistant_message_id;
+        if (typeof aid === "number" && Number.isFinite(aid)) {
+          setMessages((m) =>
+            m.map((x) =>
+              x.id === asstId ? { ...x, chatHistoryId: aid } : x
+            )
+          );
+        }
+        onStreamCompleteRef.current?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Fout bij versturen");
         setMessages((m) =>
@@ -118,7 +158,7 @@ export function useChat(company: CompanyId, afdeling?: string) {
         setStreamingId(null);
       }
     },
-    [company, afdeling]
+    [company, afdeling, conversationId]
   );
 
   return {

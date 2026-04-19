@@ -16,6 +16,7 @@ import {
   Wallet,
   Hammer,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,11 @@ const nav = [
   },
   { href: "/kosten", label: "Kosten", icon: Wallet },
   { href: "/approvals", label: "Goedkeuringen", icon: ShieldCheck },
+  {
+    href: "/admin/improvements",
+    label: "Feedback-loop",
+    icon: RefreshCw,
+  },
 ];
 
 export function Sidebar() {
