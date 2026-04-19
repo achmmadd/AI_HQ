@@ -17,6 +17,7 @@ import {
   Hammer,
   LogOut,
   RefreshCw,
+  TestTube2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,11 @@ const nav = [
     href: "/admin/improvements",
     label: "Feedback-loop",
     icon: RefreshCw,
+  },
+  {
+    href: "/admin/experiments",
+    label: "A/B testen",
+    icon: TestTube2,
   },
 ];
 

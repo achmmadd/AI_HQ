@@ -347,6 +347,12 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
                 ) : (
                   <>
                     <ChatMarkdown content={m.content} variant={m.role === "user" ? "user" : "assistant"} />
+                    {m.role === "assistant" && m.experimentVariant && (
+                      <p className="mt-1.5 text-[10px] uppercase tracking-wide text-text-secondary">
+                        A/B · variant {m.experimentVariant}
+                        {m.experimentName ? ` · ${m.experimentName}` : ""}
+                      </p>
+                    )}
                     {m.role === "assistant" &&
                       m.chatHistoryId != null &&
                       m.content.trim() !== "" && (

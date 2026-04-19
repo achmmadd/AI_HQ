@@ -204,14 +204,48 @@ export function initDb(): void {
   const chatCols = db
     .prepare(`SELECT name FROM pragma_table_info('chat_history')`)
     .all() as { name: string }[];
+
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS experiments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    hypothesis TEXT NOT NULL DEFAULT '',
+    variant_a TEXT NOT NULL,
+    variant_b TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active'
+      CHECK (status IN ('active', 'done', 'archived')),
+    winner_variant TEXT CHECK (winner_variant IN ('a', 'b') OR winner_variant IS NULL),
+    klant TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    ends_at TEXT,
+    closed_at TEXT,
+    summary_json TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_experiments_status ON experiments(status);
+  CREATE INDEX IF NOT EXISTS idx_experiments_klant ON experiments(klant);
+  `);
+
   if (!chatCols.some((c) => c.name === "conversation_id")) {
     db.exec(
       `ALTER TABLE chat_history ADD COLUMN conversation_id INTEGER REFERENCES conversations(id)`
     );
   }
+  if (!chatCols.some((c) => c.name === "experiment_id")) {
+    db.exec(
+      `ALTER TABLE chat_history ADD COLUMN experiment_id INTEGER REFERENCES experiments(id)`
+    );
+  }
+  if (!chatCols.some((c) => c.name === "experiment_variant")) {
+    db.exec(`ALTER TABLE chat_history ADD COLUMN experiment_variant TEXT`);
+  }
+  if (!chatCols.some((c) => c.name === "latency_ms")) {
+    db.exec(`ALTER TABLE chat_history ADD COLUMN latency_ms INTEGER`);
+  }
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_conversations_klant ON conversations(klant);
     CREATE INDEX IF NOT EXISTS idx_chat_history_conversation ON chat_history(conversation_id);
+    CREATE INDEX IF NOT EXISTS idx_chat_history_experiment ON chat_history(experiment_id);
   `);
 
   db.exec(`

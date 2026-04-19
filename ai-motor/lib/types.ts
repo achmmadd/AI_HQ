@@ -14,6 +14,9 @@ export interface ChatMessage {
   createdAt: number;
   /** `chat_history.id` voor feedback (alleen assistant). */
   chatHistoryId?: number;
+  experimentId?: number;
+  experimentVariant?: "a" | "b";
+  experimentName?: string;
 }
 
 export interface Department {

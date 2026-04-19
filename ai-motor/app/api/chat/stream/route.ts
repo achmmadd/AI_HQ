@@ -4,6 +4,11 @@ import { scheduleConversationTitleUpdate } from "@/lib/chat-conversation-title";
 import { assertConversationForKlant } from "@/lib/chat-conversation-guard";
 import { getChatLearnedInstructionSuffix } from "@/lib/chat-learned";
 import {
+  experimentInstructionOverlay,
+  getActiveExperimentForKlant,
+  pickVariant,
+} from "@/lib/experiments";
+import {
   callFactoryN8n,
   CHAT_OUTPUT_INSTRUCTION_PREFIX,
   extractMessage,
@@ -91,11 +96,20 @@ export async function POST(req: NextRequest) {
           ).run(conversationId);
         }
 
+        const exp = getActiveExperimentForKlant(klant);
+        const expVariant = exp ? pickVariant() : null;
+        const experimentOverlay =
+          exp && expVariant
+            ? experimentInstructionOverlay(exp, expVariant)
+            : "";
+
         const promptForFactory =
           CHAT_OUTPUT_INSTRUCTION_PREFIX +
           getChatLearnedInstructionSuffix() +
+          experimentOverlay +
           prompt.trim();
 
+        const t0 = Date.now();
         const { ok, status, data, rawText } = await callFactoryN8n({
           prompt: promptForFactory,
           klant,
@@ -103,6 +117,7 @@ export async function POST(req: NextRequest) {
           agent_mode: Boolean(agent_mode),
           context: ctx,
         });
+        const latencyMs = Math.max(0, Date.now() - t0);
 
         if (!ok) {
           push({
@@ -127,10 +142,19 @@ export async function POST(req: NextRequest) {
 
         const insAsst = db
           .prepare(
-            `INSERT INTO chat_history (klant, role, content, afdeling, model, conversation_id)
-             VALUES (?, 'assistant', ?, ?, ?, ?)`
+            `INSERT INTO chat_history (klant, role, content, afdeling, model, conversation_id, experiment_id, experiment_variant, latency_ms)
+             VALUES (?, 'assistant', ?, ?, ?, ?, ?, ?, ?)`
           )
-          .run(klant, message, outAfdeling, model, conversationId);
+          .run(
+            klant,
+            message,
+            outAfdeling,
+            model,
+            conversationId,
+            exp?.id ?? null,
+            expVariant,
+            latencyMs
+          );
         const assistantMessageId = Number(insAsst.lastInsertRowid);
 
         if (conversationId && firstTurnForTitle) {
@@ -145,6 +169,9 @@ export async function POST(req: NextRequest) {
           type: "done",
           message,
           assistant_message_id: assistantMessageId,
+          experiment_id: exp?.id ?? null,
+          experiment_variant: expVariant,
+          experiment_name: exp?.name ?? null,
           klant,
           afdeling: outAfdeling,
           model,

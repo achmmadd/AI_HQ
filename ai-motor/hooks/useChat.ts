@@ -56,6 +56,9 @@ export function useChat(
             role: string;
             content: string;
             created_at?: string;
+            experiment_id?: number | null;
+            experiment_variant?: string | null;
+            experiment_name?: string | null;
           }>;
         }) => {
           if (cancelled) return;
@@ -69,6 +72,21 @@ export function useChat(
               : Date.now(),
             chatHistoryId:
               row.role === "assistant" ? row.id : undefined,
+            experimentId:
+              row.role === "assistant" &&
+              typeof row.experiment_id === "number"
+                ? row.experiment_id
+                : undefined,
+            experimentVariant:
+              row.role === "assistant" &&
+              (row.experiment_variant === "a" || row.experiment_variant === "b")
+                ? row.experiment_variant
+                : undefined,
+            experimentName:
+              row.role === "assistant" &&
+              typeof row.experiment_name === "string"
+                ? row.experiment_name
+                : undefined,
           }));
           setMessages(mapped);
         }
@@ -132,10 +150,26 @@ export function useChat(
           }
         );
         const aid = meta.assistant_message_id;
+        const eid = meta.experiment_id;
+        const ev = meta.experiment_variant;
+        const en = meta.experiment_name;
         if (typeof aid === "number" && Number.isFinite(aid)) {
           setMessages((m) =>
             m.map((x) =>
-              x.id === asstId ? { ...x, chatHistoryId: aid } : x
+              x.id === asstId
+                ? {
+                    ...x,
+                    chatHistoryId: aid,
+                    experimentId:
+                      typeof eid === "number" && Number.isFinite(eid)
+                        ? eid
+                        : undefined,
+                    experimentVariant:
+                      ev === "a" || ev === "b" ? ev : undefined,
+                    experimentName:
+                      typeof en === "string" ? en : undefined,
+                  }
+                : x
             )
           );
         }

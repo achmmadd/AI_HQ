@@ -4,17 +4,45 @@ import db from "@/lib/db/database";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const klant =
-    new URL(req.url).searchParams.get("klant") || "fumero";
-  const messages = db
-    .prepare(
-      `SELECT id, klant, role, content, afdeling, model, created_at
-       FROM chat_history
-       WHERE klant = ?
-       ORDER BY datetime(created_at) ASC
-       LIMIT 100`
-    )
-    .all(klant);
+  const url = new URL(req.url);
+  const klant = url.searchParams.get("klant") || "fumero";
+  const convRaw = url.searchParams.get("conversation_id");
+
+  let messages: unknown[];
+  if (convRaw != null && convRaw !== "") {
+    const conversationId = Number(convRaw);
+    if (!Number.isFinite(conversationId)) {
+      return NextResponse.json(
+        { error: "invalid conversation_id" },
+        { status: 400 }
+      );
+    }
+    messages = db
+      .prepare(
+        `SELECT ch.id, ch.klant, ch.role, ch.content, ch.afdeling, ch.model, ch.created_at,
+                ch.conversation_id, ch.experiment_id, ch.experiment_variant, ch.latency_ms,
+                e.name AS experiment_name
+         FROM chat_history ch
+         LEFT JOIN experiments e ON e.id = ch.experiment_id
+         WHERE ch.klant = ? AND ch.conversation_id = ?
+         ORDER BY datetime(ch.created_at) ASC
+         LIMIT 500`
+      )
+      .all(klant, conversationId);
+  } else {
+    messages = db
+      .prepare(
+        `SELECT ch.id, ch.klant, ch.role, ch.content, ch.afdeling, ch.model, ch.created_at,
+                ch.conversation_id, ch.experiment_id, ch.experiment_variant, ch.latency_ms,
+                e.name AS experiment_name
+         FROM chat_history ch
+         LEFT JOIN experiments e ON e.id = ch.experiment_id
+         WHERE ch.klant = ? AND ch.conversation_id IS NULL
+         ORDER BY datetime(ch.created_at) ASC
+         LIMIT 100`
+      )
+      .all(klant);
+  }
 
   return NextResponse.json({ messages });
 }
