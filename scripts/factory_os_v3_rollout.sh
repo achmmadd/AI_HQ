@@ -81,16 +81,12 @@ merge_gitignore_rules() {
 strip_secrets_from_index() {
   echo "=== git reset (secrets uit index) ==="
   if dry_run; then
-    echo "[DRY_RUN] zou: git reset HEAD -- .env '.env.*' '*.db' state.json (indien gestaged)"
+    echo "[DRY_RUN] zou: git reset HEAD -- .env '.env.*' '*.db' state.json holding/data/"
     git diff --cached --name-only | grep -E '^\.env|\.db$|state\.json$' || true
     return 0
   fi
-  git reset HEAD -- .env 2>/dev/null || true
-  # pathspecs voor varianten
-  git reset HEAD -- '.env.*' 2>/dev/null || true
-  git reset HEAD -- '*.db' 2>/dev/null || true
-  git reset HEAD -- state.json 2>/dev/null || true
-  git reset HEAD -- holding/data/ 2>/dev/null || true
+  # Eén reset — minder ruis in de log dan vijf losse resets
+  git reset HEAD -- .env '.env.*' '*.db' state.json holding/data/ 2>/dev/null || true
 }
 
 git_add_known_paths() {
@@ -373,8 +369,10 @@ except Exception:
     else
       echo "❌ Telegram getMe faalde — geen sendMessage"
     fi
+  elif [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+    echo "⚠️  TELEGRAM_BOT_TOKEN wel gezet, TELEGRAM_CHAT_ID mist — geen rapport via Telegram"
   else
-    echo "⚠️  Geen TELEGRAM_* in .env — geen bericht"
+    echo "⚠️  TELEGRAM_BOT_TOKEN (en/of CHAT_ID) mist in .env — geen bericht"
   fi
 
   if dry_run; then
