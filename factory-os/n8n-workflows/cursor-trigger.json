@@ -1,44 +1,66 @@
 {
   "name": "Factory OS → Cursor Builder",
-  "meta": {
-    "templateCaveat": "Voorbeeld workflow — importeer in n8n en koppel Telegram/credentials. Het node-type executeCommand werkt alleen als n8n shell-toegang heeft (meestal uit in productie); vervang door HTTP Request naar je eigen agent-runner indien nodig."
-  },
   "nodes": [
     {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cursor-build",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-webhook",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "parameters": {
-        "path": "cursor-build",
-        "method": "POST"
-      }
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "factory-os-cursor-build"
     },
     {
-      "name": "Parse Request",
-      "type": "n8n-nodes-base.set",
       "parameters": {
-        "values": {
-          "string": [
-            { "name": "feature", "value": "={{$json.feature}}" },
-            { "name": "priority", "value": "={{$json.priority || 'normal'}}" },
-            { "name": "context", "value": "={{$json.context || ''}}" }
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "feature",
+              "value": "={{ $json.body.feature }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "priority",
+              "value": "={{ $json.body.priority || 'normal' }}",
+              "type": "string"
+            }
           ]
-        }
-      }
+        },
+        "options": {}
+      },
+      "id": "e5f6g7h8-set",
+      "name": "Parse",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [260, 0]
     },
     {
-      "name": "Start Cursor Agent",
-      "type": "n8n-nodes-base.executeCommand",
       "parameters": {
-        "command": "cd /home/pietje/AI_HQ && cursor agents run --workspace . --prompt \"{{$json.feature}}\" --background"
-      }
-    },
-    {
-      "name": "Telegram Bevestiging",
-      "type": "n8n-nodes-base.telegram",
-      "parameters": {
-        "operation": "sendMessage",
-        "text": "🤖 Cursor agent gestart voor: {{$json.feature}}"
-      }
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true, \"feature\": $json.feature, \"priority\": $json.priority, \"note\": \"Koppel hier je Cursor/agent stap\" } }}",
+        "options": {}
+      },
+      "id": "i9j0k1l2-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [520, 0]
     }
-  ]
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Parse", "type": "main", "index": 0 }]]
+    },
+    "Parse": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
 }
