@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface Post {
@@ -22,6 +23,7 @@ interface Template {
   naam: string;
   platform: string;
   toon: string;
+  prompt?: string;
 }
 
 const PLATFORMS = ["instagram", "tiktok", "linkedin"] as const;
@@ -45,6 +47,13 @@ export default function FumeroPage() {
   const [platform, setPlatform] =
     useState<(typeof PLATFORMS)[number]>("instagram");
   const [generatedContent, setGeneratedContent] = useState("");
+  const [variabelen, setVariabelen] = useState<Record<string, string>>({});
+
+  const tplVarKeys = useMemo(() => {
+    const p = templates.find((t) => t.id === selectedTemplate)?.prompt;
+    if (!p) return [];
+    return [...new Set([...p.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]))];
+  }, [templates, selectedTemplate]);
 
   const load = useCallback(async () => {
     const [postsData, templatesData] = await Promise.all([
@@ -61,6 +70,10 @@ export default function FumeroPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setVariabelen({});
+  }, [selectedTemplate]);
+
   const generate = async () => {
     setGenerating(true);
     try {
@@ -72,6 +85,13 @@ export default function FumeroPage() {
           custom_prompt: customPrompt.trim() || undefined,
           klant: "fumero",
           platform,
+          ...(tplVarKeys.length
+            ? {
+                variabelen: Object.fromEntries(
+                  tplVarKeys.map((k) => [k, variabelen[k] ?? ""])
+                ),
+              }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -153,6 +173,23 @@ export default function FumeroPage() {
                 ))}
             </div>
 
+            {tplVarKeys.length > 0 ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {tplVarKeys.map((key) => (
+                  <label key={key} className="text-xs text-text-secondary">
+                    {"{" + key + "}"}
+                    <Input
+                      className="mt-1 rounded-xl"
+                      value={variabelen[key] ?? ""}
+                      onChange={(e) =>
+                        setVariabelen((v) => ({ ...v, [key]: e.target.value }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <p className="text-sm text-text-secondary">Eigen prompt:</p>
               <Textarea
@@ -161,6 +198,7 @@ export default function FumeroPage() {
                 onChange={(e) => {
                   setCustomPrompt(e.target.value);
                   setSelectedTemplate(null);
+                  setVariabelen({});
                 }}
                 rows={3}
                 className="rounded-2xl"
