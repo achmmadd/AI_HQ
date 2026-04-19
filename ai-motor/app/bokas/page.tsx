@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 interface Reservering {
   id: number;
@@ -34,31 +35,125 @@ interface PersoneelRow {
   email?: string | null;
 }
 
+interface ShiftRow {
+  id: number;
+  personeels_id: number;
+  datum: string;
+  start_tijd: string;
+  eind_tijd: string;
+  rol: string | null;
+  status: string;
+  personeel_naam: string | null;
+  personeel_rol: string | null;
+}
+
+function mondayIso(d: Date): string {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(d);
+  m.setDate(m.getDate() + diff);
+  return m.toISOString().slice(0, 10);
+}
+
+function addDaysIso(iso: string, n: number): string {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function nlDateLabel(iso: string): string {
+  try {
+    return new Date(`${iso}T12:00:00`).toLocaleDateString("nl-NL", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 export default function BokasPage() {
   const [reserveringen, setReserveringen] = useState<Reservering[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [personeel, setPersoneel] = useState<PersoneelRow[]>([]);
+  const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [planWeekStart, setPlanWeekStart] = useState(() => mondayIso(new Date()));
   const [newRes, setNewRes] = useState({
     naam: "",
     datum: "",
     tijd: "",
     personen: 2,
   });
+  const [newStaff, setNewStaff] = useState({
+    naam: "",
+    rol: "",
+    telefoon: "",
+    email: "",
+  });
+  const [newShift, setNewShift] = useState({
+    personeels_id: "",
+    datum: "",
+    start_tijd: "10:00",
+    eind_tijd: "18:00",
+    rol: "",
+  });
 
-  useEffect(() => {
-    Promise.all([
+  const weekEnd = useMemo(() => addDaysIso(planWeekStart, 6), [planWeekStart]);
+
+  const loadCore = useCallback(async () => {
+    const [resData, menuData, persData] = await Promise.all([
       fetch("/api/bokas/reserveringen").then((r) => r.json()),
       fetch("/api/bokas/menu").then((r) => r.json()),
       fetch("/api/bokas/personeel").then((r) => r.json()),
-    ])
-      .then(([resData, menuData, persData]) => {
-        setReserveringen(resData.reserveringen ?? []);
-        setMenu(menuData.menu ?? []);
-        setPersoneel(persData.personeel ?? []);
-      })
-      .finally(() => setLoading(false));
+    ]);
+    setReserveringen(resData.reserveringen ?? []);
+    setMenu(menuData.menu ?? []);
+    setPersoneel(persData.personeel ?? []);
   }, []);
+
+  const loadShifts = useCallback(async () => {
+    const q = new URLSearchParams({
+      from: planWeekStart,
+      to: weekEnd,
+    });
+    const r = await fetch(`/api/bokas/shifts?${q}`);
+    const j = await r.json();
+    setShifts(Array.isArray(j.shifts) ? j.shifts : []);
+  }, [planWeekStart, weekEnd]);
+
+  useEffect(() => {
+    setLoading(true);
+    loadCore()
+      .finally(() => setLoading(false));
+  }, [loadCore]);
+
+  useEffect(() => {
+    void loadShifts();
+  }, [loadShifts]);
+
+  useEffect(() => {
+    setNewShift((s) => ({ ...s, datum: planWeekStart }));
+  }, [planWeekStart]);
+
+  const shiftsByDay = useMemo(() => {
+    const m = new Map<string, ShiftRow[]>();
+    for (const s of shifts) {
+      const list = m.get(s.datum) ?? [];
+      list.push(s);
+      m.set(s.datum, list);
+    }
+    return m;
+  }, [shifts]);
+
+  const weekDays = useMemo(() => {
+    const days: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      days.push(addDaysIso(planWeekStart, i));
+    }
+    return days;
+  }, [planWeekStart]);
 
   const addReservering = async () => {
     if (!newRes.naam || !newRes.datum || !newRes.tijd) return;
@@ -81,20 +176,68 @@ export default function BokasPage() {
     }
   };
 
+  const addStaff = async () => {
+    if (!newStaff.naam.trim() || !newStaff.rol.trim()) return;
+    const res = await fetch("/api/bokas/personeel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        naam: newStaff.naam.trim(),
+        rol: newStaff.rol.trim(),
+        telefoon: newStaff.telefoon || undefined,
+        email: newStaff.email || undefined,
+      }),
+    });
+    const data = await res.json();
+    if (data.id) {
+      await loadCore();
+      setNewStaff({ naam: "", rol: "", telefoon: "", email: "" });
+    }
+  };
+
+  const addShift = async () => {
+    const pid = parseInt(newShift.personeels_id, 10);
+    if (!newShift.datum || Number.isNaN(pid)) return;
+    const res = await fetch("/api/bokas/shifts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        personeels_id: pid,
+        datum: newShift.datum,
+        start_tijd: newShift.start_tijd,
+        eind_tijd: newShift.eind_tijd,
+        rol: newShift.rol || undefined,
+      }),
+    });
+    const data = await res.json();
+    if (data.id) {
+      await loadShifts();
+      setNewShift((s) => ({
+        ...s,
+        rol: "",
+      }));
+    }
+  };
+
+  const removeShift = async (id: number) => {
+    await fetch(`/api/bokas/shifts/${id}`, { method: "DELETE" });
+    await loadShifts();
+  };
+
   const categorien = [...new Set(menu.map((m) => m.categorie))];
 
   return (
     <AppShell title="Bokas">
       <div className="space-y-6">
         <p className="text-sm text-text-secondary">
-          Horeca — reserveringen, menu en personeel
+          Horeca — reserveringen, menu, personeel en weekplanning
         </p>
 
         <Tabs defaultValue="reserveringen">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="reserveringen">Reserveringen</TabsTrigger>
             <TabsTrigger value="menu">Menu</TabsTrigger>
-            <TabsTrigger value="personeel">Personeel</TabsTrigger>
+            <TabsTrigger value="personeel">Personeel & planning</TabsTrigger>
           </TabsList>
 
           <TabsContent value="reserveringen" className="mt-4 space-y-4">
@@ -224,24 +367,262 @@ export default function BokasPage() {
             ) : null}
           </TabsContent>
 
-          <TabsContent value="personeel" className="mt-4">
-            {personeel.length === 0 && !loading ? (
-              <p className="text-sm text-text-secondary">
-                Geen actief personeel — planning volgt (shifts API staat klaar
-                in de database).
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {personeel.map((p) => (
-                  <Card key={p.id}>
-                    <CardContent className="p-4">
-                      <p className="font-medium">{p.naam}</p>
-                      <p className="text-sm text-text-secondary">{p.rol}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+          <TabsContent value="personeel" className="mt-4 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Nieuw teamlid</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  placeholder="Naam"
+                  value={newStaff.naam}
+                  onChange={(e) =>
+                    setNewStaff((p) => ({ ...p, naam: e.target.value }))
+                  }
+                />
+                <Input
+                  placeholder="Rol (bv. bediening, keuken)"
+                  value={newStaff.rol}
+                  onChange={(e) =>
+                    setNewStaff((p) => ({ ...p, rol: e.target.value }))
+                  }
+                />
+                <Input
+                  placeholder="Telefoon (optioneel)"
+                  value={newStaff.telefoon}
+                  onChange={(e) =>
+                    setNewStaff((p) => ({ ...p, telefoon: e.target.value }))
+                  }
+                />
+                <Input
+                  placeholder="E-mail (optioneel)"
+                  value={newStaff.email}
+                  onChange={(e) =>
+                    setNewStaff((p) => ({ ...p, email: e.target.value }))
+                  }
+                />
+                <Button className="sm:col-span-2" onClick={() => void addStaff()}>
+                  Teamlid toevoegen
+                </Button>
+              </CardContent>
+            </Card>
+
+            <div>
+              <h3 className="mb-2 text-sm font-medium">Team</h3>
+              {personeel.length === 0 && !loading ? (
+                <p className="text-sm text-text-secondary">
+                  Nog geen actief personeel — voeg hierboven iemand toe.
+                </p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {personeel.map((p) => (
+                    <Card key={p.id}>
+                      <CardContent className="p-4">
+                        <p className="font-medium">{p.naam}</p>
+                        <p className="text-sm text-text-secondary">{p.rol}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-base">Weekplanning</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() =>
+                      setPlanWeekStart((w) => addDaysIso(w, -7))
+                    }
+                  >
+                    ← Week
+                  </Button>
+                  <span className="text-xs text-text-secondary">
+                    {nlDateLabel(planWeekStart)} — {nlDateLabel(weekEnd)}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() =>
+                      setPlanWeekStart((w) => addDaysIso(w, 7))
+                    }
+                  >
+                    Week →
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => setPlanWeekStart(mondayIso(new Date()))}
+                  >
+                    Deze week
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="text-xs text-text-secondary sm:col-span-2">
+                    Medewerker
+                    <select
+                      className="mt-1 flex h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm"
+                      value={newShift.personeels_id}
+                      onChange={(e) =>
+                        setNewShift((s) => ({
+                          ...s,
+                          personeels_id: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Kies…</option>
+                      {personeel.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.naam} — {p.rol}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs text-text-secondary">
+                    Dag
+                    <Input
+                      type="date"
+                      className="mt-1 rounded-xl"
+                      value={newShift.datum}
+                      onChange={(e) =>
+                        setNewShift((s) => ({ ...s, datum: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="text-xs text-text-secondary">
+                    Rol shift (optioneel)
+                    <Input
+                      className="mt-1 rounded-xl"
+                      placeholder="Dienst"
+                      value={newShift.rol}
+                      onChange={(e) =>
+                        setNewShift((s) => ({ ...s, rol: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="text-xs text-text-secondary">
+                    Start
+                    <Input
+                      type="time"
+                      className="mt-1 rounded-xl"
+                      value={newShift.start_tijd}
+                      onChange={(e) =>
+                        setNewShift((s) => ({
+                          ...s,
+                          start_tijd: e.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="text-xs text-text-secondary">
+                    Einde
+                    <Input
+                      type="time"
+                      className="mt-1 rounded-xl"
+                      value={newShift.eind_tijd}
+                      onChange={(e) =>
+                        setNewShift((s) => ({
+                          ...s,
+                          eind_tijd: e.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <div className="flex items-end sm:col-span-2">
+                    <Button
+                      type="button"
+                      className="w-full rounded-xl sm:w-auto"
+                      disabled={!newShift.personeels_id || !newShift.datum}
+                      onClick={() => void addShift()}
+                    >
+                      Dienst toevoegen
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-text-secondary">
+                  Tip: kies een datum binnen de geselecteerde week om alles in
+                  één oogopslag te zien.
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              {weekDays.map((day) => {
+                const list = shiftsByDay.get(day) ?? [];
+                return (
+                  <div key={day}>
+                    <h4 className="mb-2 text-sm font-medium text-text-primary">
+                      {nlDateLabel(day)}{" "}
+                      <span className="font-normal text-text-secondary">
+                        ({day})
+                      </span>
+                    </h4>
+                    {list.length === 0 ? (
+                      <p className="text-xs text-text-secondary">
+                        Geen diensten
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {list.map((s) => (
+                          <Card key={s.id}>
+                            <CardContent
+                              className={cn(
+                                "flex flex-wrap items-center justify-between gap-2 p-3"
+                              )}
+                            >
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {s.personeel_naam ?? `#${s.personeels_id}`}
+                                </p>
+                                <p className="text-xs text-text-secondary">
+                                  {s.start_tijd} – {s.eind_tijd}
+                                  {s.rol ? ` · ${s.rol}` : ""}
+                                  {s.personeel_rol
+                                    ? ` · ${s.personeel_rol}`
+                                    : ""}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                    s.status === "gepland"
+                                      ? "bg-sky-500/15 text-sky-700 dark:text-sky-400"
+                                      : "bg-surface-elevated text-text-secondary"
+                                  )}
+                                >
+                                  {s.status}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="rounded-xl text-xs"
+                                  onClick={() => void removeShift(s.id)}
+                                >
+                                  Verwijder
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

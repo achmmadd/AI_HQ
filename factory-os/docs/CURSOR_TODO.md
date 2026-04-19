@@ -25,7 +25,7 @@
 ### BOKAS HORECA APP
 
 - [x] Reserveringen systeem
-- [ ] Personeel planning UI (shifts)
+- [x] Personeel planning UI (shifts)
 - [x] Menu beheer (API + weergave)
 - [ ] WhatsApp integratie
 - [x] Dashboard Bokas (basis)
