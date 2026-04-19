@@ -27,8 +27,12 @@ export function useServices(pollMs = 15000) {
   }, []);
 
   useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, pollMs);
+    const id = setInterval(() => {
+      void refresh();
+    }, pollMs);
+    queueMicrotask(() => {
+      void refresh();
+    });
     return () => clearInterval(id);
   }, [refresh, pollMs]);
 
