@@ -14,11 +14,14 @@ import {
   MessageSquareReply,
   Sprout,
   Wallet,
+  Hammer,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/builder", label: "Live Builder", icon: Hammer },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/afdelingen", label: "Afdelingen", icon: Grid3X3 },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
@@ -37,6 +40,20 @@ const nav = [
 
 export function Sidebar() {
   const pathname = usePathname();
+
+  async function logout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* ignore */
+    }
+    try {
+      localStorage.removeItem("motorsai_token");
+    } catch {
+      /* ignore */
+    }
+    window.location.href = "/login";
+  }
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col border-r border-border bg-surface pt-6">
@@ -66,6 +83,16 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="px-2 pb-2">
+        <button
+          type="button"
+          onClick={logout}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-elevated/60 hover:text-text-primary"
+        >
+          <LogOut className="h-4 w-4 shrink-0 opacity-80" />
+          Uitloggen
+        </button>
+      </div>
       <p className="px-5 py-4 text-xs text-text-secondary">
         Poort 3040 · Next 16
       </p>

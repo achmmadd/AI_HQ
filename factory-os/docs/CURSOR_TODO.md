@@ -44,6 +44,25 @@
 - [ ] Cursor automation via chat (n8n → cursor-tasks end-to-end)
 - [ ] Zichzelf verbeteren workflow (volledige loop)
 
+### SPRINT 5 — MOTOR AI (motorsai.app)
+
+- [x] Landing pagina + basic auth (cookie + login)
+- [x] Live builder demo (`/builder` + Factory OS `app_build`)
+- [x] Agent mode hook (`hooks/useAgentMode.ts`)
+- [x] Kennisbank vullen via UI (`/api/knowledge/add`)
+- [x] Theme + bedrijf persistent (localStorage via zustand)
+
+### PRODUCTION — Klaar voor eerste klant
+
+- [ ] motorsai.app via Cloudflare tunnel live (NUC)
+- [ ] Fumero kennisbank vullen (5+ producten)
+- [ ] Bokas info compleet (uren, capaciteit)
+- [ ] Live builder testen (minstens 1 demo app)
+- [ ] Agent mode testen (minstens 3 taken)
+- [ ] Login wachtwoord veilig opslaan (`MOTORSAI_PASSWORD`, geen defaults in prod)
+- [ ] Fumero widget op fumero.nl plaatsen
+- [ ] Bokas WhatsApp koppelen + testen
+
 ### VOLGENDE SPRINT
 
 - [ ] Google Business Profile API — auto-post replies
