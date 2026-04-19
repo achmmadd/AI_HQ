@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChat } from "@/hooks/useChat";
 import { useCompanyStore } from "@/stores/useCompanyStore";
+import { ChatMarkdown } from "@/components/chat-markdown";
 import { cn } from "@/lib/utils";
 
 const QUICK_ACTIONS = [
@@ -182,7 +183,7 @@ export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
                     <span className="animate-pulse">Factory OS antwoordt…</span>
                   </span>
                 ) : (
-                  <span className="whitespace-pre-wrap">{m.content}</span>
+                  <ChatMarkdown content={m.content} variant={m.role === "user" ? "user" : "assistant"} />
                 )}
               </div>
             </motion.div>
