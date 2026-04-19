@@ -141,6 +141,91 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS content_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    type TEXT DEFAULT 'post',
+    titel TEXT,
+    content TEXT NOT NULL,
+    hashtags TEXT,
+    status TEXT DEFAULT 'draft',
+    scheduled_at TEXT,
+    published_at TEXT,
+    source TEXT DEFAULT 'ai',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS content_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    naam TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    toon TEXT DEFAULT 'professioneel',
+    actief INTEGER DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS usage_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant TEXT,
+    afdeling TEXT,
+    model TEXT,
+    prompt_tokens INTEGER DEFAULT 0,
+    completion_tokens INTEGER DEFAULT 0,
+    cost_usd REAL DEFAULT 0,
+    duration_ms INTEGER DEFAULT 0,
+    success INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
+
+const fumeroTemplateSeed: [string, string, string, string, string][] = [
+  [
+    "fumero",
+    "instagram",
+    "Product highlight",
+    "Schrijf een Instagram post voor Fumero over {product}. Toon: premium, discreet, 18+. Max 150 woorden. Voeg 5 relevante hashtags toe.",
+    "premium",
+  ],
+  [
+    "fumero",
+    "instagram",
+    "Lifestyle post",
+    "Schrijf een lifestyle Instagram post voor Fumero. Focus op wellness en ontspanning. Geen expliciete product mentions. Max 100 woorden.",
+    "lifestyle",
+  ],
+  [
+    "fumero",
+    "tiktok",
+    "Educational content",
+    "Schrijf een TikTok script voor Fumero over {onderwerp}. Informatief, 18+, 30-60 seconden. Nederlandse captions.",
+    "informatief",
+  ],
+  [
+    "fumero",
+    "instagram",
+    "Promotie post",
+    "Schrijf een Instagram promotie post voor Fumero. Actie: {actie}. Professioneel, discreet. Max 100 woorden + hashtags.",
+    "promotie",
+  ],
+];
+
+const tplCount = (
+  db
+    .prepare("SELECT COUNT(*) as c FROM content_templates WHERE klant = ?")
+    .get("fumero") as { c: number }
+).c;
+
+if (tplCount === 0) {
+  const ins = db.prepare(
+    `INSERT INTO content_templates (klant, platform, naam, prompt, toon)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  for (const row of fumeroTemplateSeed) {
+    ins.run(...row);
+  }
+}
 
 export default db;

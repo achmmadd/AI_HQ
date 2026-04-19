@@ -34,18 +34,24 @@
 ### FUMERO
 
 - [x] Chatbot embed (/embed/fumero + public/fumero-widget.js)
-- [ ] Content pipeline
+- [x] Content pipeline — /fumero, /api/content/*, templates seed
 
 ### FACTORY OS ZELF
 
 - [x] Todo systeem (CURSOR_TODO.md + API)
-- [ ] Cursor automation via chat (n8n workflows)
-- [ ] Zichzelf verbeteren workflow
+- [x] Kosten tracker — /kosten, /api/usage, usage_logs
+- [x] Self-improve hook — POST /api/factory/improve (+ Telegram)
+- [ ] Cursor automation via chat (n8n → cursor-tasks end-to-end)
+- [ ] Zichzelf verbeteren workflow (volledige loop)
 
 ### VOLGENDE SPRINT
 
 - [ ] Google Business Profile API — auto-post replies
-- [ ] TikTok content machine
-- [ ] WhatsApp bot voor Bokas
+- [ ] TikTok auto-post via API
+- [ ] Instagram auto-post via API
+- [ ] WhatsApp bot voor Bokas (Twilio)
 - [ ] App Store skills installeren
 - [ ] Multi-bedrijf switcher verbeteren
+- [ ] Domein + permanente tunnel
+- [ ] Onboarding nieuwe klanten
+- [ ] Backup restore test
