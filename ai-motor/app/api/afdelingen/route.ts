@@ -59,6 +59,22 @@ const AFDELINGEN = [
     model: "Ollama lokaal",
     klanten: ["system"],
   },
+  {
+    id: "bokas-agent",
+    naam: "@bokas",
+    icon: "🍽️",
+    beschrijving: "Horeca en Bokas",
+    model: "Claude Haiku",
+    klanten: ["bokas"],
+  },
+  {
+    id: "fumero-agent",
+    naam: "@fumero",
+    icon: "🌿",
+    beschrijving: "Fumero merk en support",
+    model: "Claude Haiku",
+    klanten: ["fumero"],
+  },
 ];
 
 async function checkN8N(): Promise<boolean> {
@@ -73,16 +89,36 @@ async function checkN8N(): Promise<boolean> {
   }
 }
 
+async function checkOllama(): Promise<boolean> {
+  try {
+    const res = await fetch("http://127.0.0.1:11434/api/tags", {
+      signal: AbortSignal.timeout(3000),
+      cache: "no-store",
+    });
+    return res.status < 500;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET() {
-  const n8nOnline = await checkN8N();
+  const [n8nOnline, ollamaOnline] = await Promise.all([
+    checkN8N(),
+    checkOllama(),
+  ]);
 
   const afdelingen = AFDELINGEN.map((a) => ({
     ...a,
     status: n8nOnline ? "actief" : "offline",
+    ollama: ollamaOnline,
     laatste_activiteit: new Date().toISOString(),
     taken_vandaag: Math.floor(Math.random() * 10),
     kosten_vandaag: (Math.random() * 0.5).toFixed(3),
   }));
 
-  return NextResponse.json({ afdelingen, n8n_online: n8nOnline });
+  return NextResponse.json({
+    afdelingen,
+    n8n_online: n8nOnline,
+    services: { n8n: n8nOnline, ollama: ollamaOnline },
+  });
 }

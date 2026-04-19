@@ -63,6 +63,71 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     resolved_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS chat_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    afdeling TEXT,
+    model TEXT,
+    tokens INTEGER,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS uploads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT NOT NULL,
+    filepath TEXT NOT NULL,
+    klant TEXT,
+    analysis TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS bokas_reserveringen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    email TEXT,
+    telefoon TEXT,
+    datum TEXT NOT NULL,
+    tijd TEXT NOT NULL,
+    personen INTEGER NOT NULL,
+    opmerkingen TEXT,
+    status TEXT DEFAULT 'bevestigd',
+    source TEXT DEFAULT 'handmatig',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS bokas_personeel (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    rol TEXT NOT NULL,
+    telefoon TEXT,
+    email TEXT,
+    actief INTEGER DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS bokas_shifts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    personeels_id INTEGER REFERENCES bokas_personeel(id),
+    datum TEXT NOT NULL,
+    start_tijd TEXT NOT NULL,
+    eind_tijd TEXT NOT NULL,
+    rol TEXT,
+    status TEXT DEFAULT 'gepland'
+  );
+
+  CREATE TABLE IF NOT EXISTS bokas_menu (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    categorie TEXT NOT NULL,
+    prijs REAL,
+    beschrijving TEXT,
+    actief INTEGER DEFAULT 1,
+    week TEXT,
+    vegan INTEGER DEFAULT 0,
+    gluten_vrij INTEGER DEFAULT 0
+  );
 `);
 
 export default db;

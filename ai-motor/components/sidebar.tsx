@@ -10,6 +10,7 @@ import {
   Store,
   BookOpen,
   ShieldCheck,
+  UtensilsCrossed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ const nav = [
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/appstore", label: "App Store", icon: Store },
   { href: "/kennisbank", label: "Kennisbank", icon: BookOpen },
+  { href: "/bokas", label: "Bokas", icon: UtensilsCrossed },
   { href: "/approvals", label: "Goedkeuringen", icon: ShieldCheck },
 ];
 

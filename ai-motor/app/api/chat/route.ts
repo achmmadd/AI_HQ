@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/db/database";
+
+export const runtime = "nodejs";
 
 const N8N_WEBHOOK =
   process.env.N8N_FACTORY_OS_WEBHOOK ||
@@ -18,6 +21,8 @@ function extractMessage(data: Record<string, unknown>): string {
   return JSON.stringify(data);
 }
 
+type CtxMsg = { role?: string; content?: string };
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -25,10 +30,14 @@ export async function POST(req: NextRequest) {
       prompt,
       klant = "fumero",
       afdeling,
+      agent_mode = false,
+      context = [],
     } = body as {
       prompt?: string;
       klant?: string;
       afdeling?: string;
+      agent_mode?: boolean;
+      context?: CtxMsg[];
     };
 
     if (!prompt?.trim()) {
@@ -38,13 +47,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const afdelingStr =
+      typeof afdeling === "string" && afdeling ? afdeling : null;
+
+    db.prepare(
+      `INSERT INTO chat_history (klant, role, content, afdeling)
+       VALUES (?, 'user', ?, ?)`
+    ).run(klant, prompt.trim(), afdelingStr);
+
+    const ctx = Array.isArray(context)
+      ? context
+          .filter(
+            (m) =>
+              m &&
+              (m.role === "user" || m.role === "assistant") &&
+              typeof m.content === "string"
+          )
+          .slice(-10)
+          .map((m) => ({ role: m.role, content: m.content }))
+      : [];
+
     const response = await fetch(N8N_WEBHOOK, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        prompt,
+        prompt: prompt.trim(),
         klant,
-        ...(afdeling ? { afdeling } : {}),
+        ...(afdelingStr ? { afdeling: afdelingStr } : {}),
+        agent_mode: Boolean(agent_mode),
+        context: ctx,
       }),
       signal: AbortSignal.timeout(120_000),
     });
@@ -67,12 +98,21 @@ export async function POST(req: NextRequest) {
 
     const message = extractMessage(data);
     const outAfdeling =
-      typeof data.afdeling === "string" ? data.afdeling : undefined;
+      typeof data.afdeling === "string" ? data.afdeling : afdelingStr;
+    const model =
+      typeof data.model === "string" ? data.model : "factory-os";
+
+    db.prepare(
+      `INSERT INTO chat_history (klant, role, content, afdeling, model)
+       VALUES (?, 'assistant', ?, ?, ?)`
+    ).run(klant, message, outAfdeling, model);
 
     return NextResponse.json({
       message,
       klant,
-      afdeling: outAfdeling || afdeling,
+      afdeling: outAfdeling,
+      model,
+      agent_mode: Boolean(agent_mode),
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {

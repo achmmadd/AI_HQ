@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { sendChatMessage } from "@/lib/openclaw";
 import type { ChatMessage, CompanyId } from "@/lib/types";
 
@@ -12,10 +12,59 @@ export function useChat(company: CompanyId, afdeling?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const messagesRef = useRef<ChatMessage[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/chat/history?klant=${encodeURIComponent(company)}`)
+      .then((r) => r.json())
+      .then(
+        (d: {
+          messages?: Array<{
+            id: number;
+            role: string;
+            content: string;
+            created_at?: string;
+          }>;
+        }) => {
+          if (cancelled) return;
+          const rows = d.messages ?? [];
+          const mapped: ChatMessage[] = rows.map((row, i) => ({
+            id: `db-${row.id}-${i}`,
+            role: row.role === "user" ? "user" : "assistant",
+            content: row.content,
+            createdAt: row.created_at
+              ? Date.parse(row.created_at)
+              : Date.now(),
+          }));
+          setMessages(mapped);
+        }
+      )
+      .catch(() => {
+        /* optioneel */
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [company]);
 
   const send = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, opts?: { agentMode?: boolean }) => {
       setError(null);
+      const agentMode = opts?.agentMode ?? false;
+      const contextForApi = messagesRef.current
+        .filter((m) => m.content.trim() !== "")
+        .slice(-10)
+        .map((m) => ({ role: m.role, content: m.content }));
+
       const userMsg: ChatMessage = {
         id: id(),
         role: "user",
@@ -35,7 +84,15 @@ export function useChat(company: CompanyId, afdeling?: string) {
       ]);
       setStreamingId(asstId);
       try {
-        const data = await sendChatMessage(prompt, company, afdeling);
+        const data = await sendChatMessage(
+          prompt,
+          company,
+          afdeling,
+          {
+            agentMode,
+            context: contextForApi,
+          }
+        );
         const text =
           (typeof data.message === "string" && data.message) ||
           (typeof data.output === "string" && data.output) ||
@@ -65,5 +122,12 @@ export function useChat(company: CompanyId, afdeling?: string) {
     [company, afdeling]
   );
 
-  return { messages, send, streamingId, error, clear: () => setMessages([]) };
+  return {
+    messages,
+    send,
+    streamingId,
+    error,
+    historyLoaded,
+    clear: () => setMessages([]),
+  };
 }

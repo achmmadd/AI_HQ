@@ -31,6 +31,7 @@ export function AfdelingenGrid() {
   const company = useCompanyStore((s) => s.company);
   const [rows, setRows] = useState<ApiAfdeling[]>([]);
   const [n8nOnline, setN8nOnline] = useState<boolean | null>(null);
+  const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -40,6 +41,8 @@ export function AfdelingenGrid() {
       const j = await r.json();
       setRows(Array.isArray(j.afdelingen) ? j.afdelingen : []);
       setN8nOnline(typeof j.n8n_online === "boolean" ? j.n8n_online : null);
+      const svc = j.services as { ollama?: boolean } | undefined;
+      setOllamaOnline(typeof svc?.ollama === "boolean" ? svc.ollama : null);
     } catch {
       setRows([]);
     } finally {
@@ -62,6 +65,12 @@ export function AfdelingenGrid() {
             <>
               {" · "}
               n8n: {n8nOnline ? "online" : "offline"}
+            </>
+          )}
+          {ollamaOnline != null && (
+            <>
+              {" · "}
+              Ollama: {ollamaOnline ? "online" : "offline"}
             </>
           )}
         </p>

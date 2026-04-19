@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -66,6 +67,13 @@ export async function POST(req: NextRequest) {
       typeof source === "string" ? source : "handmatig",
       typeof todo_id === "number" ? todo_id : null
     );
+
+  const src = typeof source === "string" ? source : "handmatig";
+  if (src === "factory-os") {
+    void sendTelegramMessage(
+      `📅 Factory OS heeft een afspraak gepland\n${String(title)}\nWanneer: ${String(start_time)}`
+    );
+  }
 
   return NextResponse.json({
     id: result.lastInsertRowid,
