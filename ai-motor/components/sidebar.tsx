@@ -20,6 +20,7 @@ import {
   RefreshCw,
   TestTube2,
   Bot,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,11 @@ const nav = [
     href: "/admin/automation",
     label: "Automation",
     icon: Bot,
+  },
+  {
+    href: "/admin/agent-runs",
+    label: "Agent API",
+    icon: Cpu,
   },
 ];
 

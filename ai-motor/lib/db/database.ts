@@ -325,6 +325,21 @@ export function initDb(): void {
   CREATE INDEX IF NOT EXISTS idx_automation_runs_status ON automation_runs(status);
   CREATE INDEX IF NOT EXISTS idx_automation_runs_created ON automation_runs(created_at);
 
+  CREATE TABLE IF NOT EXISTS agent_api_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_key TEXT NOT NULL,
+    automation_task_id INTEGER REFERENCES automation_tasks(id) ON DELETE SET NULL,
+    input_prompt TEXT,
+    status TEXT NOT NULL
+      CHECK (status IN ('running', 'success', 'failed')),
+    detail TEXT,
+    error_message TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    finished_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_agent_api_runs_created ON agent_api_runs(created_at);
+
   CREATE TABLE IF NOT EXISTS fumero_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     external_id TEXT NOT NULL UNIQUE,

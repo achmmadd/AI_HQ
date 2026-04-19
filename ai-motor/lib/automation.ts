@@ -120,6 +120,14 @@ export function getAutomationTask(id: number): AutomationTaskRow | undefined {
     .get(id) as AutomationTaskRow | undefined;
 }
 
+export function getAutomationTaskByKey(
+  taskKey: string
+): AutomationTaskRow | undefined {
+  return db
+    .prepare("SELECT * FROM automation_tasks WHERE task_key = ?")
+    .get(taskKey.trim()) as AutomationTaskRow | undefined;
+}
+
 export function createAutomationRun(
   taskId: number,
   trigger: "cron" | "manual",
