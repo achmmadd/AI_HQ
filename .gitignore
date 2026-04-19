@@ -1,2 +1,59 @@
 data/ai-motor.db*
 uploads/
+
+# Dependencies & build
+node_modules/
+.next/
+dist/
+build/
+*.tsbuildinfo
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Secrets & local env
+.env
+.env.*
+!.env.example
+
+# IDE / tooling
+.cursor/
+
+# OS & media (repo root clutter)
+.DS_Store
+Movies/
+Music/
+Pictures/
+
+# Large local stacks (untracked clones)
+open-webui/
+openclaw/
+1panel-v1.*/
+
+# Backups (nested broken checkouts / huge)
+backups/
+
+# Never commit keys / SSH
+.ssh/
+
+# Bulky binaries & embedded clones
+*.tar.gz
+dify/
+
+# Runtime logs & scratch
+logs/
+intake_output.md
+stack_intake_corrupted_backup.txt
+
+# Local app state (DBs, caches)
+.streamlit/
+data/
+holding/data/*.db
+
+# Ad-hoc markers / notes at repo root
+.factory_os_v3_ok
+GEMINI_STACK.md
+PLAK_IN_GEMINI.md

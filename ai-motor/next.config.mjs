@@ -5,9 +5,22 @@ const embedExtra = (process.env.EMBED_FRAME_ANCESTORS || "")
   .filter(Boolean)
   .join(" ");
 
+/** Extra hosts (tunnel / LAN / preview) die in dev naar poort 3040 proxy’en — anders blokkeert Next 16 /_next/* (lege site). */
+const allowedDevOrigins = [
+  "motorsai.app",
+  "*.motorsai.app",
+  "fumero.nl",
+  "*.fumero.nl",
+  ...(process.env.NEXT_DEV_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+];
+
 const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["better-sqlite3"],
+  allowedDevOrigins,
   async headers() {
     const frameAncestors = [
       "'self'",

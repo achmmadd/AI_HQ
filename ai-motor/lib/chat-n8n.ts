@@ -7,6 +7,40 @@ export const N8N_REVIEW_WEBHOOK =
 
 export type ChatContextMsg = { role?: string; content?: string };
 
+/** Voor chat: instructie die Dify/n8n helpt géén Factory OS-metadata te tonen. */
+export const CHAT_OUTPUT_INSTRUCTION_PREFIX =
+  "[Output only the direct answer for the user. No Klant/Agent/Datum lines, no “Samenvatting” or “Volledige response” sections, no Factory OS footer.]\n\n";
+
+/**
+ * Haalt de ruwe Factory OS-response uit de n8n “Format”-envelope
+ * (# Factory OS Response … ## Volledige response … --- footer).
+ */
+export function stripFactoryOsResponseEnvelope(text: string): string {
+  const t = text.trim();
+  if (!t) return t;
+
+  const marker = "## Volledige response";
+  const idx = t.indexOf(marker);
+  if (idx !== -1) {
+    let rest = t.slice(idx + marker.length).replace(/^\s*\n?/, "");
+    const foot = rest.search(/\n\n---\s*$/m);
+    if (foot !== -1) rest = rest.slice(0, foot);
+    const foot2 = rest.indexOf("\n\n---\n");
+    if (foot2 !== -1) rest = rest.slice(0, foot2);
+    const trimmed = rest.trim();
+    if (trimmed) return trimmed;
+  }
+
+  if (/^#\s*Factory OS Response/im.test(t) || /\*\*Klant:\*\*/i.test(t)) {
+    const m = t.match(
+      /##\s*Volledige response\s*\n([\s\S]*?)(?=\n\n---|\s*$)/i
+    );
+    if (m?.[1]?.trim()) return m[1].trim();
+  }
+
+  return t;
+}
+
 export function extractMessage(data: Record<string, unknown>): string {
   const candidates = [
     data.output,
@@ -18,7 +52,9 @@ export function extractMessage(data: Record<string, unknown>): string {
     data.suggested_reply,
   ];
   for (const c of candidates) {
-    if (typeof c === "string" && c.trim()) return c;
+    if (typeof c === "string" && c.trim()) {
+      return stripFactoryOsResponseEnvelope(c);
+    }
   }
   return JSON.stringify(data);
 }

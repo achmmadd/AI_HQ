@@ -9,6 +9,7 @@ export async function sendChatMessage(
   options?: {
     agentMode?: boolean;
     context?: { role: string; content: string }[];
+    conversationId?: number | null;
   }
 ) {
   const res = await fetch("/api/chat", {
@@ -20,6 +21,9 @@ export async function sendChatMessage(
       ...(afdeling ? { afdeling } : {}),
       agent_mode: options?.agentMode ?? false,
       context: options?.context ?? [],
+      ...(typeof options?.conversationId === "number"
+        ? { conversation_id: options.conversationId }
+        : {}),
     }),
   });
   if (!res.ok) {
@@ -37,6 +41,7 @@ export async function sendChatMessageStream(
   options: {
     agentMode?: boolean;
     context?: { role: string; content: string }[];
+    conversationId?: number | null;
   },
   onDelta: (accumulated: string) => void
 ): Promise<Record<string, unknown>> {
@@ -49,6 +54,9 @@ export async function sendChatMessageStream(
       ...(afdeling ? { afdeling } : {}),
       agent_mode: options?.agentMode ?? false,
       context: options?.context ?? [],
+      ...(typeof options.conversationId === "number"
+        ? { conversation_id: options.conversationId }
+        : {}),
     }),
   });
 

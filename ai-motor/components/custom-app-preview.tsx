@@ -1,6 +1,7 @@
 "use client";
 
-import { sanitizeCodeForSrcDoc } from "@/lib/builder-code";
+import { useMemo } from "react";
+import { normalizeVanillaAppHtml } from "@/lib/builder-code";
 
 export function CustomAppPreview({
   naam,
@@ -11,29 +12,11 @@ export function CustomAppPreview({
   slug: string;
   code: string;
 }) {
-  const safe = sanitizeCodeForSrcDoc(code);
-  const srcDoc = `<!DOCTYPE html>
-<html lang="nl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://cdn.tailwindcss.com"></script>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<style>
-  body { margin: 0; background: #0f172a; color: #f1f5f9; font-family: system-ui, sans-serif; }
-</style>
-</head>
-<body>
-<div id="root"></div>
-<script type="text/babel" data-presets="react">
-${safe}
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(React.createElement(App));
-</script>
-</body>
-</html>`;
+  const srcDoc = useMemo(() => normalizeVanillaAppHtml(code), [code]);
+  const openTabHref = useMemo(
+    () => `data:text/html;charset=utf-8,${encodeURIComponent(srcDoc)}`,
+    [srcDoc]
+  );
 
   return (
     <div className="min-h-dvh bg-slate-900">
@@ -51,7 +34,17 @@ root.render(React.createElement(App));
             live
           </span>
         </div>
-        <span className="text-xs text-slate-500">/apps/{slug}</span>
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          <span>/apps/{slug}</span>
+          <a
+            href={openTabHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300"
+          >
+            Open in nieuw tabblad
+          </a>
+        </div>
       </div>
       <div className="p-6">
         <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-800">

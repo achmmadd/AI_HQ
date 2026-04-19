@@ -74,3 +74,154 @@
 - [ ] Domein + permanente tunnel
 - [ ] Onboarding nieuwe klanten
 - [ ] Backup restore test
+
+### USER REQUESTS
+- [ ] Builder: Een rekenmachine
+- [ ] Builder: De Prompt
+
+"Bouw een full-stack webapplicatie voor 'Bokas' met twee hoofdfuncties: een publieke bestel-omgeving voor afhalen en een in-house bestel-interface voor gasten in de zaak.
+
+1. Visuele & Functionele Inspiratie
+
+
+
+
+
+Design & UX: Baseer de 'Ordering Flow' op de look-and-feel van joejuice.com. Minimalistisch, grote productafbeeldingen, zijwaartse navigatie voor categorieën en een snelle checkout.
+
+
+
+Menu Content: Gebruik de menustructuur van bokas.nl/menu/ als basis voor de producten (bijv. sandwiches, sappen, bites).
+
+2. Kernfunctionaliteiten
+
+
+
+
+
+Storefront (Afhalen): Gebruikers kunnen items selecteren, een afhaaltijd kiezen en betalen.
+
+
+
+In-house Modus: Een specifieke interface (bijv. via een /table/ID route) waar gasten in de zaak kunnen bestellen.
+
+
+
+Winkelmandje: Een persistente sidebar of bottom-drawer die de totaalprijs en geselecteerde items toont.
+
+
+
+Product Modals: Wanneer een gebruiker op een item klikt, open een overlay voor aanpassingen (bijv. extra ingrediënten of allergieën).
+
+3. Technische Stack (Aanbeveling)
+
+
+
+
+
+Framework: Next.js (App Router).
+
+
+
+Styling: Tailwind CSS voor die strakke Joe & The Juice esthetiek.
+
+
+
+State Management: Gebruik Zustand of React Context voor het winkelmandje.
+
+
+
+Backend: Prisma met een lokale SQLite database (aangezien de server wordt geëlimineerd en we op eigen hardware draaien).
+
+4. Directe Actie
+
+Begin met het opzetten van de basisstructuur:
+
+
+
+
+
+Maak een constants/menu.ts bestand aan met data van het Bokas menu.
+
+
+
+Bouw de navigatiebalk en de 'Category Grid' in de stijl van Joe & The Juice.
+
+
+
+Zet de 'Cart Logic' op zodat items toegevoegd en verwijderd kunnen worden."
+- [ ] Builder: Een timer met start/stop/reset knoppen
+- [ ] Builder: Een kleurkiezer tool
+- [ ] Builder: bouw een simple rekenmachine
+- [ ] Builder: maak Een simple rekenmachine
+- [ ] Builder: Een BMI calculator
+- [ ] Builder: Een rekenmachine
+- [ ] Builder: Een rekenmachine
+- [ ] Builder: Bouw een full-stack webapplicatie voor 'Bokas' met twee hoofdfuncties: een publieke bestel-omgeving voor afhalen en een in-house bestel-interface voor gasten in de zaak.
+
+1. Visuele & Functionele Inspiratie
+Design & UX: Baseer de 'Ordering Flow' op de look-and-feel van joejuice.com. Minimalistisch, grote productafbeeldingen, zijwaartse navigatie voor categorieën en een snelle checkout.
+
+Menu Content: Gebruik de menustructuur van bokas.nl/menu/ als basis voor de producten (bijv. sandwiches, sappen, bites).
+
+2. Kernfunctionaliteiten
+Storefront (Afhalen): Gebruikers kunnen items selecteren, een afhaaltijd kiezen en betalen.
+
+In-house Modus: Een specifieke interface (bijv. via een /table/ID route) waar gasten in de zaak kunnen bestellen.
+
+Winkelmandje: Een persistente sidebar of bottom-drawer die de totaalprijs en geselecteerde items toont.
+
+Product Modals: Wanneer een gebruiker op een item klikt, open een overlay voor aanpassingen (bijv. extra ingrediënten of allergieën).
+
+3. Technische Stack (Aanbeveling)
+Framework: Next.js (App Router).
+
+Styling: Tailwind CSS voor die strakke Joe & The Juice esthetiek.
+
+State Management: Gebruik Zustand of React Context voor het winkelmandje.
+
+Backend: Prisma met een lokale SQLite database (aangezien de server wordt geëlimineerd en we op eigen hardware draaien).
+
+4. Directe Actie
+Begin met het opzetten van de basisstructuur:
+
+Maak een constants/menu.ts bestand aan met data van het Bokas menu.
+
+Bouw de navigatiebalk en de 'Category Grid' in de stijl van Joe & The Juice.
+
+Zet de 'Cart Logic' op zodat items toegevoegd en verwijderd kunnen worden."
+- [ ] Builder: Een rekenmachine
+- [ ] Builder: Om een complex platform te bouwen dat zowel een publieke webshop (gebaseerd op Joe & The Juice) als een in-house bestelsysteem (gebaseerd op Bokas) combineert, moet je Cursor heel specifieke instructies geven over de architectuur en de "flow".
+
+Hier is een krachtige prompt die je direct in de **Composer (Cmd+I / Ctrl+I)** of een nieuwe chat kunt plakken:
+
+---
+
+## De Prompt
+
+"Bouw een full-stack webapplicatie voor 'Bokas' met twee hoofdfuncties: een publieke bestel-omgeving voor afhalen en een in-house bestel-interface voor gasten in de zaak.
+
+### 1. Visuele & Functionele Inspiratie
+* **Design & UX:** Baseer de 'Ordering Flow' op de look-and-feel van `joejuice.com`. Minimalistisch, grote productafbeeldingen, zijwaartse navigatie voor categorieën en een snelle checkout.
+* **Menu Content:** Gebruik de menustructuur van `bokas.nl/menu/` als basis voor de producten (bijv. sandwiches, sappen, bites).
+
+### 2. Kernfunctionaliteiten
+* **Storefront (Afhalen):** Gebruikers kunnen items selecteren, een afhaaltijd kiezen en betalen.
+* **In-house Modus:** Een specifieke interface (bijv. via een `/table/ID` route) waar gasten in de zaak kunnen bestellen.
+* **Winkelmandje:** Een persistente sidebar of bottom-drawer die de totaalprijs en geselecteerde items toont.
+* **Product Modals:** Wanneer een gebruiker op een item klikt, open een overlay voor aanpassingen (bijv. extra ingrediënten of allergieën).
+
+### 3. Technische Stack (Aanbeveling)
+* **Framework:** Next.js (App Router).
+* **Styling:** Tailwind CSS voor die strakke Joe & The Juice esthetiek.
+* **State Management:** Gebruik Zustand of React Context voor het winkelmandje.
+* **Backend:** Prisma met een lokale SQLite database (aangezien de server wordt geëlimineerd en we op eigen hardware draaien).
+
+### 4. Directe Actie
+Begin met het opzetten van de basisstructuur:
+1.  Maak een `constants/menu.ts` bestand aan met data van het Bokas menu.
+2.  Bouw de navigatiebalk en de 'Category Grid' in de stijl van Joe & The Juice.
+3.  Zet de 'Cart Logic' op zodat items toegevoegd en verwijderd kunnen worden."
+https://www.joejuice.com/store/668 en https://bokas.nl/menu/
+- [ ] Build: ik wil https://www.joejuice.com/store/668 dit bouwen voor bokas waar mensen hun bestelingen kunen plaatsen en afhalen maar ook gebruiken voor in de zaak zodat ze kunnen bestelen
+- [ ] Build: ik wil https://www.joejuice.com/store/668 dit bouwen voor bokas waar mensen hun bestelingen kunen plaatsen en afhalen maar ook gebruiken voor in de zaak zodat ze kunnen bestelen

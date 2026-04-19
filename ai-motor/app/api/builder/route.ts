@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
 import {
   extractAppCodeFromFactoryOutput,
+  normalizeAppCodeForPreview,
   validateAppCode,
 } from "@/lib/builder-code";
 import { callFactoryN8n, extractMessage } from "@/lib/chat-n8n";
@@ -44,7 +45,7 @@ async function buildWithRetry(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const retryHint =
       attempt > 1
-        ? `\n\nVORIGE POGING MISLUKT: ${lastError}\nLos dit op: één geldige App-component, geen import, geen markdown-fences.`
+        ? `\n\nVORIGE POGING MISLUKT: ${lastError}\nLos dit op: één volledig HTML-bestand met vanilla JS (geen React/JSX), geen import/export, geen markdown-fences.`
         : "";
 
     const fullPrompt = `${template}\n\n---\nBouw deze app: ${userPrompt}${retryHint}`;
@@ -70,12 +71,13 @@ async function buildWithRetry(
         .replace(/```(?:jsx?|tsx?|javascript|react)?\n?/gi, "")
         .replace(/```\n?/g, "")
         .trim();
+      code = normalizeAppCodeForPreview(code);
 
       const validation = validateAppCode(code);
       if (validation.valid) {
-        return { code, attempts: attempt };
+        return { code: validation.code, attempts: attempt };
       }
-      lastError = validation.error || "Validatie mislukt";
+      lastError = validation.error;
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
     }

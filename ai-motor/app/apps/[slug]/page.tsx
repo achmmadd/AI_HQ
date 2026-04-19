@@ -24,5 +24,7 @@ export default async function CustomAppPage({
 
   if (!app) notFound();
 
-  return <CustomAppPreview naam={app.naam} slug={app.slug} code={app.code} />;
+  return (
+    <CustomAppPreview naam={app.naam} slug={app.slug} code={app.code} />
+  );
 }
