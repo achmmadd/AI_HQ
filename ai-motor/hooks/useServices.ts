@@ -17,8 +17,19 @@ export function useServices(pollMs = 15000) {
   const refresh = useCallback(async () => {
     try {
       const r = await fetch("/api/health");
-      const j = (await r.json()) as ServiceStatus;
-      setStatus(j);
+      const j = (await r.json()) as ServiceStatus & {
+        services?: ServiceStatus;
+      };
+      if (j.services) {
+        setStatus(j.services);
+      } else {
+        setStatus({
+          n8n: !!j.n8n,
+          qdrant: !!j.qdrant,
+          ollama: !!j.ollama,
+          dify: !!j.dify,
+        });
+      }
     } catch {
       setStatus(initial);
     } finally {

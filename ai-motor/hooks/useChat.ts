@@ -37,7 +37,9 @@ export function useChat(company: CompanyId, afdeling?: string) {
       try {
         const data = await sendChatMessage(prompt, company, afdeling);
         const text =
+          (typeof data.message === "string" && data.message) ||
           (typeof data.output === "string" && data.output) ||
+          (typeof data.answer === "string" && data.answer) ||
           (typeof data.answer_raw === "string" && data.answer_raw) ||
           JSON.stringify(data, null, 2);
         setMessages((m) =>

@@ -34,7 +34,7 @@ export function KennisbankSearch() {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || r.statusText);
-      const result = j.result as Hit[] | undefined;
+      const result = (j.results ?? j.result) as Hit[] | undefined;
       setHits(Array.isArray(result) ? result : []);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Zoeken mislukt");

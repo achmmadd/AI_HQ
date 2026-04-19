@@ -1,27 +1,51 @@
 import { NextResponse } from "next/server";
-import type { ServiceStatus } from "@/lib/types";
 
-async function ok(url: string, init?: RequestInit) {
+async function check(url: string, timeout = 4000): Promise<boolean> {
   try {
-    const r = await fetch(url, { ...init, cache: "no-store", signal: AbortSignal.timeout(5000) });
-    return r.ok;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(timeout),
+      cache: "no-store",
+    });
+    return res.status < 500;
   } catch {
     return false;
   }
 }
 
 export async function GET() {
-  const difyBase = process.env.DIFY_BASE_URL?.replace(/\/$/, "");
-  const difyHealth = difyBase
-    ? await ok(`${difyBase}/console/api/setup`)
-    : false;
+  const difyUrl = (process.env.DIFY_BASE_URL || "http://127.0.0.1:5001").replace(
+    /\/$/,
+    ""
+  );
+  const ollamaUrl = (process.env.OLLAMA_URL || "http://127.0.0.1:11434").replace(
+    /\/$/,
+    ""
+  );
+  const qdrantUrl = (process.env.QDRANT_URL || "http://127.0.0.1:6333").replace(
+    /\/$/,
+    ""
+  );
 
-  const body: ServiceStatus = {
-    n8n: await ok("http://127.0.0.1:5678/healthz"),
-    qdrant: await ok("http://127.0.0.1:6333/healthz"),
-    ollama: await ok("http://127.0.0.1:11434/api/tags"),
-    dify: difyHealth || (difyBase ? await ok(`${difyBase}/v1/chat-messages`, { method: "POST" }) : false),
+  const [n8n, dify, ollama, qdrant] = await Promise.all([
+    check("http://127.0.0.1:5678/healthz"),
+    check(`${difyUrl}/console/api/setup`),
+    check(`${ollamaUrl}/api/tags`),
+    check(`${qdrantUrl}/healthz`),
+  ]);
+
+  const allGreen = n8n && dify && ollama && qdrant;
+
+  const payload = {
+    status: allGreen ? "healthy" : "degraded" as const,
+    timestamp: new Date().toISOString(),
+    services: { n8n, dify, ollama, qdrant },
+    n8n,
+    qdrant,
+    ollama,
+    dify,
   };
 
-  return NextResponse.json(body);
+  return NextResponse.json(payload, {
+    status: allGreen ? 200 : 207,
+  });
 }

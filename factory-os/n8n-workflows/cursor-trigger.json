@@ -1,0 +1,44 @@
+{
+  "name": "Factory OS → Cursor Builder",
+  "meta": {
+    "templateCaveat": "Voorbeeld workflow — importeer in n8n en koppel Telegram/credentials. Het node-type executeCommand werkt alleen als n8n shell-toegang heeft (meestal uit in productie); vervang door HTTP Request naar je eigen agent-runner indien nodig."
+  },
+  "nodes": [
+    {
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "path": "cursor-build",
+        "method": "POST"
+      }
+    },
+    {
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "feature", "value": "={{$json.feature}}" },
+            { "name": "priority", "value": "={{$json.priority || 'normal'}}" },
+            { "name": "context", "value": "={{$json.context || ''}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Start Cursor Agent",
+      "type": "n8n-nodes-base.executeCommand",
+      "parameters": {
+        "command": "cd /home/pietje/AI_HQ && cursor agents run --workspace . --prompt \"{{$json.feature}}\" --background"
+      }
+    },
+    {
+      "name": "Telegram Bevestiging",
+      "type": "n8n-nodes-base.telegram",
+      "parameters": {
+        "operation": "sendMessage",
+        "text": "🤖 Cursor agent gestart voor: {{$json.feature}}"
+      }
+    }
+  ]
+}

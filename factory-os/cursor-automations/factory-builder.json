@@ -1,0 +1,21 @@
+{
+  "name": "Factory OS Builder",
+  "description": "Bouwt nieuwe features als Factory OS daarom vraagt",
+  "triggers": [
+    {
+      "type": "webhook",
+      "endpoint": "/webhook/cursor-build",
+      "description": "n8n triggert Cursor als nieuwe feature nodig is"
+    },
+    {
+      "type": "schedule",
+      "cron": "0 2 * * *",
+      "description": "Nachtelijke verbeteringen"
+    }
+  ],
+  "workspace": "/home/pietje/AI_HQ",
+  "model": "claude-sonnet-4-6",
+  "max_tokens": 8000,
+  "instructions": "Je bent de Factory OS builder agent. Als je een taak krijgt: 1) Analyseer wat er gebouwd moet worden, 2) Schrijf de code in ~/AI_HQ/, 3) Test het, 4) Commit naar git, 5) Rapporteer via Telegram.",
+  "skills": ["filesystem", "terminal", "browser", "git"]
+}
