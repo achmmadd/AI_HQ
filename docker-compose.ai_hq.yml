@@ -43,6 +43,9 @@ services:
       DIFY_AGENT_API_KEY: ${DIFY_AGENT_API_KEY:-}
       # Fallback in n8n-workflow: DIFY_RESEARCH_API_KEY als DIFY_AGENT_API_KEY leeg is
       DIFY_RESEARCH_API_KEY: ${DIFY_RESEARCH_API_KEY:-}
+      # Dify app “Code Interpreter” (app_build in Factory OS workflow); zie factory-os-with-builder.json
+      DIFY_CODE_INTERPRETER_API_KEY: ${DIFY_CODE_INTERPRETER_API_KEY:-}
+      DIFY_APP_BUILD_API_KEY: ${DIFY_APP_BUILD_API_KEY:-}
       # Overschrijf .env: binnen deze container is 127.0.0.1 de container zelf, niet Dify op het host-/docker-netwerk.
       DIFY_BASE_URL: http://docker-api-1:5001
     volumes:

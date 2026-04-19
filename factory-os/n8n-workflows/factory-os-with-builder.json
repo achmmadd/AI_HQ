@@ -226,12 +226,12 @@
           },
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "={{ JSON.stringify({\n  inputs: typeof $json.klant !== 'undefined' && String($json.klant) ? { klant: $json.klant } : {},\n  query: $json.prompt,\n  response_mode: 'blocking',\n  conversation_id: '',\n  user: 'factory-os-code-interpreter'\n}) }}",
+          "jsonBody": "={{ JSON.stringify({\n  inputs: typeof $json.klant !== 'undefined' && String($json.klant) ? { klant: $json.klant } : {},\n  query: $json.prompt,\n  response_mode: 'streaming',\n  conversation_id: '',\n  user: 'factory-os-code-interpreter'\n}) }}",
           "options": {
             "timeout": 180000,
             "response": {
               "response": {
-                "responseFormat": "json",
+                "responseFormat": "text",
                 "neverError": true
               }
             }
