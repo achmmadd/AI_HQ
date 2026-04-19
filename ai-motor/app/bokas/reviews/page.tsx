@@ -17,7 +17,7 @@ type Review = {
   created_at: string;
 };
 
-export default function FumeroReviewsPage() {
+export default function BokasReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [busy, setBusy] = useState<number | null>(null);
@@ -73,13 +73,13 @@ export default function FumeroReviewsPage() {
   }
 
   return (
-    <AppShell title="Reviews · Fumero">
+    <AppShell title="Reviews · Bokas">
       <div className="space-y-4">
         <p className="text-sm text-text-secondary max-w-2xl">
-          Reviewresponder: genereer een conceptantwoord via n8n (
-          <code className="text-xs">N8N_REVIEW_WEBHOOK</code> of factory
-          webhook met <code className="text-xs">type: review_reply</code>).
-          Plak zelf in Google Business — API-koppeling volgt.
+          Google-reviews over service, eten en sfeer — conceptantwoorden via n8n (
+          <code className="text-xs">N8N_REVIEW_WEBHOOK</code>, workflow{" "}
+          <code className="text-xs">Bokas — Review Responder</code>). Plak zelf
+          in Google Business; API-koppeling volgt.
         </p>
         <div className="flex gap-2">
           <Button

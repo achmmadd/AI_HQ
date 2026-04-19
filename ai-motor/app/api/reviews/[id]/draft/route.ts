@@ -30,7 +30,7 @@ export async function POST(
 
   const { ok, status, data, rawText } = await callReviewN8n({
     type: "review_reply",
-    klant: "fumero",
+    klant: "bokas",
     review: {
       reviewer_name: row.reviewer_name,
       rating: row.rating,

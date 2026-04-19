@@ -24,8 +24,8 @@ const nav = [
   { href: "/kennisbank", label: "Kennisbank", icon: BookOpen },
   { href: "/bokas", label: "Bokas", icon: UtensilsCrossed },
   {
-    href: "/fumero/reviews",
-    label: "Reviews",
+    href: "/bokas/reviews",
+    label: "Reviews · Bokas",
     icon: MessageSquareReply,
   },
   { href: "/approvals", label: "Goedkeuringen", icon: ShieldCheck },

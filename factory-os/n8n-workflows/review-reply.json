@@ -1,0 +1,149 @@
+{
+  "name": "Bokas — Review Responder",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bokas-review-reply",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-review",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "bokas-review-reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nconst b =\n  j.body && typeof j.body === 'object' && !Array.isArray(j.body)\n    ? j.body\n    : j;\nif (b.type !== 'review_reply') {\n  return [\n    {\n      json: {\n        _bad_type: true,\n        got: b.type ?? null,\n      },\n    },\n  ];\n}\nconst r = b.review && typeof b.review === 'object' ? b.review : {};\nconst name = r.reviewer_name != null ? String(r.reviewer_name) : 'onbekend';\nconst rating = r.rating != null ? String(r.rating) : '?';\nconst text = r.text != null ? String(r.text) : '';\nconst prompt =\n  'Schrijf een vriendelijk, kort Nederlands antwoord (max 3 zinnen) op deze Google review van Bokas restaurant.\\n\\n' +\n  'Reviewer: ' +\n  name +\n  '\\nSterren: ' +\n  rating +\n  '/5\\nReview: ' +\n  text +\n  '\\n\\n' +\n  'Ton: warm, persoonlijk, horeca-stijl. Bedank altijd. Nodig uit voor een volgend bezoek.';\nreturn [{ json: { prompt } }];\n",
+        "language": "javaScript"
+      },
+      "id": "code-prompt",
+      "name": "Prompt Bokas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c-bad",
+                    "leftValue": "={{ $json._bad_type }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals",
+                      "singleValue": true
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "bad_type"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "switch-type",
+      "name": "Switch type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama3.2', prompt: $json.prompt, stream: false }) }}",
+        "options": {}
+      },
+      "id": "http-ollama",
+      "name": "Ollama generate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, -160]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "o1",
+              "name": "output",
+              "value": "={{ $json.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-output",
+      "name": "Map output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1040, -160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": $json.output } }}",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1280, -160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"expected type review_reply\", \"got\": $json.got } }}",
+        "options": {}
+      },
+      "id": "respond-bad",
+      "name": "Respond bad type",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [800, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Prompt Bokas", "type": "main", "index": 0 }]]
+    },
+    "Prompt Bokas": {
+      "main": [[{ "node": "Switch type", "type": "main", "index": 0 }]]
+    },
+    "Switch type": {
+      "main": [
+        [{ "node": "Respond bad type", "type": "main", "index": 0 }],
+        [{ "node": "Ollama generate", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ollama generate": {
+      "main": [[{ "node": "Map output", "type": "main", "index": 0 }]]
+    },
+    "Map output": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

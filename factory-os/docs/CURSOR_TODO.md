@@ -29,11 +29,11 @@
 - [x] Menu beheer (API + weergave)
 - [ ] WhatsApp integratie
 - [x] Dashboard Bokas (basis)
+- [x] Review responder — /bokas/reviews + n8n Bokas — Review Responder
 
 ### FUMERO
 
 - [x] Chatbot embed (/embed/fumero + public/fumero-widget.js)
-- [x] Review responder (API + UI; Google post handmatig)
 - [ ] Content pipeline
 
 ### FACTORY OS ZELF
