@@ -15,11 +15,60 @@ exec > >(tee -a "$LOGFILE") 2>&1
 echo "🔍 GRONDIGE QA SPRINT — START"
 date
 
-# Laad secrets (root .env + ai-motor lokale defaults)
-set -a
-[ -f .env ] && . .env
-[ -f ai-motor/.env.local ] && . ai-motor/.env.local
-set +a
+# Laad KEY=value bestanden veilig (geen `source`: waarden met spaties breken anders).
+load_dotenv_safe() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+    local k="${BASH_REMATCH[1]}"
+    local v="${BASH_REMATCH[2]}"
+    v="${v#"${v%%[![:space:]]*}"}"
+    v="${v%"${v##*[![:space:]]}"}"
+    if [[ "$v" =~ ^\"(.*)\"$ ]]; then v="${BASH_REMATCH[1]}"; fi
+    if [[ "$v" =~ ^\'(.*)\'$ ]]; then v="${BASH_REMATCH[1]}"; fi
+    export "$k"="$v"
+  done < "$f"
+}
+
+load_dotenv_safe ".env"
+load_dotenv_safe "ai-motor/.env.local"
+
+# SQLite: liever CLI; anders Python (voorkomt exit 127 als sqlite3-pakket ontbreekt).
+ai_sql() {
+  local db="$1" sql="$2"
+  if command -v sqlite3 >/dev/null 2>&1; then
+    sqlite3 -separator '|' "$db" "$sql"
+  else
+    python3 -c "
+import sqlite3, sys
+db, sql = sys.argv[1], sys.argv[2]
+con = sqlite3.connect(db)
+try:
+    for row in con.execute(sql):
+        print('|'.join('' if x is None else str(x) for x in row))
+except sqlite3.Error:
+    pass
+finally:
+    con.close()
+" "$db" "$sql"
+  fi
+}
+
+ai_sql_scalar() {
+  local db="$1" sql="$2"
+  ai_sql "$db" "$sql" | head -1
+}
+
+fmt_pipe_table() {
+  if command -v column >/dev/null 2>&1; then
+    column -t -s '|'
+  else
+    cat
+  fi
+}
 
 QA_BASE="${QA_BASE:-http://localhost:3040}"
 QA_COOKIE="${QA_COOKIE:-/tmp/qa_motorsai_cookies.txt}"
@@ -105,7 +154,7 @@ if [ ! -f "$DB" ]; then
 fi
 
 echo ""
-INTEGRITY=$(sqlite3 "$DB" "PRAGMA integrity_check;" 2>&1)
+INTEGRITY=$(ai_sql_scalar "$DB" "PRAGMA integrity_check;")
 if [ "$INTEGRITY" = "ok" ]; then
   echo "  ✅ SQLite integrity OK"
 else
@@ -117,24 +166,28 @@ echo "📈 Rijen per kern-tabel:"
 for table in todos agenda notifications approvals chat_history uploads \
   bokas_reserveringen bokas_personeel bokas_shifts bokas_menu \
   content_posts content_templates usage_logs fumero_reviews custom_apps; do
-  count=$(sqlite3 "$DB" "SELECT COUNT(*) FROM $table;" 2>/dev/null || echo "0")
+  count=$(ai_sql_scalar "$DB" "SELECT COUNT(*) FROM $table;" || true)
+  count="${count:-0}"
   printf "  %-25s %6s rows\n" "$table:" "$count"
 done
 
 echo ""
 echo "🏗️ Laatste custom_apps:"
-sqlite3 "$DB" "SELECT id, naam, slug, LENGTH(code), status, created_at FROM custom_apps ORDER BY created_at DESC LIMIT 5;" 2>/dev/null | column -t -s '|' || true
+ai_sql "$DB" "SELECT id, naam, slug, LENGTH(code), status, created_at FROM custom_apps ORDER BY created_at DESC LIMIT 5;" | fmt_pipe_table || true
 
-NULL_CODE=$(sqlite3 "$DB" "SELECT COUNT(*) FROM custom_apps WHERE code IS NULL OR code = '';" 2>/dev/null || echo "0")
+NULL_CODE=$(ai_sql_scalar "$DB" "SELECT COUNT(*) FROM custom_apps WHERE code IS NULL OR code = '';" || true)
+NULL_CODE="${NULL_CODE:-0}"
 if [ "$NULL_CODE" -gt 0 ]; then
   echo "  ⚠️ $NULL_CODE apps zonder code"
 else
   echo "  ✅ Geen lege code in custom_apps"
 fi
 
-OLD_UPLOADS=$(sqlite3 "$DB" "SELECT COUNT(*) FROM uploads WHERE created_at < datetime('now', '-30 days');" 2>/dev/null || echo "0")
+OLD_UPLOADS=$(ai_sql_scalar "$DB" "SELECT COUNT(*) FROM uploads WHERE created_at < datetime('now', '-30 days');" || true)
+OLD_UPLOADS="${OLD_UPLOADS:-0}"
 # chat_history gebruikt created_at (geen kolom timestamp)
-OLD_CHAT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM chat_history WHERE created_at < datetime('now', '-90 days');" 2>/dev/null || echo "0")
+OLD_CHAT=$(ai_sql_scalar "$DB" "SELECT COUNT(*) FROM chat_history WHERE created_at < datetime('now', '-90 days');" || true)
+OLD_CHAT="${OLD_CHAT:-0}"
 echo ""
 echo "🧹 Oude records: uploads >30d: $OLD_UPLOADS | chat >90d: $OLD_CHAT"
 export OLD_UPLOADS OLD_CHAT
@@ -214,7 +267,8 @@ if echo "$BUILDER_RESPONSE" | grep -q '"slug"'; then
   echo "    ✅ Builder OK (${BUILDER_TIME}s)"
   SLUG=$(echo "$BUILDER_RESPONSE" | grep -o '"slug":"[^"]*"' | head -1 | cut -d'"' -f4)
   echo "       slug: $SLUG"
-  DB_CHECK=$(sqlite3 "$DB" "SELECT COUNT(*) FROM custom_apps WHERE slug='$SLUG';" 2>/dev/null || echo "0")
+  DB_CHECK=$(ai_sql_scalar "$DB" "SELECT COUNT(*) FROM custom_apps WHERE slug='${SLUG//\'/''}';" || true)
+  DB_CHECK="${DB_CHECK:-0}"
   [ "$DB_CHECK" = "1" ] && echo "    ✅ Rij in DB" || echo "    ⚠️ Geen rij voor slug in DB"
 else
   echo "    ❌ Builder mislukt of geen auth"
