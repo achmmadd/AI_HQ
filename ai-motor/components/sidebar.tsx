@@ -15,6 +15,7 @@ import {
   Sprout,
   Wallet,
   Hammer,
+  Package,
   LogOut,
   RefreshCw,
   TestTube2,
@@ -24,7 +25,8 @@ import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Home", icon: LayoutDashboard },
-  { href: "/builder", label: "Live Builder", icon: Hammer },
+  { href: "/chat?mode=build", label: "App bouwen", icon: Hammer },
+  { href: "/apps", label: "Mijn apps", icon: Package },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/afdelingen", label: "Afdelingen", icon: Grid3X3 },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },

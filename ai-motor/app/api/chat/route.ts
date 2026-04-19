@@ -15,6 +15,7 @@ import {
   getActiveExperimentForKlant,
   pickVariant,
 } from "@/lib/experiments";
+import { detectChatIntent, resolveChatWebhookUrl } from "@/lib/intent-detection";
 
 export const runtime = "nodejs";
 
@@ -96,14 +97,21 @@ export async function POST(req: NextRequest) {
       experimentOverlay +
       prompt.trim();
 
+    const intent = detectChatIntent(prompt.trim());
+    const webhookUrl = resolveChatWebhookUrl(intent);
+
     const t0 = Date.now();
-    const { ok, status, data, rawText } = await callFactoryN8n({
-      prompt: promptForFactory,
-      klant,
-      ...(afdelingStr ? { afdeling: afdelingStr } : {}),
-      agent_mode: Boolean(agent_mode),
-      context: ctx,
-    });
+    const { ok, status, data, rawText } = await callFactoryN8n(
+      {
+        prompt: promptForFactory,
+        klant,
+        ...(afdelingStr ? { afdeling: afdelingStr } : {}),
+        agent_mode: Boolean(agent_mode),
+        context: ctx,
+        intent,
+      },
+      { webhookUrl }
+    );
     const latencyMs = Math.max(0, Date.now() - t0);
 
     if (!ok) {
@@ -150,6 +158,7 @@ export async function POST(req: NextRequest) {
       afdeling: outAfdeling,
       model,
       agent_mode: Boolean(agent_mode),
+      intent,
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {

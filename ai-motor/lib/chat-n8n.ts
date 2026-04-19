@@ -1,3 +1,5 @@
+import { stripChatOutput } from "@/lib/strip-response";
+
 export const N8N_FACTORY_WEBHOOK =
   process.env.N8N_FACTORY_OS_WEBHOOK ||
   "http://127.0.0.1:5678/webhook/factory-os";
@@ -53,7 +55,7 @@ export function extractMessage(data: Record<string, unknown>): string {
   ];
   for (const c of candidates) {
     if (typeof c === "string" && c.trim()) {
-      return stripFactoryOsResponseEnvelope(c);
+      return stripChatOutput(stripFactoryOsResponseEnvelope(c));
     }
   }
   return JSON.stringify(data);
@@ -72,8 +74,16 @@ export function normalizeContext(context: ChatContextMsg[]) {
     .map((m) => ({ role: m.role as string, content: m.content as string }));
 }
 
-export async function callFactoryN8n(payload: Record<string, unknown>) {
-  const response = await fetch(N8N_FACTORY_WEBHOOK, {
+export async function callFactoryN8n(
+  payload: Record<string, unknown>,
+  options?: { webhookUrl?: string }
+) {
+  const url =
+    typeof options?.webhookUrl === "string" && options.webhookUrl.trim()
+      ? options.webhookUrl.trim()
+      : N8N_FACTORY_WEBHOOK;
+
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
