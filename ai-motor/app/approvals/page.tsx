@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -22,7 +23,7 @@ function ApprovalsInner() {
 
     const id = parseInt(idStr, 10);
     if (Number.isNaN(id)) {
-      setMsg("Ongeldig id");
+      queueMicrotask(() => setMsg("Ongeldig id"));
       return;
     }
 
@@ -33,9 +34,11 @@ function ApprovalsInner() {
     })
       .then(async (r) => {
         const j = await r.json();
-        setMsg(r.ok ? `Status: ${j.message}` : j.error || r.statusText);
+        queueMicrotask(() =>
+          setMsg(r.ok ? `Status: ${j.message}` : j.error || r.statusText)
+        );
       })
-      .catch(() => setMsg("Netwerkfout"));
+      .catch(() => queueMicrotask(() => setMsg("Netwerkfout")));
   }, [approve, reject]);
 
   return (
@@ -53,7 +56,7 @@ function ApprovalsInner() {
         )}
         {msg && <p className="text-text-primary">{msg}</p>}
         <Button variant="secondary" className="rounded-xl" asChild>
-          <a href="/">Terug naar Home</a>
+          <Link href="/">Terug naar Home</Link>
         </Button>
       </CardContent>
     </Card>

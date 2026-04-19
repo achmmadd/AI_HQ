@@ -52,7 +52,9 @@ export function AgendaBoard() {
   }, [klant]);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => {
+      void load();
+    });
   }, [load]);
 
   async function add(e: React.FormEvent) {
