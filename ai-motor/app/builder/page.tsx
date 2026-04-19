@@ -22,7 +22,6 @@ interface CustomAppRow {
   id: number;
   naam: string;
   slug: string;
-  beschrijving: string | null;
   status: string;
   created_at: string;
 }
@@ -335,11 +334,9 @@ export default function BuilderPage() {
                       <p className="font-medium text-text-primary">
                         {app.naam}
                       </p>
-                      {app.beschrijving && (
-                        <p className="line-clamp-2 text-sm text-text-secondary">
-                          {app.beschrijving}
-                        </p>
-                      )}
+                      <p className="text-xs text-text-secondary">
+                        /apps/{app.slug}
+                      </p>
                       <p className="mt-1 text-xs text-text-secondary">
                         {new Date(app.created_at).toLocaleString("nl-NL")}
                       </p>

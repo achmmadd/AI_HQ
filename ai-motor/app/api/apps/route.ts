@@ -15,7 +15,7 @@ function cleanSlug(input: string): string {
 export async function GET() {
   const apps = db
     .prepare(
-      `SELECT id, naam, slug, beschrijving, status, klant, created_at
+      `SELECT id, naam, slug, status, klant, created_at
        FROM custom_apps ORDER BY created_at DESC`
     )
     .all();
@@ -27,8 +27,6 @@ export async function POST(req: NextRequest) {
   const naam = typeof body?.naam === "string" ? body.naam.trim() : "";
   const slugRaw = typeof body?.slug === "string" ? body.slug.trim() : "";
   const code = typeof body?.code === "string" ? body.code : "";
-  const beschrijving =
-    typeof body?.beschrijving === "string" ? body.beschrijving : null;
   const klant =
     typeof body?.klant === "string" && body.klant ? body.klant : "system";
 
@@ -47,10 +45,10 @@ export async function POST(req: NextRequest) {
   try {
     const result = db
       .prepare(
-        `INSERT INTO custom_apps (naam, slug, beschrijving, code, klant)
-         VALUES (?,?,?,?,?)`
+        `INSERT INTO custom_apps (naam, slug, code, klant)
+         VALUES (?,?,?,?)`
       )
-      .run(naam, slug, beschrijving, code, klant);
+      .run(naam, slug, code, klant);
 
     const base =
       process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||

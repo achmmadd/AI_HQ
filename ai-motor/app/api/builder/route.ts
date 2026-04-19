@@ -117,11 +117,10 @@ export async function POST(req: NextRequest) {
 
     const result = db
       .prepare(
-        `INSERT INTO custom_apps
-         (naam, slug, beschrijving, code, klant, build_attempts, gebouwd_door)
-         VALUES (?,?,?,?,?,?,?)`
+        `INSERT INTO custom_apps (naam, slug, code, klant)
+         VALUES (?,?,?,?)`
       )
-      .run(naam, slug, prompt, code, klant, attempts, "dify");
+      .run(naam, slug, code, klant);
 
     const id = Number(result.lastInsertRowid);
     const previewUrl = `${appBase}/apps/${slug}`;

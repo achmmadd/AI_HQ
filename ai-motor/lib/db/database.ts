@@ -12,7 +12,9 @@ if (!fs.existsSync(DB_DIR)) {
 
 const db = new Database(DB_PATH);
 
-db.exec(`
+/** Alle tabellen aanmaken / migreren voor productie. */
+export function initDb(): void {
+  db.exec(`
   CREATE TABLE IF NOT EXISTS todos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -184,17 +186,15 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     naam TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
-    beschrijving TEXT,
     code TEXT NOT NULL,
     status TEXT DEFAULT 'live',
     klant TEXT DEFAULT 'system',
-    gebouwd_door TEXT DEFAULT 'dify',
-    build_attempts INTEGER DEFAULT 1,
-    error_log TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+}
+
+initDb();
 
 const fumeroTemplateSeed: [string, string, string, string, string][] = [
   [
