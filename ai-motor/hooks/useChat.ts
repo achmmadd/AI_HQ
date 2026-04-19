@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { sendChatMessage } from "@/lib/openclaw";
+import { sendChatMessageStream } from "@/lib/openclaw";
 import type { ChatMessage, CompanyId } from "@/lib/types";
 
 function id() {
@@ -84,23 +84,21 @@ export function useChat(company: CompanyId, afdeling?: string) {
       ]);
       setStreamingId(asstId);
       try {
-        const data = await sendChatMessage(
+        await sendChatMessageStream(
           prompt,
           company,
           afdeling,
           {
             agentMode,
             context: contextForApi,
+          },
+          (accumulated) => {
+            setMessages((m) =>
+              m.map((x) =>
+                x.id === asstId ? { ...x, content: accumulated } : x
+              )
+            );
           }
-        );
-        const text =
-          (typeof data.message === "string" && data.message) ||
-          (typeof data.output === "string" && data.output) ||
-          (typeof data.answer === "string" && data.answer) ||
-          (typeof data.answer_raw === "string" && data.answer_raw) ||
-          JSON.stringify(data, null, 2);
-        setMessages((m) =>
-          m.map((x) => (x.id === asstId ? { ...x, content: text } : x))
         );
       } catch (e) {
         setError(e instanceof Error ? e.message : "Fout bij versturen");
@@ -110,6 +108,7 @@ export function useChat(company: CompanyId, afdeling?: string) {
               ? {
                   ...x,
                   content:
+                    x.content ||
                     "Kon geen antwoord ophalen. Controleer n8n en de webhook.",
                 }
               : x

@@ -2,7 +2,7 @@
 
 ### IN UITVOERING
 
-- [ ] Mega prompt — code & UI integratie
+- [ ] Optie A — n8n native token streaming (optioneel)
 
 ### FASE 2 — SYSTEEM FUNCTIES
 
@@ -19,7 +19,7 @@
 - [x] Bestanden uploaden + analyseren
 - [x] Agent mode toggle
 - [x] Snelle acties knoppen
-- [ ] Streaming responses (n8n / API)
+- [x] Streaming responses (SSE + chunked typing na n8n)
 - [x] Chat geschiedenis per bedrijf
 
 ### BOKAS HORECA APP
@@ -32,8 +32,8 @@
 
 ### FUMERO
 
-- [ ] Chatbot op fumero.nl
-- [ ] Review responder
+- [x] Chatbot embed (/embed/fumero + public/fumero-widget.js)
+- [x] Review responder (API + UI; Google post handmatig)
 - [ ] Content pipeline
 
 ### FACTORY OS ZELF
@@ -44,8 +44,7 @@
 
 ### VOLGENDE SPRINT
 
-- [ ] Fumero chatbot widget voor fumero.nl
-- [ ] Review responder (Google Reviews)
+- [ ] Google Business Profile API — auto-post replies
 - [ ] TikTok content machine
 - [ ] WhatsApp bot voor Bokas
 - [ ] App Store skills installeren

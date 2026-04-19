@@ -1,27 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import {
+  callFactoryN8n,
+  extractMessage,
+  normalizeContext,
+  type ChatContextMsg,
+} from "@/lib/chat-n8n";
 
 export const runtime = "nodejs";
-
-const N8N_WEBHOOK =
-  process.env.N8N_FACTORY_OS_WEBHOOK ||
-  "http://127.0.0.1:5678/webhook/factory-os";
-
-function extractMessage(data: Record<string, unknown>): string {
-  const candidates = [
-    data.output,
-    data.answer,
-    data.message,
-    data.answer_raw,
-    data.text,
-  ];
-  for (const c of candidates) {
-    if (typeof c === "string" && c.trim()) return c;
-  }
-  return JSON.stringify(data);
-}
-
-type CtxMsg = { role?: string; content?: string };
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,7 +23,7 @@ export async function POST(req: NextRequest) {
       klant?: string;
       afdeling?: string;
       agent_mode?: boolean;
-      context?: CtxMsg[];
+      context?: ChatContextMsg[];
     };
 
     if (!prompt?.trim()) {
@@ -55,45 +41,21 @@ export async function POST(req: NextRequest) {
        VALUES (?, 'user', ?, ?)`
     ).run(klant, prompt.trim(), afdelingStr);
 
-    const ctx = Array.isArray(context)
-      ? context
-          .filter(
-            (m) =>
-              m &&
-              (m.role === "user" || m.role === "assistant") &&
-              typeof m.content === "string"
-          )
-          .slice(-10)
-          .map((m) => ({ role: m.role, content: m.content }))
-      : [];
+    const ctx = normalizeContext(context);
 
-    const response = await fetch(N8N_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: prompt.trim(),
-        klant,
-        ...(afdelingStr ? { afdeling: afdelingStr } : {}),
-        agent_mode: Boolean(agent_mode),
-        context: ctx,
-      }),
-      signal: AbortSignal.timeout(120_000),
+    const { ok, status, data, rawText } = await callFactoryN8n({
+      prompt: prompt.trim(),
+      klant,
+      ...(afdelingStr ? { afdeling: afdelingStr } : {}),
+      agent_mode: Boolean(agent_mode),
+      context: ctx,
     });
 
-    if (!response.ok) {
-      const t = await response.text();
+    if (!ok) {
       return NextResponse.json(
-        { error: `n8n error: ${response.status}`, detail: t.slice(0, 500) },
-        { status: response.status }
+        { error: `n8n error: ${status}`, detail: rawText.slice(0, 500) },
+        { status }
       );
-    }
-
-    const rawText = await response.text();
-    let data: Record<string, unknown>;
-    try {
-      data = JSON.parse(rawText) as Record<string, unknown>;
-    } catch {
-      data = { output: rawText };
     }
 
     const message = extractMessage(data);

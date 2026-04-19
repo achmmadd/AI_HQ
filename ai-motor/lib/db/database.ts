@@ -128,6 +128,19 @@ db.exec(`
     vegan INTEGER DEFAULT 0,
     gluten_vrij INTEGER DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS fumero_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    external_id TEXT,
+    source TEXT DEFAULT 'google',
+    reviewer_name TEXT,
+    rating INTEGER,
+    review_text TEXT NOT NULL,
+    suggested_reply TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 export default db;

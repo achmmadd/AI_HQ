@@ -27,7 +27,7 @@ type SpeechRecCtor = new () => {
   stop: () => void;
 };
 
-export function ChatPanel() {
+export function ChatPanel({ embedded = false }: { embedded?: boolean }) {
   const company = useCompanyStore((s) => s.company);
   const { messages, send, streamingId, error, historyLoaded } = useChat(company);
   const [text, setText] = useState("");
@@ -103,8 +103,20 @@ export function ChatPanel() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8.5rem)] flex-col rounded-2xl border border-border bg-surface">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+    <div
+      className={cn(
+        "flex flex-col rounded-2xl border border-border bg-surface",
+        embedded
+          ? "h-full min-h-[280px]"
+          : "h-[calc(100vh-8.5rem)]"
+      )}
+    >
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2 border-b border-border px-4 py-2",
+          embedded && "py-1.5"
+        )}
+      >
         <Button
           type="button"
           variant={agentMode ? "default" : "secondary"}
@@ -116,19 +128,20 @@ export function ChatPanel() {
           <Sparkles className="h-3.5 w-3.5" />
           Agent {agentMode ? "aan" : "uit"}
         </Button>
-        {QUICK_ACTIONS.map((a) => (
-          <Button
-            key={a.label}
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="rounded-xl text-xs"
-            disabled={!!streamingId}
-            onClick={() => void runQuick(a.prompt)}
-          >
-            {a.label}
-          </Button>
-        ))}
+        {!embedded &&
+          QUICK_ACTIONS.map((a) => (
+            <Button
+              key={a.label}
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="rounded-xl text-xs"
+              disabled={!!streamingId}
+              onClick={() => void runQuick(a.prompt)}
+            >
+              {a.label}
+            </Button>
+          ))}
       </div>
 
       <ScrollArea className="flex-1 p-4">
@@ -166,7 +179,7 @@ export function ChatPanel() {
                 m.role === "assistant" &&
                 !m.content ? (
                   <span className="inline-flex gap-1 text-text-secondary">
-                    <span className="animate-pulse">Bezig…</span>
+                    <span className="animate-pulse">Factory OS antwoordt…</span>
                   </span>
                 ) : (
                   <span className="whitespace-pre-wrap">{m.content}</span>
