@@ -1,4 +1,4 @@
-# Factory OS V3 — Status 18-04-2026 21:54
+# Factory OS V3 — Status 19-04-2026 06:54
 
 ## Services (snapshot)
 ✅ n8n
@@ -6,8 +6,12 @@
 ✅ ollama
 
 ## MCP servers (config keys)
-❌ mcp.json niet leesbaar
-❌ mcp.json mist
+✅ qdrant
+✅ filesystem
+✅ fetch
+✅ memory
+✅ n8n
+✅ dify
 
 ## Optioneel
 - Holo3 / portal.hcompany.ai — alleen indien je dat stack-onderdeel gebruikt; niet onderdeel van Factory OS core.
