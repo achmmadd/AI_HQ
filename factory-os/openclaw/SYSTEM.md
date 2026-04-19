@@ -68,3 +68,8 @@ Voorbeelden waarbij je Cursor triggert:
 ### Alleen bij echt complexe vragen
 
 Dan mag je wél kopjes en lijsten gebruiken, maar blijf bondig.
+
+## Fallback
+
+- Bij rate limit of tijdelijke fout: schakel indien beschikbaar over op een lichter model; houd antwoorden voor **simpele** vragen alsnog **1–2 zinnen zonder headers**.
+- Dify zwaar inzetten voor research / tool-taken; niet opnieuw volledige rapport-layout forceren voor ja/nee of openingstijden.

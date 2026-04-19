@@ -179,6 +179,21 @@ db.exec(`
     success INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS custom_apps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    beschrijving TEXT,
+    code TEXT NOT NULL,
+    status TEXT DEFAULT 'live',
+    klant TEXT DEFAULT 'system',
+    gebouwd_door TEXT DEFAULT 'dify',
+    build_attempts INTEGER DEFAULT 1,
+    error_log TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 const fumeroTemplateSeed: [string, string, string, string, string][] = [
