@@ -6,7 +6,8 @@
     "dev": "next dev -p 3040",
     "build": "next build",
     "start": "next start -p 3040",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "playwright:install": "playwright install chromium"
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.2",
@@ -20,6 +21,9 @@
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",
     "next": "^16.2.4",
+    "nodemailer": "^8.0.5",
+    "pdfkit": "^0.18.0",
+    "playwright": "^1.59.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-markdown": "^10.1.0",
@@ -30,6 +34,8 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",

@@ -1,5 +1,11 @@
 import db from "@/lib/db/database";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { runFumeroOrdersDaily } from "@/lib/automation/run-fumero-orders";
+import { runInvoiceEmails } from "@/lib/automation/run-invoice-emails";
+import { runInventoryUpdate } from "@/lib/automation/run-inventory";
+import { runVendorCheckWeekly } from "@/lib/automation/run-vendor-check";
+import { runSocialScheduleWeekly } from "@/lib/automation/run-social-weekly";
+import { runAnalyticsReportWeekly } from "@/lib/automation/run-analytics-weekly";
 
 export type AutomationTaskRow = {
   id: number;
@@ -86,30 +92,26 @@ async function notifyAutomationChannels(text: string): Promise<void> {
   }
 }
 
-/**
- * Uitvoer per task_key — nu stubs; later Playwright / Gmail / Drive koppelen.
- */
+/** Uitvoer per task_key — Playwright / SMTP / Qdrant / Dify / n8n. */
 export async function executeAutomationTask(
   task: AutomationTaskRow
 ): Promise<{ ok: boolean; detail: string }> {
-  const key = task.task_key;
-  const stubs: Record<string, string> = {
-    fumero_orders_daily:
-      "[stub] Playwright: inloggen Fumero, orders-export, diff met vorige run → SQLite.",
-    send_invoice_emails:
-      "[stub] Gmail API: concepten voor open facturen, queue voor goedkeuring.",
-    update_inventory:
-      "[stub] SQLite / Drive-sheet sync voorraad bijgewerkt (geen echte I/O in v1).",
-    vendor_check_weekly:
-      "[stub] Playwright: leveranciersportal prijzen scrapen → rapport.",
-    social_schedule_weekly:
-      "[stub] Concept weekplan → Slack #content ter review.",
-    analytics_report_weekly:
-      "[stub] Analytics samenvatting → SQLite log + optioneel Drive PDF.",
-  };
-
-  const detail = stubs[key] ?? `[stub] Task ${key} — nog geen executor.`;
-  return { ok: true, detail };
+  switch (task.task_key) {
+    case "fumero_orders_daily":
+      return runFumeroOrdersDaily();
+    case "send_invoice_emails":
+      return runInvoiceEmails();
+    case "update_inventory":
+      return runInventoryUpdate();
+    case "vendor_check_weekly":
+      return runVendorCheckWeekly();
+    case "social_schedule_weekly":
+      return runSocialScheduleWeekly();
+    case "analytics_report_weekly":
+      return runAnalyticsReportWeekly();
+    default:
+      return { ok: false, detail: `Onbekende task_key: ${task.task_key}` };
+  }
 }
 
 export function getAutomationTask(id: number): AutomationTaskRow | undefined {

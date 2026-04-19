@@ -19,7 +19,7 @@ const allowedDevOrigins = [
 
 const nextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["better-sqlite3", "playwright", "pdfkit"],
   allowedDevOrigins,
   async headers() {
     const frameAncestors = [

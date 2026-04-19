@@ -324,6 +324,52 @@ export function initDb(): void {
   CREATE INDEX IF NOT EXISTS idx_automation_runs_task ON automation_runs(task_id);
   CREATE INDEX IF NOT EXISTS idx_automation_runs_status ON automation_runs(status);
   CREATE INDEX IF NOT EXISTS idx_automation_runs_created ON automation_runs(created_at);
+
+  CREATE TABLE IF NOT EXISTS fumero_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    external_id TEXT NOT NULL UNIQUE,
+    order_date TEXT NOT NULL,
+    total_cents INTEGER NOT NULL DEFAULT 0,
+    currency TEXT DEFAULT 'EUR',
+    customer_hint TEXT,
+    raw_summary TEXT,
+    scraped_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS automation_invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_name TEXT NOT NULL,
+    customer_email TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    invoice_number TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'invoiced_pending'
+      CHECK (status IN ('invoiced_pending', 'invoiced_sent', 'cancelled')),
+    line_items_json TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    sent_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_automation_invoices_status ON automation_invoices(status);
+
+  CREATE TABLE IF NOT EXISTS inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_key TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    qty INTEGER NOT NULL DEFAULT 0,
+    supplier_url TEXT,
+    low_stock_threshold INTEGER DEFAULT 10,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS vendor_catalog_snapshot (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vendor_key TEXT NOT NULL,
+    product_title TEXT NOT NULL,
+    first_seen_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(vendor_key, product_title)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_vendor_snapshot_vendor ON vendor_catalog_snapshot(vendor_key);
   `);
 }
 
