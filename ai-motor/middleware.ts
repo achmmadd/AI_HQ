@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidSessionToken, TOKEN_COOKIE } from "@/lib/auth-session";
 
+/** Zelfde waarde als cookie (base64 van wachtwoord-bytes); handig voor curl/scripts. */
+function getSessionToken(request: NextRequest): string | undefined {
+  const cookie = request.cookies.get(TOKEN_COOKIE)?.value;
+  if (cookie) return cookie;
+
+  const header = request.headers.get("x-motorsai-token")?.trim();
+  if (header) return header;
+
+  const auth = request.headers.get("authorization")?.trim();
+  if (auth?.toLowerCase().startsWith("bearer ")) {
+    return auth.slice(7).trim();
+  }
+  return undefined;
+}
+
 const PUBLIC_PATHS = new Set([
   "/",
   "/login",
@@ -31,7 +46,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(TOKEN_COOKIE)?.value;
+  const token = getSessionToken(request);
   if (!isValidSessionToken(token)) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
