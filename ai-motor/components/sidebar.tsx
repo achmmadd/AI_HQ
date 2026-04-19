@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Store,
   BookOpen,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ const nav = [
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/appstore", label: "App Store", icon: Store },
   { href: "/kennisbank", label: "Kennisbank", icon: BookOpen },
+  { href: "/approvals", label: "Goedkeuringen", icon: ShieldCheck },
 ];
 
 export function Sidebar() {
@@ -53,7 +55,7 @@ export function Sidebar() {
         })}
       </nav>
       <p className="px-5 py-4 text-xs text-text-secondary">
-        Poort 3040 · Next 14
+        Poort 3040 · Next 16
       </p>
     </aside>
   );

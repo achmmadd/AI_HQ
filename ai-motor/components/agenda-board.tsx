@@ -1,35 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCompanyStore } from "@/stores/useCompanyStore";
 
-type Todo = { id: string; title: string; done: boolean };
+type TodoRow = {
+  id: number;
+  title: string;
+  status: string;
+  priority?: string;
+  klant?: string;
+};
 
-let seed = 0;
-function nid() {
-  return `t-${Date.now()}-${seed++}`;
-}
+type AgendaRow = {
+  id: number;
+  title: string;
+  start_time: string;
+  end_time?: string | null;
+  description?: string | null;
+};
 
 export function AgendaBoard() {
   const company = useCompanyStore((s) => s.company);
-  const [items, setItems] = useState<Todo[]>([
-    { id: nid(), title: "Webhook factory-os smoke test", done: true },
-    { id: nid(), title: "Qdrant payload · client veld controleren", done: false },
-    { id: nid(), title: "PWA icons vervangen", done: false },
-  ]);
+  const klant = company === "fumero" || company === "bokas" ? company : "fumero";
+  const [todos, setTodos] = useState<TodoRow[]>([]);
+  const [events, setEvents] = useState<AgendaRow[]>([]);
   const [draft, setDraft] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  function add(e: React.FormEvent) {
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [tr, er] = await Promise.all([
+        fetch(`/api/todos?klant=${encodeURIComponent(klant)}`),
+        fetch(`/api/agenda?klant=${encodeURIComponent(klant)}`),
+      ]);
+      const tj = await tr.json();
+      const ej = await er.json();
+      setTodos(Array.isArray(tj.todos) ? tj.todos : []);
+      setEvents(Array.isArray(ej.events) ? ej.events : []);
+    } catch {
+      setTodos([]);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [klant]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function add(e: React.FormEvent) {
     e.preventDefault();
     const t = draft.trim();
     if (!t) return;
-    setItems((x) => [...x, { id: nid(), title: t, done: false }]);
+    await fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: t,
+        klant,
+        source: "ui",
+        priority: "normaal",
+      }),
+    });
     setDraft("");
+    void load();
+  }
+
+  async function toggleDone(todo: TodoRow) {
+    const next = todo.status === "done" ? "open" : "done";
+    await fetch(`/api/todos/${todo.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+    void load();
+  }
+
+  async function remove(id: number) {
+    await fetch(`/api/todos/${id}`, { method: "DELETE" });
+    void load();
   }
 
   return (
@@ -37,9 +93,24 @@ export function AgendaBoard() {
       <Card className="lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base font-medium">Todo</CardTitle>
-          <span className="text-xs text-text-secondary">{company}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-secondary">{klant}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => void load()}
+              aria-label="Vernieuwen"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {loading && (
+            <p className="text-sm text-text-secondary">Laden…</p>
+          )}
           <form onSubmit={add} className="flex gap-2">
             <Input
               value={draft}
@@ -52,7 +123,7 @@ export function AgendaBoard() {
             </Button>
           </form>
           <ul className="space-y-2">
-            {items.map((it, i) => (
+            {todos.map((it, i) => (
               <motion.li
                 key={it.id}
                 layout
@@ -63,31 +134,30 @@ export function AgendaBoard() {
               >
                 <input
                   type="checkbox"
-                  checked={it.done}
-                  onChange={() =>
-                    setItems((xs) =>
-                      xs.map((x) =>
-                        x.id === it.id ? { ...x, done: !x.done } : x
-                      )
-                    )
-                  }
+                  checked={it.status === "done"}
+                  onChange={() => void toggleDone(it)}
                   className="h-4 w-4 rounded border-border accent-accent"
                 />
                 <span
                   className={
-                    it.done ? "flex-1 text-text-secondary line-through" : "flex-1"
+                    it.status === "done"
+                      ? "flex-1 text-text-secondary line-through"
+                      : "flex-1"
                   }
                 >
                   {it.title}
+                  {it.priority && it.priority !== "normaal" && (
+                    <span className="ml-2 text-[10px] uppercase text-accent">
+                      {it.priority}
+                    </span>
+                  )}
                 </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0 text-text-secondary"
-                  onClick={() =>
-                    setItems((xs) => xs.filter((x) => x.id !== it.id))
-                  }
+                  onClick={() => void remove(it.id)}
                   aria-label="Verwijderen"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -95,25 +165,32 @@ export function AgendaBoard() {
               </motion.li>
             ))}
           </ul>
+          {!loading && todos.length === 0 && (
+            <p className="text-sm text-text-secondary">Nog geen taken in SQLite.</p>
+          )}
         </CardContent>
       </Card>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-medium">Agenda (mock)</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base font-medium">Agenda</CardTitle>
+          <Button type="button" variant="ghost" size="sm" onClick={() => void load()}>
+            Vernieuwen
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-text-secondary">
-          <div className="rounded-xl border border-border bg-surface-elevated p-3">
-            <p className="font-medium text-text-primary">Ma 14:00</p>
-            <p>Sync stack · n8n / Qdrant</p>
-          </div>
-          <div className="rounded-xl border border-border bg-surface-elevated p-3">
-            <p className="font-medium text-text-primary">Di 10:30</p>
-            <p>Review AI Motor UI</p>
-          </div>
-          <div className="rounded-xl border border-border bg-surface-elevated p-3">
-            <p className="font-medium text-text-primary">Do 09:00</p>
-            <p>Embedding batch · nieuwe docs</p>
-          </div>
+          {events.length === 0 && !loading && (
+            <p>Geen events. Factory OS kan ze aanmaken via POST /api/sync.</p>
+          )}
+          {events.map((ev) => (
+            <div
+              key={ev.id}
+              className="rounded-xl border border-border bg-surface-elevated p-3"
+            >
+              <p className="font-medium text-text-primary">{ev.start_time}</p>
+              <p className="text-text-primary">{ev.title}</p>
+              {ev.description && <p className="mt-1 text-xs">{ev.description}</p>}
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>
