@@ -18,6 +18,7 @@ import {
   LogOut,
   RefreshCw,
   TestTube2,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,11 @@ const nav = [
     href: "/admin/experiments",
     label: "A/B testen",
     icon: TestTube2,
+  },
+  {
+    href: "/admin/automation",
+    label: "Automation",
+    icon: Bot,
   },
 ];
 

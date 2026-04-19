@@ -279,6 +279,51 @@ export function initDb(): void {
   CREATE INDEX IF NOT EXISTS idx_message_feedback_klant ON message_feedback(klant);
   CREATE INDEX IF NOT EXISTS idx_message_feedback_created ON message_feedback(created_at);
   CREATE INDEX IF NOT EXISTS idx_system_improvements_status ON system_improvements(status);
+
+  CREATE TABLE IF NOT EXISTS automation_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_key TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    description TEXT,
+    schedule_kind TEXT NOT NULL DEFAULT 'daily'
+      CHECK (schedule_kind IN ('daily', 'weekly')),
+    schedule_time TEXT NOT NULL DEFAULT '09:00',
+    schedule_weekday INTEGER,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    approval_required INTEGER NOT NULL DEFAULT 1,
+    integration TEXT,
+    config_json TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS automation_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL REFERENCES automation_tasks(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'queued'
+      CHECK (status IN (
+        'pending_approval',
+        'queued',
+        'running',
+        'success',
+        'failed',
+        'cancelled',
+        'rejected'
+      )),
+    trigger TEXT NOT NULL DEFAULT 'cron'
+      CHECK (trigger IN ('cron', 'manual')),
+    detail TEXT,
+    error_message TEXT,
+    approved_at TEXT,
+    rejected_at TEXT,
+    started_at TEXT,
+    finished_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_automation_runs_task ON automation_runs(task_id);
+  CREATE INDEX IF NOT EXISTS idx_automation_runs_status ON automation_runs(status);
+  CREATE INDEX IF NOT EXISTS idx_automation_runs_created ON automation_runs(created_at);
   `);
 }
 
@@ -327,6 +372,101 @@ if (tplCount === 0) {
      VALUES (?, ?, ?, ?, ?)`
   );
   for (const row of fumeroTemplateSeed) {
+    ins.run(...row);
+  }
+}
+
+const automationSeedCount = (
+  db.prepare("SELECT COUNT(*) as c FROM automation_tasks").get() as { c: number }
+).c;
+
+if (automationSeedCount === 0) {
+  const ins = db.prepare(
+    `INSERT INTO automation_tasks (
+       task_key, title, description, schedule_kind, schedule_time, schedule_weekday,
+       enabled, approval_required, integration
+     ) VALUES (?,?,?,?,?,?,?,?,?)`
+  );
+  type Seed = [
+    string,
+    string,
+    string,
+    string,
+    string,
+    number | null,
+    number,
+    number,
+    string,
+  ];
+  const seeds: Seed[] = [
+    [
+      "fumero_orders_daily",
+      "Check Fumero orders",
+      "Dagelijkse controle nieuwe orders (Playwright / site).",
+      "daily",
+      "09:00",
+      null,
+      1,
+      1,
+      "playwright",
+    ],
+    [
+      "send_invoice_emails",
+      "Send invoice emails",
+      "Openstaande facturen mailen via Gmail API.",
+      "daily",
+      "09:30",
+      null,
+      1,
+      1,
+      "gmail",
+    ],
+    [
+      "update_inventory",
+      "Update inventory",
+      "Voorraad bijwerken in SQLite / sheet.",
+      "daily",
+      "10:00",
+      null,
+      1,
+      1,
+      "sqlite",
+    ],
+    [
+      "vendor_check_weekly",
+      "Vendor check",
+      "Wekelijkse leveranciers- en prijs-check.",
+      "weekly",
+      "08:00",
+      1,
+      1,
+      1,
+      "playwright",
+    ],
+    [
+      "social_schedule_weekly",
+      "Social media schedule",
+      "Concept planning posts voor de week.",
+      "weekly",
+      "08:30",
+      1,
+      1,
+      1,
+      "slack",
+    ],
+    [
+      "analytics_report_weekly",
+      "Analytics report",
+      "Wekelijks rapport (traffic / conversies).",
+      "weekly",
+      "09:00",
+      1,
+      1,
+      1,
+      "sqlite",
+    ],
+  ];
+  for (const row of seeds) {
     ins.run(...row);
   }
 }
