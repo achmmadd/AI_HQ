@@ -59,7 +59,7 @@ root.render(React.createElement(App));
             title={naam}
             srcDoc={srcDoc}
             className="h-[min(80vh,720px)] w-full border-0"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-same-origin"
           />
         </div>
       </div>
