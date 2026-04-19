@@ -14,6 +14,10 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/embed")) return true;
   if (pathname.startsWith("/api/chat")) return true;
   if (pathname === "/api/upload") return true;
+  // Publieke previews van gebouwde apps (deelbare URL; data is al “published” als live).
+  if (pathname.startsWith("/apps/") && pathname.length > "/apps/".length) {
+    return true;
+  }
   return false;
 }
 
