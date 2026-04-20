@@ -69,7 +69,7 @@ Permanent uitzetten: pas het **docker compose**-bestand aan dat deze services st
 1. Dify-URL in n8n/Motor naar **DE**; rooktest `webhook/factory-os`.
 2. **Open WebUI** uit (scheelt parallel laag + verwarring).
 3. **Omega-*** uit volgens bovenstaande, **na** tunnel + Telegram-plan.
-4. In Motor: **health uitbreiden** + **heartbeat-achtige** check (klein, geen Omega-rebuild).
+4. In Motor: **`GET /api/health`** — nu met **`dependencies.n8n`** (host + `/healthz`) en **`dependencies.dify`** (host + `/console/api/setup`, 401 telt ook als “draait”). Geen secrets in de JSON. Bij problemen: HTTP **503** + `ok: false`. Gebruik voor cron/Telegram: `curl -sf https://motorsai.app/api/health | jq .ok`.
 
 ---
 
