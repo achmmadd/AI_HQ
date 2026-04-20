@@ -137,11 +137,12 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        const message = extractMessage(data);
+        const payload = data ?? {};
+        const message = extractMessage(payload);
         const outAfdeling =
-          typeof data.afdeling === "string" ? data.afdeling : afdelingStr;
+          typeof payload.afdeling === "string" ? payload.afdeling : afdelingStr;
         const model =
-          typeof data.model === "string" ? data.model : "factory-os";
+          typeof payload.model === "string" ? payload.model : "factory-os";
 
         for (const chunk of streamChunks(message, 18)) {
           push({ type: "delta", text: chunk });
