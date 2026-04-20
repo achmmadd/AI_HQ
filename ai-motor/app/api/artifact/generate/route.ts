@@ -27,8 +27,12 @@ export async function POST(req: NextRequest) {
 
   if (!assertDifyConfigured()) {
     return NextResponse.json(
-      { error: "Dify API key niet geconfigureerd" },
-      { status: 500 }
+      {
+        error: "Dify API key niet geconfigureerd",
+        hint:
+          "Zet in ai-motor/.env.local (of PM2 env) minstens één van: DIFY_API_KEY, DIFY_CODE_INTERPRETER_API_KEY of DIFY_SOCIAL_API_KEY — de API key van je Dify-app (Console → app → API Access). Optioneel DIFY_BASE_URL (bv. http://127.0.0.1:5001). Daarna: npm run build && pm2 restart ai-motor --update-env",
+      },
+      { status: 503 }
     );
   }
 

@@ -12,8 +12,10 @@ const DIFY_BASE_URL = (
   "http://127.0.0.1:5001"
 ).replace(/\/$/, "");
 
+/** Zelfde volgorde als `lib/dify-client.ts` — één geconfigureerde key volstaat. */
 function getDifyBuilderApiKey(): string | undefined {
   return (
+    process.env.DIFY_SOCIAL_API_KEY ||
     process.env.DIFY_CODE_INTERPRETER_API_KEY ||
     process.env.DIFY_API_KEY
   );
