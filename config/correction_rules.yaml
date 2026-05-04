@@ -5,6 +5,11 @@ auto_approve:
     - hashtag_research
     - comment_reply
     - internal_report
+    # Dagelijkse marketing-output: sneller bruikbaar zonder handmatige stap
+    - instagram
+    - local_seo
+    - product_descriptions
+    - keyword_research
 
 send_back:
   confidence: "< 0.8"

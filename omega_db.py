@@ -487,6 +487,9 @@ def _parse_holding_task(d: dict) -> dict:
                 d[field] = json.loads(d[field])
             except (TypeError, json.JSONDecodeError):
                 pass
+    # Kolom heet 'type' in SQLite; task_type is de duidelijke alias voor app-code.
+    if "task_type" not in d and d.get("type") is not None:
+        d["task_type"] = d["type"]
     return d
 
 

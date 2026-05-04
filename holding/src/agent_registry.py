@@ -106,7 +106,12 @@ def seed_tenants_and_agents() -> dict:
 
     omega_db.holding_audit_log("seed", details={
         "tenants_created": seeded_tenants, "agents_created": seeded_agents})
-    return {"tenants": seeded_tenants, "agents": seeded_agents}
+    prompts_updated = refresh_prompts()
+    return {
+        "tenants": seeded_tenants,
+        "agents": seeded_agents,
+        "prompts_updated": prompts_updated,
+    }
 
 
 def refresh_prompts() -> int:
