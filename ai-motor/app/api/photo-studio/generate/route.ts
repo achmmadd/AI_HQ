@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     image_url?: string;
     style_hint?: string;
     seed?: number;
+    workspace_preset?: string;
   };
 
   const auth = await requirePhotoStudioKlant(req, body.klant);
@@ -64,6 +65,8 @@ export async function POST(req: NextRequest) {
     master_url: result.url,
     source_image_url: mode === "image_to_image" ? image_url : null,
     seed: seed ?? null,
+    workspace_preset:
+      typeof body.workspace_preset === "string" ? body.workspace_preset : null,
   });
 
   return NextResponse.json({
@@ -77,5 +80,6 @@ export async function POST(req: NextRequest) {
     generation_id: persisted.id,
     variants: persisted.variants,
     content_id: persisted.content_id,
+    analytics: persisted.analytics,
   });
 }

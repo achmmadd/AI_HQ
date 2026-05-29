@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import type { CompanyId } from "@/lib/types";
 import type { GeneratedOutput } from "@/components/photo-studio/photo-studio-output";
 import type { PhotoStudioMode } from "@/lib/photo-studio/types";
+import { usePhotoStudioPresets } from "@/hooks/usePhotoStudioPresets";
 
 type Props = {
   klant: CompanyId;
@@ -14,8 +15,12 @@ type Props = {
 };
 
 export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
+  const presets = usePhotoStudioPresets();
   const [mode, setMode] = useState<PhotoStudioMode>("text_to_image");
   const [prompt, setPrompt] = useState("");
+  const [presetId, setPresetId] = useState(presets.active_preset_id);
+  const activePreset =
+    presets.presets.find((p) => p.id === presetId) ?? presets.presets[0];
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -66,9 +71,11 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
           mode,
           prompt:
             mode === "text_to_image"
-              ? prompt
+              ? prompt || activePreset.default_prompt
               : prompt || "Zelfde product, betere professionele foto.",
           image_url: mode === "image_to_image" ? imageUrl : undefined,
+          style_hint: activePreset.style_hint,
+          workspace_preset: activePreset.id,
         }),
       });
       const data = (await res.json()) as GeneratedOutput & {
@@ -93,6 +100,23 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
 
   return (
     <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 shadow-sm">
+      <div className="mb-3">
+        <label className="mb-1 block text-xs font-medium text-[#737373]">
+          Workspace preset
+        </label>
+        <select
+          className="h-9 w-full rounded-lg border border-[#E5E5E5] px-2 text-sm"
+          value={presetId}
+          onChange={(e) => setPresetId(e.target.value)}
+        >
+          {presets.presets.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           type="button"
