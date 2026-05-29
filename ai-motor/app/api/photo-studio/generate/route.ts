@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
 
   const result = await generateWithFal({
     mode,
+    klant: auth.klant,
     prompt: prompt || "Verbeter deze productfoto.",
     image_url: image_url || undefined,
     style_hint:

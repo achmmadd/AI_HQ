@@ -45,6 +45,7 @@ export async function runCarouselWorkflow(opts: {
 
     const gen = await generateWithFal({
       mode: "text_to_image",
+      klant: opts.klant,
       prompt: slidePrompt,
       style_hint: styleHint,
       seed,

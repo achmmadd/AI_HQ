@@ -21,6 +21,7 @@ export async function runMenuBatchWorkflow(opts: {
     const source_image_url = urls[i];
     const gen = await generateWithFal({
       mode: "image_to_image",
+      klant: opts.klant,
       prompt: opts.extra_prompt?.trim() || "Zelfde gerecht, betere menu-foto.",
       image_url: source_image_url,
       style_hint: styleHint,
