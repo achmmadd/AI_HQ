@@ -5,15 +5,12 @@ import { ImagePlus, Loader2, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CompanyId } from "@/lib/types";
+import type { GeneratedOutput } from "@/components/photo-studio/photo-studio-output";
 import type { PhotoStudioMode } from "@/lib/photo-studio/types";
 
 type Props = {
   klant: CompanyId;
-  onGenerated?: (payload: {
-    master_url: string;
-    mode: PhotoStudioMode;
-    prompt: string;
-  }) => void;
+  onGenerated?: (payload: GeneratedOutput) => void;
 };
 
 export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
@@ -74,8 +71,7 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
           image_url: mode === "image_to_image" ? imageUrl : undefined,
         }),
       });
-      const data = (await res.json()) as {
-        master_url?: string;
+      const data = (await res.json()) as GeneratedOutput & {
         error?: string;
         prompt?: string;
       };
@@ -83,9 +79,10 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
       if (!data.master_url) throw new Error("Geen afbeelding ontvangen");
       setPreview(data.master_url);
       onGenerated?.({
+        tracking_id: data.tracking_id,
         master_url: data.master_url,
-        mode,
-        prompt: data.prompt ?? prompt,
+        content_id: data.content_id ?? null,
+        variants: data.variants ?? [],
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generatie mislukt");

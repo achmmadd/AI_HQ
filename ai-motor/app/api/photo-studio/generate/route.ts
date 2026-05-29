@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFal } from "@/lib/photo-studio/fal-generation";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
+import { persistPhotoGeneration } from "@/lib/photo-studio/library";
 import { requirePhotoStudioKlant } from "@/lib/photo-studio/workspace-auth";
 import type { PhotoStudioMode } from "@/lib/photo-studio/types";
 
@@ -56,12 +57,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 502 });
   }
 
+  const persisted = await persistPhotoGeneration({
+    klant: auth.klant,
+    mode,
+    prompt: result.prompt,
+    master_url: result.url,
+    source_image_url: mode === "image_to_image" ? image_url : null,
+    seed: seed ?? null,
+  });
+
   return NextResponse.json({
     ok: true,
     klant: auth.klant,
     mode,
     model: result.model,
     prompt: result.prompt,
-    master_url: result.url,
+    master_url: persisted.master_public_url,
+    tracking_id: persisted.tracking_id,
+    generation_id: persisted.id,
+    variants: persisted.variants,
+    content_id: persisted.content_id,
   });
 }
