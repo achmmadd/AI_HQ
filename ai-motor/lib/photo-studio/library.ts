@@ -1,6 +1,7 @@
 import db from "@/lib/db/database";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
 import { newPhotoTrackingId } from "@/lib/photo-studio/tracking-id";
+import { attributionHooksFor } from "@/lib/photo-studio/analytics/tracking";
 import { downloadImageBuffer } from "@/lib/photo-studio/download-master";
 import { resizeMasterToVariants } from "@/lib/photo-studio/resize-variants";
 import type { CompanyId } from "@/lib/types";
@@ -27,6 +28,10 @@ export type PersistedGeneration = {
     height: number;
   }>;
   content_id: number | null;
+  analytics?: {
+    tracking_id: string;
+    hooks: { social: boolean; conversion: boolean; coach: boolean };
+  };
 };
 
 export async function persistPhotoGenerationFromBuffer(
@@ -117,12 +122,22 @@ async function persistWithBuffer(
     generationId
   );
 
+  const hooks = attributionHooksFor(tracking_id);
+
   return {
     id: generationId,
     tracking_id,
     master_public_url,
     variants: variantRows,
     content_id,
+    analytics: {
+      tracking_id,
+      hooks: {
+        social: !!hooks.social.recordClick,
+        conversion: !!hooks.conversion.recordConversion,
+        coach: hooks.coach.enabled,
+      },
+    },
   };
 }
 
