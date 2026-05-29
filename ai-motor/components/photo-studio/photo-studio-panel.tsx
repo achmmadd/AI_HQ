@@ -9,6 +9,7 @@ import {
 import { PhotoStudioLibraryStrip } from "@/components/photo-studio/photo-studio-library-strip";
 import { PhotoStudioCarousel } from "@/components/photo-studio/photo-studio-carousel";
 import { PhotoStudioMenuBatch } from "@/components/photo-studio/photo-studio-menu-batch";
+import { PhotoStudioPostProcess } from "@/components/photo-studio/photo-studio-post-process";
 import type { CompanyId } from "@/lib/types";
 
 type Props = {
@@ -71,6 +72,7 @@ export function PhotoStudioPanel({
         <PhotoStudioMenuBatch klant={klant} onDone={bumpLibrary} />
       ) : null}
 
+      <PhotoStudioPostProcess klant={klant} />
       <PhotoStudioLibraryStrip klant={klant} refreshKey={libRefresh} />
     </div>
   );
