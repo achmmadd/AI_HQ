@@ -29,14 +29,32 @@ export type PersistedGeneration = {
   content_id: number | null;
 };
 
-export async function persistPhotoGeneration(
-  input: PersistGenerationInput
+export async function persistPhotoGenerationFromBuffer(
+  input: PersistGenerationInput & { buffer: Buffer }
 ): Promise<PersistedGeneration> {
   ensurePhotoStudioSchema();
   const tracking_id = newPhotoTrackingId();
+  const buffer = input.buffer;
+  return persistWithBuffer(input, tracking_id, buffer);
+}
+
+export async function persistPhotoGeneration(
+  input: PersistGenerationInput
+): Promise<PersistedGeneration> {
   const buffer = await downloadImageBuffer(input.master_url);
-  const { master_path, master_public_url, variants } =
-    await resizeMasterToVariants(buffer, tracking_id);
+  return persistPhotoGenerationFromBuffer({ ...input, buffer });
+}
+
+async function persistWithBuffer(
+  input: PersistGenerationInput,
+  tracking_id: string,
+  buffer: Buffer
+): Promise<PersistedGeneration> {
+  ensurePhotoStudioSchema();
+  const { master_path, master_public_url, variants } = await resizeMasterToVariants(
+    buffer,
+    tracking_id
+  );
 
   const insert = db.prepare(
     `INSERT INTO photo_studio_generations (
