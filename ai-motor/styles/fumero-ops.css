@@ -565,6 +565,34 @@ html[data-fumero-ops][data-theme="dark"] {
   color: var(--fumero-text-subtle);
 }
 
+/* Content Studio — prompt bar & settings (theme-aware) */
+[data-fumero-ops] .content-studio-prompt-shell:focus-within {
+  border-color: rgba(105, 196, 0, 0.35);
+  box-shadow:
+    0 0 0 3px rgba(105, 196, 0, 0.08),
+    var(--fumero-shadow-sm);
+}
+
+[data-fumero-ops] .content-studio-media-btn--active {
+  background: var(--fumero-surface-muted);
+  color: var(--fumero-text);
+}
+
+[data-fumero-ops] .content-studio-settings-chip--active {
+  background: var(--fumero-accent-muted);
+  color: var(--fumero-text);
+  box-shadow: inset 0 0 0 1px rgba(105, 196, 0, 0.25);
+}
+
+[data-fumero-ops] .content-studio-tile {
+  border: 1px solid var(--fumero-border);
+  transition: border-color 0.15s ease;
+}
+
+[data-fumero-ops] .content-studio-tile:hover {
+  border-color: rgba(105, 196, 0, 0.35);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   [data-fumero-ops] *,
