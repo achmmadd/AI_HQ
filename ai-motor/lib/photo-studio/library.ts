@@ -180,6 +180,21 @@ async function persistWithBuffer(
   };
 }
 
+function parseVariantsJson(raw: unknown): Array<{
+  aspect: string;
+  public_url: string;
+  width: number;
+  height: number;
+}> {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export function listPhotoGenerations(klant: CompanyId, limit = 30) {
   ensurePhotoStudioSchema();
   const rows = db
@@ -215,12 +230,7 @@ export function listPhotoGenerations(klant: CompanyId, limit = 30) {
           : "image") as ContentStudioMediaType,
       content_id: r.content_id as number | null,
       created_at: r.created_at as string,
-      variants: JSON.parse((r.variants_json as string) || "[]") as Array<{
-        aspect: string;
-        public_url: string;
-        width: number;
-        height: number;
-      }>,
+      variants: parseVariantsJson(r.variants_json),
     };
   });
 }

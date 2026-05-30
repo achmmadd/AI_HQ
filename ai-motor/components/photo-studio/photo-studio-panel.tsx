@@ -7,6 +7,7 @@ import { ContentStudioPromptBar } from "@/components/photo-studio/content-studio
 import { PhotoStudioCarousel } from "@/components/photo-studio/photo-studio-carousel";
 import { PhotoStudioMenuBatch } from "@/components/photo-studio/photo-studio-menu-batch";
 import { PhotoStudioPostProcess } from "@/components/photo-studio/photo-studio-post-process";
+import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import type { CompanyId } from "@/lib/types";
 import type { ContentStudioGridItem } from "@/lib/photo-studio/types";
 
@@ -32,26 +33,34 @@ export function PhotoStudioPanel({
   const [refreshKey, setRefreshKey] = useState(0);
 
   const loadLibrary = useCallback(async () => {
-    const res = await fetch(`/api/photo-studio/library?klant=${klant}`, {
-      credentials: "include",
-    });
-    const data = (await res.json()) as {
-      items?: Array<
-        ContentStudioGridItem & { prompt?: string; media_type?: ContentStudioGridItem["media_type"] }
-      >;
-    };
-    if (res.ok && Array.isArray(data.items)) {
-      setItems(
-        data.items.map((i) => ({
-          id: i.id,
-          tracking_id: i.tracking_id,
-          user_prompt: i.user_prompt ?? i.prompt ?? "",
-          master_url: i.master_url,
-          media_type: i.media_type ?? "image",
-          content_id: i.content_id,
-          created_at: i.created_at,
-          variants: i.variants ?? [],
-        }))
+    try {
+      const data = await fetchJsonChecked<{
+        items?: Array<
+          ContentStudioGridItem & {
+            prompt?: string;
+            media_type?: ContentStudioGridItem["media_type"];
+          }
+        >;
+      }>(`/api/photo-studio/library?klant=${klant}`, {
+        credentials: "include",
+      });
+      if (Array.isArray(data.items)) {
+        setItems(
+          data.items.map((i) => ({
+            id: i.id,
+            tracking_id: i.tracking_id,
+            user_prompt: i.user_prompt ?? i.prompt ?? "",
+            master_url: i.master_url,
+            media_type: i.media_type ?? "image",
+            content_id: i.content_id,
+            created_at: i.created_at,
+            variants: i.variants ?? [],
+          }))
+        );
+      }
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Bibliotheek laden mislukt — vernieuw de pagina."
       );
     }
   }, [klant]);
@@ -66,9 +75,16 @@ export function PhotoStudioPanel({
   };
 
   const openMeer = (view: MeerView) => {
+    setError("");
     setMeerView(view);
     setMeerOpen(false);
   };
+
+  const errorBanner = error ? (
+    <p className="mx-4 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 fumero-text-body-sm text-red-800 md:mx-6 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+      {error}
+    </p>
+  ) : null;
 
   if (meerView) {
     return (
@@ -91,6 +107,7 @@ export function PhotoStudioPanel({
             </h1>
           </div>
         </header>
+        {errorBanner}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {meerView === "carousel" ? (
             <PhotoStudioCarousel
@@ -159,11 +176,7 @@ export function PhotoStudioPanel({
         </div>
       </header>
 
-      {error ? (
-        <p className="mx-4 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 fumero-text-body-sm text-red-800 md:mx-6 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-          {error}
-        </p>
-      ) : null}
+      {errorBanner}
 
       <ContentStudioOutputGrid
         klant={klant}

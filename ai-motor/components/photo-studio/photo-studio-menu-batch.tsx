@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { Loader2, UtensilsCrossed, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import type { CompanyId } from "@/lib/types";
 
 type Props = {
@@ -35,9 +36,11 @@ export function PhotoStudioMenuBatch({ klant, onDone }: Props) {
           const fd = new FormData();
           fd.set("file", file);
           fd.set("klant", klant);
-          const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-          const data = (await res.json()) as { media_url?: string; error?: string };
-          if (!res.ok || !data.media_url) throw new Error(data.error || "Upload mislukt");
+          const data = await fetchJsonChecked<{ media_url?: string; error?: string }>(
+            "/api/upload",
+            { method: "POST", body: fd, credentials: "include" }
+          );
+          if (!data.media_url) throw new Error(data.error || "Upload mislukt");
           added.push(data.media_url);
         }
         setUrls((prev) => [...prev, ...added]);
@@ -55,7 +58,10 @@ export function PhotoStudioMenuBatch({ klant, onDone }: Props) {
     setError("");
     setItems([]);
     try {
-      const res = await fetch("/api/photo-studio/menu-batch", {
+      const data = await fetchJsonChecked<{
+        error?: string;
+        items?: Array<{ index: number; master_url?: string; error?: string }>;
+      }>("/api/photo-studio/menu-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -66,11 +72,6 @@ export function PhotoStudioMenuBatch({ klant, onDone }: Props) {
           extra_prompt: extra,
         }),
       });
-      const data = (await res.json()) as {
-        error?: string;
-        items?: Array<{ index: number; master_url?: string; error?: string }>;
-      };
-      if (!res.ok) throw new Error(data.error || "Batch mislukt");
       setItems(data.items ?? []);
       onDone?.();
     } catch (e) {

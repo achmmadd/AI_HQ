@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import type { CompanyId } from "@/lib/types";
 
 const DEFAULT_SLIDES = [
@@ -37,7 +38,12 @@ export function PhotoStudioCarousel({ klant, onDone }: Props) {
     setError("");
     setResult(null);
     try {
-      const res = await fetch("/api/photo-studio/carousel", {
+      const data = await fetchJsonChecked<{
+        error?: string;
+        seed?: number;
+        slides?: Array<{ slide_index: number; master_url: string; headline: string }>;
+        errors?: string[];
+      }>("/api/photo-studio/carousel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -48,13 +54,6 @@ export function PhotoStudioCarousel({ klant, onDone }: Props) {
           slides,
         }),
       });
-      const data = (await res.json()) as {
-        error?: string;
-        seed?: number;
-        slides?: Array<{ slide_index: number; master_url: string; headline: string }>;
-        errors?: string[];
-      };
-      if (!res.ok) throw new Error(data.error || "Carousel mislukt");
       if (data.errors?.length) setError(data.errors.join("; "));
       setResult({ seed: data.seed ?? 0, slides: data.slides ?? [] });
       onDone?.();

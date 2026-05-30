@@ -17,6 +17,7 @@ import {
   type ContentStudioSettings,
 } from "@/lib/photo-studio/types";
 import { FAL_VIDEO_MODEL_LABEL } from "@/lib/photo-studio/fal-video";
+import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import { ContentStudioMediaToggle } from "@/components/photo-studio/content-studio-media-toggle";
 import { ContentStudioModelPicker } from "@/components/photo-studio/content-studio-model-picker";
 import { ContentStudioSettingsPopover } from "@/components/photo-studio/content-studio-settings-popover";
@@ -94,17 +95,15 @@ export function ContentStudioPromptBar({
           const fd = new FormData();
           fd.set("file", file);
           fd.set("klant", klant);
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            body: fd,
-            credentials: "include",
-          });
-          const data = (await res.json()) as {
-            media_url?: string;
-            error?: string;
-          };
-          if (!res.ok) throw new Error(data.error || "Upload mislukt");
-          if (!data.media_url) throw new Error("Geen media_url na upload");
+          const data = await fetchJsonChecked<{ media_url?: string; error?: string }>(
+            "/api/upload",
+            {
+              method: "POST",
+              body: fd,
+              credentials: "include",
+            }
+          );
+          if (!data.media_url) throw new Error(data.error || "Upload mislukt");
           uploaded.push({ url: data.media_url, preview: data.media_url });
         }
         if (uploaded.length) {
@@ -132,7 +131,18 @@ export function ContentStudioPromptBar({
     onSkeletonCount(skeletonSlots);
 
     try {
-      const res = await fetch("/api/photo-studio/generate", {
+      const data = await fetchJsonChecked<{
+        error?: string;
+        items?: Array<{
+          tracking_id: string;
+          master_url: string;
+          content_id: number | null;
+          generation_id: number;
+          media_type?: ContentStudioMediaType;
+          variants: ContentStudioGridItem["variants"];
+        }>;
+        user_prompt?: string;
+      }>("/api/photo-studio/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -148,19 +158,6 @@ export function ContentStudioPromptBar({
           auto_variants: isVideo ? false : settings.auto_variants,
         }),
       });
-      const data = (await res.json()) as {
-        error?: string;
-        items?: Array<{
-          tracking_id: string;
-          master_url: string;
-          content_id: number | null;
-          generation_id: number;
-          media_type?: ContentStudioMediaType;
-          variants: ContentStudioGridItem["variants"];
-        }>;
-        user_prompt?: string;
-      };
-      if (!res.ok) throw new Error(data.error || "Generatie mislukt");
 
       const rawItems = Array.isArray(data.items) ? data.items : [];
       if (!rawItems.length) throw new Error("Geen afbeelding ontvangen");

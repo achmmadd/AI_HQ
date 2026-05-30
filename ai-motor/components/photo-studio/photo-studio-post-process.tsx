@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import type { CompanyId } from "@/lib/types";
 
 type GenOption = { id: number; label: string };
@@ -21,21 +22,35 @@ export function PhotoStudioPostProcess({ klant }: Props) {
   const [logoUrl, setLogoUrl] = useState("");
   const [bgUrl, setBgUrl] = useState("");
   const [msg, setMsg] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch(`/api/photo-studio/library?klant=${klant}`, {
-        credentials: "include",
-      });
-      const data = (await res.json()) as {
-        items?: Array<{ id: number; user_prompt?: string; prompt: string; tracking_id: string }>;
-      };
-      if (res.ok && data.items) {
-        setGens(
-          data.items.map((i) => ({
-            id: i.id,
-            label: `${i.tracking_id} — ${(i.user_prompt ?? i.prompt).slice(0, 40)}`,
-          }))
+      setLoadError("");
+      try {
+        const data = await fetchJsonChecked<{
+          items?: Array<{
+            id: number;
+            user_prompt?: string;
+            prompt: string;
+            tracking_id: string;
+          }>;
+        }>(`/api/photo-studio/library?klant=${klant}`, {
+          credentials: "include",
+        });
+        if (data.items) {
+          setGens(
+            data.items.map((i) => ({
+              id: i.id,
+              label: `${i.tracking_id} — ${(i.user_prompt ?? i.prompt).slice(0, 40)}`,
+            }))
+          );
+        }
+      } catch (e) {
+        setLoadError(
+          e instanceof Error
+            ? e.message
+            : "Bibliotheek laden mislukt — vernieuw de pagina."
         );
       }
     })();
@@ -48,37 +63,49 @@ export function PhotoStudioPostProcess({ klant }: Props) {
       return;
     }
     setMsg("");
-    const res = await fetch("/api/photo-studio/post-process", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ klant, generation_id, op }),
-    });
-    const data = (await res.json()) as { error?: string; public_url?: string };
-    if (!res.ok) setMsg(data.error || "Mislukt");
-    else setMsg(`Opgeslagen: ${data.public_url ?? "ok"}`);
+    try {
+      const data = await fetchJsonChecked<{ error?: string; public_url?: string }>(
+        "/api/photo-studio/post-process",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ klant, generation_id, op }),
+        }
+      );
+      setMsg(`Opgeslagen: ${data.public_url ?? "ok"}`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Mislukt");
+    }
   };
 
   const runBatch = async () => {
     const ids = gens.slice(0, 5).map((g) => g.id);
     if (!ids.length) return;
-    const res = await fetch("/api/photo-studio/post-process", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        klant,
-        generation_ids: ids,
-        op: {
-          type: "batch_filter",
-          filter: "brightness_contrast",
-          brightness: Number(brightness) || 0,
-          contrast: Number(contrast) || 0,
-        },
-      }),
-    });
-    const data = (await res.json()) as { error?: string; results?: unknown[] };
-    setMsg(res.ok ? `Batch: ${(data.results ?? []).length} bewerkt` : data.error || "Mislukt");
+    setMsg("");
+    try {
+      const data = await fetchJsonChecked<{ error?: string; results?: unknown[] }>(
+        "/api/photo-studio/post-process",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            klant,
+            generation_ids: ids,
+            op: {
+              type: "batch_filter",
+              filter: "brightness_contrast",
+              brightness: Number(brightness) || 0,
+              contrast: Number(contrast) || 0,
+            },
+          }),
+        }
+      );
+      setMsg(`Batch: ${(data.results ?? []).length} bewerkt`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Mislukt");
+    }
   };
 
   return (
@@ -87,6 +114,9 @@ export function PhotoStudioPostProcess({ klant }: Props) {
         <SlidersHorizontal className="h-4 w-4" />
         Nabewerking (Sharp, geen AI)
       </h2>
+      {loadError ? (
+        <p className="mb-3 text-sm text-red-700">{loadError}</p>
+      ) : null}
       <select
         className="mb-3 h-9 w-full rounded-lg border border-[#E5E5E5] px-2 text-sm"
         value={genId}
