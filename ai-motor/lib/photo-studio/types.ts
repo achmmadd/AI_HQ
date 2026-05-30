@@ -14,8 +14,28 @@ export type ContentStudioAspectRatio =
   | "16:9"
   | "9:16";
 
-/** NB2 native: 2K / 4K only (no 3K). */
-export type ContentStudioQuality = "2K" | "4K";
+/** UI quality — NB2 supports 2K/4K only; Seedream/GPT also support 3K. */
+export type ContentStudioQuality = "2K" | "3K" | "4K";
+
+export const MAX_REF_IMAGES: Record<ContentStudioModelId, number> = {
+  "nano-banana-2": 14,
+  "seedream-5-lite": 10,
+  "gpt-image-2": 14,
+};
+
+export function qualitiesForModel(
+  model: ContentStudioModelId
+): ContentStudioQuality[] {
+  return model === "nano-banana-2" ? ["2K", "4K"] : ["2K", "3K", "4K"];
+}
+
+export function normalizeQualityForModel(
+  model: ContentStudioModelId,
+  quality: ContentStudioQuality
+): ContentStudioQuality {
+  if (model === "nano-banana-2" && quality === "3K") return "2K";
+  return quality;
+}
 
 export type ContentStudioSettings = {
   aspect_ratio: ContentStudioAspectRatio;

@@ -28,11 +28,9 @@ export function ContentStudioModelPicker({ value, onChange }: Props) {
       >
         {MODELS.map((id) => {
           const meta = FAL_MODEL_REGISTRY[id];
-          const disabled = meta.phase !== "A";
           return (
-            <option key={id} value={id} disabled={disabled}>
+            <option key={id} value={id}>
               {meta.label}
-              {disabled ? " (binnenkort)" : ""}
             </option>
           );
         })}

@@ -7,11 +7,17 @@ import type {
   FalGenerateResult,
   PhotoStudioMode,
 } from "@/lib/photo-studio/types";
+import { normalizeQualityForModel } from "@/lib/photo-studio/types";
 
 const NB2_TXT2IMG = "fal-ai/nano-banana-2";
 const NB2_EDIT = "fal-ai/nano-banana-2/edit";
+const SEEDREAM_TXT2IMG =
+  "fal-ai/bytedance/seedream/v5/lite/text-to-image";
+const SEEDREAM_EDIT = "fal-ai/bytedance/seedream/v5/lite/edit";
+const GPT_TXT2IMG = "openai/gpt-image-2";
+const GPT_EDIT = "openai/gpt-image-2/edit";
 
-/** Phase B stubs — verified on fal.ai, not wired in Phase A. */
+/** Phase A+B — all models wired. */
 export const FAL_MODEL_REGISTRY = {
   "nano-banana-2": {
     label: "Nano Banana 2",
@@ -21,14 +27,14 @@ export const FAL_MODEL_REGISTRY = {
   },
   "seedream-5-lite": {
     label: "Seedream 5.0",
-    txt2img: "fal-ai/bytedance/seedream/v5/lite/text-to-image",
-    edit: "fal-ai/bytedance/seedream/v5/lite/edit",
+    txt2img: SEEDREAM_TXT2IMG,
+    edit: SEEDREAM_EDIT,
     phase: "B" as const,
   },
   "gpt-image-2": {
     label: "GPT Image 2",
-    txt2img: "openai/gpt-image-2",
-    edit: "openai/gpt-image-2/edit",
+    txt2img: GPT_TXT2IMG,
+    edit: GPT_EDIT,
     phase: "B" as const,
   },
 } as const;
@@ -169,14 +175,10 @@ async function parseFalResponse(
   return { ok: true, images };
 }
 
-type Nb2CallOpts = {
+async function callFal(opts: {
   endpoint: string;
   body: Record<string, unknown>;
-};
-
-async function callNb2(opts: Nb2CallOpts): Promise<
-  { ok: true; images: string[] } | { ok: false; error: string }
-> {
+}): Promise<{ ok: true; images: string[] } | { ok: false; error: string }> {
   const key = falKey();
   if (!key) {
     return { ok: false, error: "FAL_API_KEY of FAL_KEY ontbreekt op de server." };
@@ -201,6 +203,48 @@ async function callNb2(opts: Nb2CallOpts): Promise<
   }
 }
 
+function seedreamImageSize(
+  aspectRatio: ContentStudioAspectRatio,
+  quality: ContentStudioQuality
+): string {
+  if (aspectRatio === "1:1") {
+    if (quality === "4K") return "auto_4K";
+    if (quality === "3K") return "auto_3K";
+    return "auto_2K";
+  }
+  const map: Record<ContentStudioAspectRatio, string> = {
+    "1:1": "square_hd",
+    "4:3": "landscape_4_3",
+    "3:4": "portrait_4_3",
+    "16:9": "landscape_16_9",
+    "9:16": "portrait_16_9",
+  };
+  return map[aspectRatio];
+}
+
+function gptImageSize(
+  aspectRatio: ContentStudioAspectRatio
+): string | { width: number; height: number } {
+  switch (aspectRatio) {
+    case "1:1":
+      return "square_hd";
+    case "4:3":
+      return "landscape_4_3";
+    case "3:4":
+      return "portrait_4_3";
+    case "16:9":
+      return { width: 1536, height: 864 };
+    case "9:16":
+      return { width: 864, height: 1536 };
+    default:
+      return "square_hd";
+  }
+}
+
+function gptQuality(quality: ContentStudioQuality): string {
+  return quality === "2K" ? "medium" : "high";
+}
+
 function nb2BodyBase(opts: {
   prompt: string;
   system_prompt: string;
@@ -222,36 +266,26 @@ function nb2BodyBase(opts: {
   return body;
 }
 
-export async function generateWithModel(opts: {
-  model: ContentStudioModelId;
+/** NB2: max 4 images per request — count 5 uses silent 4+1. */
+async function generateNb2(opts: {
   userPrompt: string;
   klant: CompanyId;
-  imageUrls?: string[];
-  aspectRatio?: ContentStudioAspectRatio;
-  quality?: ContentStudioQuality;
-  count?: number;
+  imageUrls: string[];
+  aspectRatio: ContentStudioAspectRatio;
+  quality: ContentStudioQuality;
+  count: number;
   style_hint?: string;
   seed?: number;
 }): Promise<FalBatchGenerateResult> {
-  if (opts.model !== "nano-banana-2") {
-    return { ok: false, error: `${opts.model} is nog niet beschikbaar (Phase B).` };
-  }
-
-  const user_prompt = opts.userPrompt.trim();
-  const imageUrls = (opts.imageUrls ?? []).filter(Boolean);
-  const isEdit = imageUrls.length > 0;
-  const aspectRatio = opts.aspectRatio ?? "1:1";
-  const quality = opts.quality ?? "2K";
-  const count = Math.min(5, Math.max(1, opts.count ?? 1));
-
+  const isEdit = opts.imageUrls.length > 0;
   const parts = isEdit
     ? buildImageToImagePromptParts({
-        userPrompt: user_prompt,
+        userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
       })
     : buildTextToImagePromptParts({
-        userPrompt: user_prompt,
+        userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
       });
@@ -259,26 +293,26 @@ export async function generateWithModel(opts: {
   logFalPrompt(isEdit ? "image_to_image" : "text_to_image", parts.fal_prompt);
 
   const endpoint = isEdit ? NB2_EDIT : NB2_TXT2IMG;
-  const modelId = isEdit ? NB2_EDIT : NB2_TXT2IMG;
+  const modelId = endpoint;
   const allImages: string[] = [];
 
   const runBatch = async (num_images: number) => {
     const base = nb2BodyBase({
       prompt: parts.prompt,
       system_prompt: parts.system_prompt,
-      aspectRatio,
-      quality,
+      aspectRatio: opts.aspectRatio,
+      quality: opts.quality,
       num_images,
       seed: opts.seed,
     });
     if (isEdit) {
-      base.image_urls = imageUrls;
+      base.image_urls = opts.imageUrls;
     }
-    return callNb2({ endpoint, body: base });
+    return callFal({ endpoint, body: base });
   };
 
-  if (count <= 4) {
-    const result = await runBatch(count);
+  if (opts.count <= 4) {
+    const result = await runBatch(opts.count);
     if (!result.ok) return result;
     allImages.push(...result.images);
   } else {
@@ -298,9 +332,153 @@ export async function generateWithModel(opts: {
     ok: true,
     images: allImages,
     fal_prompt: parts.fal_prompt,
-    user_prompt,
+    user_prompt: opts.userPrompt,
     model: modelId,
   };
+}
+
+async function generateSeedream(opts: {
+  userPrompt: string;
+  klant: CompanyId;
+  imageUrls: string[];
+  aspectRatio: ContentStudioAspectRatio;
+  quality: ContentStudioQuality;
+  count: number;
+  style_hint?: string;
+}): Promise<FalBatchGenerateResult> {
+  const isEdit = opts.imageUrls.length > 0;
+  const parts = isEdit
+    ? buildImageToImagePromptParts({
+        userPrompt: opts.userPrompt,
+        klant: opts.klant,
+        style_hint: opts.style_hint,
+      })
+    : buildTextToImagePromptParts({
+        userPrompt: opts.userPrompt,
+        klant: opts.klant,
+        style_hint: opts.style_hint,
+      });
+
+  logFalPrompt(isEdit ? "image_to_image" : "text_to_image", parts.fal_prompt);
+
+  const endpoint = isEdit ? SEEDREAM_EDIT : SEEDREAM_TXT2IMG;
+  const body: Record<string, unknown> = {
+    prompt: parts.prompt,
+    image_size: seedreamImageSize(opts.aspectRatio, opts.quality),
+    num_images: opts.count,
+  };
+  if (isEdit) {
+    body.image_urls = opts.imageUrls;
+  }
+
+  const result = await callFal({ endpoint, body });
+  if (!result.ok) return result;
+  if (!result.images.length) {
+    return { ok: false, error: "Geen afbeelding in fal-response" };
+  }
+
+  return {
+    ok: true,
+    images: result.images.slice(0, opts.count),
+    fal_prompt: parts.fal_prompt,
+    user_prompt: opts.userPrompt,
+    model: endpoint,
+  };
+}
+
+async function generateGptImage2(opts: {
+  userPrompt: string;
+  klant: CompanyId;
+  imageUrls: string[];
+  aspectRatio: ContentStudioAspectRatio;
+  quality: ContentStudioQuality;
+  count: number;
+  style_hint?: string;
+}): Promise<FalBatchGenerateResult> {
+  const isEdit = opts.imageUrls.length > 0;
+  const parts = isEdit
+    ? buildImageToImagePromptParts({
+        userPrompt: opts.userPrompt,
+        klant: opts.klant,
+        style_hint: opts.style_hint,
+      })
+    : buildTextToImagePromptParts({
+        userPrompt: opts.userPrompt,
+        klant: opts.klant,
+        style_hint: opts.style_hint,
+      });
+
+  logFalPrompt(isEdit ? "image_to_image" : "text_to_image", parts.fal_prompt);
+
+  const endpoint = isEdit ? GPT_EDIT : GPT_TXT2IMG;
+  const imageSize = isEdit ? "auto" : gptImageSize(opts.aspectRatio);
+  const body: Record<string, unknown> = {
+    prompt: parts.prompt,
+    image_size: imageSize,
+    quality: gptQuality(opts.quality),
+    num_images: opts.count,
+    output_format: "png",
+  };
+  if (isEdit) {
+    body.image_urls = opts.imageUrls;
+  }
+
+  const result = await callFal({ endpoint, body });
+  if (!result.ok) return result;
+  if (!result.images.length) {
+    return { ok: false, error: "Geen afbeelding in fal-response" };
+  }
+
+  return {
+    ok: true,
+    images: result.images.slice(0, opts.count),
+    fal_prompt: parts.fal_prompt,
+    user_prompt: opts.userPrompt,
+    model: endpoint,
+  };
+}
+
+export async function generateWithModel(opts: {
+  model: ContentStudioModelId;
+  userPrompt: string;
+  klant: CompanyId;
+  imageUrls?: string[];
+  aspectRatio?: ContentStudioAspectRatio;
+  quality?: ContentStudioQuality;
+  count?: number;
+  style_hint?: string;
+  seed?: number;
+}): Promise<FalBatchGenerateResult> {
+  const user_prompt = opts.userPrompt.trim();
+  const imageUrls = (opts.imageUrls ?? []).filter(Boolean);
+  const aspectRatio = opts.aspectRatio ?? "1:1";
+  const quality = normalizeQualityForModel(
+    opts.model,
+    opts.quality ?? "2K"
+  );
+  const count = Math.min(5, Math.max(1, opts.count ?? 1));
+
+  const common = {
+    userPrompt: user_prompt,
+    klant: opts.klant,
+    imageUrls,
+    aspectRatio,
+    quality,
+    count,
+    style_hint: opts.style_hint,
+    seed: opts.seed,
+  };
+
+  switch (opts.model) {
+    case "nano-banana-2":
+      return generateNb2(common);
+    case "seedream-5-lite":
+      return generateSeedream(common);
+    case "gpt-image-2":
+      return generateGptImage2(common);
+    default:
+      return { ok: false, error: `Onbekend model: ${opts.model}` };
+  }
 }
 
 /** Backward-compatible single-image wrapper for carousel / menu-batch workflows. */

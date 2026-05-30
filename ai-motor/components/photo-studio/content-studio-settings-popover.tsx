@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type {
-  ContentStudioAspectRatio,
-  ContentStudioQuality,
-  ContentStudioSettings,
+import { useEffect, useRef } from "react";
+import {
+  normalizeQualityForModel,
+  qualitiesForModel,
+  type ContentStudioAspectRatio,
+  type ContentStudioQuality,
+  type ContentStudioSettings,
 } from "@/lib/photo-studio/types";
 
 const ASPECTS: ContentStudioAspectRatio[] = [
@@ -14,8 +16,6 @@ const ASPECTS: ContentStudioAspectRatio[] = [
   "16:9",
   "9:16",
 ];
-
-const QUALITIES: ContentStudioQuality[] = ["2K", "4K"];
 
 const COUNTS = [1, 2, 3, 4, 5] as const;
 
@@ -32,12 +32,15 @@ function OptionRow<T extends string | number>({
   options,
   value,
   onSelect,
+  disabledOptions,
 }: {
   label: string;
   options: readonly T[];
   value: T;
   onSelect: (v: T) => void;
+  disabledOptions?: readonly T[];
 }) {
+  const disabled = new Set(disabledOptions ?? []);
   return (
     <div className="mb-3 last:mb-0">
       <p className="fumero-text-caption mb-1.5 text-[var(--fumero-text-muted)]">
@@ -49,7 +52,8 @@ function OptionRow<T extends string | number>({
             key={String(opt)}
             type="button"
             onClick={() => onSelect(opt)}
-            className={`content-studio-settings-chip fumero-text-body-sm rounded-md px-2.5 py-1 font-medium transition-colors ${
+            disabled={disabled.has(opt)}
+            className={`content-studio-settings-chip fumero-text-body-sm rounded-md px-2.5 py-1 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               value === opt
                 ? "content-studio-settings-chip--active"
                 : "text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-surface-muted)]"
@@ -72,6 +76,19 @@ export function ContentStudioSettingsPopover({
   trigger,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const availableQualities = qualitiesForModel(settings.model);
+  const allQualities: ContentStudioQuality[] = ["2K", "3K", "4K"];
+  const disabledQualities = allQualities.filter(
+    (q) => !availableQualities.includes(q)
+  );
+
+  useEffect(() => {
+    const normalized = normalizeQualityForModel(settings.model, settings.quality);
+    if (normalized !== settings.quality) {
+      onChange({ quality: normalized });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset quality when model changes
+  }, [settings.model]);
 
   useEffect(() => {
     if (!open) return;
@@ -101,9 +118,10 @@ export function ContentStudioSettingsPopover({
           />
           <OptionRow
             label="Kwaliteit"
-            options={QUALITIES}
+            options={allQualities}
             value={settings.quality}
             onSelect={(quality) => onChange({ quality })}
+            disabledOptions={disabledQualities}
           />
           <OptionRow
             label="Aantal"

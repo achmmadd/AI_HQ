@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ImagePlus,
   Loader2,
@@ -9,9 +9,11 @@ import {
   X,
 } from "lucide-react";
 import type { CompanyId } from "@/lib/types";
-import type {
-  ContentStudioGridItem,
-  ContentStudioSettings,
+import {
+  MAX_REF_IMAGES,
+  normalizeQualityForModel,
+  type ContentStudioGridItem,
+  type ContentStudioSettings,
 } from "@/lib/photo-studio/types";
 import { ContentStudioMediaToggle } from "@/components/photo-studio/content-studio-media-toggle";
 import { ContentStudioModelPicker } from "@/components/photo-studio/content-studio-model-picker";
@@ -24,6 +26,8 @@ export const DEFAULT_STUDIO_SETTINGS: ContentStudioSettings = {
   auto_variants: true,
   model: "nano-banana-2",
 };
+
+type RefImage = { url: string; preview: string };
 
 type Props = {
   klant: CompanyId;
@@ -47,43 +51,62 @@ export function ContentStudioPromptBar({
     DEFAULT_STUDIO_SETTINGS
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [refs, setRefs] = useState<RefImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const maxRefs = MAX_REF_IMAGES[settings.model];
+
   const patchSettings = (patch: Partial<ContentStudioSettings>) => {
-    setSettings((s) => ({ ...s, ...patch }));
+    setSettings((s) => {
+      const next = { ...s, ...patch };
+      if (patch.model) {
+        next.quality = normalizeQualityForModel(patch.model, next.quality);
+      }
+      return next;
+    });
   };
 
-  const uploadImage = useCallback(
-    async (file: File) => {
+  useEffect(() => {
+    setRefs((prev) => prev.slice(0, maxRefs));
+  }, [maxRefs]);
+
+  const uploadImages = useCallback(
+    async (files: File[]) => {
+      if (!files.length) return;
       setUploading(true);
       onError("");
+      const uploaded: RefImage[] = [];
       try {
-        const fd = new FormData();
-        fd.set("file", file);
-        fd.set("klant", klant);
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: fd,
-          credentials: "include",
-        });
-        const data = (await res.json()) as {
-          media_url?: string;
-          error?: string;
-        };
-        if (!res.ok) throw new Error(data.error || "Upload mislukt");
-        if (!data.media_url) throw new Error("Geen media_url na upload");
-        setImageUrl(data.media_url);
-        setImagePreview(data.media_url);
+        for (const file of files) {
+          if (refs.length + uploaded.length >= maxRefs) break;
+          const fd = new FormData();
+          fd.set("file", file);
+          fd.set("klant", klant);
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: fd,
+            credentials: "include",
+          });
+          const data = (await res.json()) as {
+            media_url?: string;
+            error?: string;
+          };
+          if (!res.ok) throw new Error(data.error || "Upload mislukt");
+          if (!data.media_url) throw new Error("Geen media_url na upload");
+          uploaded.push({ url: data.media_url, preview: data.media_url });
+        }
+        if (uploaded.length) {
+          setRefs((prev) => [...prev, ...uploaded].slice(0, maxRefs));
+        }
       } catch (e) {
         onError(e instanceof Error ? e.message : "Upload mislukt");
       } finally {
         setUploading(false);
+        if (fileRef.current) fileRef.current.value = "";
       }
     },
-    [klant, onError]
+    [klant, maxRefs, onError, refs.length]
   );
 
   const generate = async () => {
@@ -106,7 +129,7 @@ export function ContentStudioPromptBar({
           klant,
           prompt: trimmed,
           model: settings.model,
-          image_urls: imageUrl ? [imageUrl] : [],
+          image_urls: refs.map((r) => r.url),
           aspect_ratio: settings.aspect_ratio,
           quality: settings.quality,
           count: settings.count,
@@ -156,6 +179,10 @@ export function ContentStudioPromptBar({
     }
   };
 
+  const removeRef = (index: number) => {
+    setRefs((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <footer className="content-studio-prompt-bar shrink-0 border-t border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] md:px-6">
       <div className="content-studio-prompt-shell rounded-[var(--fumero-radius-lg)] border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-3 shadow-[var(--fumero-shadow-sm)]">
@@ -180,33 +207,39 @@ export function ContentStudioPromptBar({
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 className="hidden"
+                multiple
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void uploadImage(f);
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length) void uploadImages(files);
                 }}
               />
-              {imagePreview ? (
-                <span className="content-studio-ref-chip inline-flex items-center gap-1.5 rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] py-0.5 pl-0.5 pr-2 fumero-text-body-sm">
+
+              {refs.map((ref, i) => (
+                <span
+                  key={ref.url}
+                  className="content-studio-ref-chip inline-flex items-center gap-1.5 rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] py-0.5 pl-0.5 pr-2 fumero-text-body-sm"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={imagePreview}
-                    alt="Referentie"
+                    src={ref.preview}
+                    alt={`Referentie ${i + 1}`}
                     className="h-8 w-8 rounded-full object-cover"
                   />
-                  <span className="text-[var(--fumero-text-muted)]">Referentie</span>
+                  <span className="text-[var(--fumero-text-muted)]">
+                    Ref {i + 1}
+                  </span>
                   <button
                     type="button"
                     className="rounded-full p-0.5 text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-surface)]"
-                    onClick={() => {
-                      setImageUrl("");
-                      setImagePreview(null);
-                    }}
-                    aria-label="Referentie verwijderen"
+                    onClick={() => removeRef(i)}
+                    aria-label={`Referentie ${i + 1} verwijderen`}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </span>
-              ) : (
+              ))}
+
+              {refs.length < maxRefs ? (
                 <button
                   type="button"
                   className="content-studio-ref-add inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--fumero-border)] px-2.5 py-1 fumero-text-body-sm text-[var(--fumero-text-muted)] transition-colors hover:border-[rgba(105,196,0,0.35)] hover:text-[var(--fumero-text)]"
@@ -219,8 +252,13 @@ export function ContentStudioPromptBar({
                     <ImagePlus className="h-3.5 w-3.5" />
                   )}
                   Image Reference
+                  {maxRefs > 1 ? (
+                    <span className="text-[var(--fumero-text-muted)]">
+                      ({refs.length}/{maxRefs})
+                    </span>
+                  ) : null}
                 </button>
-              )}
+              ) : null}
 
               <ContentStudioModelPicker
                 value={settings.model}

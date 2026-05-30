@@ -3,11 +3,13 @@ import { generateWithModel } from "@/lib/photo-studio/fal";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
 import { persistPhotoGeneration } from "@/lib/photo-studio/library";
 import { requirePhotoStudioKlant } from "@/lib/photo-studio/workspace-auth";
-import type {
-  ContentStudioAspectRatio,
-  ContentStudioModelId,
-  ContentStudioQuality,
-  PhotoStudioMode,
+import {
+  MAX_REF_IMAGES,
+  normalizeQualityForModel,
+  type ContentStudioAspectRatio,
+  type ContentStudioModelId,
+  type ContentStudioQuality,
+  type PhotoStudioMode,
 } from "@/lib/photo-studio/types";
 
 export const runtime = "nodejs";
@@ -79,9 +81,10 @@ export async function POST(req: NextRequest) {
     ? (modelRaw as ContentStudioModelId)
     : "nano-banana-2";
 
-  if (model !== "nano-banana-2") {
+  const maxRefs = MAX_REF_IMAGES[model];
+  if (imageUrls.length > maxRefs) {
     return NextResponse.json(
-      { error: `${model} is nog niet beschikbaar (Phase B).` },
+      { error: `Maximaal ${maxRefs} referentiebeelden voor dit model.` },
       { status: 400 }
     );
   }
@@ -92,8 +95,14 @@ export async function POST(req: NextRequest) {
       ? (body.aspect_ratio as ContentStudioAspectRatio)
       : "1:1";
 
-  const qualityRaw = body.quality === "4K" ? "4K" : "2K";
-  const quality = qualityRaw as ContentStudioQuality;
+  const qualityRaw =
+    body.quality === "4K" || body.quality === "3K" || body.quality === "2K"
+      ? body.quality
+      : "2K";
+  const quality = normalizeQualityForModel(
+    model,
+    qualityRaw as ContentStudioQuality
+  );
 
   const count =
     typeof body.count === "number" && Number.isFinite(body.count)
