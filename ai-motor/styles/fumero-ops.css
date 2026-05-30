@@ -15,6 +15,8 @@
   --fumero-accent: #69c400;
   --fumero-accent-hover: #5db000;
   --fumero-accent-muted: rgba(105, 196, 0, 0.08);
+  --fumero-accent-foreground: #ffffff;
+  --fumero-destructive: #dc2626;
   --fumero-radius: 8px;
   --fumero-radius-lg: 12px;
   --fumero-sidebar-w: 200px;
@@ -54,6 +56,35 @@
   --text-secondary: var(--fumero-text-muted);
   --accent: var(--fumero-accent);
   --accent-hover: var(--fumero-accent-hover);
+  --foreground: var(--fumero-text);
+  --card: var(--fumero-surface);
+  --card-foreground: var(--fumero-text);
+  --muted: var(--fumero-surface-muted);
+  --muted-foreground: var(--fumero-text-muted);
+  --primary: var(--fumero-accent);
+  --primary-foreground: var(--fumero-accent-foreground);
+  --ring: rgba(105, 196, 0, 0.35);
+}
+
+[data-fumero-ops][data-theme="dark"] {
+  --fumero-bg: #0c0c0e;
+  --fumero-surface: #141416;
+  --fumero-surface-muted: #1a1a1d;
+  --fumero-surface-elevated: #1c1c1f;
+  --fumero-border: rgba(255, 255, 255, 0.08);
+  --fumero-border-subtle: rgba(255, 255, 255, 0.05);
+  --fumero-text: #ededef;
+  --fumero-text-muted: #8b8b8f;
+  --fumero-text-subtle: #5c5c61;
+  --fumero-accent: #69c400;
+  --fumero-accent-hover: #7ad917;
+  --fumero-accent-muted: rgba(105, 196, 0, 0.12);
+  --fumero-accent-foreground: #0c0c0e;
+  --fumero-destructive: #f87171;
+  --fumero-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --fumero-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --fumero-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
 }
 
 [data-fumero-ops],
@@ -132,19 +163,30 @@
   animation: fumero-deploy-success-in 0.25s ease-out;
 }
 
-/* Force readable ops palette even if .dark leaks from persisted theme */
-html[data-fumero-ops],
-html[data-fumero-ops].dark,
-html[data-fumero-ops].light {
-  color-scheme: light;
+/* Theme-aware shadcn mapping */
+html[data-fumero-ops] {
   --background: var(--fumero-bg);
   --surface: var(--fumero-surface);
-  --surface-elevated: var(--fumero-surface);
+  --surface-elevated: var(--fumero-surface-elevated, var(--fumero-surface));
   --border: var(--fumero-border);
   --text-primary: var(--fumero-text);
   --text-secondary: var(--fumero-text-muted);
-  --accent: var(--fumero-accent);
-  --accent-hover: var(--fumero-accent-hover);
+  --foreground: var(--fumero-text);
+  --card: var(--fumero-surface);
+  --card-foreground: var(--fumero-text);
+  --muted: var(--fumero-surface-muted);
+  --muted-foreground: var(--fumero-text-muted);
+  --primary: var(--fumero-accent);
+  --primary-foreground: var(--fumero-accent-foreground);
+  --ring: rgba(105, 196, 0, 0.35);
+}
+
+html[data-fumero-ops][data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-fumero-ops][data-theme="dark"] {
+  color-scheme: dark;
 }
 
 [data-fumero-ops] .motors-chat-column,
@@ -228,7 +270,7 @@ html[data-fumero-ops].light {
 
 [data-fumero-ops] .fumero-canvas-doc p {
   margin-bottom: 0.75em;
-  color: #404040;
+  color: var(--fumero-text-muted);
 }
 
 [data-fumero-ops] .fumero-canvas-panel {
@@ -351,12 +393,13 @@ html[data-fumero-ops].light {
 }
 
 [data-fumero-ops] .fumero-live-preview {
-  background: #fafafa;
+  background: var(--fumero-bg);
 }
 
 [data-fumero-ops] .fumero-coder-preview-rail {
-  background: #fafafa;
-  border-left: 1px solid rgba(229, 229, 229, 0.65);
+  background: var(--fumero-bg);
+  border-left: 1px solid var(--fumero-border);
+  transition: width 0.2s ease;
 }
 
 [data-fumero-ops] .fumero-chat-sidebar-archive summary {
@@ -391,9 +434,9 @@ html[data-fumero-ops].light {
     opacity 0.2s ease,
     transform 0.2s ease;
   box-shadow: var(--fumero-shadow-md, 0 4px 16px rgba(0, 0, 0, 0.08));
-  border: 1px solid #e5e5e5;
-  background: #fff;
-  color: #171717;
+  border: 1px solid var(--fumero-border, #e5e5e5);
+  background: var(--fumero-surface, #fff);
+  color: var(--fumero-text, #171717);
 }
 
 .fumero-toast--success {
@@ -401,11 +444,135 @@ html[data-fumero-ops].light {
 }
 
 .fumero-toast--error {
-  border-color: #fecaca;
-  color: #b91c1c;
+  border-color: color-mix(in srgb, var(--fumero-destructive, #dc2626) 35%, transparent);
+  color: var(--fumero-destructive, #b91c1c);
 }
 
 .fumero-toast--visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Skeleton shimmer */
+@keyframes fumero-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+[data-fumero-ops] .fumero-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--fumero-surface-muted) 0%,
+    var(--fumero-surface-elevated, var(--fumero-surface)) 50%,
+    var(--fumero-surface-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: fumero-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Status badge crossfade */
+[data-fumero-ops] .fumero-status-badge {
+  transition: opacity 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Thread list fade-in */
+@keyframes fumero-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+[data-fumero-ops] .fumero-thread-item {
+  animation: fumero-fade-in 0.15s ease;
+}
+
+/* Briefing / panel slide (CSS fallback; Framer enhances) */
+@keyframes fumero-panel-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+[data-fumero-ops] .fumero-panel-slide {
+  animation: fumero-panel-slide-in 0.25s ease-out;
+}
+
+/* KPI count-up hint */
+@property --fumero-kpi-value {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+
+[data-fumero-ops] .fumero-kpi-count {
+  transition: --fumero-kpi-value 0.4s ease-out;
+}
+
+/* Command palette */
+[data-fumero-ops] .fumero-cmdk {
+  background: var(--fumero-surface);
+  border: 1px solid var(--fumero-border);
+  border-radius: var(--fumero-radius-lg);
+  box-shadow: var(--fumero-shadow-lg);
+  overflow: hidden;
+}
+
+[data-fumero-ops] .fumero-cmdk [cmdk-group-heading] {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fumero-text-subtle);
+  padding: 8px 12px 4px;
+}
+
+[data-fumero-ops] .fumero-cmdk [cmdk-item] {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-left: 2px solid transparent;
+  color: var(--fumero-text);
+  cursor: pointer;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+[data-fumero-ops] .fumero-cmdk [cmdk-item][data-selected="true"] {
+  background: var(--fumero-surface-muted);
+  border-left-color: var(--fumero-accent);
+}
+
+[data-fumero-ops] .fumero-cmdk [cmdk-input] {
+  font-size: 13px;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1px solid var(--fumero-border);
+  background: transparent;
+  color: var(--fumero-text);
+  outline: none;
+  width: 100%;
+}
+
+[data-fumero-ops] .fumero-cmdk [cmdk-input]::placeholder {
+  color: var(--fumero-text-subtle);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  [data-fumero-ops] *,
+  [data-fumero-ops] *::before,
+  [data-fumero-ops] *::after,
+  .fumero-toast {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

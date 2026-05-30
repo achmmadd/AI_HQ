@@ -15,6 +15,7 @@ import {
   formatMaxOpeningMessage,
   pickBriefingQuickActions,
 } from "@/lib/fumero/max-briefing-chat";
+import { FUMERO_CMD_EVENTS } from "@/lib/fumero/command-palette";
 
 type BriefingState = {
   data: FumeroBriefingPayload | null;
@@ -65,6 +66,12 @@ export function FumeroBriefingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const onOpen = () => setPanelOpen(true);
+    window.addEventListener(FUMERO_CMD_EVENTS.openBriefing, onOpen);
+    return () => window.removeEventListener(FUMERO_CMD_EVENTS.openBriefing, onOpen);
+  }, []);
 
   const quickActions = useMemo(
     () => (data ? pickBriefingQuickActions(data, 3) : []),

@@ -12,6 +12,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLayoutStore } from "@/stores/useLayoutStore";
 import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
 import { FumeroSidebarKpiFooter } from "@/components/fumero/ops/fumero-chat-kpi-strip";
 
@@ -38,6 +39,7 @@ function isActive(pathname: string, href: string): boolean {
 
 export function FumeroSidebar() {
   const pathname = usePathname();
+  const collapsed = useLayoutStore((s) => s.fumeroSidebarCollapsed);
   const [libraryCount, setLibraryCount] = useState<number | null>(null);
   const [orderCount, setOrderCount] = useState<number | null>(null);
 
@@ -90,11 +92,14 @@ export function FumeroSidebar() {
 
   return (
     <aside
-      className="flex h-full w-14 shrink-0 flex-col border-r border-[#E5E5E5] bg-white md:w-[var(--fumero-sidebar-w,200px)]"
+      className={cn(
+        "flex h-full shrink-0 flex-col border-r border-[var(--fumero-border)] bg-[var(--fumero-surface)] transition-[width] duration-200 ease-out",
+        collapsed ? "w-14" : "w-14 md:w-[var(--fumero-sidebar-w,200px)]"
+      )}
       aria-label="Fumero Studio navigatie"
     >
       <div className="border-b border-[var(--fumero-border)] px-2 py-3 md:px-4 md:py-4">
-        <div className="hidden md:block">
+        <div className={cn("hidden", !collapsed && "md:block")}>
           <FumeroLogoLockup compact />
           <p className="fumero-text-caption mt-2 text-[var(--fumero-text-muted)]">
             Studio
@@ -126,11 +131,14 @@ export function FumeroSidebar() {
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.5} />
-                  <span className="hidden flex-1 truncate md:inline">{item.label}</span>
+                  <span className={cn("hidden flex-1 truncate", !collapsed && "md:inline")}>
+                    {item.label}
+                  </span>
                   {typeof item.count === "number" ? (
                     <span
                       className={cn(
-                        "fumero-text-micro hidden min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center font-semibold tabular-nums md:inline-block",
+                        "fumero-text-micro hidden min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center font-semibold tabular-nums",
+                        !collapsed && "md:inline-block",
                         active
                           ? "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)]"
                           : "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)]"
@@ -146,7 +154,7 @@ export function FumeroSidebar() {
         </ul>
       </nav>
 
-      <FumeroSidebarKpiFooter />
+      {!collapsed ? <FumeroSidebarKpiFooter /> : null}
     </aside>
   );
 }

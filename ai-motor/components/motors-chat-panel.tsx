@@ -59,8 +59,14 @@ import {
 } from "@/components/fumero/fumero-composer-toolbar";
 import {
   readStoredFumeroModelTier,
+  writeStoredFumeroModelTier,
+  FUMERO_MODEL_TIERS,
   type FumeroComposerModelTier,
 } from "@/lib/fumero/composer-model-tier";
+import {
+  FUMERO_CMD_EVENTS,
+  type FumeroCmdSetComposerModeDetail,
+} from "@/lib/fumero/command-palette";
 import { BOKAS_CHAT_SUGGESTIONS } from "@/lib/bokas-quick-actions";
 import {
   FUMERO_CHAT_SUGGESTIONS,
@@ -678,6 +684,50 @@ export function MotorsChatPanel({
     setConversations((prev) => [row, ...prev]);
     setActiveConversationId(row.id);
   };
+
+  useEffect(() => {
+    if (workspace !== "fumero") return;
+
+    const onNewChat = () => {
+      void newChat();
+    };
+    const onFocusComposer = () => {
+      textareaRef.current?.focus();
+    };
+    const onSetMode = (e: Event) => {
+      const detail = (e as CustomEvent<FumeroCmdSetComposerModeDetail>).detail;
+      if (!detail?.mode) return;
+      setFumeroComposerMode(detail.mode);
+      if (detail.prompt) setText(detail.prompt);
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    };
+    const onOpenConnectors = () => setConnectorsOpen(true);
+    const onCycleTier = () => {
+      setFumeroModelTier((prev) => {
+        const order: FumeroComposerModelTier[] = ["flash", "normaal", "pro"];
+        const idx = order.indexOf(prev);
+        const next = order[(idx + 1) % order.length]!;
+        writeStoredFumeroModelTier(next);
+        const label = FUMERO_MODEL_TIERS.find((t) => t.id === next)?.label ?? next;
+        showFumeroToast(`Antwoordsnelheid: ${label}`);
+        return next;
+      });
+    };
+
+    window.addEventListener(FUMERO_CMD_EVENTS.newChat, onNewChat);
+    window.addEventListener(FUMERO_CMD_EVENTS.focusComposer, onFocusComposer);
+    window.addEventListener(FUMERO_CMD_EVENTS.setComposerMode, onSetMode);
+    window.addEventListener(FUMERO_CMD_EVENTS.openConnectors, onOpenConnectors);
+    window.addEventListener(FUMERO_CMD_EVENTS.cycleModelTier, onCycleTier);
+
+    return () => {
+      window.removeEventListener(FUMERO_CMD_EVENTS.newChat, onNewChat);
+      window.removeEventListener(FUMERO_CMD_EVENTS.focusComposer, onFocusComposer);
+      window.removeEventListener(FUMERO_CMD_EVENTS.setComposerMode, onSetMode);
+      window.removeEventListener(FUMERO_CMD_EVENTS.openConnectors, onOpenConnectors);
+      window.removeEventListener(FUMERO_CMD_EVENTS.cycleModelTier, onCycleTier);
+    };
+  }, [workspace, streamingId, company]);
 
   const deleteConversation = async (id: number) => {
     if (streamingId) return;

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { FumeroSidebar } from "@/components/fumero/fumero-sidebar";
 import { FumeroTopbar } from "@/components/fumero/fumero-topbar";
+import { FumeroCommandPaletteLazy } from "@/components/fumero/fumero-command-palette-lazy";
 
 export function FumeroShell({
   page,
@@ -24,7 +25,7 @@ export function FumeroShell({
   }, [page]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAFAFA]">
+    <div className="flex h-screen overflow-hidden bg-[var(--fumero-bg)]">
       <FumeroSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <FumeroTopbar
@@ -46,6 +47,7 @@ export function FumeroShell({
           {children}
         </main>
       </div>
+      <FumeroCommandPaletteLazy />
     </div>
   );
 }
