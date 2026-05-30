@@ -28,13 +28,13 @@ export function PhotoStudioPostProcess({ klant }: Props) {
         credentials: "include",
       });
       const data = (await res.json()) as {
-        items?: Array<{ id: number; prompt: string; tracking_id: string }>;
+        items?: Array<{ id: number; user_prompt?: string; prompt: string; tracking_id: string }>;
       };
       if (res.ok && data.items) {
         setGens(
           data.items.map((i) => ({
             id: i.id,
-            label: `${i.tracking_id} — ${i.prompt.slice(0, 40)}`,
+            label: `${i.tracking_id} — ${(i.user_prompt ?? i.prompt).slice(0, 40)}`,
           }))
         );
       }

@@ -3,18 +3,25 @@ import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
 import { newPhotoTrackingId } from "@/lib/photo-studio/tracking-id";
 import { attributionHooksFor } from "@/lib/photo-studio/analytics/tracking";
 import { downloadImageBuffer } from "@/lib/photo-studio/download-master";
-import { resizeMasterToVariants } from "@/lib/photo-studio/resize-variants";
+import {
+  resizeMasterToVariants,
+  saveMasterOnly,
+} from "@/lib/photo-studio/resize-variants";
 import type { CompanyId } from "@/lib/types";
 import type { PhotoStudioMode } from "@/lib/photo-studio/types";
 
 export type PersistGenerationInput = {
   klant: CompanyId;
   mode: PhotoStudioMode;
-  prompt: string;
+  user_prompt: string;
+  fal_prompt?: string | null;
+  /** @deprecated Legacy column — kept in sync with fal_prompt or user_prompt */
+  prompt?: string;
   master_url: string;
   source_image_url?: string | null;
   seed?: number | null;
   workspace_preset?: string | null;
+  auto_variants?: boolean;
 };
 
 export type PersistedGeneration = {
@@ -56,22 +63,28 @@ async function persistWithBuffer(
   buffer: Buffer
 ): Promise<PersistedGeneration> {
   ensurePhotoStudioSchema();
-  const { master_path, master_public_url, variants } = await resizeMasterToVariants(
-    buffer,
-    tracking_id
-  );
+  const autoVariants = input.auto_variants !== false;
+  const { master_path, master_public_url, variants } = autoVariants
+    ? await resizeMasterToVariants(buffer, tracking_id)
+    : await saveMasterOnly(buffer, tracking_id);
+
+  const userPrompt = input.user_prompt.trim();
+  const falPrompt = input.fal_prompt?.trim() ?? input.prompt?.trim() ?? userPrompt;
+  const legacyPrompt = falPrompt;
 
   const insert = db.prepare(
     `INSERT INTO photo_studio_generations (
-      tracking_id, klant, mode, prompt, source_image_url, seed,
-      master_url, master_path, workspace_preset
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      tracking_id, klant, mode, prompt, user_prompt, fal_prompt,
+      source_image_url, seed, master_url, master_path, workspace_preset
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const result = insert.run(
     tracking_id,
     input.klant,
     input.mode,
-    input.prompt,
+    legacyPrompt,
+    userPrompt,
+    falPrompt,
     input.source_image_url ?? null,
     input.seed ?? null,
     master_public_url,
@@ -104,7 +117,7 @@ async function persistWithBuffer(
   });
 
   const ig = variantRows.find((v) => v.aspect === "ig_1_1");
-  const caption = input.prompt.slice(0, 500);
+  const caption = userPrompt.slice(0, 500);
   const contentResult = db
     .prepare(
       `INSERT INTO content_posts (klant, platform, type, titel, content, status, source, media_url)
@@ -112,7 +125,7 @@ async function persistWithBuffer(
     )
     .run(
       input.klant,
-      `Photo Studio ${tracking_id}`,
+      userPrompt.slice(0, 80) || `Studio ${tracking_id}`,
       caption,
       ig?.public_url ?? master_public_url
     );
@@ -159,19 +172,25 @@ export function listPhotoGenerations(klant: CompanyId, limit = 30) {
     )
     .all(klant, limit) as Array<Record<string, unknown>>;
 
-  return rows.map((r) => ({
-    id: r.id as number,
-    tracking_id: r.tracking_id as string,
-    mode: r.mode as string,
-    prompt: r.prompt as string,
-    master_url: r.master_url as string,
-    content_id: r.content_id as number | null,
-    created_at: r.created_at as string,
-    variants: JSON.parse((r.variants_json as string) || "[]") as Array<{
-      aspect: string;
-      public_url: string;
-      width: number;
-      height: number;
-    }>,
-  }));
+  return rows.map((r) => {
+    const userPrompt =
+      (typeof r.user_prompt === "string" && r.user_prompt.trim()) ||
+      (typeof r.prompt === "string" ? r.prompt : "");
+    return {
+      id: r.id as number,
+      tracking_id: r.tracking_id as string,
+      mode: r.mode as string,
+      prompt: userPrompt,
+      user_prompt: userPrompt,
+      master_url: r.master_url as string,
+      content_id: r.content_id as number | null,
+      created_at: r.created_at as string,
+      variants: JSON.parse((r.variants_json as string) || "[]") as Array<{
+        aspect: string;
+        public_url: string;
+        width: number;
+        height: number;
+      }>,
+    };
+  });
 }

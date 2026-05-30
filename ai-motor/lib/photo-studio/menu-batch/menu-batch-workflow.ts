@@ -36,7 +36,8 @@ export async function runMenuBatchWorkflow(opts: {
       const persisted = await persistPhotoGeneration({
         klant: opts.klant,
         mode: "image_to_image",
-        prompt: gen.prompt,
+        user_prompt: opts.extra_prompt?.trim() || "Zelfde gerecht, betere menu-foto.",
+        fal_prompt: gen.prompt,
         master_url: gen.url,
         source_image_url,
         workspace_preset: "menu_batch",

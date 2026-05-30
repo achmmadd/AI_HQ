@@ -2,6 +2,13 @@ import db from "@/lib/db/database";
 
 let done = false;
 
+function columnExists(table: string, column: string): boolean {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+    name: string;
+  }>;
+  return cols.some((c) => c.name === column);
+}
+
 export function ensurePhotoStudioSchema(): void {
   if (done) return;
   db.exec(`
@@ -35,5 +42,28 @@ export function ensurePhotoStudioSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_photo_studio_gen_klant
       ON photo_studio_generations(klant, created_at DESC);
   `);
+
+  if (!columnExists("photo_studio_generations", "user_prompt")) {
+    db.exec(`ALTER TABLE photo_studio_generations ADD COLUMN user_prompt TEXT`);
+  }
+  if (!columnExists("photo_studio_generations", "fal_prompt")) {
+    db.exec(`ALTER TABLE photo_studio_generations ADD COLUMN fal_prompt TEXT`);
+  }
+
+  db.exec(`
+    UPDATE photo_studio_generations
+    SET user_prompt = CASE
+      WHEN user_prompt IS NOT NULL AND user_prompt != '' THEN user_prompt
+      WHEN instr(prompt, char(10) || char(10) || 'Professional') > 0
+        THEN substr(prompt, 1, instr(prompt, char(10) || char(10) || 'Professional') - 1)
+      ELSE prompt
+    END
+    WHERE user_prompt IS NULL OR user_prompt = '';
+
+    UPDATE photo_studio_generations
+    SET fal_prompt = prompt
+    WHERE fal_prompt IS NULL;
+  `);
+
   done = true;
 }

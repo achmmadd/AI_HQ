@@ -47,3 +47,20 @@ export async function resizeMasterToVariants(
     variants,
   };
 }
+
+export async function saveMasterOnly(
+  masterBuffer: Buffer,
+  trackingId: string
+): Promise<{ master_path: string; master_public_url: string; variants: SavedVariant[] }> {
+  const dir = photoStudioDataDir();
+  const masterName = `${trackingId}_master.jpg`;
+  const masterPath = path.join(dir, masterName);
+  const normalized = await sharp(masterBuffer).jpeg({ quality: 92 }).toBuffer();
+  await writeFile(masterPath, normalized);
+
+  return {
+    master_path: masterPath,
+    master_public_url: photoStudioPublicUrl(masterName),
+    variants: [],
+  };
+}

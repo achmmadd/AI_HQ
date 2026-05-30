@@ -66,7 +66,8 @@ export async function runCarouselWorkflow(opts: {
       const persisted = await persistPhotoGenerationFromBuffer({
         klant: opts.klant,
         mode: "text_to_image",
-        prompt: slidePrompt,
+        user_prompt: slidePrompt,
+        fal_prompt: gen.prompt,
         master_url: gen.url,
         seed,
         workspace_preset: "carousel",

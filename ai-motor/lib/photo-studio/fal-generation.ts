@@ -3,11 +3,15 @@
  */
 export {
   buildImageToImageFalPrompt,
+  buildImageToImagePromptParts,
   buildTextToImageFalPrompt,
+  buildTextToImagePromptParts,
   contentTypeForKlant,
   enrichImageToImagePrompt,
   enrichTextToImagePrompt,
+  FAL_MODEL_REGISTRY,
   generateWithFal,
+  generateWithModel,
   logFalPrompt,
   photoStudioPromptFixtures,
 } from "@/lib/photo-studio/fal";
