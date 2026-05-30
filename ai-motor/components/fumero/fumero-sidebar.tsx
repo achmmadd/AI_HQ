@@ -71,7 +71,7 @@ export function FumeroSidebar() {
   const navItems: NavItem[] = useMemo(
     () => [
       { href: "/fumero/chat", label: "Chat", icon: MessageSquare },
-      { href: "/fumero/photo-studio", label: "Photo Studio", icon: Camera },
+      { href: "/fumero/photo-studio", label: "Studio", icon: Camera },
       { href: "/fumero/automations", label: "Automations", icon: Workflow },
       {
         href: "/fumero/bibliotheek",

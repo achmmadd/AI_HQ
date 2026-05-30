@@ -6,18 +6,15 @@ import { PhotoStudioPanel } from "@/components/photo-studio/photo-studio-panel";
 
 export default function FumeroPhotoStudioPage() {
   return (
-    <FumeroShell page="Photo Studio">
+    <FumeroShell page="Content Studio" flush>
       <Suspense
         fallback={
-          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">
-            Photo Studio laden…
+          <p className="py-8 text-center fumero-text-body-sm text-[var(--fumero-text-muted)]">
+            Content Studio laden…
           </p>
         }
       >
-        <PhotoStudioPanel
-          klant="fumero"
-          description="Productfoto's voor de webshop — tekst naar beeld of verbeter een bestaande upload."
-        />
+        <PhotoStudioPanel klant="fumero" title="Content Studio" />
       </Suspense>
     </FumeroShell>
   );

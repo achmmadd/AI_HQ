@@ -80,8 +80,8 @@ export function FumeroCommandPalette() {
       {
         id: "nav-photo",
         group: "Navigatie",
-        label: "Productfoto's",
-        keywords: "foto photo studio",
+        label: "Studio",
+        keywords: "foto photo studio content beelden",
         icon: <Camera className="h-4 w-4" strokeWidth={1.5} />,
         run: () => router.push("/fumero/photo-studio"),
       },

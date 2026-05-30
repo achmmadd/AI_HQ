@@ -27,7 +27,7 @@ const NAV = [
       { href: "/bokas/bonnen", label: "Boekhouding", icon: Receipt },
       { href: "/bokas/voorraad", label: "Voorraad", icon: ShoppingBag },
       { href: "/bokas/content", label: "Content", icon: Image },
-      { href: "/bokas/photo-studio", label: "Photo Studio", icon: Camera },
+      { href: "/bokas/photo-studio", label: "Studio", icon: Camera },
       { href: "/bokas/marketing", label: "Marketing", icon: TrendingUp },
     ],
   },

@@ -6,12 +6,8 @@ import { PhotoStudioPanel } from "@/components/photo-studio/photo-studio-panel";
 export default function BokasPhotoStudioPage() {
   return (
     <BokasWorkspaceRoot>
-      <main className="main-content p-6">
-        <PhotoStudioPanel
-          klant="bokas"
-          title="Bokas Photo Studio"
-          description="Menu- en gerechtfoto's — upload verbeteren of nieuwe scene via prompt."
-        />
+      <main className="main-content flex h-[calc(100vh-0px)] min-h-0 flex-col overflow-hidden p-0">
+        <PhotoStudioPanel klant="bokas" title="Content Studio" />
       </main>
     </BokasWorkspaceRoot>
   );
