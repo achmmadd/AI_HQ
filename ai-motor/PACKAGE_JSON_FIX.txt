@@ -1,0 +1,1 @@
+Apply with: sudo cp /home/pietje/AI_HQ/ai-motor/package.json.fixed /home/pietje/AI_HQ/ai-motor/package.json && sudo chown pietje:pietje /home/pietje/AI_HQ/ai-motor/package.json

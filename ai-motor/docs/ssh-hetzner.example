@@ -1,0 +1,9 @@
+# Copy to ~/.ssh/config (chmod 600). Replace <HETZNER_IPV4>.
+
+Host hetzner-motor
+  HostName <HETZNER_IPV4>
+  User root
+  IdentityFile ~/.ssh/motor2_ed25519
+  IdentitiesOnly yes
+
+# Test: ssh hetzner-motor 'uname -a'

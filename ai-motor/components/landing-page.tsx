@@ -9,7 +9,7 @@ export function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="flex items-center justify-between p-6">
-        <h1 className="text-2xl font-bold text-white">Motor AI</h1>
+        <h1 className="text-2xl font-bold text-white">MotorsAI</h1>
         <Link href="/login">
           <Button size="sm">Inloggen</Button>
         </Link>
@@ -57,7 +57,7 @@ export function LandingPage() {
       </div>
 
       <div className="border-t border-slate-700 p-6 text-center text-sm text-slate-400">
-        <p>Motor AI — Jouw digitale team</p>
+        <p>MotorsAI — eigen stack, eigen data</p>
       </div>
     </div>
   );

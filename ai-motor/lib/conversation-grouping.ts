@@ -9,6 +9,54 @@ function startOfLocalDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
+/** Client-side fallback titel uit eerste gebruikersbericht (max ~6 woorden). */
+export function deriveConversationTitleFromMessage(text: string): string {
+  const cleaned = text
+    .replace(/^[\s📎]+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return "Nieuwe chat";
+  const words = cleaned.split(/\s+/).slice(0, 6);
+  let title = words.join(" ");
+  if (title.length > 48) title = `${title.slice(0, 45)}…`;
+  return title;
+}
+
+/** Fumero coder sidebar: max N recente threads, rest in archief. */
+function isEmptyNewChat(c: ConversationListItem): boolean {
+  return c.title.trim() === "Nieuwe chat";
+}
+
+/** Verberg lege duplicate "Nieuwe chat" — houd de meest recente. */
+export function dedupeEmptyNewChats(
+  conversations: ConversationListItem[]
+): ConversationListItem[] {
+  let keptEmpty = false;
+  return conversations.filter((c) => {
+    if (!isEmptyNewChat(c)) return true;
+    if (keptEmpty) return false;
+    keptEmpty = true;
+    return true;
+  });
+}
+
+export function groupFumeroChatThreads(
+  conversations: ConversationListItem[],
+  maxRecent = 3
+): { recent: ConversationListItem[]; archive: ConversationListItem[] } {
+  const sorted = dedupeEmptyNewChats(
+    [...conversations].sort(
+      (a, b) =>
+        new Date(b.updated_at || b.created_at).getTime() -
+        new Date(a.updated_at || a.created_at).getTime()
+    )
+  );
+  return {
+    recent: sorted.slice(0, maxRecent),
+    archive: sorted.slice(maxRecent),
+  };
+}
+
 export function groupConversationsByDate(conversations: ConversationListItem[]): {
   label: string;
   items: ConversationListItem[];

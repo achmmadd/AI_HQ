@@ -196,9 +196,9 @@ export function FumeroToolCard({
   const toolSlug = card.slug;
   const codeWorkspaceHref =
     card.toolId && toolSlug
-      ? `/code?klant=fumero&import=fumero-tool&slug=${encodeURIComponent(toolSlug)}`
+      ? `/fumero/code?import=fumero-tool&slug=${encodeURIComponent(toolSlug)}`
       : card.toolId
-        ? `/code?klant=fumero&import=fumero-tool&tool=${card.toolId}`
+        ? `/fumero/code?import=fumero-tool&tool=${card.toolId}`
         : null;
   const isAppCard = !card.toolId || !!toolSlug;
   const tablesCount = extras.tables;
@@ -224,13 +224,11 @@ export function FumeroToolCard({
     [card.previewUrl, card.previewEpoch]
   );
 
-  const overlayText = refining || (busy && hasPreview)
+  const overlayText = refining
     ? "Verfijnen…"
-    : isGenerating
+    : isGenerating && !splitPreviewOpen
       ? "Genereren…"
-      : busy
-        ? "Bezig…"
-        : null;
+      : null;
 
   useEffect(() => {
     if (prevStatus.current !== "published" && card.status === "published") {
@@ -382,7 +380,7 @@ export function FumeroToolCard({
                 </span>
               ) : null}
             </div>
-            {(building || buildPhase) && detailsOpen ? (
+            {(building || buildPhase) && detailsOpen && !splitPreviewOpen ? (
               <FumeroBuildTimeline
                 activePhase={buildPhase}
                 building={building ?? isWorking}
@@ -420,6 +418,30 @@ export function FumeroToolCard({
           <p className="border-t border-[#E5E5E5]/60 px-3 py-2 text-[13px] leading-snug text-[#525252]">
             {summary}
           </p>
+        ) : null}
+
+        {splitPreviewOpen && hasPreview && !isWorking ? (
+          <div className="flex flex-wrap gap-2 border-t border-[#E5E5E5]/60 px-3 py-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-lg border-[#E5E5E5] text-[12px] text-[#171717]"
+              onClick={() => onFocusPreview?.()}
+            >
+              Test in preview
+            </Button>
+            {embed ? (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-lg bg-[#171717] text-[12px] text-white hover:bg-black"
+                onClick={() => void handleCopy(embed)}
+              >
+                Embed op site
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     );
@@ -542,7 +564,8 @@ export function FumeroToolCard({
             key={card.previewEpoch ?? card.previewUrl ?? "preview"}
             title={`Preview ${card.name}`}
             src={previewSrc}
-            className="h-[140px] w-full border-0 bg-white"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            className="pointer-events-auto h-[140px] w-full border-0 bg-white"
           />
         ) : isWorking ? (
           <div className="flex h-[120px] flex-col gap-2 p-3">
@@ -555,7 +578,7 @@ export function FumeroToolCard({
           </div>
         )}
         {overlayText ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/80 backdrop-blur-[2px]">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/80 backdrop-blur-[2px]">
             <Loader2 className="h-5 w-5 animate-spin text-[#525252]" aria-hidden />
             <span className="text-sm font-medium text-[#525252]">{overlayText}</span>
           </div>

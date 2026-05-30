@@ -41,7 +41,7 @@ export async function applyPostProcess(
   op: PostProcessOp
 ): Promise<{ public_url: string; file_path: string }> {
   const masterPath = generationMasterPath(generationId);
-  let buffer = await readFile(masterPath);
+  let buffer: Buffer = await readFile(masterPath);
 
   if (op.type === "background_swap") {
     const bg = await loadBufferFromUrlOrPath(op.background_url);
@@ -50,10 +50,12 @@ export async function applyPostProcess(
     const w = meta.width ?? 1080;
     const h = meta.height ?? 1080;
     const bgSized = await sharp(bg).resize(w, h, { fit: "cover" }).toBuffer();
-    buffer = await sharp(bgSized)
-      .composite([{ input: fg, gravity: "centre" }])
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    buffer = Buffer.from(
+      await sharp(bgSized)
+        .composite([{ input: fg, gravity: "centre" }])
+        .jpeg({ quality: 90 })
+        .toBuffer()
+    );
   } else if (op.type === "logo_watermark") {
     const logo = await loadBufferFromUrlOrPath(op.logo_url);
     const meta = await sharp(buffer).metadata();
@@ -64,16 +66,18 @@ export async function applyPostProcess(
       .ensureAlpha()
       .modulate({ brightness: 1 })
       .toBuffer();
-    buffer = await sharp(buffer)
-      .composite([
-        {
-          input: logoBuf,
-          gravity: "southeast",
-          blend: "over",
-        },
-      ])
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    buffer = Buffer.from(
+      await sharp(buffer)
+        .composite([
+          {
+            input: logoBuf,
+            gravity: "southeast",
+            blend: "over",
+          },
+        ])
+        .jpeg({ quality: 90 })
+        .toBuffer()
+    );
   } else if (op.type === "text_overlay") {
     const meta = await sharp(buffer).metadata();
     const w = meta.width ?? 1080;
@@ -86,15 +90,19 @@ export async function applyPostProcess(
         <text x="24" y="52" font-size="32" font-weight="700" fill="#fff" font-family="Arial">${esc(op.text.slice(0, 60))}</text>
         ${op.subtext ? `<text x="24" y="72" font-size="18" fill="#eee" font-family="Arial">${esc(op.subtext.slice(0, 80))}</text>` : ""}
       </svg>`);
-    buffer = await sharp(buffer).composite([{ input: svg }]).jpeg({ quality: 90 }).toBuffer();
+    buffer = Buffer.from(
+      await sharp(buffer).composite([{ input: svg }]).jpeg({ quality: 90 }).toBuffer()
+    );
   } else if (op.type === "brightness_contrast") {
     const b = 1 + (op.brightness ?? 0) / 100;
     const c = op.contrast ?? 0;
-    buffer = await sharp(buffer)
-      .modulate({ brightness: b })
-      .linear(1 + c / 100, -(128 * c) / 100)
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    buffer = Buffer.from(
+      await sharp(buffer)
+        .modulate({ brightness: b })
+        .linear(1 + c / 100, -(128 * c) / 100)
+        .jpeg({ quality: 90 })
+        .toBuffer()
+    );
   }
 
   const outName = `pp_${generationId}_${Date.now()}.jpg`;

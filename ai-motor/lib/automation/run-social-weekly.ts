@@ -1,4 +1,4 @@
-import { searchKnowledge, payloadText } from "@/lib/knowledge-search";
+import { searchKnowledge, payloadText } from "@/lib/knowledge-service";
 import { callDifyBlocking } from "@/lib/dify-client";
 import { sendTelegramMessage } from "@/lib/telegram";
 

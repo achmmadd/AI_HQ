@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assertCronSecret } from "@/lib/cron-secret";
-import { runAutomationCronTick } from "@/lib/automation";
+import { runAutomationCronTickExtended } from "@/lib/automation-cron-extended";
 
 export const runtime = "nodejs";
 
@@ -17,6 +17,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status });
   }
 
-  const result = await runAutomationCronTick(new Date());
+  const result = await runAutomationCronTickExtended(new Date());
   return NextResponse.json(result);
 }

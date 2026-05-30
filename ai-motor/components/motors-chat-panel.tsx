@@ -6,6 +6,7 @@ import {
   Copy,
   ChevronDown,
   ClipboardList,
+  Code2,
   Mic,
   Paperclip,
   PanelLeft,
@@ -20,6 +21,7 @@ import {
   MousePointer2,
   Plug,
   Grid3X3,
+  ScanEye,
   Zap,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -77,7 +79,7 @@ import {
   formatMaxBriefingDetailMarkdown,
   resolveMaxChatAction,
 } from "@/lib/fumero/max-briefing-chat";
-import { getTemplate } from "@/lib/fumero/tool-templates";
+import { getTemplate, templatePreviewDataUrl } from "@/lib/fumero/tool-templates";
 import {
   deployTypeForTemplate,
   deriveToolName,
@@ -85,6 +87,8 @@ import {
   formatToolDeployedMarkdown,
   buildInitialToolPrompt,
   mergeToolPrompt,
+  CODER_BUILD_TRIGGER_RE,
+  isCoderQuestionOnly,
   resolveMaxToolChatAction,
   resolveTemplateFromQuickReply,
   resolveTemplateFromUserText,
@@ -97,7 +101,6 @@ import {
   resolveMaxContentChatAction,
 } from "@/lib/fumero/max-content-chat";
 import {
-  FUMERO_CODER_PREFILL,
   FUMERO_RESEARCH_PREFILL,
   fumeroComposerPlaceholder,
 } from "@/lib/fumero/composer-actions";
@@ -134,6 +137,7 @@ import {
 import { showFumeroToast } from "@/lib/fumero/fumero-toast";
 import { FumeroConnectorsPanel } from "@/components/fumero/FumeroConnectorsPanel";
 import { augmentPromptWithFumeroConnectors } from "@/lib/connectors/fumero-context";
+import { applyDesignerHints } from "@/lib/connectors/specialists";
 import {
   readEnabledConnectors,
   setConnectorEnabled,
@@ -199,9 +203,6 @@ function toolCardOneLineSummary(content: string): string | undefined {
   const sentence = t.split(/[.!?]\s/)[0]?.trim() ?? t;
   return sentence.length > 160 ? `${sentence.slice(0, 157)}…` : sentence;
 }
-
-const CODER_BUILD_TRIGGER_RE =
-  /\b(maak|bouw|genereer|start|deploy|concept)\b/i;
 
 type SpeechRecCtor = new () => {
   lang: string;
@@ -894,15 +895,26 @@ export function MotorsChatPanel({
           : tplFromText;
       const deployType = deployTypeForTemplate(templateId);
       const seedLine = templateId ? getTemplate(templateId)?.promptSeed : undefined;
-      const merged = buildInitialToolPrompt(seed, userText, seedLine);
+      let merged = buildInitialToolPrompt(seed, userText, seedLine);
+      if (enabledConnectors.includes("designer")) {
+        merged = applyDesignerHints(merged, templateId);
+      }
       const name = deriveToolName(seed || userText, templateId);
 
       setAwaitingToolTemplate(false);
       setToolBusy(true);
       setCoderBuildPhase(CODER_BUILD_PHASES[0]);
+      const instantPreview = templateId
+        ? templatePreviewDataUrl({
+            templateId,
+            name,
+            prompt: merged,
+            deployType,
+          })
+        : null;
       setLivePreview({
         title: name,
-        previewUrl: null,
+        previewUrl: instantPreview,
         status: "generating",
         version: 1,
         building: true,
@@ -912,7 +924,9 @@ export function MotorsChatPanel({
       onFumeroContentPreview?.(null);
 
       const cardMsgId = appendAssistantMessage(
-        fumeroCoderMode && layout === "split" ? "" : "Ik genereer je tool — dit kan even duren.",
+        fumeroCoderMode && layout === "split"
+          ? "Ik bouw je tool — preview rechts."
+          : "Ik genereer je tool — dit kan even duren.",
         {
           toolCard: {
             toolId: 0,
@@ -946,11 +960,14 @@ export function MotorsChatPanel({
           previewEpoch: card.previewEpoch,
           version: card.version,
           building: false,
+          buildPhase: undefined,
+          embedCode: card.embedCode ?? null,
         });
         setPreviewPanelOpen(true);
         updateMessage(cardMsgId, {
-          content:
-            "Hier is je concept. Verfijn via **Pas aan** of in chat — daarna **Deploy** naar de garage.",
+          content: fumeroCoderMode
+            ? `**${detail.tool.name}** staat klaar. Bekijk de live preview rechts — verfijn in chat of deploy naar de garage.`
+            : "Hier is je concept. Verfijn via **Pas aan** of in chat — daarna **Deploy** naar de garage.",
           toolCard: card,
         });
       } catch (err) {
@@ -972,7 +989,10 @@ export function MotorsChatPanel({
       activeToolPrompt,
       appendAssistantMessage,
       detailToToolCard,
+      enabledConnectors,
       fumeroBuilderLabel,
+      fumeroCoderMode,
+      layout,
       onFumeroContentPreview,
       onFumeroLivePreview,
       scrollBottom,
@@ -980,6 +1000,48 @@ export function MotorsChatPanel({
       updateMessage,
     ]
   );
+
+  const runUxReview = useCallback(async () => {
+    if (!activeToolId) {
+      appendAssistantMessage(
+        "Bouw eerst een tool in **Bouwen**-modus — daarna kan ik een UX-check draaien."
+      );
+      scrollBottom(true);
+      return;
+    }
+    const reviewMsgId = appendAssistantMessage("UX-check wordt uitgevoerd…");
+    try {
+      const res = await fetch("/api/fumero/ux-review", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          toolId: activeToolId,
+          llm: enabledConnectors.includes("ux_review"),
+        }),
+      });
+      const data = (await res.json()) as { markdown?: string; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "UX-check mislukt");
+      }
+      updateMessage(reviewMsgId, {
+        content: data.markdown ?? "UX-check afgerond.",
+      });
+    } catch (err) {
+      updateMessage(reviewMsgId, {
+        content: `**UX-check mislukt.** ${formatFumeroBuilderError(
+          err instanceof Error ? err.message : "Onbekende fout"
+        )}`,
+      });
+    }
+    scrollBottom(true);
+  }, [
+    activeToolId,
+    appendAssistantMessage,
+    enabledConnectors,
+    scrollBottom,
+    updateMessage,
+  ]);
 
   const runToolIterate = useCallback(
     async (instruction: string) => {
@@ -1024,6 +1086,8 @@ export function MotorsChatPanel({
           previewEpoch,
           version: card.version,
           building: false,
+          buildPhase: undefined,
+          embedCode: card.embedCode ?? null,
         });
         const versionNote =
           detail.concept?.version != null
@@ -1500,28 +1564,33 @@ export function MotorsChatPanel({
       scrollBottom(true);
     };
 
-    if (workspace === "fumero" && maxCompanion) {
-      const maxAction = resolveMaxChatAction(t, maxCompanion.briefing);
-      if (maxAction?.type === "inline_briefing" && maxCompanion.briefing) {
-        showPromptInChat();
-        appendAssistantMessage(
-          formatMaxBriefingDetailMarkdown(maxCompanion.briefing)
-        );
-        scrollBottom(true);
-        return;
-      }
-      if (maxAction?.type === "redirect") {
-        showPromptInChat();
-        appendAssistantMessage(
-          `**${maxAction.notice}**\n\nIk open de juiste studio met je opdracht.`
-        );
-        scrollBottom(true);
-        router.push(maxAction.href);
-        return;
+    if (workspace === "fumero") {
+      if (maxCompanion) {
+        const maxAction = resolveMaxChatAction(t, maxCompanion.briefing);
+        if (maxAction?.type === "inline_briefing" && maxCompanion.briefing) {
+          showPromptInChat();
+          appendAssistantMessage(
+            formatMaxBriefingDetailMarkdown(maxCompanion.briefing)
+          );
+          scrollBottom(true);
+          return;
+        }
+        if (maxAction?.type === "redirect") {
+          showPromptInChat();
+          appendAssistantMessage(
+            `**${maxAction.notice}**\n\nIk open de juiste studio met je opdracht.`
+          );
+          scrollBottom(true);
+          router.push(maxAction.href);
+          return;
+        }
       }
 
-      // Coder-modus: strikte tool-routing — nooit generieke chat/Turbo
+      // Coder/Bouwen: tool-build standaard; alleen duidelijke vragen → Max-chat (geen code dump)
       if (fumeroCoderMode) {
+        const coderQuestionOnly = isCoderQuestionOnly(t, {
+          awaitingTemplate: awaitingToolTemplate,
+        });
         if (detectFullAppIntent(t) && !activeToolId && !activeAppSlug) {
           showPromptInChat();
           await runFullAppBuild(t);
@@ -1543,18 +1612,19 @@ export function MotorsChatPanel({
           coderMode: true,
         });
 
-        showPromptInChat();
-        setPreviewPanelOpen(true);
-
-        if (fumeroCoderMode && planMode && !activeToolId && !activeAppSlug) {
+        if (planMode && !activeToolId && !activeAppSlug && toolAction) {
           const quickPick = resolveTemplateFromQuickReply(t);
           const explicitTpl = resolveTemplateFromUserText(t);
           const shouldBuildNow =
+            !coderQuestionOnly ||
             CODER_BUILD_TRIGGER_RE.test(t) ||
             (quickPick?.templateId && quickPick.templateId !== "custom") ||
             Boolean(explicitTpl) ||
-            awaitingToolTemplate;
+            awaitingToolTemplate ||
+            toolAction.type === "tool_build" ||
+            toolAction.type === "tool_iterate";
           if (!shouldBuildNow) {
+            showPromptInChat();
             appendAssistantMessage(
               "Ik noteer je idee in **plan-modus** — ik bouw pas als je **Maak** zegt, een sjabloon kiest, of een concrete tool noemt (bv. rekenmachine).\n\n" +
                 `**Doel:** ${t}`
@@ -1564,19 +1634,53 @@ export function MotorsChatPanel({
           }
         }
 
-        if (!toolAction || toolAction.type === "tool_intent_pick") {
+        if (toolAction?.type === "tool_intent_pick") {
+          showPromptInChat();
           showToolTemplatePicker(awaitingToolTemplate ? activeToolPrompt : t);
           scrollBottom(true);
           return;
         }
-        if (toolAction.type === "tool_iterate" && activeToolId) {
+        if (toolAction?.type === "tool_iterate" && activeToolId) {
+          showPromptInChat();
+          setPreviewPanelOpen(true);
           await runToolIterate(t);
           return;
         }
-        if (toolAction.type === "tool_build") {
+        if (toolAction?.type === "tool_build") {
+          showPromptInChat();
+          setPreviewPanelOpen(true);
           await runToolBuild(t, awaitingToolTemplate ? activeToolPrompt : undefined);
           return;
         }
+
+        if (coderQuestionOnly) {
+          showPromptInChat();
+          let apiPrompt = t;
+          try {
+            apiPrompt = await augmentPromptWithFumeroConnectors(t, enabledConnectors, {
+              onlineMode: false,
+              buildIntent: true,
+            });
+          } catch {
+            apiPrompt = t;
+          }
+          void send(apiPrompt, { ...chatSendOpts, skipUserMessage: true });
+          return;
+        }
+
+        showPromptInChat();
+        setPreviewPanelOpen(true);
+        if (activeToolId) {
+          await runToolIterate(t);
+        } else {
+          await runToolBuild(t, awaitingToolTemplate ? activeToolPrompt : undefined);
+        }
+        return;
+      }
+
+      if (!maxCompanion) {
+        showPromptInChat();
+        void send(t, { ...chatSendOpts, skipUserMessage: true });
         return;
       }
 
@@ -1741,6 +1845,7 @@ export function MotorsChatPanel({
       try {
         apiPrompt = await augmentPromptWithFumeroConnectors(t, enabledConnectors, {
           onlineMode: fumeroComposerMode === "online",
+          buildIntent: fumeroComposerMode === "coder",
         });
       } catch {
         apiPrompt = t;
@@ -1849,9 +1954,7 @@ export function MotorsChatPanel({
       if (action.kind === "coder") {
         setFumeroComposerMode("coder");
         setPreviewPanelOpen(true);
-        const seed = action.prompt?.trim() || FUMERO_CODER_PREFILL;
-        setText(seed);
-        showToolTemplatePicker(seed.replace(/^Bouw\s*/i, "").trim());
+        setText("");
         focusComposer();
         scrollBottom(true);
         return;
@@ -1864,10 +1967,27 @@ export function MotorsChatPanel({
         focusComposer();
         return;
       }
+      if (action.kind === "templates") {
+        setFumeroComposerMode("coder");
+        setPreviewPanelOpen(true);
+        showToolTemplatePicker("");
+        focusComposer();
+        return;
+      }
+      if (action.kind === "ux_review") {
+        void runUxReview();
+        return;
+      }
+      if (action.kind === "code_workspace") {
+        router.push("/fumero/code");
+        return;
+      }
     },
     [
       focusComposer,
+      router,
       runContentGenerate,
+      runUxReview,
       scrollBottom,
       setPreviewPanelOpen,
       showToolTemplatePicker,
@@ -1904,10 +2024,7 @@ export function MotorsChatPanel({
         });
         return;
       }
-      handleFumeroMenuAction({
-        kind: "coder",
-        prompt: "Bouw een interne tool voor het Fumero-team: ",
-      });
+      handleFumeroMenuAction({ kind: "coder" });
     },
     [handleFumeroMenuAction, runSuggested, streamingId]
   );
@@ -1929,32 +2046,6 @@ export function MotorsChatPanel({
   useEffect(() => {
     initialAppLoadedRef.current = false;
   }, [initialAppSlug]);
-
-  const coderTemplateShownRef = useRef(false);
-  useEffect(() => {
-    coderTemplateShownRef.current = false;
-  }, [initialComposerMode, initialToolId, initialPrompt]);
-
-  useEffect(() => {
-    if (fumeroComposerMode !== "coder") return;
-    if (initialToolId || activeToolId) return;
-    const seed = initialPrompt?.trim();
-    if (seed && seed.length > 3) return;
-    if (activeConversationId === undefined || !historyLoaded || streamingId) return;
-    if (coderTemplateShownRef.current || awaitingToolTemplate) return;
-    coderTemplateShownRef.current = true;
-    showToolTemplatePicker("");
-  }, [
-    activeConversationId,
-    activeToolId,
-    awaitingToolTemplate,
-    fumeroComposerMode,
-    historyLoaded,
-    initialPrompt,
-    initialToolId,
-    showToolTemplatePicker,
-    streamingId,
-  ]);
 
   useEffect(() => {
     const id = initialToolId;
@@ -2193,6 +2284,20 @@ export function MotorsChatPanel({
         onClick: () => {},
       },
       {
+        id: "ux-review",
+        label: "Laat UX checken",
+        icon: ScanEye,
+        disabled: !activeToolId || !!streamingId,
+        onClick: () => void runUxReview(),
+      },
+      {
+        id: "code",
+        label: "Code workspace",
+        icon: Code2,
+        href: "/fumero/code",
+        onClick: () => {},
+      },
+      {
         id: "connectors",
         label: "Live shopdata",
         icon: Plug,
@@ -2223,7 +2328,9 @@ export function MotorsChatPanel({
   }, [
     fumeroCoderMode,
     planMode,
+    activeToolId,
     streamingId,
+    runUxReview,
     togglePlanMode,
     visualEditMode,
     onFumeroVisualEditModeChange,
@@ -2817,7 +2924,9 @@ export function MotorsChatPanel({
                                     klant={company}
                                   />
                                 )}
-                              {m.content.trim() !== "" && m.usageLine && (
+                              {m.content.trim() !== "" &&
+                                m.usageLine &&
+                                !fumeroOps && (
                                 <p className="mt-2 text-[11px] text-text-secondary/80">
                                   {m.usageLine}
                                 </p>
@@ -2866,7 +2975,10 @@ export function MotorsChatPanel({
                           : "bg-accent text-white"
                       )}
                     >
-                      <MotorsChatMarkdown content={m.content} variant="user" />
+                      <MotorsChatMarkdown
+                        content={m.content}
+                        variant={fumeroOps ? "fumeroUser" : "user"}
+                      />
                     </div>
                   )}
                 </div>
@@ -2921,13 +3033,20 @@ export function MotorsChatPanel({
           </p>
         ) : null}
 
-        {fumeroCoderMode && fumeroOps && maxCompanion ? (
+        {fumeroCoderMode && fumeroOps && maxCompanion && !toolBusy ? (
           <ol className="motors-chat-column mb-2 flex w-full max-w-3xl list-none flex-wrap justify-center gap-2 self-center px-4 text-center">
-            {[
-              { n: "1", label: "Beschrijf je tool" },
-              { n: "2", label: "Bekijk preview rechts" },
-              { n: "3", label: "Deploy naar garage" },
-            ].map((step) => (
+            {(fumeroModelTier === "flash" && !activeToolId
+              ? [
+                  { n: "1", label: "Stel je vraag" },
+                  { n: "2", label: "Snel antwoord in chat" },
+                  { n: "3", label: "Pro/Normaal om te bouwen" },
+                ]
+              : [
+                  { n: "1", label: "Beschrijf je tool" },
+                  { n: "2", label: "Bekijk preview rechts" },
+                  { n: "3", label: "Deploy naar garage" },
+                ]
+            ).map((step) => (
               <li
                 key={step.n}
                 className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E5] bg-white px-3 py-1 text-[11px] font-medium text-[#525252]"
@@ -3007,7 +3126,9 @@ export function MotorsChatPanel({
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={onComposerKeyDown}
-                placeholder={fumeroComposerPlaceholder(fumeroComposerMode)}
+                placeholder={fumeroComposerPlaceholder(fumeroComposerMode, {
+                  modelTier: fumeroModelTier,
+                })}
                 rows={1}
                 className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 pb-1 pt-3 fumero-text-body text-[#171717] outline-none placeholder:text-[#737373]"
                 autoComplete="off"
@@ -3221,11 +3342,15 @@ export function MotorsChatPanel({
             {workspace === "fumero"
               ? fumeroCoderMode
                 ? fumeroEmptyHome
-                  ? "Beschrijf je tool · preview rechts · Deploy in de kaart"
+                  ? fumeroModelTier === "flash"
+                    ? "Snelle vragen · kies Normaal/Pro om te bouwen"
+                    : "Beschrijf je tool · preview rechts · Deploy in de kaart"
                   : !coderPlanHintDismissed && !activeToolId && !toolBusy
                     ? (
                         <>
-                          Verfijn hieronder · preview rechts ·{" "}
+                          {fumeroModelTier === "flash"
+                            ? "Snelle vragen · "
+                            : "Verfijn hieronder · preview rechts · "}
                           <button
                             type="button"
                             className="text-[#3d7a00] underline-offset-2 hover:underline"
@@ -3244,7 +3369,9 @@ export function MotorsChatPanel({
                           </button>
                         </>
                       )
-                    : "Verfijn hieronder · preview rechts · Deploy in de kaart"
+                    : fumeroModelTier === "flash"
+                      ? "Snelle vragen · Normaal/Pro om te bouwen"
+                      : "Verfijn hieronder · preview rechts · Deploy in de kaart"
                 : "Snel · Normaal · Pro — + voor foto, schrijven, bouwen, online"
               : "Plan = eerst stappen · Turbo = browser · ⌘N nieuw · ⌘B gesprekken"}
           </p>

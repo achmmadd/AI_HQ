@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AppShell } from "@/components/app-shell";
+import Link from "next/link";
+import { BokasShell } from "@/components/bokas/bokas-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -227,11 +228,63 @@ export default function BokasPage() {
   const categorien = [...new Set(menu.map((m) => m.categorie))];
 
   return (
-    <AppShell title="Bokas">
+    <BokasShell page="Bokas">
       <div className="space-y-6">
         <p className="text-sm text-text-secondary">
           Horeca — reserveringen, menu, personeel en weekplanning
         </p>
+
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium text-text-primary">Bonnetjes & Odoo</p>
+              <p className="text-sm text-text-secondary">
+                Wachtende bonnen goedkeuren, kwartaaloverzicht en CSV voor de boekhouder.
+              </p>
+            </div>
+            <Link
+              href="/bokas/bonnen"
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Naar bonnen →
+            </Link>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card className="border-border/70">
+            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-text-primary">Reviews</p>
+                <p className="text-sm text-text-secondary">
+                  Google-reviews bekijken en beantwoorden.
+                </p>
+              </div>
+              <Link
+                href="/bokas/reviews"
+                className="inline-flex shrink-0 items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium"
+              >
+                Naar reviews →
+              </Link>
+            </CardContent>
+          </Card>
+          <Card className="border-border/70">
+            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-text-primary">QR-menu artifacts</p>
+                <p className="text-sm text-text-secondary">
+                  Gebouwde QR-menu apps en previews voor Bokas.
+                </p>
+              </div>
+              <Link
+                href="/apps?klant=bokas"
+                className="inline-flex shrink-0 items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium"
+              >
+                Naar apps →
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
 
         <Tabs defaultValue="reserveringen">
           <TabsList className="flex-wrap">
@@ -626,6 +679,6 @@ export default function BokasPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </AppShell>
+    </BokasShell>
   );
 }

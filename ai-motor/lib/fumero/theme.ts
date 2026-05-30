@@ -52,4 +52,4 @@ export function applyFumeroThemeToDocument(
 }
 
 /** Inline bootstrap — prevents FOUC on Fumero routes. */
-export const FUMERO_THEME_BOOTSTRAP_SCRIPT = `(function(){try{var k=${JSON.stringify(FUMERO_THEME_STORAGE_KEY)};var p=localStorage.getItem(k);var t=p==="dark"||p==="light"?p:(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");var r=document.documentElement;r.setAttribute("data-theme",t);r.classList.remove("light","dark");r.classList.add(t);}catch(e){}})();`;
+export const FUMERO_THEME_BOOTSTRAP_SCRIPT = `(function(){try{var r=document.documentElement;r.setAttribute("data-theme","light");r.classList.remove("dark");r.classList.add("light");}catch(e){}})();`;

@@ -1,0 +1,249 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { MotorsChatPanel } from "@/components/motors-chat-panel";
+import { ArtifactPanel } from "@/components/artifact-panel";
+import { ProjectPreview } from "@/components/project-preview";
+import { FumeroContentPreviewPanel } from "@/components/fumero/content-preview-panel";
+import { FumeroCanvasPanel } from "@/components/fumero/fumero-canvas-panel";
+import { FumeroLivePreviewPanel } from "@/components/fumero/live-preview-panel";
+import { PanelCollapseRail } from "@/components/panel-collapse-rail";
+import { useArtifact } from "@/hooks/useArtifact";
+import { useProject } from "@/hooks/useProject";
+import { useCompanyStore, chatKlantForWorkspace } from "@/stores/useCompanyStore";
+import { useLayoutStore } from "@/stores/useLayoutStore";
+import { stackDisplayName } from "@/lib/project-stack";
+import type {
+  FumeroContentPreviewPayload,
+  FumeroLivePreviewPayload,
+} from "@/lib/fumero/content-preview";
+import { cn } from "@/lib/utils";
+import type { FumeroBriefingPayload } from "@/lib/fumero/briefing";
+import type { FumeroComposerMode } from "@/lib/fumero/composer-actions";
+
+export type MaxCompanionConfig = {
+  briefing: FumeroBriefingPayload | null;
+  openingMessage: string | null;
+  quickActions: Array<{ label: string; prompt: string }>;
+  registerSend: (fn: (prompt: string) => void) => void;
+};
+
+export function MotorsChatWorkspace({
+  className,
+  maxCompanion,
+  onComposerModeChange,
+}: {
+  className?: string;
+  maxCompanion?: MaxCompanionConfig;
+  onComposerModeChange?: (mode: FumeroComposerMode) => void;
+} = {}) {
+  const sp = useSearchParams();
+  const initialCoderMode = sp.get("mode") === "coder";
+  const [fumeroCoderActive, setFumeroCoderActive] = useState(initialCoderMode);
+  const workspace = useCompanyStore((s) => s.workspace);
+  const company = chatKlantForWorkspace(workspace);
+  const previewPanelOpen = useLayoutStore((s) => s.previewPanelOpen);
+  const setPreviewPanelOpen = useLayoutStore((s) => s.setPreviewPanelOpen);
+  const [fumeroContentPreview, setFumeroContentPreview] =
+    useState<FumeroContentPreviewPayload | null>(null);
+  const [fumeroLivePreview, setFumeroLivePreview] =
+    useState<FumeroLivePreviewPayload | null>(null);
+  const [visualEditMode, setVisualEditMode] = useState(false);
+  const visualEditPickRef = useRef<(hint: string) => void>(() => {});
+  const { artifact, loading: artifactLoading, buildArtifact, closeArtifact, saveArtifact } =
+    useArtifact(company);
+  const {
+    project,
+    loading: projectLoading,
+    buildProject,
+    iterateProject,
+    closeProject,
+    saveProjectAsApp,
+    loadProject,
+    error: projectError,
+  } = useProject(company);
+
+  useEffect(() => {
+    const id = sp.get("project");
+    if (id && /^\d+$/.test(id)) {
+      void loadProject(Number(id)).catch(() => {});
+    }
+  }, [sp, loadProject]);
+
+  const hasPreview = Boolean(
+    artifact || project || fumeroContentPreview || fumeroLivePreview
+  );
+  const coderPreviewRail = fumeroCoderActive && !artifact && !project;
+  const showPreviewRail = hasPreview || coderPreviewRail;
+  const previewVisible = showPreviewRail && previewPanelOpen;
+  const busy = artifactLoading || projectLoading;
+  const stackLabel = project?.spec.stack
+    ? stackDisplayName(project.spec.stack)
+    : null;
+
+  useEffect(() => {
+    if (hasPreview || fumeroCoderActive) setPreviewPanelOpen(true);
+  }, [hasPreview, fumeroCoderActive, setPreviewPanelOpen]);
+
+  const bumpLivePreviewEpoch = () => {
+    setFumeroLivePreview((prev) =>
+      prev ? { ...prev, previewEpoch: Date.now() } : prev
+    );
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex h-full min-h-0 flex-1 flex-col overflow-hidden",
+        className ?? "bg-background"
+      )}
+    >
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-row",
+          previewVisible &&
+            !fumeroCoderActive &&
+            "divide-x divide-border/60"
+        )}
+      >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <MotorsChatPanel
+            layout="split"
+            unifiedMode
+            initialPrompt={sp.get("q")}
+            initialToolId={
+              (() => {
+                const raw = sp.get("tool");
+                if (!raw || !/^\d+$/.test(raw)) return null;
+                return Number(raw);
+              })()
+            }
+            initialAppSlug={sp.get("app") || null}
+            initialComposerMode={
+              initialCoderMode ? ("coder" as FumeroComposerMode) : undefined
+            }
+            onComposerModeChange={(mode) => {
+              setFumeroCoderActive(mode === "coder");
+              onComposerModeChange?.(mode);
+            }}
+            maxCompanion={maxCompanion}
+            onBuildArtifact={buildArtifact}
+            onFumeroContentPreview={setFumeroContentPreview}
+            onFumeroLivePreview={setFumeroLivePreview}
+            onFumeroVisualEditModeChange={setVisualEditMode}
+            onRegisterVisualEditPick={(fn) => {
+              visualEditPickRef.current = fn;
+            }}
+            onProjectPrompt={async (prompt, conversationId) => {
+              if (project) {
+                await iterateProject(prompt);
+              } else {
+                await buildProject(prompt, conversationId);
+              }
+            }}
+            hasActiveProject={Boolean(project)}
+            artifactBusy={busy}
+            externalStatusError={projectError}
+          />
+        </div>
+
+        {showPreviewRail && (
+          <>
+            <PanelCollapseRail
+              side="right"
+              open={previewPanelOpen}
+              onToggle={() => setPreviewPanelOpen(!previewPanelOpen)}
+              title={
+                previewPanelOpen
+                  ? "Preview inklappen"
+                  : "Preview uitklappen"
+              }
+            />
+            {previewVisible && (
+              <div
+                className={cn(
+                  "fumero-coder-preview-rail flex min-h-0 w-[min(52%,32rem)] min-w-[300px] max-w-[55%] flex-1 flex-col",
+                  fumeroCoderActive && "w-[min(58%,36rem)] max-w-[60%]"
+                )}
+              >
+                {artifact && (
+                  <ArtifactPanel
+                    html={artifact.html}
+                    title={artifact.title}
+                    onClose={closeArtifact}
+                    onSave={async () => {
+                      await saveArtifact(artifact);
+                    }}
+                  />
+                )}
+                {project && !artifact && (
+                  <ProjectPreview
+                    title={project.title}
+                    files={project.files}
+                    previewHtml={project.previewHtml}
+                    stackLabel={stackLabel}
+                    klant={company}
+                    onClose={closeProject}
+                    onSave={async () => {
+                      await saveProjectAsApp();
+                    }}
+                  />
+                )}
+                {!artifact && !project && fumeroLivePreview && (
+                  <FumeroLivePreviewPanel
+                    preview={fumeroLivePreview}
+                    onClose={() => {
+                      setFumeroLivePreview(null);
+                      setVisualEditMode(false);
+                    }}
+                    onRefresh={bumpLivePreviewEpoch}
+                    visualEditMode={visualEditMode}
+                    onVisualEditPick={(hint) => visualEditPickRef.current(hint)}
+                  />
+                )}
+                {!artifact &&
+                  !project &&
+                  !fumeroLivePreview &&
+                  coderPreviewRail && (
+                    <FumeroLivePreviewPanel
+                      preview={{
+                        title: "Preview",
+                        previewUrl: null,
+                        status: "ready",
+                        building: false,
+                      }}
+                      onClose={() => setFumeroCoderActive(false)}
+                    />
+                  )}
+                {!artifact && !project && !fumeroLivePreview && fumeroContentPreview && (
+                  fumeroContentPreview.canvasMode ? (
+                    <FumeroCanvasPanel
+                      preview={fumeroContentPreview}
+                      onClose={() => setFumeroContentPreview(null)}
+                      onContentChange={(content) =>
+                        setFumeroContentPreview((prev) =>
+                          prev ? { ...prev, content } : prev
+                        )
+                      }
+                    />
+                  ) : (
+                    <FumeroContentPreviewPanel
+                      preview={fumeroContentPreview}
+                      onClose={() => setFumeroContentPreview(null)}
+                      onContentChange={(content) =>
+                        setFumeroContentPreview((prev) =>
+                          prev ? { ...prev, content } : prev
+                        )
+                      }
+                    />
+                  )
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

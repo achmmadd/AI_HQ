@@ -1,0 +1,11 @@
+{
+  "name": "motors-pc-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MotorsAI PC bridge — local executor ops + NUC poll",
+  "main": "index.js",
+  "bin": {
+    "motors-pc-bridge": "index.js"
+  },
+  "type": "commonjs"
+}

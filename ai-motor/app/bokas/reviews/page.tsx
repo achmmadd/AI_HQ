@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "@/components/app-shell";
+import { BokasShell } from "@/components/bokas/bokas-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -73,7 +73,7 @@ export default function BokasReviewsPage() {
   }
 
   return (
-    <AppShell title="Reviews · Bokas">
+    <BokasShell page="Reviews · Bokas">
       <div className="space-y-4">
         <p className="text-sm text-text-secondary max-w-2xl">
           Google-reviews over service, eten en sfeer — conceptantwoorden via n8n (
@@ -185,6 +185,6 @@ export default function BokasReviewsPage() {
           </p>
         )}
       </div>
-    </AppShell>
+    </BokasShell>
   );
 }

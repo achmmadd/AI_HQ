@@ -1,0 +1,1387 @@
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f5f5f4;
+  --surface:#ffffff;
+  --surface2:#fafaf9;
+  --border:#e7e5e4;
+  --border2:#d6d3d1;
+  --text:#1c1917;
+  --text2:#78716c;
+  --text3:#a8a29e;
+  --accent:#e8501a;
+  --accent-d:#c2400f;
+  --accent-lt:#fff4ef;
+  --accent-ring:rgba(232,80,26,0.15);
+  --green:#15803d;
+  --green-lt:#f0fdf4;
+  --blue:#1d4ed8;
+  --blue-lt:#eff6ff;
+  --purple:#6d28d9;
+  --purple-lt:#f5f3ff;
+  --amber:#b45309;
+  --amber-lt:#fffbeb;
+  --r:10px;--r-sm:7px;--r-lg:14px;
+  --sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:0 4px 16px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04);
+  --sh-lg:0 8px 32px rgba(0,0,0,.1),0 2px 8px rgba(0,0,0,.06);
+  --sans:'Inter',system-ui,sans-serif;
+  --serif:'Fraunces',Georgia,serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden;}
+
+/* ── LAYOUT ── */
+.shell{display:grid;grid-template-columns:232px 1fr;height:100vh;}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+
+.sb-top{padding:18px 16px 14px;border-bottom:1px solid var(--border);}
+.sb-logo{display:flex;align-items:center;gap:9px;margin-bottom:16px;}
+.sb-mark{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0;}
+.sb-name{font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.2px;}
+.sb-domain{font-size:11px;color:var(--text3);}
+
+/* ai input preview in sidebar */
+.sb-ai-hint{background:var(--accent-lt);border:1px solid rgba(232,80,26,.2);border-radius:var(--r-sm);padding:9px 11px;cursor:pointer;transition:all .15s;}
+.sb-ai-hint:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);}
+.sb-ai-hint-label{font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.sb-ai-hint-text{font-size:12px;color:var(--text2);line-height:1.4;}
+
+.sb-nav{flex:1;padding:10px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:1px;}
+.sb-nav::-webkit-scrollbar{width:3px;}
+.sb-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+.nav-group-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;padding:10px 8px 3px;}
+
+.nav-link{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r-sm);cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .12s;position:relative;}
+.nav-link:hover{background:var(--bg);color:var(--text);}
+.nav-link.active{background:var(--accent-lt);color:var(--accent);font-weight:600;}
+.nav-link svg{width:15px;height:15px;flex-shrink:0;stroke-width:1.8;}
+.nav-pill{margin-left:auto;font-size:10px;font-weight:600;padding:1px 6px;border-radius:100px;background:var(--accent);color:#fff;}
+.nav-pill.muted{background:var(--border);color:var(--text2);}
+
+.sb-bottom{border-top:1px solid var(--border);padding:10px;}
+.sb-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;background:var(--bg);border-radius:var(--r-sm);}
+.sb-stat-label{font-size:10px;color:var(--text3);margin-bottom:2px;}
+.sb-stat-value{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.3px;}
+.sb-stat-delta{font-size:10px;color:var(--green);font-weight:500;}
+
+/* ── MAIN ── */
+.main{display:grid;grid-template-rows:52px 1fr;overflow:hidden;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:10px;}
+.topbar-title{font-size:14px;font-weight:600;color:var(--text);}
+.topbar-sep{color:var(--border2);}
+.topbar-page{font-size:13px;color:var(--text2);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+
+.live-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-weight:500;padding:3px 9px;background:var(--green-lt);border:1px solid #bbf7d0;border-radius:100px;}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:500;font-family:var(--sans);cursor:pointer;transition:all .12s;border:none;}
+.btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border2);box-shadow:var(--sh);}
+.btn-ghost:hover{background:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(232,80,26,.25);}
+.btn-accent:hover{background:var(--accent-d);transform:translateY(-1px);box-shadow:0 4px 12px rgba(232,80,26,.3);}
+.btn svg{width:13px;height:13px;stroke-width:2;}
+
+/* ── PAGE CONTAINER ── */
+.pages{overflow:hidden;height:100%;}
+.page{display:none;height:100%;overflow-y:auto;padding:24px;}
+.page.active{display:block;}
+.page::-webkit-scrollbar{width:5px;}
+.page::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ── HOME / AI CENTER ── */
+.ai-center{max-width:720px;margin:0 auto;padding-top:32px;}
+.ai-greeting{font-family:var(--serif);font-size:32px;font-weight:400;color:var(--text);letter-spacing:-.5px;line-height:1.2;margin-bottom:6px;}
+.ai-greeting em{font-style:italic;color:var(--accent);}
+.ai-sub{font-size:14px;color:var(--text2);margin-bottom:32px;}
+
+/* big AI input */
+.ai-composer{background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r-lg);box-shadow:var(--sh-md);overflow:hidden;transition:box-shadow .2s,border-color .2s;margin-bottom:20px;}
+.ai-composer:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-ring),var(--sh-md);}
+.ai-composer-top{padding:16px 18px 0;}
+.ai-composer-label{font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
+.ai-composer textarea{width:100%;border:none;outline:none;font-family:var(--sans);font-size:14px;color:var(--text);resize:none;background:transparent;line-height:1.6;min-height:80px;max-height:160px;}
+.ai-composer textarea::placeholder{color:var(--text3);}
+.ai-composer-bottom{padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface2);}
+.composer-type-pills{display:flex;gap:4px;flex:1;flex-wrap:wrap;}
+.type-pill{font-size:11px;font-weight:500;padding:4px 10px;border-radius:100px;border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .12s;white-space:nowrap;}
+.type-pill:hover{border-color:var(--accent);color:var(--accent);}
+.type-pill.sel{background:var(--accent);border-color:var(--accent);color:#fff;}
+.composer-send{width:34px;height:34px;border-radius:var(--r-sm);background:var(--accent);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;}
+.composer-send:hover{background:var(--accent-d);transform:scale(1.05);}
+.composer-send svg{width:14px;height:14px;stroke:#fff;stroke-width:2.5;}
+
+/* quick actions */
+.quick-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+.quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:28px;}
+.quick-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .15s;}
+.quick-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);}
+.quick-icon{font-size:20px;margin-bottom:8px;}
+.quick-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.quick-desc{font-size:11px;color:var(--text3);line-height:1.4;}
+
+/* ai result stream */
+.ai-result{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;animation:fadeUp .3s ease;}
+.ai-result-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.ai-result-avatar{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#f97316);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+.ai-result-from{font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;}
+.ai-result-type{margin-left:auto;font-size:10px;padding:2px 7px;border-radius:100px;background:var(--accent-lt);color:var(--accent);font-weight:600;}
+.ai-result-body{font-size:13px;color:var(--text);line-height:1.65;}
+.ai-result-body strong{color:var(--text);font-weight:600;}
+.ai-result-actions{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.result-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--r-sm);border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .12s;background:var(--surface);}
+.result-btn:hover{border-color:var(--accent);color:var(--accent);}
+.result-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.result-btn.primary:hover{background:var(--accent-d);}
+
+/* past messages */
+.chat-history{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
+.user-msg{align-self:flex-end;max-width:85%;background:var(--accent);color:#fff;border-radius:var(--r);padding:10px 14px;font-size:13px;line-height:1.5;}
+
+/* ── EMAIL PAGE ── */
+.email-composer{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh);overflow:hidden;margin-bottom:20px;}
+.ec-top{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.ec-title{font-size:14px;font-weight:600;color:var(--text);}
+.ec-desc{font-size:12px;color:var(--text2);margin-top:1px;}
+
+.ec-fields{padding:16px 20px;display:flex;flex-direction:column;gap:12px;}
+.field-row{display:flex;flex-direction:column;gap:4px;}
+.field-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;}
+.field-input{border:1px solid var(--border2);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;font-family:var(--sans);color:var(--text);outline:none;transition:border-color .12s;background:var(--surface);}
+.field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);}
+.field-input::placeholder{color:var(--text3);}
+.field-textarea{resize:none;min-height:80px;line-height:1.6;}
+
+.ec-bottom{padding:12px 20px;border-top:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.ec-hint{font-size:12px;color:var(--text3);}
+.ec-actions{display:flex;gap:8px;}
+
+/* flow cards */
+.flows-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.flow-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;cursor:pointer;transition:all .15s;}
+.flow-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px);}
+.flow-card.add{border:2px dashed var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:var(--text2);min-height:170px;}
+.flow-card.add:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-lt);}
+
+.fc-top{padding:14px 16px;display:flex;gap:10px;align-items:flex-start;}
+.fc-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.fc-icon.orange{background:var(--accent-lt);}
+.fc-icon.blue{background:var(--blue-lt);}
+.fc-icon.green{background:var(--green-lt);}
+.fc-icon.purple{background:var(--purple-lt);}
+.fc-icon.amber{background:var(--amber-lt);}
+.fc-info{flex:1;}
+.fc-name{font-size:13px;font-weight:600;color:var(--text);}
+.fc-trigger{font-size:11px;color:var(--text3);margin-top:2px;}
+.fc-toggle{width:30px;height:17px;border-radius:100px;background:var(--green);position:relative;cursor:pointer;flex-shrink:0;margin-top:2px;}
+.fc-toggle.off{background:var(--border2);}
+.fc-knob{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .18s;}
+.fc-toggle:not(.off) .fc-knob{left:15px;}
+.fc-stats{display:grid;grid-template-columns:repeat(3,1fr);padding:10px 16px;border-top:1px solid var(--border);background:var(--bg);gap:4px;}
+.fc-stat-l{font-size:10px;color:var(--text3);font-weight:500;margin-bottom:2px;}
+.fc-stat-v{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.2px;}
+
+/* ── CONTENT PAGE ── */
+.content-type-bar{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
+.ctype{display:flex;align-items:center;gap:7px;padding:8px 14px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);cursor:pointer;transition:all .15s;font-size:13px;font-weight:500;color:var(--text2);}
+.ctype:hover{border-color:var(--accent);color:var(--accent);}
+.ctype.active{border-color:var(--accent);background:var(--accent-lt);color:var(--accent);font-weight:600;}
+.ctype-icon{font-size:16px;}
+
+/* content generator */
+.content-gen{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-md);overflow:hidden;margin-bottom:20px;}
+.cg-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.cg-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--accent-lt);color:var(--accent);text-transform:uppercase;letter-spacing:.05em;}
+.cg-title{font-size:13px;font-weight:600;color:var(--text);}
+
+.cg-prompt{padding:16px 18px;border-bottom:1px solid var(--border);}
+.cg-prompt textarea{width:100%;border:1px solid var(--border2);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;font-family:var(--sans);color:var(--text);resize:none;outline:none;min-height:70px;line-height:1.6;transition:border-color .12s;}
+.cg-prompt textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);}
+.cg-prompt textarea::placeholder{color:var(--text3);}
+
+.cg-options{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface2);}
+.opt-group{display:flex;flex-direction:column;gap:3px;}
+.opt-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
+.opt-select{border:1px solid var(--border2);border-radius:var(--r-sm);padding:5px 10px;font-size:12px;font-family:var(--sans);color:var(--text);background:var(--surface);outline:none;cursor:pointer;}
+.opt-select:focus{border-color:var(--accent);}
+
+.cg-footer{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;}
+.cg-footer-hint{font-size:12px;color:var(--text3);}
+
+/* content results grid */
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:all .15s;}
+.result-card:hover{border-color:var(--accent);box-shadow:var(--sh-md);}
+
+.rc-image{height:140px;display:flex;align-items:center;justify-content:center;font-size:36px;position:relative;overflow:hidden;}
+.rc-image.prod1{background:linear-gradient(135deg,#fff4ef,#fde8d8);}
+.rc-image.prod2{background:linear-gradient(135deg,#eff6ff,#dbeafe);}
+.rc-image.prod3{background:linear-gradient(135deg,#f5f3ff,#ede9fe);}
+.rc-image.banner1{background:linear-gradient(135deg,#1c1917,#44403c);}
+.rc-image.banner2{background:linear-gradient(135deg,#e8501a,#f97316);}
+.rc-image.banner3{background:linear-gradient(135deg,#14532d,#166534);}
+.rc-image.social1{background:linear-gradient(135deg,#fef9c3,#fef08a);}
+.rc-image.social2{background:linear-gradient(135deg,#fce7f3,#fbcfe8);}
+.rc-image.social3{background:linear-gradient(135deg,#e0f2fe,#bae6fd);}
+
+.rc-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;}
+.result-card:hover .rc-overlay{background:rgba(0,0,0,.35);opacity:1;}
+.rc-action{background:#fff;border:none;border-radius:100px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text);transition:all .1s;}
+.rc-action:hover{background:var(--accent);color:#fff;}
+
+.rc-label{padding:10px 12px;border-top:1px solid var(--border);}
+.rc-name{font-size:12px;font-weight:500;color:var(--text);}
+.rc-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+
+/* two col for content page */
+.content-split{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start;}
+
+/* recent content list */
+.recent-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.rl-header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text);}
+.rl-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.rl-item:last-child{border-bottom:none;}
+.rl-item:hover{background:var(--bg);}
+.rl-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.rl-type{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.05em;}
+.rl-type.foto{background:var(--accent-lt);color:var(--accent);}
+.rl-type.banner{background:var(--blue-lt);color:var(--blue);}
+.rl-type.social{background:var(--purple-lt);color:var(--purple);}
+.rl-type.tekst{background:var(--green-lt);color:var(--green);}
+.rl-status{font-size:10px;color:var(--text3);}
+.rl-name{font-size:12px;font-weight:500;color:var(--text);}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.quick-card{animation:fadeUp .3s ease both;}
+.quick-card:nth-child(1){animation-delay:.04s;}
+.quick-card:nth-child(2){animation-delay:.08s;}
+.quick-card:nth-child(3){animation-delay:.12s;}
+.quick-card:nth-child(4){animation-delay:.16s;}
+.quick-card:nth-child(5){animation-delay:.20s;}
+.quick-card:nth-child(6){animation-delay:.24s;}
+
+.flow-card{animation:fadeUp .3s ease both;}
+.flow-card:nth-child(1){animation-delay:.04s;}
+.flow-card:nth-child(2){animation-delay:.08s;}
+.flow-card:nth-child(3){animation-delay:.12s;}
+.flow-card:nth-child(4){animation-delay:.16s;}
+.flow-card:nth-child(5){animation-delay:.20s;}
+.flow-card:nth-child(6){animation-delay:.24s;}
+
+.section-h{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.section-h::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* stats mini */
+.mini-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.ms{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);}
+.ms-label{font-size:11px;color:var(--text2);font-weight:500;margin-bottom:8px;}
+.ms-value{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.5px;line-height:1;}
+.ms-value.accent{color:var(--accent);}
+.ms-delta{font-size:11px;margin-top:5px;font-weight:500;}
+.ms-delta.up{color:var(--green);}
+.ms-delta.dn{color:#dc2626;}
+.ms-delta.neu{color:var(--text3);}
+
+/* tab bar for email flows vs stats */
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.tab{font-size:13px;font-weight:500;color:var(--text2);padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+
+/* email preview pane */
+.email-preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.ep-bar{background:#f5f5f4;border-bottom:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:6px;}
+.ep-dot{width:9px;height:9px;border-radius:50%;}
+.ep-dots{display:flex;gap:5px;}
+.ep-title{font-size:11px;color:var(--text3);margin:0 auto;}
+.ep-body{padding:16px;}
+.ep-from{font-size:11px;color:var(--text3);margin-bottom:12px;}
+.ep-subject{font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;letter-spacing:-.2px;}
+.ep-content{font-size:12px;color:var(--text2);line-height:1.7;}
+.ep-cta{display:inline-block;margin-top:14px;background:var(--accent);color:#fff;padding:9px 20px;border-radius:var(--r-sm);font-size:13px;font-weight:600;text-decoration:none;}
+
+  
+    
+      F
+      Fumero Studiofumero.nl · WooCommerce
+    
+    
+      ✦ AI Assistent
+      Vraag iets of maak iets aan…
+    
+  
+
+  
+    Studio
+    
+      
+      AI Assistent
+    
+    
+      
+      Content Studio
+      4
+    
+    
+      
+      E-mail flows
+      2
+    
+
+    Bouwen & Groeien
+    
+      
+      Tools Builder
+      Nieuw
+    
+    
+      
+      Groei
+    
+
+    Shop
+    
+      
+• 
+      Orders
+      12
+    
+    
+      
+      Producten
+      48
+    
+    
+      
+      Analytics
+    
+  
+
+  
+    
+      Vandaag€847↑ 23%
+      Orders12↑ 4 nieuw
+    
+  
+
+  
+  
+    Fumero Studio
+    /
+    AI Assistent
+    
+      Live
+      
+        
+• 
+• 
+        Nieuw aanmaken
+      
+    
+  
+
+  
+
+    
+    
+      
+        Wat maak je vandaag,Pietje?
+        Beschrijf wat je nodig hebt — productfoto, e-mail flow, banner, tekst. AI regelt de rest.
+
+        
+        
+          
+            ✦ Vraag of maak aan
+            
+          
+          
+            
+              📧 E-mail
+              📸 Productfoto
+              🖼 Banner
+              📱 Social
+              ✍️ Tekst
+              ⚡ Flow
+            
+            
+              
+• 
+            
+          
+        
+
+        
+        
+
+        
+        Snelle acties
+        
+          
+            📸
+            Productfoto genereren
+            Premium lifestyle of witte achtergrond voor je webshop
+          
+          
+            📧
+            Bestelbevestiging schrijven
+            Persoonlijke bedankmail direct na aankoop
+          
+          
+            🖼
+            Campagne banner
+            Sale, seizoen of nieuwe collectie bannners
+          
+          
+            ⭐
+            Review verzoek flow
+            Automatisch na bezorging, meer reviews via AI
+          
+          
+            📱
+            Social media posts
+            Instagram, Facebook of TikTok content pakket
+          
+          
+            🛒
+            Verlaten winkelwagen
+            Automatische flow die omzet terughaalt
+          
+        
+
+      
+    
+
+    
+    
+      
+        
+          Content Studio
+          Genereer productfoto's, banners, social posts en teksten met AI
+        
+
+        
+        
+          
+            📸 Productfoto
+          
+          
+            🖼 Banner / campagne
+          
+          
+            📱 Socials
+          
+          
+            📧 E-mail template
+          
+          
+            ✍️ Producttekst / SEO
+          
+        
+
+        
+        
+          
+            📸 Productfoto
+            Genereer een professionele productfoto met AI
+          
+          
+            
+          
+          
+            
+              Stijl
+              
+                Studio / witte achtergrond
+                Lifestyle / context
+                Minimalistisch
+                Dark & moody
+              
+            
+            
+              Formaat
+              
+                1:1 (webshop)
+                4:3 (overzicht)
+                16:9 (banner)
+                9:16 (story)
+              
+            
+            
+              Varianten
+              
+                3 varianten
+                1 variant
+                6 varianten
+              
+            
+            
+              Product
+              
+                HHC Vape 1g
+                CBD Olie 10%
+                Starter Pack
+                HHC Hash 2g
+              
+            
+          
+          
+            AI gebruikt je Fumero huisstijl automatisch
+            
+              Bewaar prompt
+              
+                
+                Genereer
+              
+            
+          
+        
+
+        
+        
+          Gegenereerde varianten
+          
+            
+              
+                🌿
+                
+                  Gebruik
+                  Download
+                
+              
+              Variant 1 — Studio clean1:1 · webshop klaar
+            
+            
+              
+                💚
+                
+                  Gebruik
+                  Download
+                
+              
+              Variant 2 — Soft gradient1:1 · webshop klaar
+            
+            
+              
+                ✨
+                
+                  Gebruik
+                  Download
+                
+              
+              Variant 3 — Dark premium1:1 · webshop klaar
+            
+          
+        
+
+        
+        Recent aangemaakt
+        
+          Opgeslagen content
+          FotoVandaag 14:32HHC Vape 1g — 3 varianten studio
+          BannerGisterenZomeractie 20% — 1200×628px
+          SocialGisterenInstagram post set — CBD collectie
+          Tekst3 dagen geledenCBD Olie categoriepagina — SEO meta
+        
+      
+    
+
+    
+    
+      
+        
+          
+            E-mail flows
+            5 actieve flows · 2.847 mails verstuurd deze maand
+          
+          
+            
+• 
+• 
+            Nieuwe flow via AI
+          
+        
+
+        
+        
+          
+            ✦
+            AI Flow BuilderBeschrijf wat je wil, AI maakt de volledige flow aan
+          
+          
+            
+              Beschrijf je flow
+              
+            
+            
+              
+                Trigger
+                
+                  Order geplaatst
+                  Order verzonden
+                  Nieuwsbrief inschrijving
+                  Geen aankoop 60 dagen
+                  Verlaten winkelwagen
+                
+              
+              
+                Toon
+                
+                  Vriendelijk & direct
+                  Professioneel
+                  Persoonlijk
+                  Urgentie
+                
+              
+            
+          
+          
+            AI schrijft alle e-mails, timing en condities voor je
+            
+              Annuleer
+              
+                
+                Genereer flow
+              
+            
+          
+        
+
+        
+        
+          Verzonden (30d)2.847↑ 18% vs vorige maand
+          Gem. open rate42%↑ branche: 21%
+          Klikratio6.8%→ stabiel
+          Omzet via mail€1.240↑ €340 deze week
+        
+
+        
+        Actieve flows
+        
+
+          
+            
+              📦
+              BestelbevestigingTrigger: order geplaatst · direct
+              
+            
+            
+              Verzonden847
+              Open rate68%
+              E-mails2
+            
+          
+
+          
+            
+              ⭐
+              Review verzoekTrigger: 7 dagen na verzending
+              
+            
+            
+              Verzonden412
+              Open rate44%
+              Reviews38
+            
+          
+
+          
+            
+              🛒
+              Verlaten winkelwagenTrigger: 1 uur na verlaten
+              
+            
+            
+              Verzonden318
+              Open rate51%
+              Omzet€620
+            
+          
+
+          
+            
+              👋
+              WelkomstflowTrigger: nieuwsbrief inschrijving
+              
+            
+            
+              Verzonden1.067
+              Open rate58%
+              Conversie12%
+            
+          
+
+          
+            
+              💜
+              Win-back campagneTrigger: 60 dagen geen aankoop
+              
+            
+            
+              Verzonden203
+              Open rate28%
+              Conversie4.2%
+            
+          
+
+          
+            ✦
+            Nieuwe flow via AI
+            Beschrijf wat je wil,AI bouwt de flow
+          
+
+        
+
+        
+        Voorbeeld — Bestelbevestiging
+        
+          
+            
+              
+              Voorbeeld e-mail
+            
+            
+              Van: Fumero <hallo@fumero.nl>
+              Bedankt voor je bestelling 🌿
+              
+                Hoi {{voornaam}},
+                Super dat je besteld hebt! We zijn direct aan de slag met je order #{{ordernummer}}.
+                Je hebt besteld:
+                • {{productnaam}} × {{aantal}}
+                Verwachte bezorging: {{leverdatum}}
+                Vragen? Reply op deze mail of WhatsApp ons.
+                
+                Bekijk je bestelling
+              
+            
+          
+          
+            
+              Flow stappen
+              
+                1Direct: Bedankmail versturen
+                
+                2Wacht 7 dagen na bezorging
+                
+                3Review verzoek versturen
+              
+            
+            
+              
+              Bewerk met AI
+            
+            Stuur testmail
+          
+        
+
+      
+    
+
+    
+    
+      
+        
+          Orders
+          12 orders vandaag · 3 vereisen actie
+        
+        
+          
+            Order
+            Klant
+            Bedrag
+            Status
+            Tijd
+          
+          ${[
+            ['#7842','M. van den Berg','HHC Vape 1g × 2','€69,90','new','Nieuw','2 min'],
+            ['#7841','S. Jansen','CBD Olie 10%','€49,00','processing','Verwerking','18 min'],
+            ['#7840','R. de Vries','Starter Pack','€89,95','shipped','Verzonden','1 uur'],
+            ['#7839','K. Bakker','HHC Hash 2g','€24,95','pending','Betaling open','2 uur'],
+            ['#7838','L. Smit','CBD Caps 30x','€39,00','shipped','Verzonden','3 uur'],
+          ].map(([id,name,prod,amt,cls,label,time])=>`
+          
+            ${id}
+            ${name}${prod}
+            ${amt}
+            ${label}
+            ${time}
+          `).join('')}
+        
+      
+    
+
+    
+    
+      
+        .tb-hero{background:linear-gradient(135deg,#1c1917 0%,#292524 100%);border-radius:14px;padding:28px 28px 24px;margin-bottom:20px;position:relative;overflow:hidden;}
+        .tb-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(232,80,26,.25),transparent 70%);pointer-events:none;}
+        .tb-hero-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+        .tb-hero-title{font-family:var(--serif);font-size:26px;font-weight:400;color:#fff;letter-spacing:-.3px;line-height:1.25;margin-bottom:6px;}
+        .tb-hero-title em{font-style:italic;color:#fb923c;}
+        .tb-hero-sub{font-size:13px;color:#a8a29e;line-height:1.6;max-width:520px;margin-bottom:20px;}
+        .tb-composer{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:14px 16px;display:flex;gap:10px;align-items:flex-end;}
+        .tb-composer textarea{flex:1;background:transparent;border:none;outline:none;font-family:var(--sans);font-size:13px;color:#fff;resize:none;min-height:48px;line-height:1.6;}
+        .tb-composer textarea::placeholder{color:#78716c;}
+        .tb-send{width:38px;height:38px;border-radius:var(--r-sm);background:var(--accent);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;}
+        .tb-send:hover{background:var(--accent-d);transform:scale(1.05);}
+        .tb-send svg{width:14px;height:14px;stroke:#fff;stroke-width:2.5;}
+
+        .tool-templates{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+        .tool-tpl{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+        .tool-tpl:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring),var(--sh-md);transform:translateY(-1px);}
+        .tool-tpl-icon{font-size:24px;margin-bottom:10px;}
+        .tool-tpl-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;}
+        .tool-tpl-desc{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px;}
+        .tool-tpl-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:100px;}
+        .tool-tpl-tag.widget{background:var(--blue-lt);color:var(--blue);}
+        .tool-tpl-tag.chat{background:var(--accent-lt);color:var(--accent);}
+        .tool-tpl-tag.quiz{background:var(--purple-lt);color:var(--purple);}
+        .tool-tpl-tag.form{background:var(--green-lt);color:var(--green);}
+        .tool-tpl-tag.popup{background:var(--amber-lt);color:var(--amber);}
+
+        /* builder canvas */
+        .builder-wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;margin-bottom:20px;}
+        .builder-canvas{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-md);}
+        .bc-bar{background:#f5f5f4;border-bottom:1px solid var(--border);padding:9px 14px;display:flex;align-items:center;gap:8px;}
+        .bc-dots{display:flex;gap:5px;}
+        .bc-dot{width:9px;height:9px;border-radius:50%;}
+        .bc-url{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:11px;color:var(--text3);margin:0 10px;}
+        .bc-preview{padding:20px;min-height:320px;display:flex;align-items:center;justify-content:center;}
+
+        /* chat widget preview */
+        .widget-preview{width:100%;max-width:320px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);overflow:hidden;border:1px solid var(--border);}
+        .wp-header{background:var(--accent);padding:14px 16px;display:flex;align-items:center;gap:10px;}
+        .wp-avatar{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;}
+        .wp-title{font-size:13px;font-weight:700;color:#fff;}
+        .wp-sub{font-size:11px;color:rgba(255,255,255,.7);}
+        .wp-msgs{padding:14px;display:flex;flex-direction:column;gap:8px;background:#fafaf9;min-height:140px;}
+        .wp-msg{background:#fff;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;color:#1c1917;border:1px solid #e7e5e4;max-width:85%;}
+        .wp-msg.user{background:var(--accent);color:#fff;border-color:var(--accent);align-self:flex-end;}
+        .wp-input{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;background:#fff;}
+        .wp-input input{flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--sans);outline:none;}
+        .wp-btn{width:28px;height:28px;border-radius:6px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+        .wp-btn svg{width:12px;height:12px;stroke:#fff;stroke-width:2.5;}
+
+        /* builder sidebar */
+        .builder-sidebar{display:flex;flex-direction:column;gap:10px;}
+        .bs-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+        .bs-header{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;}
+        .bs-body{padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+        .bs-field{display:flex;flex-direction:column;gap:3px;}
+        .bs-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
+        .bs-input{border:1px solid var(--border2);border-radius:var(--r-sm);padding:7px 10px;font-size:12px;font-family:var(--sans);color:var(--text);outline:none;width:100%;transition:border-color .12s;}
+        .bs-input:focus{border-color:var(--accent);}
+        .color-row{display:flex;gap:6px;align-items:center;}
+        .color-swatch{width:22px;height:22px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:all .12s;}
+        .color-swatch.active{border-color:var(--text);}
+        .deploy-btn{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+        .deploy-btn:hover{background:var(--accent-d);transform:translateY(-1px);box-shadow:0 4px 12px rgba(232,80,26,.3);}
+        .deploy-btn svg{width:14px;height:14px;stroke:#fff;stroke-width:2.5;}
+        .embed-code{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;font-size:10px;font-family:monospace;color:var(--text2);line-height:1.6;word-break:break-all;}
+
+        /* deployed tools list */
+        .deployed-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);}
+        .dl-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer;}
+        .dl-item:last-child{border-bottom:none;}
+        .dl-item:hover{background:var(--bg);}
+        .dl-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+        .dl-info{flex:1;}
+        .dl-name{font-size:13px;font-weight:600;color:var(--text);}
+        .dl-meta{font-size:11px;color:var(--text3);margin-top:1px;}
+        .dl-stat{font-size:12px;font-weight:600;color:var(--text);text-align:right;}
+        .dl-stat-label{font-size:10px;color:var(--text3);}
+      
+
+      
+        
+        
+          ✦ Tools Builder
+          Bouw en deployelke tool voor fumero.nl
+          Beschrijf wat je wil bouwen. AI genereert het live, jij past het aan en deployt het met één klik als widget op je site.
+          
+            
+            
+              
+• 
+            
+          
+        
+
+        
+        Start met een template
+        
+          
+            💬
+            Fumero Chatbot
+            Productadvies, vragen beantwoorden, bestelling tracken — 24/7 op je site.
+            Chat widget
+          
+          
+            🎯
+            Keuzehulp / Quiz
+            "Welk product past bij mij?" — stap voor stap naar het juiste product.
+            Quiz
+          
+          
+            🔞
+            Leeftijdscheck
+            Verplichte leeftijdsverificatie popup bij eerste bezoek. GDPR-ready.
+            Popup
+          
+          
+            🎁
+            Bundel configurator
+            Klant stelt eigen pack samen — verhoogt gemiddelde orderwaarde.
+            Widget
+          
+          
+            ⭐
+            Review collector
+            Embedded review formulier dat direct in WooCommerce opslaat.
+            Formulier
+          
+          
+            🏆
+            Loyalty widget
+            Punten tonen, tier status, volgende beloning — houd klanten terugkomen.
+            Widget
+          
+        
+
+        
+        
+          Live preview — Fumero Chatbot
+          
+            
+              
+                
+                  
+                  
+                  
+                
+                fumero.nl
+                ● Live preview
+              
+              
+                
+              
+            
+
+            
+              
+                
+                  Instellingen
+                  Auto-opgeslagen
+                
+                
+                  
+                    Naam widget
+                    
+                  
+                  
+                    Welkomstbericht
+                    
+                  
+                  
+                    Kleur
+                    
+                      
+                      
+                      
+                      
+                      
+                    
+                  
+                  
+                    Positie op site
+                    
+                      Rechtsonder (chat bubble)
+                      Linksonder
+                      Inline op pagina
+                      Popup bij bezoek
+                    
+                  
+                
+              
+
+              
+                AI instructies
+                
+                  
+                  ✦ Optimaliseer met AI
+                
+              
+
+              
+                
+• 
+• 
+• 
+                Deploy naar fumero.nl
+              
+
+              
+                ✓ Klaar om te deployen
+                
+                  Embed code — plak in fumero.nl
+                  <script src="https://motorsai.app/widget/fumero-chat.js" data-id="fum_chat_01"></script>
+                  Kopieer embed code
+                  Of: automatisch toevoegen via WooCommerce plugin
+                
+              
+            
+          
+        
+
+        
+        Gedeployde tools
+        
+          
+            💬
+            
+              Fumero Chatbot
+              Chat widget · actief op fumero.nl · rechtsonder
+            
+            
+              247
+              gesprekken
+            
+            Live
+          
+          
+            🎯
+            
+              Keuzehulp — welke HHC?
+              Quiz widget · actief op /hhc-vapes · inline
+            
+            
+              89
+              completions
+            
+            Live
+          
+          
+            🔞
+            
+              Leeftijdsverificatie
+              Popup · actief op alle pagina's · eerste bezoek
+            
+            
+              1.2k
+              verificaties
+            
+            Live
+          
+        
+      
+    
+
+    
+    
+      
+        .groei-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+        .groei-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+        .gc-header{padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+        .gc-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+        .gc-title{font-size:13px;font-weight:700;color:var(--text);}
+        .gc-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+        .gc-body{padding:14px 18px;}
+
+        /* social kalender */
+        .cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px;}
+        .cal-day{background:var(--bg);border-radius:6px;padding:6px 4px;text-align:center;cursor:pointer;transition:all .12s;border:1px solid transparent;}
+        .cal-day:hover{border-color:var(--accent);}
+        .cal-day.has-post{background:var(--accent-lt);border-color:rgba(232,80,26,.3);}
+        .cal-day.today{border-color:var(--accent);background:var(--accent);color:#fff;}
+        .cal-day-name{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:2px;}
+        .cal-day.today .cal-day-name{color:rgba(255,255,255,.7);}
+        .cal-day-num{font-size:13px;font-weight:700;color:var(--text);}
+        .cal-day.today .cal-day-num{color:#fff;}
+        .cal-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);margin:3px auto 0;}
+        .cal-day.today .cal-dot{background:#fff;}
+        .cal-day.has-post .cal-dot{background:var(--accent);}
+
+        /* post preview cards */
+        .post-queue{display:flex;flex-direction:column;gap:6px;}
+        .post-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all .12s;}
+        .post-item:hover{border-color:var(--accent);background:var(--accent-lt);}
+        .post-platform{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+        .post-platform.ig{background:#fce7f3;}
+        .post-platform.tt{background:#f0fdf4;}
+        .post-platform.fb{background:var(--blue-lt);}
+        .post-text{font-size:12px;color:var(--text);line-height:1.5;flex:1;}
+        .post-meta{font-size:10px;color:var(--text3);margin-top:3px;}
+        .post-status{font-size:10px;font-weight:600;padding:2px 6px;border-radius:100px;flex-shrink:0;}
+        .post-status.ready{background:var(--green-lt);color:var(--green);}
+        .post-status.draft{background:var(--bg);color:var(--text3);border:1px solid var(--border);}
+        .post-status.posted{background:var(--blue-lt);color:var(--blue);}
+
+        /* SEO tracker */
+        .kw-list{display:flex;flex-direction:column;gap:6px;}
+        .kw-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border-radius:7px;border:1px solid var(--border);}
+        .kw-word{font-size:12px;font-weight:600;color:var(--text);flex:1;}
+        .kw-vol{font-size:11px;color:var(--text3);width:50px;text-align:right;}
+        .kw-pos{font-size:11px;font-weight:700;width:40px;text-align:center;padding:2px 6px;border-radius:4px;}
+        .kw-pos.good{background:var(--green-lt);color:var(--green);}
+        .kw-pos.mid{background:var(--amber-lt);color:var(--amber);}
+        .kw-pos.low{background:#fef2f2;color:#dc2626;}
+        .kw-bar-wrap{width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+        .kw-bar{height:100%;border-radius:2px;background:var(--accent);}
+
+        /* influencer */
+        .inf-list{display:flex;flex-direction:column;gap:6px;}
+        .inf-item{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all .12s;}
+        .inf-item:hover{border-color:var(--accent);}
+        .inf-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+        .inf-name{font-size:12px;font-weight:600;color:var(--text);}
+        .inf-handle{font-size:11px;color:var(--text3);}
+        .inf-followers{font-size:11px;font-weight:600;color:var(--text);margin-left:auto;white-space:nowrap;}
+        .inf-niche{font-size:10px;padding:2px 6px;border-radius:100px;background:var(--purple-lt);color:var(--purple);font-weight:600;margin-left:6px;}
+
+        /* content gen prompt area */
+        .groei-composer{background:linear-gradient(135deg,var(--accent-lt),#fff);border:1px solid rgba(232,80,26,.2);border-radius:var(--r);padding:16px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-end;}
+        .groei-composer textarea{flex:1;border:1px solid var(--border2);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;font-family:var(--sans);color:var(--text);resize:none;outline:none;min-height:60px;line-height:1.6;background:#fff;}
+        .groei-composer textarea:focus{border-color:var(--accent);}
+        .groei-composer textarea::placeholder{color:var(--text3);}
+      
+
+      
+        
+          
+            Groei module
+            Organische groei voor Fumero — social, SEO, influencers
+          
+        
+
+        
+        
+          
+            ✦ Genereer groeicontent
+          
+          
+          
+            
+            Genereer
+          
+        
+
+        
+        
+          Organisch bereik (maand)4.2k↑ 38% groei
+          Geplande posts12komende 2 weken
+          SEO posities top 207↑ 3 nieuw
+          Influencer leads5in gesprek
+        
+
+        
+
+          
+          
+            
+              📅
+              
+                Social kalender
+                Juni 2025 · Instagram, TikTok, Facebook
+              
+              + Post
+            
+            
+              
+                Ma
+                Di
+                Wo
+                Do
+                Vr
+                Za
+                Zo
+              
+              
+                ${[23,24,25,26,27,28,29].map((d,i)=>`${d}`).join('')}
+              
+              
+                ${[30,1,2,3,4,5,6].map((d,i)=>`${d}`).join('')}
+              
+              
+                Wachtrij
+                
+                  
+                    📸
+                    
+                      Wist je dat HHC en THC chemisch bijna identiek zijn? Hier is het verschil dat je moet kennen…
+                      Instagram · morgen 18:00
+                    
+                    Klaar
+                  
+                  
+                    🎵
+                    
+                      Welke HHC vape past bij jou? Sativa vs Indica uitgelegd in 30 seconden 🌿
+                      TikTok · 30 mei 20:00
+                    
+                    Concept
+                  
+                  
+                    👍
+                    
+                      Nieuw binnen: Delta Munchies Rainbow Sherbet — de zomerste smaak van het seizoen
+                      Facebook · 1 jun 12:00
+                    
+                    Klaar
+                  
+                
+              
+            
+          
+
+          
+          
+            
+              🔍
+              
+                SEO tracker
+                Keyword posities · fumero.nl
+              
+              + Keyword
+            
+            
+              
+                
+                  HHC vape kopen
+                  
+                  2.4k/m
+                  #8
+                
+                
+                  HHC gummies nederland
+                  
+                  880/m
+                  #14
+                
+                
+                  beste HHC vape 2025
+                  
+                  590/m
+                  #5
+                
+                
+                  HHC vs THC verschil
+                  
+                  1.1k/m
+                  #31
+                
+                
+                  ACAN HHC disposable
+                  
+                  320/m
+                  #3
+                
+                
+                  HHC edibles kopen
+                  
+                  440/m
+                  #19
+                
+              
+              
+                ✦ AI: schrijf blogartikel voor #31 keyword
+              
+            
+          
+
+          
+          
+            
+              🤝
+              
+                Influencer outreach
+                Micro-influencers in 420 / lifestyle niche
+              
+              Zoek meer
+            
+            
+              
+                
+                  🌿
+                  
+                    @420lifestyle.nl
+                    Instagram · NL
+                  
+                  12.4k
+                  Cannabis
+                  DM sturen
+                
+                
+                  ✨
+                  
+                    @relaxvibes.ams
+                    TikTok · Amsterdam
+                  
+                  8.2k
+                  Lifestyle
+                  DM sturen
+                
+                
+                  🍃
+                  
+                    @cbdnederland
+                    Instagram · NL
+                  
+                  22.1k
+                  CBD/HHC
+                  In gesprek
+                
+              
+              
+                ✦ AI: schrijf outreach DM template
+              
+            
+          
+
+          
+          
+            
+              ⭐
+              
+                Eerste reviews activeren
+                Vroege klanten persoonlijk benaderen
+              
+            
+            
+              
+                ✦ AI suggestie
+                Je hebt 47 afgeronde orders. Stuur een persoonlijke WhatsApp of mail naar je eerste 10 klanten met een vriendelijk reviewverzoek. AI schrijft de bericht voor je.
+              
+              
+                
+                  💬 Genereer WhatsApp template
+                
+                
+                  📧 Genereer persoonlijke mail
+                
+                
+                  🎁 Maak "gratis sample" campagne
+                
+                
+                  Activeer review flow voor 47 klanten
+                
+              
+            
+          
+
+        
+      
+    
+
+  
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:100px;}
+.badge.new{background:var(--blue-lt);color:var(--blue);}
+.badge.processing{background:var(--amber-lt);color:var(--amber);}
+.badge.shipped{background:var(--green-lt);color:var(--green);}
+.badge.pending{background:#fef2f2;color:#dc2626;}
+</user_query>

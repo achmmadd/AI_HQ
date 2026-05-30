@@ -1,18 +1,20 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
-import { ChatWorkspace } from "@/components/chat-workspace";
+import { MotorsChatWorkspace } from "@/components/motors-chat-workspace";
 
 export default function ChatPage() {
   return (
-    <AppShell title="Chat">
+    <AppShell title="Chat" flush>
       <Suspense
         fallback={
-          <p className="py-8 text-center text-sm text-text-secondary">
+          <p className="flex flex-1 items-center justify-center py-8 text-center text-[15px] text-text-secondary">
             Chat laden…
           </p>
         }
       >
-        <ChatWorkspace />
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          <MotorsChatWorkspace />
+        </div>
       </Suspense>
     </AppShell>
   );

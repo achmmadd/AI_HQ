@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isValidSessionToken } from "@/lib/auth-session";
+import { readAuthSession } from "@/lib/auth-session";
 
 export async function GET(req: NextRequest) {
   const headerToken = req.headers.get("x-token");
-  if (isValidSessionToken(headerToken ?? undefined)) {
-    return NextResponse.json({ authenticated: true });
+  const session = await readAuthSession(headerToken ?? undefined);
+  if (session) {
+    return NextResponse.json({
+      authenticated: true,
+      user: {
+        email: session.email,
+        role: session.role,
+        scope: session.scope,
+      },
+    });
   }
   return NextResponse.json({ authenticated: false }, { status: 401 });
 }

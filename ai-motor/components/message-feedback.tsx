@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { CompanyId } from "@/lib/types";
+import type { ChatKlant } from "@/lib/types";
 
 const REASONS = [
   { id: "too_long", label: "Tekst te lang" },
@@ -17,7 +17,7 @@ export function MessageFeedback({
   klant,
 }: {
   messageId: number;
-  klant: CompanyId;
+  klant: ChatKlant;
 }) {
   const [vote, setVote] = useState<"up" | "down" | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);

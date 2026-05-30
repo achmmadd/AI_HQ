@@ -1,4 +1,6 @@
 export type CompanyId = "fumero" | "bokas";
+export type ChatKlant = CompanyId | "system";
+export type WorkspaceId = "fumero" | "bokas" | "personal";
 
 export interface ServiceStatus {
   n8n: boolean;

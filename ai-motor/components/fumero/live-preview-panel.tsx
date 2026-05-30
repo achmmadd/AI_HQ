@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FumeroSkeleton } from "@/components/fumero/ops/fumero-skeleton";
 import { FumeroBuildTimeline } from "@/components/fumero/features/fumero-build-timeline";
 import { cacheBustPreviewUrl } from "@/lib/fumero/builder-config";
 import {
@@ -28,7 +27,7 @@ export function FumeroLivePreviewPanel({
   const [fullscreen, setFullscreen] = useState(false);
 
   const isGenerating =
-    preview.status === "generating" || preview.building || !preview.previewUrl;
+    preview.status === "generating" || preview.building === true;
   const src = preview.previewUrl
     ? cacheBustPreviewUrl(preview.previewUrl, preview.previewEpoch)
     : null;
@@ -37,9 +36,7 @@ export function FumeroLivePreviewPanel({
     preview.version != null ? fumeroConceptVersionLabel(preview.version) : null;
 
   const subtitle = isGenerating
-    ? preview.buildPhase
-      ? `Max bouwt… ${preview.buildPhase}`
-      : "Max bouwt…"
+    ? `Max bouwt je ${preview.title}…`
     : versionLabel ?? "Live preview";
 
   const attachVisualEditListener = useCallback(() => {
@@ -50,9 +47,12 @@ export function FumeroLivePreviewPanel({
       const handler = (e: MouseEvent) => {
         const target = e.target as HTMLElement | null;
         if (!target || target === doc.body || target === doc.documentElement) return;
+        const tag = target.tagName.toLowerCase();
+        if (tag === "button" || tag === "input" || tag === "select" || tag === "textarea" || tag === "a") {
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
-        const tag = target.tagName.toLowerCase();
         const text = (target.textContent ?? "").trim().slice(0, 80);
         const hint = text
           ? `Wijzig het <${tag}> element met tekst "${text}"`
@@ -191,6 +191,25 @@ export function FumeroLivePreviewPanel({
         </div>
       ) : null}
 
+      {!isGenerating && src ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#E5E5E5]/60 px-4 py-2">
+          <span className="text-[12px] text-[#525252]">
+            Klik in de preview om je tool te testen.
+          </span>
+          {preview.embedCode ? (
+            <button
+              type="button"
+              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[#E5E5E5] bg-white px-2.5 py-1 text-[12px] font-medium text-[#171717] hover:border-[#69C400]/40 hover:bg-[#FAFAFA]"
+              onClick={() => {
+                void navigator.clipboard.writeText(preview.embedCode ?? "");
+              }}
+            >
+              Embed op site
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="relative min-h-0 flex-1 bg-white">
         {src ? (
           <iframe
@@ -198,17 +217,18 @@ export function FumeroLivePreviewPanel({
             key={preview.previewEpoch ?? preview.previewUrl ?? "live"}
             title={`Preview ${preview.title}`}
             src={src}
-            className="h-full min-h-[320px] w-full border-0"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            className="pointer-events-auto h-full min-h-[320px] w-full border-0"
           />
         ) : (
-          <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 p-8">
-            <Loader2 className="h-6 w-6 animate-spin text-[#69C400]" />
-            <p className="text-[14px] text-[#525252]">{subtitle}</p>
-            <div className="w-full max-w-sm space-y-2">
-              <FumeroSkeleton className="h-2 w-2/3" />
-              <FumeroSkeleton className="h-24 w-full rounded-lg" />
-              <FumeroSkeleton className="h-3 w-1/2" />
-            </div>
+          <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center">
+            <p className="text-[14px] font-medium text-[#171717]">
+              Nog geen preview
+            </p>
+            <p className="max-w-xs text-[13px] leading-relaxed text-[#737373]">
+              Beschrijf je tool in chat of kies een sjabloon — de live preview
+              verschijnt hier.
+            </p>
           </div>
         )}
       </div>

@@ -12,3 +12,12 @@ export function assertCronSecret(req: NextRequest): void {
     throw new Error("Unauthorized");
   }
 }
+
+export function verifyCronSecret(req: NextRequest): boolean {
+  try {
+    assertCronSecret(req);
+    return true;
+  } catch {
+    return false;
+  }
+}

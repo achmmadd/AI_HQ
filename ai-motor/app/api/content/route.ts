@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  const auth = await requireWorkspaceApi(req, "fumero");
+  if (!auth.ok) return auth.response;
+
   const { searchParams } = new URL(req.url);
-  const klant = searchParams.get("klant") || "fumero";
+  const klant = "fumero";
   const platform = searchParams.get("platform");
   const status = searchParams.get("status");
 
@@ -27,9 +31,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireWorkspaceApi(req, "fumero");
+  if (!auth.ok) return auth.response;
+
   const body = await req.json();
   const {
-    klant = "fumero",
     platform,
     type = "post",
     titel,
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
        VALUES (?,?,?,?,?,?,?,?,?)`
     )
     .run(
-      String(klant),
+      "fumero",
       platform,
       String(type),
       titel != null ? String(titel) : null,

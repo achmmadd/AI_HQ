@@ -79,24 +79,76 @@ function buildBody(opts: CallFactoryN8nInput): Record<string, unknown> {
   return body;
 }
 
+export function n8nFetchTimeoutMs(opts?: {
+  browserTask?: boolean;
+  agentMode?: boolean;
+}): number {
+  if (opts?.browserTask) return 600_000;
+  if (opts?.agentMode) return 180_000;
+  return 120_000;
+}
+
+export function formatN8nChatError(opts: {
+  status: number;
+  webhookUrl?: string;
+  fetchError?: string;
+  rawText?: string;
+}): { message: string; detail: string } {
+  const host = (() => {
+    try {
+      return opts.webhookUrl ? new URL(opts.webhookUrl).host : "n8n";
+    } catch {
+      return "n8n";
+    }
+  })();
+  const fetchError = opts.fetchError?.trim() ?? "";
+  const raw = opts.rawText?.trim().slice(0, 500) ?? "";
+
+  if (opts.status === 0) {
+    const timedOut = /timeout|aborted|abort/i.test(fetchError);
+    const message = timedOut
+      ? `n8n reageerde niet op tijd (${host}). Bij browsertaken kan dit lang duren — formuleer een kortere vraag of probeer zonder live browser.`
+      : `Kan n8n niet bereiken (${host}). Controleer of n8n draait en of N8N_FACTORY_OS_WEBHOOK / N8N_AGENT_WEBHOOK in .env.local kloppen.`;
+    return {
+      message,
+      detail: fetchError || raw,
+    };
+  }
+
+  if (opts.status === 404) {
+    return {
+      message: `n8n-webhook niet gevonden (${host}). Activeer de workflow of pas de webhook-URL aan.`,
+      detail: raw,
+    };
+  }
+
+  return {
+    message: `n8n gaf fout ${opts.status} (${host}).`,
+    detail: raw || fetchError,
+  };
+}
+
 export async function callFactoryN8n(
   opts: CallFactoryN8nInput,
-  extra?: { webhookUrl?: string }
+  extra?: { webhookUrl?: string; timeoutMs?: number }
 ): Promise<{
   ok: boolean;
   status: number;
   data: Record<string, unknown> | null;
   rawText: string;
+  webhookUrl: string;
+  fetchError?: string;
 }> {
   const url = extra?.webhookUrl?.trim() || N8N_FACTORY_WEBHOOK;
   const body = buildBody(opts);
+  const timeoutMs = extra?.timeoutMs ?? 120_000;
 
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const rawText = await res.text();
     let data: Record<string, unknown> | null = null;
@@ -105,7 +157,7 @@ export async function callFactoryN8n(
     } catch {
       data = { raw: rawText };
     }
-    return { ok: res.ok, status: res.status, data, rawText };
+    return { ok: res.ok, status: res.status, data, rawText, webhookUrl: url };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return {
@@ -113,6 +165,8 @@ export async function callFactoryN8n(
       status: 0,
       data: { error: msg },
       rawText: "",
+      webhookUrl: url,
+      fetchError: msg,
     };
   }
 }
@@ -157,14 +211,11 @@ export async function callReviewN8n(payload: {
   }
 }
 
-/** Haal tekst uit n8n/Dify/Factory JSON of fallback. */
-export function extractMessage(
-  data: Record<string, unknown> | null | undefined
-): string {
-  if (!data) return "";
+import { stripChatOutput } from "@/lib/strip-response";
 
+function pickRawMessage(data: Record<string, unknown>): string {
   const fromObj = (o: Record<string, unknown>): string => {
-    for (const k of ["answer", "message", "text", "output"]) {
+    for (const k of ["answer", "message", "text", "output", "final_result"]) {
       const v = o[k];
       if (typeof v === "string" && v.trim()) return v;
     }
@@ -190,4 +241,14 @@ export function extractMessage(
 
   if (typeof data.raw === "string") return data.raw;
   return "";
+}
+
+/** Haal tekst uit n8n/Dify/Factory JSON of fallback — zonder Factory-metadata in UI. */
+export function extractMessage(
+  data: Record<string, unknown> | null | undefined
+): string {
+  if (!data) return "";
+  const raw = pickRawMessage(data);
+  if (!raw) return "";
+  return stripChatOutput(raw);
 }

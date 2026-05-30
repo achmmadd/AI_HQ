@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
+import { ensureAppsSchema, listAppsForKlant, countAppDataRows } from "@/lib/apps/apps-db";
 
 export const runtime = "nodejs";
 
@@ -12,13 +14,17 @@ function cleanSlug(input: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export async function GET() {
-  const apps = db
-    .prepare(
-      `SELECT id, naam, slug, status, klant, created_at
-       FROM custom_apps ORDER BY created_at DESC`
-    )
-    .all();
+export async function GET(req: NextRequest) {
+  // Fase 5: return apps from new apps table (klant-scoped) for garage + cards
+  const auth = await requireWorkspaceApi(req, "all");
+  if (!auth.ok) return auth.response;
+
+  ensureAppsSchema();
+  const klant = auth.sessionScope === "all" ? "fumero" : auth.sessionScope;
+  const apps = listAppsForKlant(klant).map((a) => ({
+    ...a,
+    row_count: countAppDataRows(a.slug, klant),
+  }));
   return NextResponse.json({ apps });
 }
 

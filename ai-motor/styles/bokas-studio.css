@@ -1,0 +1,48 @@
+/* Bokas Studio — deelt layout-classes met fumero-studio-v3; eigen html-scope + tokens */
+
+html.bokas-studio {
+  --bg: #f5f5f4;
+  --surface: #ffffff;
+  --surface2: #fafaf9;
+  --border: #e7e5e4;
+  --border2: #d6d3d1;
+  --text: #1c1917;
+  --text2: #78716c;
+  --text3: #a8a29e;
+  --accent: var(--ws-accent, #0ea5e9);
+  --accent-d: var(--ws-accent-hover, #0284c7);
+  --accent-lt: var(--ws-accent-lt, rgba(14, 165, 233, 0.08));
+  --accent-ring: rgba(14, 165, 233, 0.15);
+  --green: #15803d;
+  --green-lt: #f0fdf4;
+  --blue: #1d4ed8;
+  --blue-lt: #eff6ff;
+  --purple: #6d28d9;
+  --purple-lt: #f5f3ff;
+  --amber: #b45309;
+  --amber-lt: #fffbeb;
+  --r: 10px;
+  --r-sm: 7px;
+  --r-lg: 14px;
+  --sh: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --sh-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --sans: inherit;
+  --serif: Georgia, "Times New Roman", serif;
+}
+
+html.bokas-studio body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  overflow: hidden;
+}
+
+html.bokas-studio .sb-ai-hint {
+  border-color: rgba(14, 165, 233, 0.25);
+}
+
+html.bokas-studio .sb-mark {
+  color: #fff;
+}

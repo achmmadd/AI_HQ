@@ -1,0 +1,182 @@
+{
+  "name": "Agent MVP · Browser-use microservice",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent-mvp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-agent-mvp",
+      "name": "Webhook agent-mvp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 260],
+      "webhookId": "agent-mvp"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nconst b = j.body && typeof j.body === 'object' && !Array.isArray(j.body) ? j.body : j;\nreturn [{\n  json: {\n    prompt: String(b.prompt ?? ''),\n    klant: String(b.klant ?? 'fumero'),\n    afdeling: String(b.afdeling ?? 'fabriek'),\n    agent_mode: b.agent_mode !== false,\n    browser_task: b.browser_task !== false,\n    intent: String(b.intent ?? 'question'),\n    context: Array.isArray(b.context) ? b.context : [],\n  },\n}];",
+        "language": "javaScript"
+      },
+      "id": "code-prepare",
+      "name": "Prepare Motor body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 260]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.browser_task }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals",
+                      "name": "filter.operator.booleanEquals",
+                      "singleValue": true
+                    },
+                    "rightValue": true,
+                    "id": "browser-task-on"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "browser"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "factory_fallback"
+        }
+      },
+      "id": "switch-browser",
+      "name": "browser_task?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [520, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (($env.AGENT_SERVICE_URL || 'http://agent-use:8787').trim().replace(/\\/$/, '') + '/agent/run') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: $('Prepare Motor body').item.json.prompt || ' ', klant: $('Prepare Motor body').item.json.klant, agent_mode: $('Prepare Motor body').item.json.agent_mode, browser_task: true }) }}",
+        "options": {
+          "timeout": 600000,
+          "response": {
+            "response": {
+              "responseFormat": "json",
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-agent-run",
+      "name": "POST agent/run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 120],
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const py = $input.first().json;\nconst prep = $('Prepare Motor body').first().json;\nconst msgCandidates = [\n  typeof py.final_result === 'string' ? py.final_result.trim() : '',\n  typeof py.message === 'string' ? py.message.trim() : '',\n];\nlet message = msgCandidates.find((s) => s.length);\nif (!message) {\n  message = py.agent_success === true ? 'Browser-taak afgerond.' : 'Browser-agent klaar (geen tekst-antwoord).';\n}\nreturn [{ json: {\n  ok: Boolean(py.ok !== false),\n  message,\n  answer: message,\n  output: message,\n  klant: prep.klant,\n  afdeling: prep.afdeling,\n  model: 'browser-use-microservice',\n  session_id: py.session_id ?? null,\n  debugger_fullscreen_url: py.debugger_fullscreen_url ?? null,\n  agent_success: py.agent_success ?? null,\n} }];",
+        "language": "javaScript"
+      },
+      "id": "format-python",
+      "name": "Format Python response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_FACTORY_OS_WEBHOOK || $env.N8N_FACTORY_WEBHOOK || 'http://127.0.0.1:5678/webhook/factory-os').trim() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: $json.prompt, klant: $json.klant, afdeling: $json.afdeling, agent_mode: $json.agent_mode, intent: $json.intent, context: $json.context, browser_task: false }) }}",
+        "options": {
+          "timeout": 180000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-factory",
+      "name": "Forward Factory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 400],
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-wh",
+      "name": "Respond Motor",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1320, 260]
+    }
+  ],
+  "connections": {
+    "Webhook agent-mvp": {
+      "main": [[{ "node": "Prepare Motor body", "type": "main", "index": 0 }]]
+    },
+    "Prepare Motor body": {
+      "main": [[{ "node": "browser_task?", "type": "main", "index": 0 }]]
+    },
+    "browser_task?": {
+      "main": [
+        [{ "node": "POST agent/run", "type": "main", "index": 0 }],
+        [{ "node": "Forward Factory", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST agent/run": {
+      "main": [[{ "node": "Format Python response", "type": "main", "index": 0 }]]
+    },
+    "Format Python response": {
+      "main": [[{ "node": "Respond Motor", "type": "main", "index": 0 }]]
+    },
+    "Forward Factory": {
+      "main": [[{ "node": "Respond Motor", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

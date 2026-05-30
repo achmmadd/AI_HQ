@@ -1,0 +1,11 @@
+# MotorsAI /code agent — voeg toe aan .env.local
+OPENROUTER_API_KEY=sk-or-...
+MOTOR_CODE_PROVIDER=openrouter
+MOTOR_CODE_MODEL=qwen/qwen3.7-max
+# Kostenefficiënt alternatief (auto-routing op coding score):
+# MOTOR_CODE_MODEL=openrouter/pareto-code
+# MOTOR_CODE_MIN_CODING_SCORE=0.65
+# Fallback zonder OpenRouter:
+# MOTOR_CODE_PROVIDER=anthropic
+# ANTHROPIC_API_KEY=sk-ant-...
+# MOTOR_CODE_MODEL=claude-sonnet-4-20250514

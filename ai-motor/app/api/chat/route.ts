@@ -2,35 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
 import {
   callFactoryN8n,
-  CHAT_OUTPUT_INSTRUCTION_PREFIX,
   extractMessage,
-  normalizeContext,
+  formatN8nChatError,
+  n8nFetchTimeoutMs,
   type ChatContextMsg,
 } from "@/lib/chat-n8n";
 import { scheduleConversationTitleUpdate } from "@/lib/chat-conversation-title";
 import { assertConversationForKlant } from "@/lib/chat-conversation-guard";
-import { getChatLearnedInstructionSuffix } from "@/lib/chat-learned";
 import {
-  experimentInstructionOverlay,
-  getActiveExperimentForKlant,
-  pickVariant,
-} from "@/lib/experiments";
-import { detectChatIntent, resolveChatWebhookUrl } from "@/lib/intent-detection";
+  buildPromptForN8n,
+  detectChatIntent,
+  maybeIngestMotorMemory,
+  mergeConversationContext,
+  parseChatUserPrompt,
+  shouldUseBrowserTaskForAgent,
+} from "@/lib/chat-request";
+import { tryHandleLocalExecutorChat } from "@/lib/chat-local-handler";
+import { resolveChatWebhookUrl } from "@/lib/intent-detection";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as Record<string, unknown>;
+    const prompt = parseChatUserPrompt(body);
     const {
-      prompt,
       klant = "fumero",
       afdeling,
       agent_mode = false,
       context = [],
       conversation_id: conversationIdRaw,
     } = body as {
-      prompt?: string;
       klant?: string;
       afdeling?: string;
       agent_mode?: boolean;
@@ -43,9 +45,9 @@ export async function POST(req: NextRequest) {
         ? conversationIdRaw
         : null;
 
-    if (!prompt?.trim()) {
+    if (!prompt) {
       return NextResponse.json(
-        { error: "prompt is required" },
+        { error: "prompt is required (or message)" },
         { status: 400 }
       );
     }
@@ -82,42 +84,97 @@ export async function POST(req: NextRequest) {
       ).run(conversationId);
     }
 
-    const ctx = normalizeContext(context);
-
-    const exp = getActiveExperimentForKlant(klant);
-    const expVariant = exp ? pickVariant() : null;
-    const experimentOverlay =
-      exp && expVariant
-        ? experimentInstructionOverlay(exp, expVariant)
-        : "";
-
-    const promptForFactory =
-      CHAT_OUTPUT_INSTRUCTION_PREFIX +
-      getChatLearnedInstructionSuffix() +
-      experimentOverlay +
-      prompt.trim();
-
     const intent = detectChatIntent(prompt.trim());
-    const webhookUrl = resolveChatWebhookUrl(intent);
+    const agentMode = Boolean(agent_mode);
+    const browserTask =
+      agentMode && shouldUseBrowserTaskForAgent(prompt.trim(), intent);
+    const ctx = mergeConversationContext(conversationId, context);
+
+    const localHandled = await tryHandleLocalExecutorChat(
+      prompt.trim(),
+      intent,
+      agentMode
+    );
+    if (localHandled.handled && localHandled.message) {
+      const t0 = Date.now();
+      const message = localHandled.message;
+      const latencyMs = Math.max(0, Date.now() - t0);
+      const insAsst = db
+        .prepare(
+          `INSERT INTO chat_history (klant, role, content, afdeling, model, conversation_id, latency_ms)
+           VALUES (?, 'assistant', ?, ?, ?, ?, ?)`
+        )
+        .run(
+          klant,
+          message,
+          afdelingStr,
+          "nuc-local-executor",
+          conversationId,
+          latencyMs
+        );
+      const assistantMessageId = Number(insAsst.lastInsertRowid);
+      if (conversationId && firstTurnForTitle) {
+        scheduleConversationTitleUpdate(conversationId, klant, prompt.trim());
+      }
+      maybeIngestMotorMemory(conversationId, klant);
+      return NextResponse.json({
+        message,
+        assistant_message_id: assistantMessageId,
+        experiment_id: null,
+        experiment_variant: null,
+        experiment_name: null,
+        klant,
+        afdeling: afdelingStr,
+        model: "nuc-local-executor",
+        agent_mode: agentMode,
+        intent,
+        browser_task: false,
+        local_action: true,
+        local_op: localHandled.local_op ?? null,
+        memory_active: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const {
+      promptForFactory,
+      experimentId,
+      experimentVariant,
+      experimentName,
+    } = await buildPromptForN8n(klant, prompt.trim());
+
+    const webhookUrl = resolveChatWebhookUrl(intent, { agentMode });
 
     const t0 = Date.now();
-    const { ok, status, data, rawText } = await callFactoryN8n(
-      {
-        prompt: promptForFactory,
-        klant,
-        ...(afdelingStr ? { afdeling: afdelingStr } : {}),
-        agent_mode: Boolean(agent_mode),
-        context: ctx,
-        intent,
-      },
-      { webhookUrl }
-    );
+    const { ok, status, data, rawText, webhookUrl: calledUrl, fetchError } =
+      await callFactoryN8n(
+        {
+          prompt: promptForFactory,
+          klant,
+          ...(afdelingStr ? { afdeling: afdelingStr } : {}),
+          agent_mode: agentMode,
+          browser_task: browserTask,
+          context: ctx,
+          intent,
+          conversation_id: conversationId,
+        },
+        {
+          webhookUrl,
+          timeoutMs: n8nFetchTimeoutMs({ browserTask, agentMode }),
+        }
+      );
     const latencyMs = Math.max(0, Date.now() - t0);
 
     if (!ok) {
+      const err = formatN8nChatError({
+        status,
+        webhookUrl: calledUrl,
+        fetchError,
+        rawText,
+      });
       return NextResponse.json(
-        { error: `n8n error: ${status}`, detail: rawText.slice(0, 500) },
-        { status }
+        { error: err.message, detail: err.detail },
+        { status: status > 0 ? status : 502 }
       );
     }
 
@@ -139,8 +196,8 @@ export async function POST(req: NextRequest) {
         outAfdeling,
         model,
         conversationId,
-        exp?.id ?? null,
-        expVariant,
+        experimentId,
+        experimentVariant,
         latencyMs
       );
     const assistantMessageId = Number(insAsst.lastInsertRowid);
@@ -149,17 +206,21 @@ export async function POST(req: NextRequest) {
       scheduleConversationTitleUpdate(conversationId, klant, prompt.trim());
     }
 
+    maybeIngestMotorMemory(conversationId, klant);
+
     return NextResponse.json({
       message,
       assistant_message_id: assistantMessageId,
-      experiment_id: exp?.id ?? null,
-      experiment_variant: expVariant,
-      experiment_name: exp?.name ?? null,
+      experiment_id: experimentId,
+      experiment_variant: experimentVariant,
+      experiment_name: experimentName,
       klant,
       afdeling: outAfdeling,
       model,
-      agent_mode: Boolean(agent_mode),
+      agent_mode: agentMode,
       intent,
+      browser_task: browserTask,
+      memory_active: true,
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {

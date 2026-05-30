@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db/database";
-import { approveAutomationRun } from "@/lib/automation";
+import { approveAutomationRunExtended } from "@/lib/automation-runner";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ export async function POST(
     return NextResponse.json({ error: "invalid id" }, { status: 400 });
   }
 
-  const ok = await approveAutomationRun(id);
+  const ok = await approveAutomationRunExtended(id);
   if (!ok) {
     return NextResponse.json(
       { error: "run not pending approval" },

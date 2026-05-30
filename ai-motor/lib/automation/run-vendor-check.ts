@@ -1,5 +1,5 @@
 import db from "@/lib/db/database";
-import { searchKnowledge } from "@/lib/knowledge-search";
+import { searchKnowledge } from "@/lib/knowledge-service";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { withBrowser } from "@/lib/automation/playwright-browser";
 

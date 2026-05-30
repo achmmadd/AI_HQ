@@ -1,10 +1,5 @@
-import { AppShell } from "@/components/app-shell";
-import { AppStoreGrid } from "@/components/app-store-grid";
+import { redirect } from "next/navigation";
 
 export default function AppStorePage() {
-  return (
-    <AppShell title="App Store">
-      <AppStoreGrid />
-    </AppShell>
-  );
+  redirect("/apps");
 }

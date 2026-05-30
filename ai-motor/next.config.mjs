@@ -1,3 +1,5 @@
+import { approvalsCoworkRedirect } from "./app/cowork/middleware.mjs";
+
 /** @type {import('next').NextConfig} */
 const embedExtra = (process.env.EMBED_FRAME_ANCESTORS || "")
   .split(",")
@@ -21,6 +23,51 @@ const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["better-sqlite3", "playwright", "pdfkit"],
   allowedDevOrigins,
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/api/content/generate",
+          destination: "/api/fumero/content/generate",
+        },
+      ],
+    };
+  },
+  async redirects() {
+    return [
+      {
+        source: "/fumero",
+        destination: "/fumero/chat",
+        permanent: false,
+      },
+      {
+        source: "/fumero/workspace",
+        destination: "/fumero/chat",
+        permanent: false,
+      },
+      {
+        source: "/fumero/content",
+        destination: "/fumero/chat",
+        permanent: true,
+      },
+      {
+        source: "/fumero/marketing",
+        destination: "/fumero/automations",
+        permanent: true,
+      },
+      {
+        source: "/fumero/email",
+        destination: "/fumero/automations",
+        permanent: true,
+      },
+      {
+        source: "/fumero/tools",
+        destination: "/fumero/apps",
+        permanent: true,
+      },
+      approvalsCoworkRedirect,
+    ];
+  },
   async headers() {
     const frameAncestors = [
       "'self'",

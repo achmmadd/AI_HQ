@@ -21,9 +21,11 @@ export type FumeroLivePreviewPayload = {
   previewEpoch?: number;
   /** Concept version label in live preview panel. */
   version?: number;
-  /** Build-fase voor coder preview header (één plek voor "Max bouwt…"). */
+  /** Build-fase voor coder preview timeline. */
   buildPhase?: string;
   building?: boolean;
+  /** Widget embed snippet (na build). */
+  embedCode?: string | null;
 };
 
 /** Strip Factory OS envelope from generated content before UI preview. */

@@ -15,6 +15,11 @@ export function stripChatOutput(text: string): string {
     /^#{1,3}\s*(Samenvatting|Volledige response|Factory OS Response|Actiepunten)[^\n]*\n?/gim,
     ""
   );
+  clean = clean.replace(
+    /^\*{0,2}(Factory OS Response|Samenvatting|Volledige response)\*{0,2}\s*:?\s*\n?/gim,
+    ""
+  );
+  clean = clean.replace(/^Volledige response:\s*\n?/gim, "");
 
   clean = clean.replace(/^---\s*(?:_)?(?:Let op:|Factory OS)[^\n]*\n?/gim, "");
   clean = clean.replace(/^\*Factory OS[^*]*\*\s*\n?/gim, "");

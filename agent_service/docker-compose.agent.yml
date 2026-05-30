@@ -1,0 +1,32 @@
+# Agent MVP (Browserbase + Browser-Use), op Docker-netwerk `ai_hq_omega-net` naast n8n.
+# Start/stop vanaf deze map:
+#   docker compose -f docker-compose.agent.yml build
+#   docker compose -f docker-compose.agent.yml up -d
+
+name: agent_service
+
+services:
+  agent-use:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-use
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - omega_net
+    environment:
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen3:4b}"
+      AGENT_USE_VISION: "${AGENT_USE_VISION:-false}"
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+    volumes:
+      # Zelfde Browserbase/Ollama keys als MotorsAI (.env.local is geen Bash; Python-dotenv leest deze)
+      - /home/pietje/AI_HQ/ai-motor/.env.local:/secrets/env.local:ro
+
+networks:
+  omega_net:
+    external: true
+    name: ai_hq_omega-net

@@ -47,7 +47,7 @@ services:
       DIFY_CODE_INTERPRETER_API_KEY: ${DIFY_CODE_INTERPRETER_API_KEY:-}
       DIFY_APP_BUILD_API_KEY: ${DIFY_APP_BUILD_API_KEY:-}
       # Overschrijf .env: binnen deze container is 127.0.0.1 de container zelf, niet Dify op het host-/docker-netwerk.
-      DIFY_BASE_URL: http://docker-api-1:5001
+      DIFY_BASE_URL: http://178.104.109.37
     volumes:
       - n8n_data:/home/node/.n8n
       - ./factory-os:/factory-os:rw

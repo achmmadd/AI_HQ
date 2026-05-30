@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,9 @@ export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireWorkspaceApi(req, "fumero");
+  if (!auth.ok) return auth.response;
+
   const { id: idStr } = await ctx.params;
   const id = parseInt(idStr, 10);
   if (Number.isNaN(id)) {
@@ -63,9 +67,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireWorkspaceApi(req, "fumero");
+  if (!auth.ok) return auth.response;
+
   const { id: idStr } = await ctx.params;
   const id = parseInt(idStr, 10);
   if (Number.isNaN(id)) {

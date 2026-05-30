@@ -1,0 +1,70 @@
+{
+  "name": "motors-vscode",
+  "displayName": "MotorsAI",
+  "description": "MotorsAI chat and code bridge in VS Code — same backend as motorsai.app",
+  "version": "0.2.0",
+  "publisher": "motorsai",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:motorsai.openChat",
+    "onCommand:motors.startBridge",
+    "onCommand:motors.openCode",
+    "onCommand:motors.sendSelection"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "motorsai.openChat",
+        "title": "MotorsAI: Open Chat"
+      },
+      {
+        "command": "motorsai.setToken",
+        "title": "MotorsAI: Set API Token"
+      },
+      {
+        "command": "motors.startBridge",
+        "title": "Motors: Start PC Bridge"
+      },
+      {
+        "command": "motors.openCode",
+        "title": "Motors: Open Code Workspace"
+      },
+      {
+        "command": "motors.sendSelection",
+        "title": "Motors: Send Selection to Code Agent"
+      }
+    ],
+    "configuration": {
+      "title": "MotorsAI",
+      "properties": {
+        "motorsai.baseUrl": {
+          "type": "string",
+          "default": "https://motorsai.app",
+          "description": "MotorsAI base URL"
+        },
+        "motorsai.klant": {
+          "type": "string",
+          "default": "system",
+          "description": "Company / klant slug"
+        },
+        "motorsai.token": {
+          "type": "string",
+          "default": "",
+          "description": "Session token (motorsai_token cookie)"
+        },
+        "motorsai.workspace": {
+          "type": "string",
+          "default": "",
+          "description": "Motor Code workspace slug for /code and sendSelection"
+        },
+        "motorsai.bridgePath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to motors-pc-bridge index.js"
+        }
+      }
+    }
+  }
+}

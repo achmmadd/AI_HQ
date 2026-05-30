@@ -12,6 +12,8 @@ const buttonVariants = cva(
           "bg-accent text-white shadow-sm hover:bg-accent-hover active:scale-[0.98]",
         secondary:
           "bg-surface-elevated text-text-primary border border-border hover:bg-elevated",
+        outline:
+          "border border-border bg-transparent text-text-primary hover:bg-surface-elevated",
         ghost: "text-text-secondary hover:bg-surface-elevated hover:text-text-primary",
         destructive: "bg-error text-white hover:opacity-90",
       },

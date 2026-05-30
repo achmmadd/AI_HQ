@@ -204,14 +204,39 @@ html[data-fumero-ops][data-theme="dark"] {
 
 /* Composer: explicit colors so dark-theme body text cannot leak (white on #FAFAFA) */
 [data-fumero-ops] .motors-composer textarea {
-  color: var(--fumero-text);
-  caret-color: var(--fumero-text);
-  -webkit-text-fill-color: var(--fumero-text);
+  color: #171717 !important;
+  caret-color: #171717 !important;
+  -webkit-text-fill-color: #171717 !important;
+  background-color: transparent;
 }
 
 [data-fumero-ops] .motors-composer textarea::placeholder {
-  color: var(--fumero-text-muted);
+  color: #737373 !important;
   opacity: 1;
+  -webkit-text-fill-color: #737373 !important;
+}
+
+[data-fumero-ops] .fumero-composer-shell {
+  background: #ffffff;
+}
+
+[data-fumero-ops] .fumero-user-bubble,
+[data-fumero-ops] .fumero-user-bubble .chat-markdown,
+[data-fumero-ops] .fumero-user-bubble .chat-markdown p,
+[data-fumero-ops] .fumero-user-bubble .chat-markdown strong,
+[data-fumero-ops] .fumero-user-bubble .chat-markdown li,
+[data-fumero-ops] .fumero-user-bubble .chat-markdown h1,
+[data-fumero-ops] .fumero-user-bubble .chat-markdown h2,
+[data-fumero-ops] .fumero-user-bubble .chat-markdown h3 {
+  color: #171717 !important;
+}
+
+[data-fumero-ops] .fumero-user-bubble .chat-markdown a {
+  color: #3d7a00 !important;
+}
+
+[data-fumero-ops] .fumero-coder-preview-rail iframe {
+  pointer-events: auto;
 }
 
 /* Gemini-style composer shell */

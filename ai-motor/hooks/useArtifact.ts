@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { CompanyId } from "@/lib/types";
+import type { ChatKlant } from "@/lib/types";
 
 export type ArtifactState = { html: string; title: string };
 
-export function useArtifact(klant: CompanyId) {
+export function useArtifact(klant: ChatKlant) {
   const [artifact, setArtifact] = useState<ArtifactState | null>(null);
   const [loading, setLoading] = useState(false);
 

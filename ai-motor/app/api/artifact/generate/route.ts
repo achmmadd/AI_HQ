@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateArtifactHtml, assertDifyConfigured } from "@/lib/artifact-html";
-import { isBuildLikePrompt } from "@/lib/build-intent";
+import {
+  generateArtifactHtml,
+  assertArtifactBuilderConfigured,
+} from "@/lib/artifact-generate";
+import { isBuildLikePrompt } from "@/lib/build-intent-ext";
 
 export const runtime = "nodejs";
 
@@ -25,12 +28,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!assertDifyConfigured()) {
+  if (!assertArtifactBuilderConfigured()) {
     return NextResponse.json(
       {
-        error: "Dify API key niet geconfigureerd",
+        error: "Artifact-builder niet geconfigureerd",
         hint:
-          "Zet in ai-motor/.env.local (of PM2 env) minstens één van: DIFY_API_KEY, DIFY_CODE_INTERPRETER_API_KEY of DIFY_SOCIAL_API_KEY — de API key van je Dify-app (Console → app → API Access). Optioneel DIFY_BASE_URL (bv. http://127.0.0.1:5001). Daarna: npm run build && pm2 restart ai-motor --update-env",
+          "Builder: Dify (DIFY_API_KEY + DIFY_BASE_URL=http://127.0.0.1:5001) → OpenRouter (OPENROUTER_API_KEY) → n8n. Anthropic alleen met MOTOR_BUILDER_USE_ANTHROPIC=1.",
       },
       { status: 503 }
     );

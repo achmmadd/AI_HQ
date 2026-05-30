@@ -6,8 +6,10 @@ import {
   ImagePlus,
   LayoutTemplate,
   Plug,
+  ScanEye,
 } from "lucide-react";
 import type { FumeroStudioContentType } from "@/lib/fumero-quick-actions";
+import type { FumeroComposerModelTier } from "@/lib/fumero/composer-model-tier";
 
 /** Active tool/mode in the Fumero composer (+ menu → mode pill). */
 export type FumeroComposerMode =
@@ -37,7 +39,7 @@ export const FUMERO_COMPOSER_MODE_META: Record<
   coder: {
     label: "Bouwen",
     icon: Code2,
-    placeholder: "Beschrijf de tool, widget of webapp die je wilt bouwen…",
+    placeholder: "Beschrijf je tool of stel een snelle vraag…",
   },
   online: {
     label: "Online",
@@ -66,6 +68,9 @@ export type FumeroComposerMenuAction =
   | { kind: "coder"; prompt?: string }
   | { kind: "research" }
   | { kind: "connectors" }
+  | { kind: "ux_review" }
+  | { kind: "templates" }
+  | { kind: "code_workspace" }
   | {
       kind: "canvas";
       contentType: "seo_article" | "product_text";
@@ -172,6 +177,33 @@ export const FUMERO_COMPOSER_MENU_SECTIONS: FumeroComposerMenuSection[] = [
       },
     ],
   },
+  {
+    id: "specialists",
+    label: "Specialisten",
+    items: [
+      {
+        id: "templates",
+        label: "Sjablonen",
+        description: "Chat widget, rekenmachine, keuzehulp — kies een startpunt",
+        icon: LayoutTemplate,
+        action: { kind: "templates" },
+      },
+      {
+        id: "ux_review",
+        label: "Laat UX checken",
+        description: "Toegankelijkheid, contrast en mobiel — checklist + tips",
+        icon: ScanEye,
+        action: { kind: "ux_review" },
+      },
+      {
+        id: "code_workspace",
+        label: "Code workspace",
+        description: "Bewerk tool-code in de volledige IDE",
+        icon: Code2,
+        action: { kind: "code_workspace" },
+      },
+    ],
+  },
 ];
 
 /** Flat list for backwards compatibility. */
@@ -182,7 +214,13 @@ export const FUMERO_CODER_PREFILL = "Bouw ";
 
 export const FUMERO_RESEARCH_PREFILL = "Zoek op het web naar ";
 
-export function fumeroComposerPlaceholder(mode: FumeroComposerMode): string {
+export function fumeroComposerPlaceholder(
+  mode: FumeroComposerMode,
+  opts?: { modelTier?: FumeroComposerModelTier }
+): string {
   if (mode === "default") return "Stel je vraag aan Max…";
+  if (mode === "coder" && opts?.modelTier === "flash") {
+    return "Snelle vraag — shop, orders, tools…";
+  }
   return FUMERO_COMPOSER_MODE_META[mode].placeholder;
 }

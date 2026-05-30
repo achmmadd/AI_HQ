@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalistische Todo App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .fade-enter {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-exit {
+            animation: slideOut 0.2s ease-out;
+        }
+        @keyframes slideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        .checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #6F8A6E;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #1a1a1a;
+            transition: all 0.2s ease;
+        }
+        .checkbox:hover {
+            border-color: #8FA98E;
+        }
+        .checkbox:checked {
+            background-color: #6F8A6E;
+            border-color: #6F8A6E;
+        }
+        .checkbox:checked::after {
+            content: '✓';
+            color: #FAF7F2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div id="app" class="min-h-screen bg-gray-900 flex flex-col">
+        <!-- Navigatie -->
+        <nav class="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
+            <div class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
+                <h1 class="text-xl font-bold text-gray-100">Takenlijst</h1>
+                <button id="navSettings" class="p-2 hover:bg-gray-700 rounded-lg transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Takenlijst pagina -->
+        <div id="tasksPage" class="flex-1 flex flex-col pb-20">
+            <!-- Filter knoppen -->
+            <div class="bg-gray-800 border-b border-gray-700 px-4 py-3 sticky top-16 z-40">
+                <div class="max-w-2xl mx-auto flex gap-2 overflow-x-auto">
+                    <button class="filter-btn px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" data-filter="alle" style="background-color: #6F8A6E; color: #FAF7F2;">Alle</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition bg-gray-700 text-gray-300 hover:bg-gray-600" data-filter="actief">Actief</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition bg-gray-700 text-gray-300 hover:bg-gray-600" data-filter="voltooid">Voltooid</button>
+                </div>
+            </div>
+
+            <!-- Taken container -->
+            <div class="max-w-2xl w-full mx-auto flex-1 px-4 py-4">
+                <div id="tasksList" class="space-y-2">
+                    <div class="text-center py-12 text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        <p>Nog geen taken. Voeg er een toe!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistieken -->
+            <div class="bg-gray-800 border-t border-gray-700 px-4 py-3">
+                <div class="max-w-2xl mx-auto flex justify-between text-sm text-gray-400">
+                    <span>Totaal: <strong id="statTotal" class="text-gray-100">0</strong></span>
+                    <span>Actief: <strong id="statActive" class="text-gray-100">0</strong></span>
+                    <span>Voltooid: <strong id="statCompleted" class="text-gray-100">0</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instellingen pagina (verborgen) -->
+        <div id="settingsPage" class="hidden flex-1 flex flex-col pb-20">
+            <div class="max-w-2xl w-full mx-auto flex-1 px-4 py-6">
+                <h2 class="text-2xl font-bold mb-6">Instellingen</h2>
+
+                <!-- Opslag info -->
+                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                    <h3 class="font-semibold mb-2">Gegevens</h3>
+                    <p class="text-sm text-gray-400 mb-4">Je taken worden opgeslagen in je browser.</p>
+                    <button id="clearData" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition font-medium text-sm">
+                        Alle taken wissen
+                    </button>
+                </div>
+
+                <!-- Info -->
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="font-semibold mb-2">Over</h3>
+                    <p class="text-sm text-gray-400">Minimalistische Todo App v1.0</p>
+                    <p class="text-sm text-gray-500 mt-2">Een eenvoudige takenlijst met lokale opslag.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input voegen toe -->
+        <div class="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700">
+            <div class="max-w-2xl mx-auto px-4 py-3">
+                <form id="addTaskForm" class="flex gap-2">
+                    <input
+                        type="text"
+                        id="taskInput"
+                        placeholder="Nieuwe taak toevoegen..."
+                        class="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-600"
+                    />
+                    <button
+                        type="submit"
+                        class="px-6 py-3 bg-green-700 hover:bg-green-600 rounded-lg font-medium transition"
+                    >
+                        +
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App state
+        let tasks = [];
+        let currentFilter = 'alle';
+
+        // DOM elements
+        const taskInput = document.getElementById('taskInput');
+        const addTaskForm = document.getElementById('addTaskForm');
+        const tasksList = document.getElementById('tasksList');
+        const tasksPage = document.getElementById('tasksPage');
+        const settingsPage = document.getElementById('settingsPage');
+        const navSettings = document.getElementById('navSettings');
+        const clearDataBtn = document.getElementById('clearData');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        // Load tasks from localStorage
+        function loadTasks() {
+            const saved = localStorage.getItem('tasks');
+            tasks = saved ? JSON.parse(saved) : [];
+            render();
+        }
+
+        // Save tasks to localStorage
+        function saveTasks() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        // Add new task
+        function addTask(text) {
+            if (!text.trim()) return;
+            const newTask = {
+                id: Date.now(),
+                text: text.trim(),
+                completed: false,
+                created: new Date().toISOString()
+            };
+            tasks.unshift(newTask);
+            saveTasks();
+            taskInput.value = '';
+            render();
+        }
+
+        // Toggle task completion
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveTasks();
+                render();
+            }
+        }
+
+        // Delete task
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            render();
+        }
+
+        // Filter tasks
+        function getFilteredTasks() {
+            switch (currentFilter) {
+                case 'actief':
+                    return tasks.filter(t => !t.completed);
+                case 'voltooid':
+                    return tasks.filter(t => t.completed);
+                default:
+                    return tasks;
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const total = tasks.length;
+            const active = tasks.filter(t => !t.completed).length;
+            const completed = tasks.filter(t => t.completed).length;
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statActive').textContent = active;
+            document.getElementById('statCompleted').textContent = completed;
+        }
+
+        // Render tasks
+        function render() {
+            const filtered = getFilteredTasks();
+            updateStats();
+
+            if (filtered.length === 0) {
+                tasksList.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        <p>${currentFilter === 'actief' ? 'Geen actieve taken' : currentFilter === 'voltooid' ? 'Geen voltooide taken' : 'Geen taken'}</p>
+                    </div>
+                `;
+            } else {
+                tasksList.innerHTML = filtered.map(task => `
+                    <div class="task-item ${task.completed ? 'completed' : ''} fade-enter bg-gray-800 rounded-lg p-4 flex items-center gap-3 hover:bg-gray-750 transition">
+                        <input
+                            type="checkbox"
+                            class="checkbox"
+                            ${task.completed ? 'checked' : ''}
+                            onchange="toggleTask(${task.id})"
+                        />
+                        <span class="task-text flex-1 text-gray-100">${escapeHtml(task.text)}</span>
+                        <button
+                            type="button"
+                            onclick="deleteTask(${task.id})"
+                            class="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400 hover:text-red-400"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        addTaskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addTask(taskInput.value);
+        });
+
+        // Filter button listeners
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => {
+                    b.style.backgroundColor = '';
+                    b.classList.remove('bg-green-700', 'text-white');
+                    b.classList.add('bg-gray-700', 'text-gray-300');
+                });
+                btn.style.backgroundColor = '#6F8A6E';
+                btn.classList.remove('bg-gray-700', 'text-gray-300');
+                btn.classList.add('text-white');
+                currentFilter = btn.dataset.filter;
+                render();
+            });
+        });
+
+        // Settings navigation
+        navSettings.addEventListener('click', () => {
+            tasksPage.classList.toggle('hidden');
+            settingsPage.classList.toggle('hidden');
+            document.querySelector('nav h1').textContent = settingsPage.classList.contains('hidden') ? 'Takenlijst' : 'Instellingen';
+        });
+
+        // Clear data
+        clearDataBtn.addEventListener('click', () => {
+            if (confirm('Weet je zeker dat je alle taken wilt verwijderen?')) {
+                tasks = [];
+                saveTasks();
+                tasksPage.classList.remove('hidden');
+                settingsPage.classList.add('hidden');
+                document.querySelector('nav h1').textContent = 'Takenlijst';
+                render();
+            }
+        });
+
+        // Initialize
+        loadTasks();
+    </script>
+</body>
+</html>

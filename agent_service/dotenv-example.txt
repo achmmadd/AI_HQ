@@ -1,0 +1,12 @@
+# Kopieer naar agent_service/.env of export in shell
+BROWSERBASE_API_KEY=
+BROWSERBASE_PROJECT_ID=
+
+# Klein model aanbevolen als Ollama weinig RAM heeft (bv. qwen3:4b)
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=qwen3:4b
+
+# Optioneel fine-tuning
+# AGENT_MAX_STEPS=20
+# AGENT_USE_VISION=false
+# CORS_ALLOW_ORIGINS=http://127.0.0.1:3000,http://localhost:3040
