@@ -4,6 +4,8 @@ export type PhotoStudioMode = "text_to_image" | "image_to_image";
 
 export type ContentStudioMediaType = "image" | "video";
 
+export type ContentStudioSkeletonMode = "generate" | "edit";
+
 export type ContentStudioModelId =
   | "nano-banana-2"
   | "seedream-5-lite"

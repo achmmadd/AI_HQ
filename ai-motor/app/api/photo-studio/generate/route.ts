@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithModel } from "@/lib/photo-studio/fal";
+import { resolveImageUrlsForFal } from "@/lib/photo-studio/fal-image-url";
 import { generateVideoWithFal } from "@/lib/photo-studio/fal-video";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
 import {
@@ -60,18 +61,24 @@ export async function POST(req: NextRequest) {
 
   const legacyImageUrl =
     typeof body.image_url === "string" ? body.image_url.trim() : "";
-  const imageUrls = Array.isArray(body.image_urls)
+  let imageUrls = Array.isArray(body.image_urls)
     ? body.image_urls.filter((u) => typeof u === "string" && u.trim()).map((u) => u.trim())
     : legacyImageUrl
       ? [legacyImageUrl]
       : [];
+
+  const effectivePrompt =
+    userPrompt ||
+    (imageUrls.length > 0
+      ? "Verbeter deze foto met professionele studio-kwaliteit."
+      : "");
 
   const mode: PhotoStudioMode =
     imageUrls.length > 0 || body.mode === "image_to_image"
       ? "image_to_image"
       : "text_to_image";
 
-  if (!userPrompt) {
+  if (!effectivePrompt) {
     return NextResponse.json({ error: "prompt is verplicht." }, { status: 400 });
   }
   if (mode === "image_to_image" && !imageUrls.length) {
@@ -123,11 +130,18 @@ export async function POST(req: NextRequest) {
   ensurePhotoStudioSchema();
 
   if (mediaType === "video") {
-    const imageUrl = imageUrls[0];
+    let videoImageUrl = imageUrls[0];
+    if (videoImageUrl) {
+      const resolved = await resolveImageUrlsForFal([videoImageUrl]);
+      if (!resolved.ok) {
+        return NextResponse.json({ error: resolved.error }, { status: 400 });
+      }
+      videoImageUrl = resolved.urls[0];
+    }
     const videoResult = await generateVideoWithFal({
-      userPrompt,
+      userPrompt: effectivePrompt,
       klant: auth.klant,
-      imageUrl,
+      imageUrl: videoImageUrl,
     });
     if (!videoResult.ok) {
       return NextResponse.json({ error: videoResult.error }, { status: 502 });
@@ -135,11 +149,11 @@ export async function POST(req: NextRequest) {
 
     const persisted = await persistVideoGeneration({
       klant: auth.klant,
-      mode: imageUrl ? "image_to_image" : "text_to_image",
+      mode: videoImageUrl ? "image_to_image" : "text_to_image",
       user_prompt: videoResult.user_prompt,
       fal_prompt: videoResult.fal_prompt,
       video_url: videoResult.video_url,
-      source_image_url: imageUrl ?? null,
+      source_image_url: imageUrls[0] ?? null,
     });
 
     const item = {
@@ -155,7 +169,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       klant: auth.klant,
-      mode: imageUrl ? "image_to_image" : "text_to_image",
+      mode: videoImageUrl ? "image_to_image" : "text_to_image",
       media_type: "video",
       model: videoResult.model,
       user_prompt: videoResult.user_prompt,
@@ -175,11 +189,20 @@ export async function POST(req: NextRequest) {
       ? Math.floor(body.seed)
       : undefined;
 
+  let falImageUrls: string[] = [];
+  if (mode === "image_to_image") {
+    const resolved = await resolveImageUrlsForFal(imageUrls);
+    if (!resolved.ok) {
+      return NextResponse.json({ error: resolved.error }, { status: 400 });
+    }
+    falImageUrls = resolved.urls;
+  }
+
   const result = await generateWithModel({
     model,
-    userPrompt,
+    userPrompt: effectivePrompt,
     klant: auth.klant,
-    imageUrls,
+    imageUrls: falImageUrls,
     aspectRatio,
     quality,
     count,

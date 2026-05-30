@@ -6,6 +6,7 @@ import {
   Loader2,
   Play,
   Settings2,
+  Wand2,
   X,
 } from "lucide-react";
 import type { CompanyId } from "@/lib/types";
@@ -15,8 +16,9 @@ import {
   type ContentStudioGridItem,
   type ContentStudioMediaType,
   type ContentStudioSettings,
+  type ContentStudioSkeletonMode,
 } from "@/lib/photo-studio/types";
-import { FAL_VIDEO_MODEL_LABEL } from "@/lib/photo-studio/fal-video";
+import { FAL_VIDEO_MODEL_LABEL } from "@/lib/photo-studio/fal-video-label";
 import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import { ContentStudioMediaToggle } from "@/components/photo-studio/content-studio-media-toggle";
 import { ContentStudioModelPicker } from "@/components/photo-studio/content-studio-model-picker";
@@ -37,7 +39,7 @@ type Props = {
   busy: boolean;
   onBusyChange: (busy: boolean) => void;
   onGenerated: (items: ContentStudioGridItem[]) => void;
-  onSkeletonCount: (count: number) => void;
+  onSkeletonCount: (count: number, mode?: ContentStudioSkeletonMode) => void;
   onError: (message: string) => void;
 };
 
@@ -58,10 +60,26 @@ export function ContentStudioPromptBar({
   const [refs, setRefs] = useState<RefImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const refsRef = useRef(refs);
+  refsRef.current = refs;
 
   const isVideo = mediaType === "video";
+  const isEdit = !isVideo && refs.length > 0;
   const maxRefs = isVideo ? 1 : MAX_REF_IMAGES[settings.model];
   const skeletonSlots = isVideo ? 1 : settings.count;
+  const skeletonMode: ContentStudioSkeletonMode = isEdit ? "edit" : "generate";
+
+  const revokePreview = useCallback((preview: string) => {
+    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      refsRef.current.forEach((r) => {
+        if (r.preview.startsWith("blob:")) URL.revokeObjectURL(r.preview);
+      });
+    };
+  }, []);
 
   const patchSettings = (patch: Partial<ContentStudioSettings>) => {
     setSettings((s) => {
@@ -104,7 +122,10 @@ export function ContentStudioPromptBar({
             }
           );
           if (!data.media_url) throw new Error(data.error || "Upload mislukt");
-          uploaded.push({ url: data.media_url, preview: data.media_url });
+          uploaded.push({
+            url: data.media_url,
+            preview: URL.createObjectURL(file),
+          });
         }
         if (uploaded.length) {
           setRefs((prev) => [...prev, ...uploaded].slice(0, maxRefs));
@@ -121,14 +142,19 @@ export function ContentStudioPromptBar({
 
   const generate = async () => {
     const trimmed = prompt.trim();
-    if (!trimmed) {
+    const effectivePrompt =
+      trimmed ||
+      (refs.length && !isVideo
+        ? "Verbeter deze foto met professionele studio-kwaliteit."
+        : "");
+    if (!effectivePrompt) {
       onError("Typ een prompt om te genereren.");
       return;
     }
 
     onBusyChange(true);
     onError("");
-    onSkeletonCount(skeletonSlots);
+    onSkeletonCount(skeletonSlots, skeletonMode);
 
     try {
       const data = await fetchJsonChecked<{
@@ -148,7 +174,7 @@ export function ContentStudioPromptBar({
         credentials: "include",
         body: JSON.stringify({
           klant,
-          prompt: trimmed,
+          prompt: effectivePrompt,
           media_type: mediaType,
           model: settings.model,
           image_urls: refs.map((r) => r.url),
@@ -165,7 +191,7 @@ export function ContentStudioPromptBar({
       const gridItems: ContentStudioGridItem[] = rawItems.map((item) => ({
         id: item.generation_id,
         tracking_id: item.tracking_id,
-        user_prompt: data.user_prompt ?? trimmed,
+        user_prompt: data.user_prompt ?? effectivePrompt,
         master_url: item.master_url,
         media_type: item.media_type ?? mediaType,
         content_id: item.content_id,
@@ -191,7 +217,11 @@ export function ContentStudioPromptBar({
   };
 
   const removeRef = (index: number) => {
-    setRefs((prev) => prev.filter((_, i) => i !== index));
+    setRefs((prev) => {
+      const removed = prev[index];
+      if (removed) revokePreview(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   return (
@@ -208,7 +238,9 @@ export function ContentStudioPromptBar({
               placeholder={
                 isVideo
                   ? "Beschrijf de beweging of scène voor je video…"
-                  : "Beschrijf wat je wilt maken…"
+                  : isEdit
+                    ? "Wat wil je aanpassen aan je referentie? (optioneel)"
+                    : "Beschrijf wat je wilt maken…"
               }
               rows={1}
               className="content-studio-prompt-input fumero-text-body-sm w-full resize-none rounded-xl border-0 bg-transparent px-1 py-2 text-[var(--fumero-text)] outline-none placeholder:text-[var(--fumero-text-muted)]"
@@ -217,6 +249,14 @@ export function ContentStudioPromptBar({
             />
 
             <div className="flex flex-wrap items-center gap-2">
+              {isEdit ? (
+                <span className="content-studio-ref-indicator rounded-full bg-[rgba(105,196,0,0.12)] px-2.5 py-0.5 fumero-text-caption font-medium text-[var(--fumero-accent)]">
+                  {refs.length === 1
+                    ? "1 referentie"
+                    : `${refs.length} referenties`}
+                </span>
+              ) : null}
+
               <input
                 ref={fileRef}
                 type="file"
@@ -240,7 +280,7 @@ export function ContentStudioPromptBar({
                     alt={`Referentie ${i + 1}`}
                     className="h-8 w-8 rounded-full object-cover"
                   />
-                  <span className="text-[var(--fumero-text-muted)]">
+                  <span className="max-w-[5rem] truncate text-[var(--fumero-text-muted)]">
                     Ref {i + 1}
                   </span>
                   <button
@@ -309,16 +349,24 @@ export function ContentStudioPromptBar({
 
             <button
               type="button"
-              className="content-studio-generate-btn inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--fumero-accent)] px-4 fumero-text-body-sm font-semibold text-white transition-colors hover:bg-[var(--fumero-accent-hover)] disabled:opacity-60"
-              disabled={busy}
+              className={`content-studio-generate-btn inline-flex h-9 items-center gap-2 rounded-lg px-4 fumero-text-body-sm font-semibold text-white transition-colors disabled:opacity-60 ${
+                isEdit
+                  ? "bg-[#525252] hover:bg-[#404040]"
+                  : "bg-[var(--fumero-accent)] hover:bg-[var(--fumero-accent-hover)]"
+              }`}
+              disabled={busy || uploading}
               onClick={() => void generate()}
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isEdit ? (
+                <Wand2 className="h-4 w-4" />
               ) : (
                 <Play className="h-4 w-4 fill-current" />
               )}
-              <span className="hidden sm:inline">Genereren</span>
+              <span className="hidden sm:inline">
+                {isEdit ? "Bewerken" : "Genereren"}
+              </span>
             </button>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { FAL_MODEL_REGISTRY } from "@/lib/photo-studio/fal";
+import { FAL_MODEL_REGISTRY } from "@/lib/photo-studio/fal-model-registry";
 import type { ContentStudioModelId } from "@/lib/photo-studio/types";
 
 type Props = {

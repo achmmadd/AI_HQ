@@ -1,4 +1,5 @@
 import type { CompanyId } from "@/lib/types";
+import { FAL_MODEL_REGISTRY } from "@/lib/photo-studio/fal-model-registry";
 import type {
   ContentStudioAspectRatio,
   ContentStudioModelId,
@@ -9,35 +10,15 @@ import type {
 } from "@/lib/photo-studio/types";
 import { normalizeQualityForModel } from "@/lib/photo-studio/types";
 
-const NB2_TXT2IMG = "fal-ai/nano-banana-2";
-const NB2_EDIT = "fal-ai/nano-banana-2/edit";
-const SEEDREAM_TXT2IMG =
-  "fal-ai/bytedance/seedream/v5/lite/text-to-image";
-const SEEDREAM_EDIT = "fal-ai/bytedance/seedream/v5/lite/edit";
-const GPT_TXT2IMG = "openai/gpt-image-2";
-const GPT_EDIT = "openai/gpt-image-2/edit";
+const NB2_TXT2IMG = FAL_MODEL_REGISTRY["nano-banana-2"].txt2img;
+const NB2_EDIT = FAL_MODEL_REGISTRY["nano-banana-2"].edit;
+const SEEDREAM_TXT2IMG = FAL_MODEL_REGISTRY["seedream-5-lite"].txt2img;
+const SEEDREAM_EDIT = FAL_MODEL_REGISTRY["seedream-5-lite"].edit;
+const GPT_TXT2IMG = FAL_MODEL_REGISTRY["gpt-image-2"].txt2img;
+const GPT_EDIT = FAL_MODEL_REGISTRY["gpt-image-2"].edit;
 
-/** Phase A+B — all models wired. */
-export const FAL_MODEL_REGISTRY = {
-  "nano-banana-2": {
-    label: "Nano Banana 2",
-    txt2img: NB2_TXT2IMG,
-    edit: NB2_EDIT,
-    phase: "A" as const,
-  },
-  "seedream-5-lite": {
-    label: "Seedream 5.0",
-    txt2img: SEEDREAM_TXT2IMG,
-    edit: SEEDREAM_EDIT,
-    phase: "B" as const,
-  },
-  "gpt-image-2": {
-    label: "GPT Image 2",
-    txt2img: GPT_TXT2IMG,
-    edit: GPT_EDIT,
-    phase: "B" as const,
-  },
-} as const;
+/** Phase A+B — all models wired. Re-export for server callers. */
+export { FAL_MODEL_REGISTRY } from "@/lib/photo-studio/fal-model-registry";
 
 export type PhotoStudioContentType = "product" | "food";
 
@@ -149,23 +130,46 @@ export function logFalPrompt(mode: PhotoStudioMode, prompt: string): void {
   );
 }
 
+export function friendlyFalError(raw: string, isEdit = false): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes("image_url") || lower.includes("image_urls")) {
+    return isEdit
+      ? "Referentiebeeld kon niet worden verwerkt — upload opnieuw of kies een kleiner JPG/PNG."
+      : "Afbeelding-URL ongeldig voor fal.ai.";
+  }
+  if (lower.includes("timeout") || lower.includes("timed out")) {
+    return isEdit
+      ? "Bewerking duurde te lang — probeer één referentie of lagere kwaliteit."
+      : "Generatie duurde te lang — probeer opnieuw met minder varianten.";
+  }
+  if (lower.includes("fal_api_key") || lower.includes("fal_key") || lower.includes("authentication")) {
+    return "FAL_API_KEY ontbreekt of is ongeldig op de server.";
+  }
+  if (lower.includes("rate limit") || lower.includes("rate_limit")) {
+    return "fal.ai rate limit — wacht even en probeer opnieuw.";
+  }
+  return raw;
+}
+
 async function parseFalResponse(
-  res: Response
+  res: Response,
+  isEdit = false
 ): Promise<{ ok: true; images: string[] } | { ok: false; error: string }> {
   const text = await res.text();
   let data: unknown;
   try {
     data = JSON.parse(text) as unknown;
   } catch {
-    return { ok: false, error: `fal.ai: ${res.status} — ${text.slice(0, 200)}` };
+    return {
+      ok: false,
+      error: friendlyFalError(`fal.ai: ${res.status} — ${text.slice(0, 200)}`, isEdit),
+    };
   }
 
   if (!res.ok) {
     const errObj = data as { detail?: string; message?: string };
-    return {
-      ok: false,
-      error: errObj.detail || errObj.message || `fal HTTP ${res.status}`,
-    };
+    const raw = errObj.detail || errObj.message || `fal HTTP ${res.status}`;
+    return { ok: false, error: friendlyFalError(raw, isEdit) };
   }
 
   const out = data as { images?: Array<{ url?: string }> };
@@ -178,11 +182,14 @@ async function parseFalResponse(
 async function callFal(opts: {
   endpoint: string;
   body: Record<string, unknown>;
+  isEdit?: boolean;
 }): Promise<{ ok: true; images: string[] } | { ok: false; error: string }> {
   const key = falKey();
   if (!key) {
     return { ok: false, error: "FAL_API_KEY of FAL_KEY ontbreekt op de server." };
   }
+
+  const isEdit = opts.isEdit ?? Boolean(opts.body.image_urls);
 
   try {
     const res = await fetch(`https://fal.run/${opts.endpoint}`, {
@@ -192,14 +199,12 @@ async function callFal(opts: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(opts.body),
-      signal: AbortSignal.timeout(180_000),
+      signal: AbortSignal.timeout(isEdit ? 240_000 : 180_000),
     });
-    return parseFalResponse(res);
+    return parseFalResponse(res, isEdit);
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "fal.ai aanroep mislukt",
-    };
+    const msg = e instanceof Error ? e.message : "fal.ai aanroep mislukt";
+    return { ok: false, error: friendlyFalError(msg, isEdit) };
   }
 }
 

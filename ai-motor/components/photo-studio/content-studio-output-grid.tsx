@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Copy, Download } from "lucide-react";
+import { Calendar, Copy, Download, Loader2 } from "lucide-react";
 import type { CompanyId } from "@/lib/types";
-import type { ContentStudioGridItem } from "@/lib/photo-studio/types";
+import type { ContentStudioGridItem, ContentStudioSkeletonMode } from "@/lib/photo-studio/types";
 import { ContentStudioTileDrawer } from "@/components/photo-studio/content-studio-tile-drawer";
 
 type Props = {
   klant: CompanyId;
   items: ContentStudioGridItem[];
   skeletonCount: number;
+  skeletonMode?: ContentStudioSkeletonMode;
   onScheduled?: () => void;
 };
 
@@ -17,9 +18,12 @@ export function ContentStudioOutputGrid({
   klant,
   items,
   skeletonCount,
+  skeletonMode = "generate",
   onScheduled,
 }: Props) {
   const [selected, setSelected] = useState<ContentStudioGridItem | null>(null);
+  const skeletonLabel =
+    skeletonMode === "edit" ? "Bezig met bewerken…" : "Bezig met genereren…";
 
   const schedule = async (item: ContentStudioGridItem) => {
     if (!item.content_id) return;
@@ -71,9 +75,15 @@ export function ContentStudioOutputGrid({
             {Array.from({ length: skeletonCount }).map((_, i) => (
               <div
                 key={`sk-${i}`}
-                className="fumero-skeleton aspect-square rounded-xl"
-                aria-hidden
-              />
+                className="fumero-skeleton relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-xl"
+                aria-busy="true"
+                aria-label={skeletonLabel}
+              >
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--fumero-text-muted)]" />
+                <span className="px-3 text-center fumero-text-caption text-[var(--fumero-text-muted)]">
+                  {skeletonLabel}
+                </span>
+              </div>
             ))}
             {items.map((item) => (
               <article

@@ -9,7 +9,7 @@ import { PhotoStudioMenuBatch } from "@/components/photo-studio/photo-studio-men
 import { PhotoStudioPostProcess } from "@/components/photo-studio/photo-studio-post-process";
 import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import type { CompanyId } from "@/lib/types";
-import type { ContentStudioGridItem } from "@/lib/photo-studio/types";
+import type { ContentStudioGridItem, ContentStudioSkeletonMode } from "@/lib/photo-studio/types";
 
 type MeerView = "carousel" | "menu" | "postprocess" | null;
 
@@ -26,6 +26,8 @@ export function PhotoStudioPanel({
 }: Props) {
   const [items, setItems] = useState<ContentStudioGridItem[]>([]);
   const [skeletonCount, setSkeletonCount] = useState(0);
+  const [skeletonMode, setSkeletonMode] =
+    useState<ContentStudioSkeletonMode>("generate");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [meerOpen, setMeerOpen] = useState(false);
@@ -68,6 +70,14 @@ export function PhotoStudioPanel({
   useEffect(() => {
     void loadLibrary();
   }, [loadLibrary, refreshKey]);
+
+  const onSkeletonCount = (
+    count: number,
+    mode: ContentStudioSkeletonMode = "generate"
+  ) => {
+    setSkeletonCount(count);
+    if (count > 0) setSkeletonMode(mode);
+  };
 
   const onGenerated = (newItems: ContentStudioGridItem[]) => {
     setItems((prev) => [...newItems, ...prev]);
@@ -182,6 +192,7 @@ export function PhotoStudioPanel({
         klant={klant}
         items={items}
         skeletonCount={skeletonCount}
+        skeletonMode={skeletonMode}
         onScheduled={() => setRefreshKey((n) => n + 1)}
       />
 
@@ -190,7 +201,7 @@ export function PhotoStudioPanel({
         busy={busy}
         onBusyChange={setBusy}
         onGenerated={onGenerated}
-        onSkeletonCount={setSkeletonCount}
+        onSkeletonCount={onSkeletonCount}
         onError={setError}
       />
     </div>

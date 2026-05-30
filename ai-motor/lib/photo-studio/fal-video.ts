@@ -121,4 +121,4 @@ export async function generateVideoWithFal(opts: {
   };
 }
 
-export const FAL_VIDEO_MODEL_LABEL = "MiniMax Video 01";
+export { FAL_VIDEO_MODEL_LABEL } from "@/lib/photo-studio/fal-video-label";

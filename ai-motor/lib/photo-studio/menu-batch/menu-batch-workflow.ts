@@ -1,4 +1,5 @@
 import { generateWithFal } from "@/lib/photo-studio/fal-generation";
+import { resolveImageUrlsForFal } from "@/lib/photo-studio/fal-image-url";
 import { persistPhotoGeneration } from "@/lib/photo-studio/library";
 import type { CompanyId } from "@/lib/types";
 import type { MenuBatchItemResult } from "./menu-batch-types";
@@ -18,12 +19,17 @@ export async function runMenuBatchWorkflow(opts: {
   const items: MenuBatchItemResult[] = [];
 
   for (let i = 0; i < urls.length; i++) {
-    const source_image_url = urls[i];
+    const source_image_url = urls[i]!;
+    const resolved = await resolveImageUrlsForFal([source_image_url]);
+    if (!resolved.ok) {
+      items.push({ index: i + 1, source_image_url, error: resolved.error });
+      continue;
+    }
     const gen = await generateWithFal({
       mode: "image_to_image",
       klant: opts.klant,
       prompt: opts.extra_prompt?.trim() || "Zelfde gerecht, betere menu-foto.",
-      image_url: source_image_url,
+      image_url: resolved.urls[0],
       style_hint: styleHint,
     });
 
