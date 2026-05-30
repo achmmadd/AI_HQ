@@ -11,6 +11,7 @@ export function FumeroShell({
   actionHref,
   flush = false,
   showBriefing = false,
+  breadcrumbs,
   children,
 }: {
   page: string;
@@ -18,6 +19,8 @@ export function FumeroShell({
   actionHref?: string;
   flush?: boolean;
   showBriefing?: boolean;
+  /** Override default breadcrumbs (avoids duplicate page title on flush canvases). */
+  breadcrumbs?: Array<{ label: string; href?: string }>;
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -29,10 +32,12 @@ export function FumeroShell({
       <FumeroSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <FumeroTopbar
-          breadcrumbs={[
-            { label: "Fumero Studio", href: "/fumero/chat" },
-            { label: page },
-          ]}
+          breadcrumbs={
+            breadcrumbs ?? [
+              { label: "Fumero Studio", href: "/fumero/chat" },
+              { label: page },
+            ]
+          }
           actionLabel={actionLabel}
           actionHref={actionHref}
           showBriefing={showBriefing}

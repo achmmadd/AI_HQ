@@ -2,6 +2,8 @@ import type { CompanyId } from "@/lib/types";
 
 export type PhotoStudioMode = "text_to_image" | "image_to_image";
 
+export type ContentStudioMediaType = "image" | "video";
+
 export type ContentStudioModelId =
   | "nano-banana-2"
   | "seedream-5-lite"
@@ -104,6 +106,7 @@ export type ContentStudioGridItem = {
   tracking_id: string;
   user_prompt: string;
   master_url: string;
+  media_type: ContentStudioMediaType;
   content_id: number | null;
   created_at: string;
   variants: Array<{

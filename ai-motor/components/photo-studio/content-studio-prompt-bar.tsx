@@ -13,8 +13,10 @@ import {
   MAX_REF_IMAGES,
   normalizeQualityForModel,
   type ContentStudioGridItem,
+  type ContentStudioMediaType,
   type ContentStudioSettings,
 } from "@/lib/photo-studio/types";
+import { FAL_VIDEO_MODEL_LABEL } from "@/lib/photo-studio/fal-video";
 import { ContentStudioMediaToggle } from "@/components/photo-studio/content-studio-media-toggle";
 import { ContentStudioModelPicker } from "@/components/photo-studio/content-studio-model-picker";
 import { ContentStudioSettingsPopover } from "@/components/photo-studio/content-studio-settings-popover";
@@ -47,6 +49,7 @@ export function ContentStudioPromptBar({
   onError,
 }: Props) {
   const [prompt, setPrompt] = useState("");
+  const [mediaType, setMediaType] = useState<ContentStudioMediaType>("image");
   const [settings, setSettings] = useState<ContentStudioSettings>(
     DEFAULT_STUDIO_SETTINGS
   );
@@ -55,7 +58,9 @@ export function ContentStudioPromptBar({
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const maxRefs = MAX_REF_IMAGES[settings.model];
+  const isVideo = mediaType === "video";
+  const maxRefs = isVideo ? 1 : MAX_REF_IMAGES[settings.model];
+  const skeletonSlots = isVideo ? 1 : settings.count;
 
   const patchSettings = (patch: Partial<ContentStudioSettings>) => {
     setSettings((s) => {
@@ -70,6 +75,12 @@ export function ContentStudioPromptBar({
   useEffect(() => {
     setRefs((prev) => prev.slice(0, maxRefs));
   }, [maxRefs]);
+
+  useEffect(() => {
+    if (isVideo) {
+      setRefs((prev) => prev.slice(0, 1));
+    }
+  }, [isVideo]);
 
   const uploadImages = useCallback(
     async (files: File[]) => {
@@ -118,7 +129,7 @@ export function ContentStudioPromptBar({
 
     onBusyChange(true);
     onError("");
-    onSkeletonCount(settings.count);
+    onSkeletonCount(skeletonSlots);
 
     try {
       const res = await fetch("/api/photo-studio/generate", {
@@ -128,12 +139,13 @@ export function ContentStudioPromptBar({
         body: JSON.stringify({
           klant,
           prompt: trimmed,
+          media_type: mediaType,
           model: settings.model,
           image_urls: refs.map((r) => r.url),
           aspect_ratio: settings.aspect_ratio,
           quality: settings.quality,
-          count: settings.count,
-          auto_variants: settings.auto_variants,
+          count: isVideo ? 1 : settings.count,
+          auto_variants: isVideo ? false : settings.auto_variants,
         }),
       });
       const data = (await res.json()) as {
@@ -143,6 +155,7 @@ export function ContentStudioPromptBar({
           master_url: string;
           content_id: number | null;
           generation_id: number;
+          media_type?: ContentStudioMediaType;
           variants: ContentStudioGridItem["variants"];
         }>;
         user_prompt?: string;
@@ -157,6 +170,7 @@ export function ContentStudioPromptBar({
         tracking_id: item.tracking_id,
         user_prompt: data.user_prompt ?? trimmed,
         master_url: item.master_url,
+        media_type: item.media_type ?? mediaType,
         content_id: item.content_id,
         created_at: new Date().toISOString(),
         variants: item.variants ?? [],
@@ -184,17 +198,21 @@ export function ContentStudioPromptBar({
   };
 
   return (
-    <footer className="content-studio-prompt-bar shrink-0 border-t border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] md:px-6">
+    <footer className="content-studio-prompt-bar shrink-0 border-t border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-4 py-4 pb-[max(16px,env(safe-area-inset-bottom))] md:px-6">
       <div className="content-studio-prompt-shell rounded-[var(--fumero-radius-lg)] border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-3 shadow-[var(--fumero-shadow-sm)]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <ContentStudioMediaToggle />
+          <ContentStudioMediaToggle value={mediaType} onChange={setMediaType} />
 
           <div className="min-w-0 flex-1 space-y-2">
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Beschrijf wat je wilt maken…"
+              placeholder={
+                isVideo
+                  ? "Beschrijf de beweging of scène voor je video…"
+                  : "Beschrijf wat je wilt maken…"
+              }
               rows={1}
               className="content-studio-prompt-input fumero-text-body-sm w-full resize-none rounded-xl border-0 bg-transparent px-1 py-2 text-[var(--fumero-text)] outline-none placeholder:text-[var(--fumero-text-muted)]"
               style={{ minHeight: 44, maxHeight: 120 }}
@@ -251,8 +269,8 @@ export function ContentStudioPromptBar({
                   ) : (
                     <ImagePlus className="h-3.5 w-3.5" />
                   )}
-                  Image Reference
-                  {maxRefs > 1 ? (
+                  + Image Reference
+                  {!isVideo && maxRefs > 1 ? (
                     <span className="text-[var(--fumero-text-muted)]">
                       ({refs.length}/{maxRefs})
                     </span>
@@ -260,29 +278,37 @@ export function ContentStudioPromptBar({
                 </button>
               ) : null}
 
-              <ContentStudioModelPicker
-                value={settings.model}
-                onChange={(model) => patchSettings({ model })}
-              />
+              {isVideo ? (
+                <span className="fumero-text-body-sm text-[var(--fumero-text-muted)]">
+                  {FAL_VIDEO_MODEL_LABEL}
+                </span>
+              ) : (
+                <ContentStudioModelPicker
+                  value={settings.model}
+                  onChange={(model) => patchSettings({ model })}
+                />
+              )}
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2 self-end">
-            <ContentStudioSettingsPopover
-              open={settingsOpen}
-              onOpenChange={setSettingsOpen}
-              settings={settings}
-              onChange={patchSettings}
-              trigger={
-                <button
-                  type="button"
-                  className="content-studio-icon-btn flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--fumero-border)] text-[var(--fumero-text-muted)] transition-colors hover:bg-[var(--fumero-surface-muted)] hover:text-[var(--fumero-text)]"
-                  aria-label="Instellingen"
-                >
-                  <Settings2 className="h-4 w-4" />
-                </button>
-              }
-            />
+            {!isVideo ? (
+              <ContentStudioSettingsPopover
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+                settings={settings}
+                onChange={patchSettings}
+                trigger={
+                  <button
+                    type="button"
+                    className="content-studio-icon-btn flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--fumero-border)] text-[var(--fumero-text-muted)] transition-colors hover:bg-[var(--fumero-surface-muted)] hover:text-[var(--fumero-text)]"
+                    aria-label="Instellingen"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </button>
+                }
+              />
+            ) : null}
 
             <button
               type="button"

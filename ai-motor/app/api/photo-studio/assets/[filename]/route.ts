@@ -18,9 +18,18 @@ export async function GET(
   const filePath = path.join(photoStudioDataDir(), safe);
   try {
     const buf = await readFile(filePath);
+    const ext = path.extname(safe).toLowerCase();
+    const contentType =
+      ext === ".mp4"
+        ? "video/mp4"
+        : ext === ".webp"
+          ? "image/webp"
+          : ext === ".png"
+            ? "image/png"
+            : "image/jpeg";
     return new NextResponse(buf, {
       headers: {
-        "Content-Type": "image/jpeg",
+        "Content-Type": contentType,
         "Cache-Control": "public, max-age=86400",
       },
     });

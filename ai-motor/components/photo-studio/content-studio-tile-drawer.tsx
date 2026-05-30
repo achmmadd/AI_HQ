@@ -91,15 +91,33 @@ export function ContentStudioTileDrawer({
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="mb-4 overflow-hidden rounded-xl bg-[var(--fumero-surface-muted)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={item.master_url}
-              alt={item.user_prompt.slice(0, 80)}
-              className="w-full object-contain"
-            />
+            {item.media_type === "video" ? (
+              <video
+                src={item.master_url}
+                className="w-full object-contain"
+                controls
+                playsInline
+                preload="metadata"
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={item.master_url}
+                alt={item.user_prompt.slice(0, 80)}
+                className="w-full object-contain"
+              />
+            )}
           </div>
 
           <dl className="mb-4 space-y-2">
+            <div>
+              <dt className="fumero-text-caption text-[var(--fumero-text-muted)]">
+                Type
+              </dt>
+              <dd className="fumero-text-body-sm mt-0.5 text-[var(--fumero-text)]">
+                {item.media_type === "video" ? "Video" : "Beeld"}
+              </dd>
+            </div>
             <div>
               <dt className="fumero-text-caption text-[var(--fumero-text-muted)]">
                 Prompt

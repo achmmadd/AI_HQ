@@ -2,13 +2,14 @@ import db from "@/lib/db/database";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
 import { newPhotoTrackingId } from "@/lib/photo-studio/tracking-id";
 import { attributionHooksFor } from "@/lib/photo-studio/analytics/tracking";
-import { downloadImageBuffer } from "@/lib/photo-studio/download-master";
+import { downloadImageBuffer, downloadMediaBuffer } from "@/lib/photo-studio/download-master";
 import {
   resizeMasterToVariants,
   saveMasterOnly,
+  saveVideoMaster,
 } from "@/lib/photo-studio/resize-variants";
 import type { CompanyId } from "@/lib/types";
-import type { PhotoStudioMode } from "@/lib/photo-studio/types";
+import type { ContentStudioMediaType, PhotoStudioMode } from "@/lib/photo-studio/types";
 
 export type PersistGenerationInput = {
   klant: CompanyId;
@@ -22,6 +23,7 @@ export type PersistGenerationInput = {
   seed?: number | null;
   workspace_preset?: string | null;
   auto_variants?: boolean;
+  media_type?: ContentStudioMediaType;
 };
 
 export type PersistedGeneration = {
@@ -57,26 +59,47 @@ export async function persistPhotoGeneration(
   return persistPhotoGenerationFromBuffer({ ...input, buffer });
 }
 
+export async function persistVideoGeneration(
+  input: Omit<PersistGenerationInput, "auto_variants" | "master_url"> & {
+    video_url: string;
+  }
+): Promise<PersistedGeneration> {
+  ensurePhotoStudioSchema();
+  const tracking_id = newPhotoTrackingId();
+  const buffer = await downloadMediaBuffer(input.video_url, 300_000);
+  return persistWithBuffer(
+    { ...input, master_url: input.video_url, auto_variants: false, media_type: "video" },
+    tracking_id,
+    buffer,
+    "video"
+  );
+}
+
 async function persistWithBuffer(
   input: PersistGenerationInput,
   tracking_id: string,
-  buffer: Buffer
+  buffer: Buffer,
+  kind: "image" | "video" = "image"
 ): Promise<PersistedGeneration> {
   ensurePhotoStudioSchema();
-  const autoVariants = input.auto_variants !== false;
-  const { master_path, master_public_url, variants } = autoVariants
-    ? await resizeMasterToVariants(buffer, tracking_id)
-    : await saveMasterOnly(buffer, tracking_id);
+  const autoVariants = kind === "image" && input.auto_variants !== false;
+  const { master_path, master_public_url, variants } =
+    kind === "video"
+      ? await saveVideoMaster(buffer, tracking_id)
+      : autoVariants
+        ? await resizeMasterToVariants(buffer, tracking_id)
+        : await saveMasterOnly(buffer, tracking_id);
 
   const userPrompt = input.user_prompt.trim();
   const falPrompt = input.fal_prompt?.trim() ?? input.prompt?.trim() ?? userPrompt;
   const legacyPrompt = falPrompt;
+  const mediaType = input.media_type ?? (kind === "video" ? "video" : "image");
 
   const insert = db.prepare(
     `INSERT INTO photo_studio_generations (
       tracking_id, klant, mode, prompt, user_prompt, fal_prompt,
-      source_image_url, seed, master_url, master_path, workspace_preset
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      source_image_url, seed, master_url, master_path, workspace_preset, media_type
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const result = insert.run(
     tracking_id,
@@ -89,7 +112,8 @@ async function persistWithBuffer(
     input.seed ?? null,
     master_public_url,
     master_path,
-    input.workspace_preset ?? null
+    input.workspace_preset ?? null,
+    mediaType
   );
   const generationId = Number(result.lastInsertRowid);
 
@@ -118,16 +142,18 @@ async function persistWithBuffer(
 
   const ig = variantRows.find((v) => v.aspect === "ig_1_1");
   const caption = userPrompt.slice(0, 500);
+  const postType = mediaType === "video" ? "video" : "product_photo";
   const contentResult = db
     .prepare(
       `INSERT INTO content_posts (klant, platform, type, titel, content, status, source, media_url)
-       VALUES (?, 'instagram', 'product_photo', ?, ?, 'draft', 'photo_studio', ?)`
+       VALUES (?, 'instagram', ?, ?, ?, 'draft', 'photo_studio', ?)`
     )
     .run(
       input.klant,
+      postType,
       userPrompt.slice(0, 80) || `Studio ${tracking_id}`,
       caption,
-      ig?.public_url ?? master_public_url
+      mediaType === "video" ? master_public_url : ig?.public_url ?? master_public_url
     );
   const content_id = Number(contentResult.lastInsertRowid);
   db.prepare(`UPDATE photo_studio_generations SET content_id = ? WHERE id = ?`).run(
@@ -183,6 +209,10 @@ export function listPhotoGenerations(klant: CompanyId, limit = 30) {
       prompt: userPrompt,
       user_prompt: userPrompt,
       master_url: r.master_url as string,
+      media_type:
+        (typeof r.media_type === "string" && r.media_type === "video"
+          ? "video"
+          : "image") as ContentStudioMediaType,
       content_id: r.content_id as number | null,
       created_at: r.created_at as string,
       variants: JSON.parse((r.variants_json as string) || "[]") as Array<{

@@ -15,11 +15,13 @@ type MeerView = "carousel" | "menu" | "postprocess" | null;
 type Props = {
   klant: CompanyId;
   title?: string;
+  className?: string;
 };
 
 export function PhotoStudioPanel({
   klant,
   title = "Content Studio",
+  className = "",
 }: Props) {
   const [items, setItems] = useState<ContentStudioGridItem[]>([]);
   const [skeletonCount, setSkeletonCount] = useState(0);
@@ -35,7 +37,7 @@ export function PhotoStudioPanel({
     });
     const data = (await res.json()) as {
       items?: Array<
-        ContentStudioGridItem & { prompt?: string }
+        ContentStudioGridItem & { prompt?: string; media_type?: ContentStudioGridItem["media_type"] }
       >;
     };
     if (res.ok && Array.isArray(data.items)) {
@@ -45,6 +47,7 @@ export function PhotoStudioPanel({
           tracking_id: i.tracking_id,
           user_prompt: i.user_prompt ?? i.prompt ?? "",
           master_url: i.master_url,
+          media_type: i.media_type ?? "image",
           content_id: i.content_id,
           created_at: i.created_at,
           variants: i.variants ?? [],
@@ -69,7 +72,7 @@ export function PhotoStudioPanel({
 
   if (meerView) {
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div className={`flex h-full min-h-0 flex-col ${className}`}>
         <header className="flex shrink-0 items-center justify-between border-b border-[var(--fumero-border)] px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -112,7 +115,7 @@ export function PhotoStudioPanel({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className={`flex h-full min-h-0 flex-col ${className}`}>
       <header className="flex shrink-0 items-center justify-between px-4 py-3 md:px-6">
         <h1 className="fumero-text-h2 text-[var(--fumero-text)]">{title}</h1>
         <div className="relative">

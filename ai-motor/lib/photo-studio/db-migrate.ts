@@ -49,6 +49,11 @@ export function ensurePhotoStudioSchema(): void {
   if (!columnExists("photo_studio_generations", "fal_prompt")) {
     db.exec(`ALTER TABLE photo_studio_generations ADD COLUMN fal_prompt TEXT`);
   }
+  if (!columnExists("photo_studio_generations", "media_type")) {
+    db.exec(
+      `ALTER TABLE photo_studio_generations ADD COLUMN media_type TEXT NOT NULL DEFAULT 'image'`
+    );
+  }
 
   db.exec(`
     UPDATE photo_studio_generations

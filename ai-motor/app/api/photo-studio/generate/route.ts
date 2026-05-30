@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithModel } from "@/lib/photo-studio/fal";
+import { generateVideoWithFal } from "@/lib/photo-studio/fal-video";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
-import { persistPhotoGeneration } from "@/lib/photo-studio/library";
+import {
+  persistPhotoGeneration,
+  persistVideoGeneration,
+} from "@/lib/photo-studio/library";
 import { requirePhotoStudioKlant } from "@/lib/photo-studio/workspace-auth";
 import {
   MAX_REF_IMAGES,
   normalizeQualityForModel,
   type ContentStudioAspectRatio,
+  type ContentStudioMediaType,
   type ContentStudioModelId,
   type ContentStudioQuality,
   type PhotoStudioMode,
@@ -39,6 +44,7 @@ export async function POST(req: NextRequest) {
     quality?: string;
     count?: number;
     auto_variants?: boolean;
+    media_type?: string;
     style_hint?: string;
     seed?: number;
     /** @deprecated */
@@ -111,7 +117,58 @@ export async function POST(req: NextRequest) {
 
   const autoVariants = body.auto_variants !== false;
 
+  const mediaType: ContentStudioMediaType =
+    body.media_type === "video" ? "video" : "image";
+
   ensurePhotoStudioSchema();
+
+  if (mediaType === "video") {
+    const imageUrl = imageUrls[0];
+    const videoResult = await generateVideoWithFal({
+      userPrompt,
+      klant: auth.klant,
+      imageUrl,
+    });
+    if (!videoResult.ok) {
+      return NextResponse.json({ error: videoResult.error }, { status: 502 });
+    }
+
+    const persisted = await persistVideoGeneration({
+      klant: auth.klant,
+      mode: imageUrl ? "image_to_image" : "text_to_image",
+      user_prompt: videoResult.user_prompt,
+      fal_prompt: videoResult.fal_prompt,
+      video_url: videoResult.video_url,
+      source_image_url: imageUrl ?? null,
+    });
+
+    const item = {
+      tracking_id: persisted.tracking_id,
+      master_url: persisted.master_public_url,
+      variants: persisted.variants,
+      content_id: persisted.content_id,
+      generation_id: persisted.id,
+      media_type: "video" as const,
+      analytics: persisted.analytics,
+    };
+
+    return NextResponse.json({
+      ok: true,
+      klant: auth.klant,
+      mode: imageUrl ? "image_to_image" : "text_to_image",
+      media_type: "video",
+      model: videoResult.model,
+      user_prompt: videoResult.user_prompt,
+      fal_prompt: videoResult.fal_prompt,
+      items: [item],
+      tracking_id: item.tracking_id,
+      master_url: item.master_url,
+      variants: item.variants,
+      content_id: item.content_id,
+      generation_id: item.generation_id,
+      analytics: item.analytics,
+    });
+  }
 
   const seed =
     typeof body.seed === "number" && Number.isFinite(body.seed)
@@ -155,6 +212,7 @@ export async function POST(req: NextRequest) {
       variants: persisted.variants,
       content_id: persisted.content_id,
       generation_id: persisted.id,
+      media_type: "image" as const,
       analytics: persisted.analytics,
     });
   }
@@ -163,6 +221,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     klant: auth.klant,
     mode,
+    media_type: "image",
     model: result.model,
     user_prompt: result.user_prompt,
     fal_prompt: result.fal_prompt,

@@ -1,10 +1,13 @@
 "use client";
 
+import type { ContentStudioMediaType } from "@/lib/photo-studio/types";
+
 type Props = {
-  disabled?: boolean;
+  value: ContentStudioMediaType;
+  onChange: (value: ContentStudioMediaType) => void;
 };
 
-export function ContentStudioMediaToggle({ disabled = true }: Props) {
+export function ContentStudioMediaToggle({ value, onChange }: Props) {
   return (
     <div
       className="content-studio-media-toggle flex shrink-0 items-center gap-0.5 rounded-lg border border-[var(--fumero-border)] p-0.5"
@@ -13,17 +16,25 @@ export function ContentStudioMediaToggle({ disabled = true }: Props) {
     >
       <button
         type="button"
-        className="content-studio-media-btn content-studio-media-btn--active fumero-text-body-sm h-9 rounded-md px-3 font-medium"
-        aria-pressed
+        className={`content-studio-media-btn fumero-text-body-sm h-9 rounded-md px-3 font-medium ${
+          value === "image"
+            ? "content-studio-media-btn--active"
+            : "text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
+        }`}
+        aria-pressed={value === "image"}
+        onClick={() => onChange("image")}
       >
         Beeld
       </button>
       <button
         type="button"
-        className="content-studio-media-btn fumero-text-body-sm h-9 rounded-md px-3 font-medium text-[var(--fumero-text-muted)]"
-        disabled={disabled}
-        title="Binnenkort"
-        aria-pressed={false}
+        className={`content-studio-media-btn fumero-text-body-sm h-9 rounded-md px-3 font-medium ${
+          value === "video"
+            ? "content-studio-media-btn--active"
+            : "text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
+        }`}
+        aria-pressed={value === "video"}
+        onClick={() => onChange("video")}
       >
         Video
       </button>

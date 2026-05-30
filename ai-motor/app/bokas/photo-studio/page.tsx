@@ -7,7 +7,7 @@ export default function BokasPhotoStudioPage() {
   return (
     <BokasWorkspaceRoot>
       <main className="main-content flex h-[calc(100vh-0px)] min-h-0 flex-col overflow-hidden p-0">
-        <PhotoStudioPanel klant="bokas" title="Content Studio" />
+        <PhotoStudioPanel klant="bokas" title="Content Studio" className="h-full" />
       </main>
     </BokasWorkspaceRoot>
   );

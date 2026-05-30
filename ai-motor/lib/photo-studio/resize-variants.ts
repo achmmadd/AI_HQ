@@ -64,3 +64,19 @@ export async function saveMasterOnly(
     variants: [],
   };
 }
+
+export async function saveVideoMaster(
+  videoBuffer: Buffer,
+  trackingId: string
+): Promise<{ master_path: string; master_public_url: string; variants: SavedVariant[] }> {
+  const dir = photoStudioDataDir();
+  const masterName = `${trackingId}_master.mp4`;
+  const masterPath = path.join(dir, masterName);
+  await writeFile(masterPath, videoBuffer);
+
+  return {
+    master_path: masterPath,
+    master_public_url: photoStudioPublicUrl(masterName),
+    variants: [],
+  };
+}
