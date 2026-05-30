@@ -1,0 +1,3192 @@
+"use client";
+
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Copy,
+  ChevronDown,
+  Mic,
+  Paperclip,
+  PanelLeft,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Send,
+  Square,
+  Trash2,
+  PanelRightOpen,
+  MousePointer2,
+  Plug,
+} from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMotorsChat } from "@/hooks/useMotorsChat";
+import { useCompanyStore, chatKlantForWorkspace, getWorkspaceTheme } from "@/stores/useCompanyStore";
+import { AgentAvatar } from "@/components/AgentAvatar";
+import { MotorsChatMarkdown } from "@/components/motors-chat-markdown";
+import { MessageFeedback } from "@/components/message-feedback";
+import { fetchJsonChecked } from "@/lib/fetch-json-client";
+import { cn } from "@/lib/utils";
+import { groupConversationsByDate, groupFumeroChatThreads, deriveConversationTitleFromMessage, type ConversationListItem } from "@/lib/conversation-grouping";
+import { isBuildLikePrompt } from "@/lib/build-intent-ext";
+import {
+  isProjectIterationPrompt,
+  isProjectStartPrompt,
+} from "@/lib/build-intent-project";
+import {
+  motorsActionLabel,
+  resolveMotorsChatAction,
+} from "@/lib/motors-orchestrator";
+import {
+  buildUploadChatMessage,
+  CHAT_UPLOAD_ACCEPT,
+  validateChatUploadFile,
+  type ChatUploadApiResponse,
+} from "@/lib/chat-upload";
+import { useAgentReadiness } from "@/hooks/useAgentReadiness";
+import { useLayoutStore } from "@/stores/useLayoutStore";
+import { MotorTurboButton } from "@/components/motor-turbo-button";
+import { MotorPlanButton } from "@/components/motor-plan-button";
+import { MotorUsageStrip } from "@/components/motor-usage-strip";
+import {
+  FumeroComposerToolbar,
+  type FumeroComposerMenuAction,
+  type FumeroComposerMode,
+} from "@/components/fumero/fumero-composer-toolbar";
+import {
+  readStoredFumeroModelTier,
+  type FumeroComposerModelTier,
+} from "@/lib/fumero/composer-model-tier";
+import { BOKAS_CHAT_SUGGESTIONS } from "@/lib/bokas-quick-actions";
+import {
+  FUMERO_CHAT_SUGGESTIONS,
+  type FumeroChatStarterWire,
+} from "@/lib/fumero-quick-actions";
+import { FumeroChatStarterCards } from "@/components/fumero/ops/fumero-chat-starter-cards";
+import {
+  formatMaxBriefingDetailMarkdown,
+  resolveMaxChatAction,
+} from "@/lib/fumero/max-briefing-chat";
+import { getTemplate } from "@/lib/fumero/tool-templates";
+import {
+  deployTypeForTemplate,
+  deriveToolName,
+  FUMERO_TOOL_QUICK_REPLIES,
+  formatToolDeployedMarkdown,
+  buildInitialToolPrompt,
+  mergeToolPrompt,
+  resolveMaxToolChatAction,
+  resolveTemplateFromQuickReply,
+  resolveTemplateFromUserText,
+  toolIntentAssistantIntro,
+  detectFullAppIntent,
+} from "@/lib/fumero/max-tool-chat";
+import {
+  formatContentSavedMarkdown,
+  resolveMaxCanvasChatAction,
+  resolveMaxContentChatAction,
+} from "@/lib/fumero/max-content-chat";
+import {
+  FUMERO_CODER_PREFILL,
+  FUMERO_RESEARCH_PREFILL,
+  fumeroComposerPlaceholder,
+} from "@/lib/fumero/composer-actions";
+import {
+  cleanGeneratedContent,
+  contentPreviewTitle,
+  fumeroConceptVersionLabel,
+  type FumeroContentPreviewPayload,
+  type FumeroLivePreviewPayload,
+} from "@/lib/fumero/content-preview";
+import {
+  createFumeroTool,
+  fetchToolDetail,
+  iterateFumeroTool,
+  publishFumeroTool,
+} from "@/lib/fumero/tool-chat-client";
+import {
+  createFullApp,
+  fetchAppDetail,
+  iterateFullApp,
+  publishFullApp,
+  type AppDetail,
+} from "@/lib/apps/apps-chat-client";
+import { FumeroToolCard } from "@/components/fumero/features/fumero-tool-card";
+import {
+  FumeroPublishModal,
+  type FumeroPublishModalPayload,
+} from "@/components/fumero/features/fumero-publish-modal";
+import { CODER_BUILD_PHASES } from "@/lib/fumero/coder-build-phases";
+import {
+  formatFumeroBuilderError,
+  cacheBustPreviewUrl,
+} from "@/lib/fumero/builder-config";
+import { showFumeroToast } from "@/lib/fumero/fumero-toast";
+import { FumeroConnectorsPanel } from "@/components/fumero/FumeroConnectorsPanel";
+import { augmentPromptWithFumeroConnectors } from "@/lib/connectors/fumero-context";
+import {
+  readEnabledConnectors,
+  setConnectorEnabled,
+} from "@/lib/connectors/session";
+import type { ConnectorId } from "@/lib/connectors/registry";
+import type { FumeroToolCardPayload, AppCardPayload } from "@/lib/motors-chat-types";
+import type { MaxCompanionConfig } from "@/components/motors-chat-workspace";
+
+type ConversationRow = {
+  id: number;
+  klant: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
+
+const SUGGESTED_PROMPTS = [
+  {
+    label: "Samenvatting",
+    prompt: "Geef een korte samenvatting van wat we bespraken.",
+  },
+  {
+    label: "Zoek op web",
+    prompt:
+      "Zoek op wat er actueel speelt rond ons bedrijf en geef 3 bronnen met URL.",
+  },
+  {
+    label: "Actiepunten",
+    prompt: "Lijst concrete actiepunten met eigenaar en deadline.",
+  },
+];
+
+const UNIFIED_SUGGESTED_PROMPTS = [
+  {
+    label: "Bokas dashboard",
+    prompt:
+      "Bouw een Next.js reserveringen-dashboard voor Bokas met overzicht vandaag, tabel en donkere UI.",
+  },
+  {
+    label: "MotorsAI clone",
+    prompt:
+      "Bouw een React chat-UI zoals MotorsAI met sidebar, berichten en donker thema.",
+  },
+  {
+    label: "Menukaart",
+    prompt:
+      "Maak een interactieve menukaart voor het restaurant met categorieën en prijzen.",
+  },
+  {
+    label: "Rekenmachine",
+    prompt: "Maak een rekenmachine met groot display en donkere knoppen.",
+  },
+];
+
+/** Eén regel samenvatting voor compacte tool-kaart in coder-split. */
+function toolCardOneLineSummary(content: string): string | undefined {
+  const t = content
+    .replace(/\*\*/g, "")
+    .replace(/[#*_`[\]]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return undefined;
+  const sentence = t.split(/[.!?]\s/)[0]?.trim() ?? t;
+  return sentence.length > 160 ? `${sentence.slice(0, 157)}…` : sentence;
+}
+
+const CODER_BUILD_TRIGGER_RE =
+  /\b(maak|bouw|genereer|start|deploy|concept)\b/i;
+
+type SpeechRecCtor = new () => {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: { results: { 0: { 0: { transcript: string } } } }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+function MotorTypingDots({
+  accent,
+  className,
+}: {
+  accent?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn("inline-flex gap-1", className)}
+      aria-hidden
+    >
+      <span
+        className={cn(
+          "motors-typing-dot",
+          accent && "bg-[#69C400]/70"
+        )}
+      />
+      <span
+        className={cn(
+          "motors-typing-dot",
+          accent && "bg-[#69C400]/70"
+        )}
+      />
+      <span
+        className={cn(
+          "motors-typing-dot",
+          accent && "bg-[#69C400]/70"
+        )}
+      />
+    </span>
+  );
+}
+
+function MotorThinkingBlock({
+  turbo,
+  statusLabel,
+  activities,
+  agentLabel = "Motor",
+  accent,
+}: {
+  turbo: boolean;
+  statusLabel?: string | null;
+  activities: string[];
+  agentLabel?: string;
+  accent?: boolean;
+}) {
+  const current =
+    statusLabel ??
+    activities[activities.length - 1] ??
+    (turbo ? "Turbo denkt na…" : `${agentLabel} denkt na…`);
+
+  return (
+    <div className="space-y-2 text-text-secondary">
+      <div className="inline-flex items-center gap-1.5">
+        <MotorTypingDots accent={accent} />
+        <span className="text-[14px] font-medium text-text-primary">
+          {current}
+        </span>
+      </div>
+      {activities.length > 1 && (
+        <ul className="space-y-0.5 border-l border-border/50 pl-3 text-[12px] leading-snug text-text-secondary/90">
+          {activities.slice(0, -1).map((line, i) => (
+            <li key={`${i}-${line}`}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function MotorStreamPulse({
+  statusLabel,
+  agentLabel = "Motor",
+  accent,
+}: {
+  statusLabel?: string | null;
+  agentLabel?: string;
+  accent?: boolean;
+}) {
+  const label = statusLabel ?? `${agentLabel} antwoordt…`;
+  return (
+    <div
+      className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-text-secondary"
+      aria-live="polite"
+    >
+      <MotorTypingDots accent={accent} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+export function MotorsChatPanel({
+  embedded = false,
+  layout = "default",
+  unifiedMode = false,
+  preferArtifactBuilds = false,
+  preferProjectBuilds = false,
+  onBuildArtifact,
+  onProjectPrompt,
+  hasActiveProject = false,
+  artifactBusy = false,
+  externalStatusError = null,
+  initialPrompt = null,
+  initialToolId = null,
+  initialAppSlug = null,
+  initialComposerMode,
+  onComposerModeChange,
+  maxCompanion,
+  onFumeroContentPreview,
+  onFumeroLivePreview,
+  onFumeroVisualEditModeChange,
+  onRegisterVisualEditPick,
+}: {
+  embedded?: boolean;
+  layout?: "default" | "split";
+  unifiedMode?: boolean;
+  preferArtifactBuilds?: boolean;
+  preferProjectBuilds?: boolean;
+  onBuildArtifact?: (prompt: string) => Promise<void>;
+  onProjectPrompt?: (
+    prompt: string,
+    conversationId?: number
+  ) => Promise<void>;
+  hasActiveProject?: boolean;
+  artifactBusy?: boolean;
+  externalStatusError?: string | null;
+  /** Auto-verstuur bij openen (bijv. ?q= vanuit Fumero composer). */
+  initialPrompt?: string | null;
+  /** Bestaande tool bewerken (bv. ?tool= vanuit garage). */
+  initialToolId?: number | null;
+  /** Fase 5: bestaande full app laden/bewerken in chat (bv. ?app=slug vanuit garage). */
+  initialAppSlug?: string | null;
+  /** Fumero: start composer in coder/foto/canvas/online (bv. ?mode=coder). */
+  initialComposerMode?: FumeroComposerMode;
+  /** Fumero: workspace sync voor vaste preview-split in coder-modus. */
+  onComposerModeChange?: (mode: FumeroComposerMode) => void;
+  maxCompanion?: MaxCompanionConfig;
+  /** Fumero: content preview in rechter paneel (Instagram post, productfoto, …). */
+  onFumeroContentPreview?: (preview: FumeroContentPreviewPayload | null) => void;
+  /** Fumero: tool/app iframe preview in rechter paneel. */
+  onFumeroLivePreview?: (preview: FumeroLivePreviewPayload | null) => void;
+  onFumeroVisualEditModeChange?: (active: boolean) => void;
+  onRegisterVisualEditPick?: (handler: (hint: string) => void) => void;
+} = {}) {
+  const workspace = useCompanyStore((s) => s.workspace);
+  const company = chatKlantForWorkspace(workspace);
+  const agentTheme = getWorkspaceTheme(workspace);
+  const router = useRouter();
+  const motorChatMode = useLayoutStore((s) => s.motorChatMode);
+  const setMotorChatMode = useLayoutStore((s) => s.setMotorChatMode);
+  const previewPanelOpen = useLayoutStore((s) => s.previewPanelOpen);
+  const setPreviewPanelOpen = useLayoutStore((s) => s.setPreviewPanelOpen);
+  const planMode = useLayoutStore((s) => s.planMode);
+  const togglePlanMode = useLayoutStore((s) => s.togglePlanMode);
+  const agentMode = motorChatMode === "motor_pro";
+  const [fumeroTurboOn, setFumeroTurboOn] = useState(false);
+  const [fumeroComposerMode, setFumeroComposerMode] =
+    useState<FumeroComposerMode>(initialComposerMode ?? "default");
+  const fumeroCanvasMode = fumeroComposerMode === "canvas";
+  const fumeroCoderMode = fumeroComposerMode === "coder";
+  const [conversations, setConversations] = useState<ConversationRow[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<
+    number | undefined
+  >(undefined);
+  const sidebarOpen = useLayoutStore((s) => s.chatThreadsOpen);
+  const setChatThreadsOpen = useLayoutStore((s) => s.setChatThreadsOpen);
+  const [threadSearch, setThreadSearch] = useState("");
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [convLoadError, setConvLoadError] = useState<string | null>(null);
+  const [fumeroModelTier, setFumeroModelTier] =
+    useState<FumeroComposerModelTier>("flash");
+  const [connectorsOpen, setConnectorsOpen] = useState(false);
+  const [enabledConnectors, setEnabledConnectors] = useState<ConnectorId[]>([]);
+
+  useEffect(() => {
+    if (initialComposerMode) {
+      setFumeroComposerMode(initialComposerMode);
+      if (initialComposerMode === "coder") {
+        setPreviewPanelOpen(true);
+      }
+    }
+  }, [initialComposerMode, setPreviewPanelOpen]);
+
+  useEffect(() => {
+    onComposerModeChange?.(fumeroComposerMode);
+    if (fumeroComposerMode === "coder") {
+      setPreviewPanelOpen(true);
+    }
+  }, [fumeroComposerMode, onComposerModeChange, setPreviewPanelOpen]);
+
+  const refreshConversations = useCallback(async () => {
+    const data = await fetchJsonChecked<{ conversations?: ConversationRow[] }>(
+      `/api/conversations?klant=${encodeURIComponent(company)}`,
+      { credentials: "include" }
+    );
+    const rows = data.conversations ?? [];
+    setConversations(rows);
+    return rows;
+  }, [company]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setActiveConversationId(undefined);
+    setConversations([]);
+    setConvLoadError(null);
+    (async () => {
+      try {
+      const data = await fetchJsonChecked<{ conversations?: ConversationRow[] }>(
+        `/api/conversations?klant=${encodeURIComponent(company)}`,
+        { credentials: "include" }
+      );
+      let rows = data.conversations ?? [];
+      if (rows.length === 0) {
+        const row = await fetchJsonChecked<ConversationRow>("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ klant: company }),
+        });
+        rows = [row];
+      }
+      if (cancelled) return;
+      setConversations(rows);
+      const cParam =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("c")
+          : null;
+      let pickId = rows[0]?.id;
+      if (cParam && /^\d+$/.test(cParam)) {
+        const cid = Number(cParam);
+        if (rows.some((r) => r.id === cid)) pickId = cid;
+      }
+      if (pickId !== undefined) setActiveConversationId(pickId);
+      } catch (e) {
+        setConvLoadError(
+          e instanceof Error
+            ? e.message
+            : "Gesprekken laden mislukt — vernieuw de pagina."
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [company]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("plan") === "1") {
+      useLayoutStore.getState().setPlanMode(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (layout !== "split" || activeConversationId === undefined) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("c", String(activeConversationId));
+    if (planMode) params.set("plan", "1");
+    else params.delete("plan");
+    const path = `${window.location.pathname}?${params.toString()}`;
+    if (`${window.location.pathname}?${window.location.search}` !== path) {
+      router.replace(path, { scroll: false });
+    }
+  }, [activeConversationId, layout, planMode, router]);
+
+  useEffect(() => {
+    if (workspace !== "fumero") return;
+    setFumeroModelTier(readStoredFumeroModelTier());
+    setEnabledConnectors(readEnabledConnectors());
+  }, [workspace]);
+
+  /** Fumero: Turbo niet standaard — alleen expliciete toggle (niet uit persist). */
+  useEffect(() => {
+    if (workspace !== "fumero") return;
+    if (motorChatMode === "motor_pro") {
+      setMotorChatMode("motor");
+    }
+    setFumeroTurboOn(false);
+  }, [workspace, setMotorChatMode]);
+
+  const effectiveAgentMode =
+    workspace === "fumero" && maxCompanion ? fumeroTurboOn : agentMode;
+
+  const chatSendOpts = useMemo(
+    () => ({
+      agentMode: effectiveAgentMode,
+      planMode,
+      modelTier: workspace === "fumero" ? fumeroModelTier : undefined,
+    }),
+    [effectiveAgentMode, planMode, workspace, fumeroModelTier]
+  );
+
+  const {
+    messages,
+    send,
+    appendUserMessage,
+    prependAssistantMessage,
+    appendAssistantMessage,
+    updateMessage,
+    regenerate,
+    stop,
+    streamingId,
+    streamStatus,
+    streamActivities,
+    error,
+    historyLoaded,
+    clearError,
+    reportError,
+  } = useMotorsChat(company, undefined, activeConversationId, {
+    onStreamComplete: () => void refreshConversations(),
+  });
+
+  const [text, setText] = useState("");
+  const [artifactErr, setArtifactErr] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [composerDragOver, setComposerDragOver] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<{
+    kind: "ok" | "err";
+    text: string;
+  } | null>(null);
+  const [buildStatus, setBuildStatus] = useState<string | null>(null);
+  const setBuildStatusUnlessCoder = useCallback(
+    (label: string | null) => {
+      if (label && fumeroCoderMode) return;
+      setBuildStatus(label);
+    },
+    [fumeroCoderMode]
+  );
+  const [toolBusy, setToolBusy] = useState(false);
+  const [coderBuildPhase, setCoderBuildPhase] = useState<string>(
+    CODER_BUILD_PHASES[0]
+  );
+  const [coderPlanHintDismissed, setCoderPlanHintDismissed] = useState(false);
+  const [publishModal, setPublishModal] =
+    useState<FumeroPublishModalPayload | null>(null);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [visualEditMode, setVisualEditMode] = useState(false);
+  const [activeToolId, setActiveToolId] = useState<number | null>(null);
+  const [activeToolPrompt, setActiveToolPrompt] = useState("");
+  const [awaitingToolTemplate, setAwaitingToolTemplate] = useState(false);
+  const [activeToolCardMsgId, setActiveToolCardMsgId] = useState<string | null>(
+    null
+  );
+  const [activeAppSlug, setActiveAppSlug] = useState<string | null>(null);
+  const [activeAppCardMsgId, setActiveAppCardMsgId] = useState<string | null>(null);
+  const [fumeroBuilderLabel, setFumeroBuilderLabel] = useState<string>("Max");
+
+  const livePreviewRef = useRef<FumeroLivePreviewPayload | null>(null);
+  const setLivePreview = useCallback(
+    (preview: FumeroLivePreviewPayload | null) => {
+      livePreviewRef.current = preview;
+      onFumeroLivePreview?.(preview);
+    },
+    [onFumeroLivePreview]
+  );
+
+  useEffect(() => {
+    if (!toolBusy || !fumeroCoderMode) {
+      if (!toolBusy && livePreviewRef.current?.building) {
+        setLivePreview({
+          ...livePreviewRef.current,
+          building: false,
+          buildPhase: undefined,
+        });
+      }
+      setCoderBuildPhase(CODER_BUILD_PHASES[0]);
+      return;
+    }
+    let i = 0;
+    const syncPhase = (phase: string) => {
+      setCoderBuildPhase(phase);
+      if (livePreviewRef.current) {
+        setLivePreview({
+          ...livePreviewRef.current,
+          building: true,
+          buildPhase: phase,
+          status: livePreviewRef.current.previewUrl ? "ready" : "generating",
+        });
+      }
+    };
+    syncPhase(CODER_BUILD_PHASES[0]);
+    const id = window.setInterval(() => {
+      i = (i + 1) % CODER_BUILD_PHASES.length;
+      syncPhase(CODER_BUILD_PHASES[i]);
+    }, 2400);
+    return () => window.clearInterval(id);
+  }, [toolBusy, fumeroCoderMode, setLivePreview]);
+
+  const agentReadiness = useAgentReadiness(effectiveAgentMode);
+  const [listening, setListening] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (workspace !== "fumero" || !maxCompanion) return;
+    void fetch("/api/fumero/builder-config", { credentials: "include" })
+      .then((r) => r.json())
+      .then((j: { label?: string }) => {
+        if (j.label) setFumeroBuilderLabel(j.label);
+      })
+      .catch(() => {});
+  }, [workspace, maxCompanion]);
+
+  const filteredConversations = useMemo(() => {
+    const q = threadSearch.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) => c.title.toLowerCase().includes(q));
+  }, [conversations, threadSearch]);
+
+  const fumeroThreadGroups = useMemo(() => {
+    if (workspace !== "fumero" || !maxCompanion) return null;
+    return groupFumeroChatThreads(filteredConversations, 3);
+  }, [workspace, maxCompanion, filteredConversations]);
+
+  const scrollBottom = useCallback((smooth: boolean) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: smooth ? "smooth" : "auto",
+    });
+  }, []);
+
+  const onMessagesScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = dist < 96;
+  }, []);
+
+  useEffect(() => {
+    if (stickToBottomRef.current) {
+      scrollBottom(true);
+    }
+  }, [messages, streamingId, streamStatus, streamActivities, scrollBottom]);
+
+  const resizeComposer = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, []);
+
+  useEffect(() => {
+    resizeComposer();
+  }, [text, resizeComposer]);
+
+  const newChat = async () => {
+    if (streamingId) return;
+    let row: ConversationRow;
+    try {
+      row = await fetchJsonChecked<ConversationRow>("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ klant: company }),
+      });
+    } catch {
+      return;
+    }
+    setConversations((prev) => [row, ...prev]);
+    setActiveConversationId(row.id);
+  };
+
+  const deleteConversation = async (id: number) => {
+    if (streamingId) return;
+    const res = await fetch(
+      `/api/conversations/${id}?klant=${encodeURIComponent(company)}`,
+      { method: "DELETE" }
+    );
+    if (!res.ok) return;
+    const remaining = conversations.filter((c) => c.id !== id);
+    setConversations(remaining);
+    if (activeConversationId === id) {
+      if (remaining[0]) {
+        setActiveConversationId(remaining[0].id);
+      } else {
+        try {
+          const row = await fetchJsonChecked<ConversationRow>("/api/conversations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ klant: company }),
+          });
+          setConversations([row]);
+          setActiveConversationId(row.id);
+        } catch {
+          setActiveConversationId(undefined);
+        }
+      }
+    }
+  };
+
+  const renameConversation = async (id: number, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const res = await fetch(
+      `/api/conversations/${id}?klant=${encodeURIComponent(company)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+      }
+    );
+    if (!res.ok) return;
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title: trimmed } : c))
+    );
+    setEditingId(null);
+  };
+
+  const maybeAutoTitleConversation = useCallback(
+    async (userText: string) => {
+      if (activeConversationId === undefined) return;
+      const conv = conversations.find((c) => c.id === activeConversationId);
+      if (!conv || conv.title !== "Nieuwe chat") return;
+      const title = deriveConversationTitleFromMessage(userText);
+      if (!title || title === "Nieuwe chat") return;
+      setConversations((prev) =>
+        prev.map((c) => (c.id === activeConversationId ? { ...c, title } : c))
+      );
+      try {
+        await fetch(
+          `/api/conversations/${activeConversationId}?klant=${encodeURIComponent(company)}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ title }),
+          }
+        );
+      } catch {
+        /* ignore */
+      }
+    },
+    [activeConversationId, conversations, company]
+  );
+
+  const ensureChatReady = useCallback(() => {
+    if (activeConversationId === undefined) {
+      reportError("Even geduld — gesprek wordt geladen…");
+      return false;
+    }
+    return true;
+  }, [activeConversationId, reportError]);
+
+  const detailToToolCard = useCallback(
+    (
+      detail: Awaited<ReturnType<typeof fetchToolDetail>>,
+      status: FumeroToolCardPayload["status"] = "concept",
+      previewEpoch?: number
+    ): FumeroToolCardPayload => ({
+      toolId: detail.tool.id,
+      name: detail.tool.name,
+      slug: detail.tool.slug,
+      previewUrl: cacheBustPreviewUrl(detail.preview_url, previewEpoch),
+      deployType: detail.tool.deploy_type,
+      status,
+      embedCode: detail.embed_code,
+      internalUrl: detail.internal_url,
+      basePrompt: detail.concept?.prompt ?? undefined,
+      version: detail.concept?.version ?? detail.published?.version,
+      previewEpoch,
+      builderLabel: fumeroBuilderLabel,
+      statsViews: detail.stats_views,
+      statsInteractions: detail.stats_interactions,
+    }),
+    [fumeroBuilderLabel]
+  );
+
+  const appDetailToCard = useCallback(
+    (
+      detail: AppDetail,
+      status: AppCardPayload["status"] = "concept",
+      previewEpoch?: number
+    ): AppCardPayload => {
+      let tables = 0;
+      if (detail.db_schema) {
+        try {
+          const s = JSON.parse(detail.db_schema);
+          if (Array.isArray(s?.tables)) tables = s.tables.length;
+        } catch {}
+      }
+      return {
+        slug: detail.slug,
+        name: detail.naam,
+        type: detail.type,
+        version: detail.version,
+        status,
+        previewUrl: cacheBustPreviewUrl(
+          detail.preview_url ?? `/apps/${detail.slug}?preview=1`,
+          previewEpoch
+        ),
+        embedCode: detail.embed_code,
+        internalUrl: detail.internal_url,
+        tables,
+        authRequired: !!detail.auth_required,
+        hasPwa: true,
+        previewEpoch,
+        builderLabel: fumeroBuilderLabel,
+      };
+    },
+    [fumeroBuilderLabel]
+  );
+
+  const showToolTemplatePicker = useCallback(
+    (seedPrompt: string) => {
+      setAwaitingToolTemplate(true);
+      setActiveToolPrompt(seedPrompt);
+      appendAssistantMessage(toolIntentAssistantIntro(), {
+        toolQuickReplies: FUMERO_TOOL_QUICK_REPLIES,
+      });
+    },
+    [appendAssistantMessage]
+  );
+
+  const runToolBuild = useCallback(
+    async (userText: string, seedOverride?: string) => {
+      const seed = (seedOverride ?? activeToolPrompt ?? userText).trim();
+      const quick = resolveTemplateFromQuickReply(userText);
+      const tplFromText =
+        resolveTemplateFromUserText(userText) ??
+        resolveTemplateFromUserText(seed);
+      const templateId =
+        quick?.templateId && quick.templateId !== "custom"
+          ? quick.templateId
+          : tplFromText;
+      const deployType = deployTypeForTemplate(templateId);
+      const seedLine = templateId ? getTemplate(templateId)?.promptSeed : undefined;
+      const merged = buildInitialToolPrompt(seed, userText, seedLine);
+      const name = deriveToolName(seed || userText, templateId);
+
+      setAwaitingToolTemplate(false);
+      setToolBusy(true);
+      setCoderBuildPhase(CODER_BUILD_PHASES[0]);
+      setLivePreview({
+        title: name,
+        previewUrl: null,
+        status: "generating",
+        version: 1,
+        building: true,
+        buildPhase: CODER_BUILD_PHASES[0],
+      });
+      setPreviewPanelOpen(true);
+      onFumeroContentPreview?.(null);
+
+      const cardMsgId = appendAssistantMessage(
+        fumeroCoderMode && layout === "split" ? "" : "Ik genereer je tool — dit kan even duren.",
+        {
+          toolCard: {
+            toolId: 0,
+            name,
+            previewUrl: null,
+            deployType,
+            status: "generating",
+            basePrompt: merged,
+            version: 1,
+            builderLabel: fumeroBuilderLabel,
+          },
+        }
+      );
+      setActiveToolCardMsgId(cardMsgId);
+
+      try {
+        const { tool_id } = await createFumeroTool({
+          name,
+          prompt: merged,
+          deploy_type: deployType,
+          template_id: templateId,
+        });
+        const detail = await fetchToolDetail(tool_id);
+        setActiveToolId(tool_id);
+        setActiveToolPrompt(detail.concept?.prompt ?? merged);
+        const card = detailToToolCard(detail, "concept", Date.now());
+        setLivePreview({
+          title: detail.tool.name,
+          previewUrl: card.previewUrl,
+          status: "ready",
+          previewEpoch: card.previewEpoch,
+          version: card.version,
+          building: false,
+        });
+        setPreviewPanelOpen(true);
+        updateMessage(cardMsgId, {
+          content:
+            "Hier is je concept. Verfijn via **Pas aan** of in chat — daarna **Deploy** naar de garage.",
+          toolCard: card,
+        });
+      } catch (err) {
+        const msg = formatFumeroBuilderError(
+          err instanceof Error ? err.message : "Genereren mislukt"
+        );
+        setArtifactErr(msg);
+        updateMessage(cardMsgId, {
+          content: `**Genereren mislukt.** ${msg}`,
+          toolCard: undefined,
+        });
+      } finally {
+        setToolBusy(false);
+        setBuildStatus(null);
+        scrollBottom(true);
+      }
+    },
+    [
+      activeToolPrompt,
+      appendAssistantMessage,
+      detailToToolCard,
+      fumeroBuilderLabel,
+      onFumeroContentPreview,
+      onFumeroLivePreview,
+      scrollBottom,
+      setPreviewPanelOpen,
+      updateMessage,
+    ]
+  );
+
+  const runToolIterate = useCallback(
+    async (instruction: string) => {
+      if (!activeToolId) return;
+      setToolBusy(true);
+      setBuildStatusUnlessCoder("Tool verfijnen…");
+      const merged = mergeToolPrompt(activeToolPrompt, instruction);
+      const previewEpoch = Date.now();
+      const prevCard = messages.find((m) => m.id === activeToolCardMsgId)?.toolCard;
+      const nextVersion = (prevCard?.version ?? 1) + 1;
+      showFumeroToast(`Versie ${nextVersion} wordt gebouwd…`);
+      setPreviewPanelOpen(true);
+      setLivePreview({
+        title: prevCard?.name ?? "Preview",
+        previewUrl: prevCard?.previewUrl ?? null,
+        status: "generating",
+        previewEpoch,
+        version: nextVersion,
+        building: true,
+        buildPhase: CODER_BUILD_PHASES[0],
+      });
+      if (activeToolCardMsgId && prevCard) {
+        updateMessage(activeToolCardMsgId, {
+          toolCard: {
+            ...prevCard,
+            status: "generating",
+            previewEpoch,
+            version: nextVersion,
+            builderLabel: fumeroBuilderLabel,
+          },
+        });
+      }
+      try {
+        await iterateFumeroTool(activeToolId, merged);
+        const detail = await fetchToolDetail(activeToolId);
+        setActiveToolPrompt(detail.concept?.prompt ?? merged);
+        const card = detailToToolCard(detail, "concept", previewEpoch);
+        setLivePreview({
+          title: detail.tool.name,
+          previewUrl: card.previewUrl,
+          status: "ready",
+          previewEpoch,
+          version: card.version,
+          building: false,
+        });
+        const versionNote =
+          detail.concept?.version != null
+            ? ` (${fumeroConceptVersionLabel(detail.concept.version)})`
+            : "";
+        if (activeToolCardMsgId) {
+          updateMessage(activeToolCardMsgId, {
+            content: `Concept bijgewerkt${versionNote}. Nog een aanpassing, of **Deploy naar garage** als je klaar bent.`,
+            toolCard: card,
+          });
+        } else {
+          appendAssistantMessage(`Concept bijgewerkt${versionNote}.`, { toolCard: card });
+        }
+      } catch (err) {
+        const msg = formatFumeroBuilderError(
+          err instanceof Error ? err.message : "Aanpassen mislukt"
+        );
+        setArtifactErr(msg);
+        if (activeToolCardMsgId && prevCard) {
+          updateMessage(activeToolCardMsgId, {
+            content: `**Verfijnen mislukt.** ${msg}`,
+            toolCard: { ...prevCard, status: "concept" },
+          });
+        }
+      } finally {
+        setToolBusy(false);
+        setBuildStatus(null);
+        scrollBottom(true);
+      }
+    },
+    [
+      activeToolCardMsgId,
+      activeToolId,
+      activeToolPrompt,
+      appendAssistantMessage,
+      detailToToolCard,
+      fumeroBuilderLabel,
+      messages,
+      onFumeroLivePreview,
+      scrollBottom,
+      setPreviewPanelOpen,
+      updateMessage,
+    ]
+  );
+
+  const runToolPublish = useCallback(async () => {
+    if (!activeToolId) return;
+    setToolBusy(true);
+    setBuildStatusUnlessCoder("Publiceren…");
+    try {
+      const detail = await publishFumeroTool(activeToolId);
+      const card = detailToToolCard(detail, "published");
+      const publishedVersion =
+        card.version ?? detail.published?.version ?? detail.concept?.version ?? 1;
+      showFumeroToast(`Live — v${publishedVersion} gepubliceerd`);
+      if (activeToolCardMsgId) {
+        updateMessage(activeToolCardMsgId, {
+          content: `**Live in garage** — v${publishedVersion} gepubliceerd. Open in Apps of kopieer embed hieronder.`,
+          toolCard: card,
+        });
+      }
+      const liveUrl = card.internalUrl || card.embedCode || null;
+      setPublishModal({
+        name: detail.tool.name,
+        liveUrl,
+        embedCode: card.embedCode ?? null,
+        slug: detail.tool.slug,
+        toolId: detail.tool.id,
+        version: publishedVersion,
+      });
+      setPublishModalOpen(true);
+      appendAssistantMessage(formatToolDeployedMarkdown(detail.tool.name, liveUrl), {
+        toolCard: card,
+      });
+    } catch (err) {
+      setArtifactErr(err instanceof Error ? err.message : "Publiceren mislukt");
+    } finally {
+      setToolBusy(false);
+      setBuildStatus(null);
+      scrollBottom(true);
+    }
+  }, [
+    activeToolCardMsgId,
+    activeToolId,
+    appendAssistantMessage,
+    detailToToolCard,
+    scrollBottom,
+    updateMessage,
+  ]);
+
+  // Fase 5 full-app handlers (Lovable UX in chat card, data preserved on refine)
+  const runFullAppBuild = useCallback(
+    async (userText: string) => {
+      const seed = userText.trim();
+      const nameGuess = seed.slice(0, 48) || "Nieuwe App";
+      setToolBusy(true);
+      setBuildStatusUnlessCoder("App genereren (full-stack)…");
+      setLivePreview({
+        title: nameGuess,
+        previewUrl: null,
+        status: "generating",
+      });
+      onFumeroContentPreview?.(null);
+
+      const cardMsgId = appendAssistantMessage(
+        "Ik bouw je volledige data-gedreven app — even geduld.",
+        {
+          appCard: {
+            slug: "",
+            name: nameGuess,
+            type: "internal",
+            version: 1,
+            status: "generating",
+            previewUrl: null,
+            builderLabel: fumeroBuilderLabel,
+          } as AppCardPayload,
+        }
+      );
+      setActiveAppCardMsgId(cardMsgId);
+
+      try {
+        const { slug, naam } = await createFullApp(seed);
+        const detail = await fetchAppDetail(slug);
+        setActiveAppSlug(slug);
+        const card = appDetailToCard(detail, "concept", Date.now());
+        setLivePreview({
+          title: detail.naam,
+          previewUrl: card.previewUrl,
+          status: "ready",
+          previewEpoch: card.previewEpoch,
+        });
+        updateMessage(cardMsgId, {
+          content:
+            `**Volledige app gegenereerd:** **${naam}**\n\nSlug: \`${slug}\` • Data API: \`/api/apps/${slug}/data\`\n\nVerfijn met **Pas aan** (data blijft intact) of **Deploy** voor live URL.`,
+          appCard: card,
+        });
+      } catch (err) {
+        const msg = formatFumeroBuilderError(
+          err instanceof Error ? err.message : "Full-app generatie mislukt"
+        );
+        setArtifactErr(msg);
+        updateMessage(cardMsgId, {
+          content: `**App genereren mislukt.** ${msg}`,
+          appCard: undefined,
+        });
+      } finally {
+        setToolBusy(false);
+        setBuildStatus(null);
+        scrollBottom(true);
+      }
+    },
+    [appendAssistantMessage, appDetailToCard, fumeroBuilderLabel, onFumeroContentPreview, onFumeroLivePreview, scrollBottom, updateMessage]
+  );
+
+  const runAppIterate = useCallback(
+    async (instruction: string) => {
+      if (!activeAppSlug) return;
+      setToolBusy(true);
+      setBuildStatusUnlessCoder("App verfijnen (data behouden)…");
+      const previewEpoch = Date.now();
+      const prevCard = messages.find((m) => m.id === activeAppCardMsgId)?.appCard;
+      setLivePreview({
+        title: prevCard?.name ?? "App",
+        previewUrl: prevCard?.previewUrl ?? null,
+        status: "generating",
+        previewEpoch,
+      });
+      if (activeAppCardMsgId && prevCard) {
+        updateMessage(activeAppCardMsgId, {
+          appCard: {
+            ...prevCard,
+            status: "generating",
+            previewEpoch,
+            builderLabel: fumeroBuilderLabel,
+          },
+        });
+      }
+      try {
+        await iterateFullApp(activeAppSlug, instruction);
+        const detail = await fetchAppDetail(activeAppSlug);
+        const card = appDetailToCard(detail, "concept", previewEpoch);
+        setLivePreview({
+          title: detail.naam,
+          previewUrl: card.previewUrl,
+          status: "ready",
+          previewEpoch,
+        });
+        const versionNote = detail.version
+          ? ` (${fumeroConceptVersionLabel(detail.version)})`
+          : "";
+        if (activeAppCardMsgId) {
+          updateMessage(activeAppCardMsgId, {
+            content: `App bijgewerkt${versionNote} — bestaande data intact. Nog een aanpassing of Deploy.`,
+            appCard: card,
+          });
+        } else {
+          appendAssistantMessage(`App bijgewerkt${versionNote}.`, { appCard: card });
+        }
+      } catch (err) {
+        const msg = formatFumeroBuilderError(
+          err instanceof Error ? err.message : "App verfijnen mislukt"
+        );
+        setArtifactErr(msg);
+        if (activeAppCardMsgId && prevCard) {
+          updateMessage(activeAppCardMsgId, {
+            content: `**Verfijnen mislukt.** ${msg}`,
+            appCard: { ...prevCard, status: "concept" },
+          });
+        }
+      } finally {
+        setToolBusy(false);
+        setBuildStatus(null);
+        scrollBottom(true);
+      }
+    },
+    [
+      activeAppCardMsgId,
+      activeAppSlug,
+      appendAssistantMessage,
+      appDetailToCard,
+      fumeroBuilderLabel,
+      messages,
+      onFumeroLivePreview,
+      scrollBottom,
+      updateMessage,
+    ]
+  );
+
+  const runAppPublish = useCallback(async () => {
+    if (!activeAppSlug) return;
+    setToolBusy(true);
+    setBuildStatusUnlessCoder("Publiceren…");
+    try {
+      const detail = await publishFullApp(activeAppSlug);
+      const card = appDetailToCard(detail, "published");
+      if (activeAppCardMsgId) {
+        updateMessage(activeAppCardMsgId, { appCard: card });
+      }
+      const display =
+        detail.embed_code && detail.type !== "internal"
+          ? detail.embed_code
+          : detail.type === "customer"
+          ? `/embed/fumero/app/${detail.slug}`
+          : `/apps/${detail.slug}`;
+      const liveUrl =
+        detail.internal_url ??
+        (detail.type === "internal" ? `/apps/${detail.slug}` : display);
+      setPublishModal({
+        name: detail.naam,
+        liveUrl: typeof liveUrl === "string" ? liveUrl : null,
+        embedCode: detail.embed_code ?? null,
+        slug: detail.slug,
+        version: detail.version,
+      });
+      setPublishModalOpen(true);
+      const label = detail.type === "widget" ? "Embed script" : "URL";
+      appendAssistantMessage(
+        `**${detail.naam}** is live.\n\n${label}: \`${display}\`\n\nEmbed-code staat in de app-kaart — kopieer met één klik.`,
+        { appCard: card }
+      );
+    } catch (err) {
+      setArtifactErr(err instanceof Error ? err.message : "Publiceren mislukt");
+    } finally {
+      setToolBusy(false);
+      setBuildStatus(null);
+      scrollBottom(true);
+    }
+  }, [activeAppCardMsgId, activeAppSlug, appendAssistantMessage, appDetailToCard, scrollBottom, updateMessage]);
+
+  const openExistingAppInChat = useCallback(
+    async (slug: string) => {
+      setToolBusy(true);
+      try {
+        const detail = await fetchAppDetail(slug);
+        setActiveAppSlug(slug);
+        setActiveAppCardMsgId(null);
+        const card = appDetailToCard(
+          detail,
+          detail.status === "published" ? "published" : "concept",
+          Date.now()
+        );
+        const msgId = appendAssistantMessage(
+          `**${detail.naam}** (v${detail.version}) — verder bouwen in deze thread. Pas aan via de kaart of chat (data blijft behouden).`,
+          { appCard: card }
+        );
+        setLivePreview({
+          title: detail.naam,
+          previewUrl: card.previewUrl,
+          status: "ready",
+          previewEpoch: card.previewEpoch,
+        });
+        setActiveAppCardMsgId(msgId);
+      } catch (err) {
+        setArtifactErr(err instanceof Error ? err.message : "App laden mislukt");
+      } finally {
+        setToolBusy(false);
+        scrollBottom(true);
+      }
+    },
+    [appendAssistantMessage, appDetailToCard, onFumeroLivePreview, scrollBottom]
+  );
+
+  const openExistingToolInChat = useCallback(
+    async (toolId: number) => {
+      setToolBusy(true);
+      try {
+        const detail = await fetchToolDetail(toolId);
+        setActiveToolId(toolId);
+        setActiveToolPrompt(detail.concept?.prompt ?? "");
+        setAwaitingToolTemplate(false);
+        setFumeroComposerMode("coder");
+        setPreviewPanelOpen(true);
+        const card = detailToToolCard(
+          detail,
+          detail.published && !detail.concept ? "published" : "concept",
+          Date.now()
+        );
+        const msgId = appendAssistantMessage(
+          `**${detail.tool.name}** — verder bouwen in deze thread. Pas aan via de kaart of chat.`,
+          { toolCard: card }
+        );
+        setLivePreview({
+          title: detail.tool.name,
+          previewUrl: card.previewUrl,
+          status: "ready",
+          previewEpoch: card.previewEpoch,
+          version: card.version,
+        });
+        setActiveToolCardMsgId(msgId);
+      } catch (err) {
+        setArtifactErr(err instanceof Error ? err.message : "Tool laden mislukt");
+      } finally {
+        setToolBusy(false);
+        scrollBottom(true);
+      }
+    },
+    [appendAssistantMessage, detailToToolCard, onFumeroLivePreview, scrollBottom, setPreviewPanelOpen]
+  );
+
+  const runContentGenerate = useCallback(
+    async (
+      action: NonNullable<ReturnType<typeof resolveMaxContentChatAction>>,
+      opts?: { canvasMode?: boolean }
+    ) => {
+      const canvasMode = Boolean(opts?.canvasMode);
+      setArtifactErr(null);
+      setToolBusy(true);
+      setBuildStatusUnlessCoder(canvasMode ? "Schrijven genereren…" : "Content genereren…");
+      onFumeroContentPreview?.({
+        contentType: action.contentType,
+        platform: action.platform,
+        status: "generating",
+        title: contentPreviewTitle(action.contentType, action.platform),
+        canvasMode,
+      });
+      setLivePreview(null);
+      try {
+        const res = await fetch("/api/fumero/content/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            custom_prompt: action.prompt,
+            content_type: action.contentType,
+            platform: action.platform,
+          }),
+        });
+        const data = (await res.json()) as {
+          error?: string;
+          id?: number;
+          content?: string;
+          media_kind?: string;
+          media_url?: string;
+          platform?: string;
+          type?: string;
+        };
+        if (!res.ok) {
+          throw new Error(data.error || "Content genereren mislukt");
+        }
+        const cleanContent =
+          typeof data.content === "string"
+            ? cleanGeneratedContent(data.content)
+            : "";
+        const mediaKind =
+          data.media_kind === "image"
+            ? "image"
+            : data.media_kind === "script"
+              ? "script"
+              : "text";
+        const mediaUrl =
+          typeof data.media_url === "string" && data.media_url.trim()
+            ? data.media_url.trim()
+            : undefined;
+        const postId = typeof data.id === "number" ? data.id : undefined;
+        const platform = data.platform ?? action.platform;
+        const contentType = data.type ?? action.contentType;
+
+        onFumeroContentPreview?.({
+          contentType,
+          platform,
+          content: cleanContent || undefined,
+          mediaUrl,
+          mediaKind,
+          postId,
+          status: "ready",
+          title: contentPreviewTitle(contentType, platform),
+          canvasMode,
+        });
+
+        const previewTitle = contentPreviewTitle(contentType, platform);
+        appendAssistantMessage(
+          formatContentSavedMarkdown({
+            contentType,
+            platform,
+            postId,
+            mediaKind,
+          }),
+          {
+            contentCard: {
+              mediaUrl,
+              mediaKind,
+              postId,
+              contentType,
+              platform,
+              canvasMode,
+              title: previewTitle,
+              contentSnippet: cleanContent
+                ? cleanContent.slice(0, 140).replace(/\s+/g, " ")
+                : undefined,
+              documentContent: canvasMode ? cleanContent || undefined : undefined,
+            },
+          }
+        );
+        if (canvasMode) {
+          setPreviewPanelOpen(true);
+        }
+      } catch (err) {
+        onFumeroContentPreview?.({
+          contentType: action.contentType,
+          platform: action.platform,
+          status: "error",
+          title: contentPreviewTitle(action.contentType, action.platform),
+        });
+        setArtifactErr(
+          err instanceof Error ? err.message : "Content genereren mislukt"
+        );
+      } finally {
+        setToolBusy(false);
+        setBuildStatus(null);
+        scrollBottom(true);
+      }
+    },
+    [
+      appendAssistantMessage,
+      onFumeroContentPreview,
+      onFumeroLivePreview,
+      scrollBottom,
+    ]
+  );
+
+  const submitText = useCallback(
+    async (raw: string) => {
+    const t = raw.trim();
+    if (!t || streamingId || artifactBusy || toolBusy) return;
+    if (!ensureChatReady()) return;
+    stickToBottomRef.current = true;
+
+    const showPromptInChat = () => {
+      const isFirstUser =
+        messages.filter((m) => m.role === "user").length === 0;
+      appendUserMessage(t);
+      if (isFirstUser) void maybeAutoTitleConversation(t);
+      setText("");
+      scrollBottom(true);
+    };
+
+    if (workspace === "fumero" && maxCompanion) {
+      const maxAction = resolveMaxChatAction(t, maxCompanion.briefing);
+      if (maxAction?.type === "inline_briefing" && maxCompanion.briefing) {
+        showPromptInChat();
+        appendAssistantMessage(
+          formatMaxBriefingDetailMarkdown(maxCompanion.briefing)
+        );
+        scrollBottom(true);
+        return;
+      }
+      if (maxAction?.type === "redirect") {
+        showPromptInChat();
+        appendAssistantMessage(
+          `**${maxAction.notice}**\n\nIk open de juiste studio met je opdracht.`
+        );
+        scrollBottom(true);
+        router.push(maxAction.href);
+        return;
+      }
+
+      // Coder-modus: strikte tool-routing — nooit generieke chat/Turbo
+      if (fumeroCoderMode) {
+        if (detectFullAppIntent(t) && !activeToolId && !activeAppSlug) {
+          showPromptInChat();
+          await runFullAppBuild(t);
+          return;
+        }
+
+        if (activeAppSlug && !activeToolId) {
+          const isRefineLike = /pas|aanpas|verfijn|wijzig|maak.*groen|kleur|voeg|verwijder|update|add|change/i.test(t);
+          if (isRefineLike || t.length > 8) {
+            showPromptInChat();
+            await runAppIterate(t);
+            return;
+          }
+        }
+
+        const toolAction = resolveMaxToolChatAction(t, {
+          hasActiveTool: activeToolId != null,
+          awaitingTemplate: awaitingToolTemplate,
+          coderMode: true,
+        });
+
+        showPromptInChat();
+        setPreviewPanelOpen(true);
+
+        if (fumeroCoderMode && planMode && !activeToolId && !activeAppSlug) {
+          const quickPick = resolveTemplateFromQuickReply(t);
+          const explicitTpl = resolveTemplateFromUserText(t);
+          const shouldBuildNow =
+            CODER_BUILD_TRIGGER_RE.test(t) ||
+            (quickPick?.templateId && quickPick.templateId !== "custom") ||
+            Boolean(explicitTpl) ||
+            awaitingToolTemplate;
+          if (!shouldBuildNow) {
+            appendAssistantMessage(
+              "Ik noteer je idee in **plan-modus** — ik bouw pas als je **Maak** zegt, een sjabloon kiest, of een concrete tool noemt (bv. rekenmachine).\n\n" +
+                `**Doel:** ${t}`
+            );
+            scrollBottom(true);
+            return;
+          }
+        }
+
+        if (!toolAction || toolAction.type === "tool_intent_pick") {
+          showToolTemplatePicker(awaitingToolTemplate ? activeToolPrompt : t);
+          scrollBottom(true);
+          return;
+        }
+        if (toolAction.type === "tool_iterate" && activeToolId) {
+          await runToolIterate(t);
+          return;
+        }
+        if (toolAction.type === "tool_build") {
+          await runToolBuild(t, awaitingToolTemplate ? activeToolPrompt : undefined);
+          return;
+        }
+        return;
+      }
+
+      // Fase 2/5: full-app intent — nu met Lovable app-card (preview + pas aan + deploy)
+      if (detectFullAppIntent(t) && !activeToolId && !activeAppSlug) {
+        showPromptInChat();
+        await runFullAppBuild(t);
+        return;
+      }
+
+      // Fase 5: when app active in chat, "pas aan" text also routes to app refine (data safe)
+      if (activeAppSlug && !activeToolId) {
+        const isRefineLike = /pas|aanpas|verfijn|wijzig|maak.*groen|kleur|voeg|verwijder|update|add|change/i.test(t);
+        if (isRefineLike || t.length > 8) {
+          showPromptInChat();
+          await runAppIterate(t);
+          return;
+        }
+      }
+
+      const toolAction = resolveMaxToolChatAction(t, {
+        hasActiveTool: activeToolId != null,
+        awaitingTemplate: awaitingToolTemplate,
+        coderMode: fumeroCoderMode,
+      });
+      if (toolAction) {
+        showPromptInChat();
+        if (toolAction.type === "tool_intent_pick") {
+          showToolTemplatePicker(t);
+          scrollBottom(true);
+          return;
+        }
+        if (toolAction.type === "tool_iterate" && activeToolId) {
+          await runToolIterate(t);
+          return;
+        }
+        if (toolAction.type === "tool_build") {
+          await runToolBuild(t, awaitingToolTemplate ? activeToolPrompt : undefined);
+          return;
+        }
+      }
+
+      const canvasAction = resolveMaxCanvasChatAction(t);
+      const contentAction = resolveMaxContentChatAction(t);
+
+      if (canvasAction || (fumeroCanvasMode && contentAction)) {
+        showPromptInChat();
+        const raw = canvasAction ?? contentAction!;
+        await runContentGenerate(
+          {
+            type: "content_generate",
+            contentType: raw.contentType,
+            platform: raw.platform,
+            prompt: raw.prompt,
+          },
+          { canvasMode: true }
+        );
+        return;
+      }
+
+      if (fumeroCanvasMode && !contentAction && !canvasAction) {
+        showPromptInChat();
+        await runContentGenerate(
+          {
+            type: "content_generate",
+            contentType: "seo_article",
+            platform: "blog",
+            prompt: t,
+          },
+          { canvasMode: true }
+        );
+        return;
+      }
+
+      if (contentAction) {
+        showPromptInChat();
+        await runContentGenerate(contentAction, {
+          canvasMode: Boolean(canvasAction),
+        });
+        return;
+      }
+    }
+
+    const useUnified =
+      unifiedMode && (onBuildArtifact || onProjectPrompt);
+
+    if (useUnified) {
+      const action = resolveMotorsChatAction({ prompt: t, hasActiveProject });
+      const label = motorsActionLabel(action);
+
+      if (action.type === "artifact" && onBuildArtifact) {
+        showPromptInChat();
+        setArtifactErr(null);
+        setBuildStatus(label);
+        try {
+          await onBuildArtifact(t);
+        } catch (err) {
+          setArtifactErr(
+            err instanceof Error ? err.message : "App bouwen mislukt"
+          );
+        } finally {
+          setBuildStatus(null);
+        }
+        scrollBottom(true);
+        return;
+      }
+
+      if (
+        (action.type === "project-start" || action.type === "project-iterate") &&
+        onProjectPrompt
+      ) {
+        showPromptInChat();
+        setArtifactErr(null);
+        setBuildStatus(label);
+        try {
+          await onProjectPrompt(t, activeConversationId);
+        } catch (err) {
+          setArtifactErr(
+            err instanceof Error ? err.message : "Project-build mislukt"
+          );
+        } finally {
+          setBuildStatus(null);
+        }
+        scrollBottom(true);
+        return;
+      }
+    } else if (preferProjectBuilds && onProjectPrompt) {
+      const shouldProject =
+        hasActiveProject ||
+        isProjectIterationPrompt(t) ||
+        isProjectStartPrompt(t);
+      if (shouldProject) {
+        showPromptInChat();
+        setArtifactErr(null);
+        try {
+          await onProjectPrompt(t, activeConversationId);
+        } catch (err) {
+          setArtifactErr(
+            err instanceof Error ? err.message : "Project-build mislukt"
+          );
+        }
+        scrollBottom(true);
+        return;
+      }
+    } else if (preferArtifactBuilds && onBuildArtifact && isBuildLikePrompt(t)) {
+      showPromptInChat();
+      setArtifactErr(null);
+      try {
+        await onBuildArtifact(t);
+      } catch (err) {
+        setArtifactErr(
+          err instanceof Error ? err.message : "Artifact generatie mislukt"
+        );
+      }
+      scrollBottom(true);
+      return;
+    }
+
+    showPromptInChat();
+    let apiPrompt = t;
+    if (workspace === "fumero" && maxCompanion) {
+      try {
+        apiPrompt = await augmentPromptWithFumeroConnectors(t, enabledConnectors, {
+          onlineMode: fumeroComposerMode === "online",
+        });
+      } catch {
+        apiPrompt = t;
+      }
+    }
+    void send(apiPrompt, { ...chatSendOpts, skipUserMessage: true });
+  },
+  [
+    activeConversationId,
+    activeToolId,
+    activeToolPrompt,
+    appendAssistantMessage,
+    appendUserMessage,
+    artifactBusy,
+    awaitingToolTemplate,
+    chatSendOpts,
+    ensureChatReady,
+    hasActiveProject,
+    enabledConnectors,
+    fumeroComposerMode,
+    maxCompanion,
+    onBuildArtifact,
+    onProjectPrompt,
+    preferArtifactBuilds,
+    preferProjectBuilds,
+    router,
+    runToolBuild,
+    runToolIterate,
+      runContentGenerate,
+      runFullAppBuild,
+      runAppIterate,
+      onFumeroContentPreview,
+      onFumeroLivePreview,
+      setPreviewPanelOpen,
+      scrollBottom,
+    send,
+    showToolTemplatePicker,
+    streamingId,
+    unifiedMode,
+    workspace,
+    activeAppSlug,
+    fumeroCanvasMode,
+    fumeroCoderMode,
+    setPreviewPanelOpen,
+  ]);
+
+  useEffect(() => {
+    if (!maxCompanion) return;
+    maxCompanion.registerSend((prompt) => {
+      void submitText(prompt);
+    });
+  }, [maxCompanion, submitText]);
+
+  /* Briefing staat in FumeroBriefingStrip — geen dubbele openingsboodschap in chat. */
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitText(text);
+  };
+
+  const runSuggested = async (prompt: string) => {
+    if (streamingId) return;
+    await submitText(prompt);
+  };
+
+  const focusComposer = useCallback(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  const handleVisualEditPick = useCallback(
+    (hint: string) => {
+      setVisualEditMode(false);
+      onFumeroVisualEditModeChange?.(false);
+      setText((prev) => (prev.trim() ? `${prev.trim()}\n${hint}` : hint));
+      focusComposer();
+    },
+    [focusComposer, onFumeroVisualEditModeChange]
+  );
+
+  useEffect(() => {
+    onRegisterVisualEditPick?.(handleVisualEditPick);
+  }, [handleVisualEditPick, onRegisterVisualEditPick]);
+
+  const handleFumeroMenuAction = useCallback(
+    (action: FumeroComposerMenuAction) => {
+      if (action.kind === "content") {
+        setFumeroComposerMode("foto");
+        void submitText(action.prompt);
+        return;
+      }
+      if (action.kind === "canvas") {
+        setFumeroComposerMode("canvas");
+        setText(action.prompt);
+        focusComposer();
+        void runContentGenerate(
+          {
+            type: "content_generate",
+            contentType: action.contentType,
+            platform: action.platform,
+            prompt: action.prompt,
+          },
+          { canvasMode: true }
+        );
+        return;
+      }
+      if (action.kind === "coder") {
+        setFumeroComposerMode("coder");
+        setPreviewPanelOpen(true);
+        const seed = action.prompt?.trim() || FUMERO_CODER_PREFILL;
+        setText(seed);
+        showToolTemplatePicker(seed.replace(/^Bouw\s*/i, "").trim());
+        focusComposer();
+        scrollBottom(true);
+        return;
+      }
+      if (action.kind === "research") {
+        setFumeroComposerMode("online");
+        setConnectorEnabled("online_research", true);
+        setEnabledConnectors(readEnabledConnectors());
+        setText(FUMERO_RESEARCH_PREFILL);
+        focusComposer();
+        return;
+      }
+    },
+    [
+      focusComposer,
+      runContentGenerate,
+      scrollBottom,
+      setPreviewPanelOpen,
+      showToolTemplatePicker,
+      submitText,
+    ]
+  );
+
+  const handleStarterWire = useCallback(
+    (wire: FumeroChatStarterWire) => {
+      if (streamingId) return;
+      if (wire === "foto") {
+        handleFumeroMenuAction({
+          kind: "content",
+          contentType: "product_photo",
+          platform: "webshop",
+          prompt:
+            "Genereer een premium productfoto voor fumero.nl: scherp product, witte achtergrond, subtiele schaduw.",
+        });
+        return;
+      }
+      if (wire === "orders") {
+        void runSuggested(
+          "Geef een overzicht van openstaande orders: wat kwam er vandaag binnen en waar moet ik op letten?"
+        );
+        return;
+      }
+      if (wire === "canvas") {
+        handleFumeroMenuAction({
+          kind: "canvas",
+          contentType: "seo_article",
+          platform: "blog",
+          prompt:
+            "Schrijf een SEO-blogartikel voor fumero.nl over onze HHC/CBD collectie: heldere structuur, H1/H2, meta en body.",
+        });
+        return;
+      }
+      handleFumeroMenuAction({
+        kind: "coder",
+        prompt: "Bouw een interne tool voor het Fumero-team: ",
+      });
+    },
+    [handleFumeroMenuAction, runSuggested, streamingId]
+  );
+
+  const initialPromptSentRef = useRef(false);
+  const submitTextRef = useRef(submitText);
+  submitTextRef.current = submitText;
+
+  useEffect(() => {
+    initialPromptSentRef.current = false;
+  }, [initialPrompt]);
+
+  const initialToolLoadedRef = useRef(false);
+  useEffect(() => {
+    initialToolLoadedRef.current = false;
+  }, [initialToolId]);
+
+  const initialAppLoadedRef = useRef(false);
+  useEffect(() => {
+    initialAppLoadedRef.current = false;
+  }, [initialAppSlug]);
+
+  const coderTemplateShownRef = useRef(false);
+  useEffect(() => {
+    coderTemplateShownRef.current = false;
+  }, [initialComposerMode, initialToolId, initialPrompt]);
+
+  useEffect(() => {
+    if (fumeroComposerMode !== "coder") return;
+    if (initialToolId || activeToolId) return;
+    const seed = initialPrompt?.trim();
+    if (seed && seed.length > 3) return;
+    if (activeConversationId === undefined || !historyLoaded || streamingId) return;
+    if (coderTemplateShownRef.current || awaitingToolTemplate) return;
+    coderTemplateShownRef.current = true;
+    showToolTemplatePicker("");
+  }, [
+    activeConversationId,
+    activeToolId,
+    awaitingToolTemplate,
+    fumeroComposerMode,
+    historyLoaded,
+    initialPrompt,
+    initialToolId,
+    showToolTemplatePicker,
+    streamingId,
+  ]);
+
+  useEffect(() => {
+    const id = initialToolId;
+    if (!id || initialToolLoadedRef.current) return;
+    if (activeConversationId === undefined || !historyLoaded || streamingId) return;
+    initialToolLoadedRef.current = true;
+    void (async () => {
+      await openExistingToolInChat(id);
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has("tool")) return;
+      params.delete("tool");
+      const qs = params.toString();
+      const path = qs
+        ? `${window.location.pathname}?${qs}`
+        : window.location.pathname;
+      router.replace(path, { scroll: false });
+    })();
+  }, [
+    activeConversationId,
+    historyLoaded,
+    initialToolId,
+    openExistingToolInChat,
+    router,
+    streamingId,
+  ]);
+
+  // Fase 5: load ?app=slug into chat with live app card (like ?tool=)
+  useEffect(() => {
+    const slug = initialAppSlug?.trim();
+    if (!slug || initialAppLoadedRef.current) return;
+    if (activeConversationId === undefined || !historyLoaded || streamingId) return;
+    initialAppLoadedRef.current = true;
+    void (async () => {
+      await openExistingAppInChat(slug);
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has("app")) return;
+      params.delete("app");
+      const qs = params.toString();
+      const path = qs
+        ? `${window.location.pathname}?${qs}`
+        : window.location.pathname;
+      router.replace(path, { scroll: false });
+    })();
+  }, [
+    activeConversationId,
+    historyLoaded,
+    initialAppSlug,
+    openExistingAppInChat,
+    router,
+    streamingId,
+  ]);
+
+  useEffect(() => {
+    const seed = initialPrompt?.trim();
+    if (!seed || initialPromptSentRef.current) return;
+    if (activeConversationId === undefined || !historyLoaded || streamingId) return;
+    initialPromptSentRef.current = true;
+    void (async () => {
+      await submitTextRef.current(seed);
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has("q")) return;
+      params.delete("q");
+      const qs = params.toString();
+      router.replace(
+        `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+        { scroll: false }
+      );
+    })();
+  }, [
+    initialPrompt,
+    activeConversationId,
+    historyLoaded,
+    streamingId,
+    router,
+  ]);
+
+  const startVoice = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const W = window as unknown as {
+      webkitSpeechRecognition?: SpeechRecCtor;
+      SpeechRecognition?: SpeechRecCtor;
+    };
+    const Ctor = W.webkitSpeechRecognition || W.SpeechRecognition;
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = "nl-NL";
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.onresult = (e) => {
+      const said = e.results[0][0].transcript?.trim() ?? "";
+      if (said) setText((prev) => (prev ? `${prev} ${said}` : said));
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    setListening(true);
+    rec.start();
+  }, []);
+
+  const uploadChatFile = async (file: File) => {
+    if (uploadBusy) return;
+    if (!ensureChatReady()) return;
+    const clientErr = validateChatUploadFile(file);
+    if (clientErr) {
+      setUploadNotice({ kind: "err", text: clientErr });
+      return;
+    }
+    setUploadNotice(null);
+    setUploadBusy(true);
+    appendUserMessage(`📎 ${file.name} — uploaden…`);
+    scrollBottom(true);
+    const fd = new FormData();
+    fd.set("file", file);
+    fd.set("klant", company);
+    try {
+      const data = await fetchJsonChecked<ChatUploadApiResponse>("/api/upload", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      setUploadNotice({
+        kind: "ok",
+        text: `"${file.name}" geüpload — vraag wordt verwerkt…`,
+      });
+      const msg = buildUploadChatMessage(file.name, data);
+      void send(msg, chatSendOpts);
+      setUploadNotice({
+        kind: "ok",
+        text: `"${file.name}" toegevoegd aan het gesprek.`,
+      });
+      scrollBottom(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload mislukt";
+      setUploadNotice({ kind: "err", text: msg });
+    } finally {
+      setUploadBusy(false);
+    }
+  };
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await uploadChatFile(file);
+  };
+
+  const onComposerDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploadBusy && activeConversationId !== undefined) {
+      setComposerDragOver(true);
+    }
+  };
+
+  const onComposerDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setComposerDragOver(false);
+  };
+
+  const onComposerDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setComposerDragOver(false);
+    const files = [...e.dataTransfer.files];
+    if (files.length === 0) return;
+    for (const file of files) {
+      await uploadChatFile(file);
+    }
+  };
+
+  const onComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void onSubmit(e as unknown as React.FormEvent);
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        void newChat();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        setChatThreadsOpen(!sidebarOpen);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const showEmpty =
+    activeConversationId !== undefined &&
+    historyLoaded &&
+    messages.length === 0;
+
+  const fumeroOps = workspace === "fumero";
+  const fumeroEmptyHome = fumeroOps && Boolean(maxCompanion) && showEmpty;
+  const splitPreviewOpen =
+    fumeroOps && fumeroCoderMode && layout === "split" && previewPanelOpen;
+  const streamAgentLabel = fumeroOps ? "Max" : agentTheme.agentName;
+  const coderBuildQuiet = fumeroCoderMode && toolBusy && !streamingId;
+
+  const statusText =
+    convLoadError ||
+    externalStatusError ||
+    artifactErr ||
+    error ||
+    uploadNotice?.text ||
+    (coderBuildQuiet ? null : buildStatus) ||
+    (streamingId && streamStatus ? streamStatus : null) ||
+    (toolBusy && !coderBuildQuiet ? (buildStatus ?? "Bezig…") : null);
+  const statusIsError =
+    Boolean(
+      convLoadError ||
+        externalStatusError ||
+        artifactErr ||
+        error ||
+        uploadNotice?.kind === "err"
+    );
+
+  const renderThreadItem = (c: ConversationListItem) => (
+    <li key={c.id} className="group relative">
+      {editingId === c.id ? (
+        <input
+          autoFocus
+          className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-xs outline-none focus:ring-1 focus:ring-accent"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onBlur={() => {
+            void renameConversation(c.id, editTitle);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              void renameConversation(c.id, editTitle);
+            }
+            if (e.key === "Escape") setEditingId(null);
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <>
+          <button
+            type="button"
+            className={cn(
+              "ios-tap-highlight w-full rounded-lg px-2 py-2.5 pr-14 text-left text-[13px] leading-snug transition-colors hover:bg-surface-elevated",
+              activeConversationId === c.id &&
+                "bg-surface-elevated font-medium text-text-primary"
+            )}
+            onClick={() => setActiveConversationId(c.id)}
+          >
+            <span className="line-clamp-2">{c.title}</span>
+          </button>
+          <button
+            type="button"
+            className="ios-tap-highlight absolute right-9 top-1/2 flex min-h-[36px] min-w-[36px] -translate-y-1/2 items-center justify-center rounded-md text-text-secondary opacity-0 transition-opacity hover:bg-border group-hover:opacity-100"
+            title="Hernoemen"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingId(c.id);
+              setEditTitle(c.title);
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            className="ios-tap-highlight absolute right-1 top-1/2 flex min-h-[36px] min-w-[36px] -translate-y-1/2 items-center justify-center rounded-md text-text-secondary opacity-0 transition-opacity hover:bg-border group-hover:opacity-100"
+            title="Verwijderen"
+            onClick={(e) => {
+              e.stopPropagation();
+              void deleteConversation(c.id);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
+    </li>
+  );
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 bg-background",
+        splitPreviewOpen && "fumero-coder-split",
+        !embedded &&
+          layout !== "split" &&
+          "h-[min(calc(100dvh-10rem),56rem)] rounded-2xl border border-border/50 shadow-sm",
+        layout === "split" && "h-full min-h-0 overflow-hidden rounded-none border-0 shadow-none bg-[#FAFAFA]",
+        embedded && "h-full min-h-[280px] rounded-xl border border-border/50"
+      )}
+    >
+      <aside
+        className={cn(
+          "flex min-h-0 shrink-0 flex-col border-r border-border/40 bg-surface/40 transition-[width] duration-200 ease-out",
+          sidebarOpen ? (embedded ? "w-52" : "w-60") : "w-0 overflow-hidden border-r-0"
+        )}
+      >
+        <div className="flex min-h-0 w-60 max-w-full flex-1 flex-col">
+          <div className="flex items-center gap-1 px-2 pt-2">
+            <button
+              type="button"
+              className="ios-tap-highlight flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+              title="Zijbalk sluiten (⌘B)"
+              aria-label="Zijbalk"
+              onClick={() => setChatThreadsOpen(false)}
+            >
+              <PanelLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              className="ios-tap-highlight flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent/10 text-[13px] font-medium text-accent hover:bg-accent/15 disabled:opacity-50"
+              disabled={!!streamingId}
+              onClick={() => void newChat()}
+            >
+              <Plus className="h-4 w-4" />
+              Nieuw
+            </button>
+          </div>
+          <div className="px-2 pb-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
+              <input
+                type="search"
+                value={threadSearch}
+                onChange={(e) => setThreadSearch(e.target.value)}
+                placeholder="Zoek gesprekken…"
+                className="w-full rounded-xl border border-border/50 bg-surface py-2.5 pl-9 pr-3 text-[13px] outline-none focus:ring-1 focus:ring-accent/40"
+                aria-label="Zoek gesprekken"
+              />
+            </div>
+          </div>
+          <ScrollArea className="min-h-0 flex-1 scrollbar-ios">
+            <div className="space-y-3 p-1.5">
+              {fumeroThreadGroups ? (
+                <>
+                  <div>
+                    <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
+                      Recente
+                    </p>
+                    <ul className="space-y-0.5">
+                      {fumeroThreadGroups.recent.map(renderThreadItem)}
+                    </ul>
+                  </div>
+                  {fumeroThreadGroups.archive.length > 0 ? (
+                    <details
+                      className="fumero-chat-sidebar-archive group/archive"
+                      open={archiveOpen}
+                      onToggle={(e) =>
+                        setArchiveOpen((e.target as HTMLDetailsElement).open)
+                      }
+                    >
+                      <summary className="flex cursor-pointer list-none items-center gap-1 px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
+                        <ChevronDown
+                          className={cn(
+                            "h-3 w-3 shrink-0 transition-transform",
+                            archiveOpen && "rotate-180"
+                          )}
+                        />
+                        Archief ({fumeroThreadGroups.archive.length})
+                      </summary>
+                      <ul className="mt-0.5 space-y-0.5">
+                        {fumeroThreadGroups.archive.map(renderThreadItem)}
+                      </ul>
+                    </details>
+                  ) : null}
+                </>
+              ) : (
+                groupConversationsByDate(filteredConversations).map((group) => (
+                  <div key={group.label}>
+                    <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-text-secondary">
+                      {group.label}
+                    </p>
+                    <ul className="space-y-0.5">
+                      {group.items.map(renderThreadItem)}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </aside>
+
+      <div
+        className={cn(
+          "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+          fumeroEmptyHome && "justify-center"
+        )}
+      >
+        {(!sidebarOpen || (agentMode && agentReadiness.hint)) && (
+        <div className="flex shrink-0 items-center gap-2 px-3 py-2">
+          {!sidebarOpen && (
+            <button
+              type="button"
+              className="ios-tap-highlight flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-text-secondary hover:bg-surface-elevated"
+              title="Gesprekken (⌘B)"
+              onClick={() => setChatThreadsOpen(true)}
+            >
+              <PanelLeft className="h-5 w-5" />
+            </button>
+          )}
+          {effectiveAgentMode && agentReadiness.hint && (
+            <p className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">
+              Turbo · browser & automation
+            </p>
+          )}
+          {agentReadiness.memoryActive &&
+            historyLoaded &&
+            activeConversationId !== undefined && (
+              <p className="min-w-0 flex-1 truncate text-[11px] text-text-secondary/80">
+                {workspace === "fumero"
+                  ? "Max onthoudt dit gesprek"
+                  : "MotorsAI onthoudt context in dit gesprek + kennisbank"}
+              </p>
+            )}
+        </div>
+        )}
+
+        <div
+          ref={scrollRef}
+          onScroll={onMessagesScroll}
+          onDragOver={onComposerDragOver}
+          onDragLeave={onComposerDragLeave}
+          onDrop={(e) => void onComposerDrop(e)}
+          className={cn(
+            "overflow-x-hidden overscroll-contain scrollbar-ios",
+            fumeroEmptyHome
+              ? "flex-none overflow-visible"
+              : "min-h-0 flex-1 overflow-y-auto"
+          )}
+        >
+          <div
+            className={cn(
+              "motors-chat-column space-y-6 px-4 py-6 md:py-8",
+              splitPreviewOpen && "space-y-4 px-3 py-4 md:py-5",
+              fumeroEmptyHome &&
+                "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center gap-8 py-10"
+            )}
+          >
+            {(activeConversationId === undefined ||
+              (!historyLoaded && messages.length === 0)) && (
+              <p className="py-12 text-center text-[15px] text-text-secondary">
+                {activeConversationId === undefined
+                  ? "Conversaties laden…"
+                  : "Geschiedenis laden…"}
+              </p>
+            )}
+
+            {showEmpty && (
+              <div
+                className={cn(
+                  "flex w-full flex-col items-center gap-6 text-center font-ws",
+                  fumeroEmptyHome && "max-w-3xl"
+                )}
+              >
+                {(workspace === "fumero" || workspace === "bokas") && (
+                  <AgentAvatar workspace={workspace} size="lg" />
+                )}
+                <div>
+                  <h2 className="text-lg font-semibold text-text-primary">
+                    {workspace === "fumero"
+                      ? `Hey — ik ben ${agentTheme.agentName}`
+                      : workspace === "bokas"
+                        ? `Hoi! Ik ben ${agentTheme.agentName}`
+                        : unifiedMode
+                        ? "MotorsAI"
+                        : preferProjectBuilds
+                          ? "Project bouwen"
+                          : "Waar kan ik mee helpen?"}
+                  </h2>
+                  <p className="mt-2 max-w-md text-[15px] leading-relaxed text-text-secondary">
+                    {workspace === "fumero"
+                      ? fumeroEmptyHome
+                        ? "Kies een startpunt of stel je vraag — Snel is standaard, + voor foto, schrijven, bouwen of online."
+                        : "Stel een vraag in gewone taal — Snel is standaard. + voor foto, schrijven, bouwen of online onderzoek."
+                      : workspace === "bokas"
+                        ? "Jouw Bokas AI voor restaurant, reserveringen en team."
+                        : unifiedMode
+                        ? "Vraag, bouw of codeer in gewone taal — React, Next.js of HTML. MotorsAI kiest zelf wat nodig is."
+                        : preferProjectBuilds
+                          ? "Beschrijf je mini-product in gewone taal (NL). MotorsAI maakt een multi-file project met preview — daarna kun je itereren (“pas de header aan”)."
+                          : "Stel een vraag of kies een suggestie om te beginnen."}
+                  </p>
+                </div>
+                {fumeroEmptyHome ? (
+                  <FumeroChatStarterCards
+                    disabled={!!streamingId}
+                    onWire={handleStarterWire}
+                  />
+                ) : null}
+                {!fumeroEmptyHome ? (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {(workspace === "fumero" && maxCompanion?.quickActions?.length
+                      ? maxCompanion.quickActions
+                      : workspace === "fumero"
+                      ? FUMERO_CHAT_SUGGESTIONS
+                      : workspace === "bokas"
+                        ? BOKAS_CHAT_SUGGESTIONS
+                        : unifiedMode
+                          ? UNIFIED_SUGGESTED_PROMPTS
+                          : SUGGESTED_PROMPTS
+                    ).map((s) => (
+                      <button
+                        key={s.label}
+                        type="button"
+                        disabled={!!streamingId}
+                        className="ios-tap-highlight min-h-[44px] rounded-full border border-border/60 bg-surface px-4 py-2 text-[14px] text-text-primary transition-colors hover:border-accent/40 hover:bg-surface-elevated disabled:opacity-50"
+                        onClick={() => void runSuggested(s.prompt)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {!fumeroEmptyHome &&
+            messages.map((m, idx) => {
+              const isLastAssistant =
+                m.role === "assistant" &&
+                !messages.slice(idx + 1).some((x) => x.role === "assistant");
+              const showRegenerate =
+                isLastAssistant &&
+                m.content.trim() !== "" &&
+                streamingId !== m.id;
+              const coderCompactCard =
+                splitPreviewOpen && (m.toolCard || m.appCard);
+
+              if (
+                splitPreviewOpen &&
+                m.role === "assistant" &&
+                !m.content.trim() &&
+                !m.toolCard &&
+                !m.appCard &&
+                !m.toolQuickReplies?.length &&
+                streamingId !== m.id
+              ) {
+                return null;
+              }
+
+              const toolCardNode = m.toolCard ? (
+                <FumeroToolCard
+                  card={m.toolCard}
+                  busy={toolBusy && m.id === activeToolCardMsgId}
+                  builderLabel={fumeroBuilderLabel}
+                  splitPreviewOpen={splitPreviewOpen}
+                  buildPhase={
+                    toolBusy && m.id === activeToolCardMsgId
+                      ? coderBuildPhase
+                      : undefined
+                  }
+                  building={toolBusy && m.id === activeToolCardMsgId}
+                  summary={toolCardOneLineSummary(m.content)}
+                  onFocusPreview={() => setPreviewPanelOpen(true)}
+                  onFocusComposer={focusComposer}
+                  onRefine={async (instruction) => {
+                    if (m.toolCard?.toolId) {
+                      setActiveToolId(m.toolCard.toolId);
+                      setActiveToolCardMsgId(m.id);
+                    }
+                    await runToolIterate(instruction);
+                  }}
+                  onDeploy={async () => {
+                    if (m.toolCard?.toolId) {
+                      setActiveToolId(m.toolCard.toolId);
+                      setActiveToolCardMsgId(m.id);
+                    }
+                    await runToolPublish();
+                  }}
+                />
+              ) : null;
+
+              const appCardNode = m.appCard ? (
+                <FumeroToolCard
+                  card={{
+                    toolId: 0,
+                    name: m.appCard.name,
+                    previewUrl: m.appCard.previewUrl,
+                    deployType: m.appCard.type as any,
+                    status: m.appCard.status,
+                    embedCode: m.appCard.embedCode,
+                    internalUrl: m.appCard.internalUrl,
+                    slug: m.appCard.slug,
+                    tables: m.appCard.tables,
+                    authRequired: m.appCard.authRequired,
+                    hasPwa: m.appCard.hasPwa,
+                    version: m.appCard.version,
+                  } as any}
+                  busy={toolBusy && m.id === activeAppCardMsgId}
+                  builderLabel={fumeroBuilderLabel}
+                  splitPreviewOpen={splitPreviewOpen}
+                  summary={toolCardOneLineSummary(m.content)}
+                  onFocusPreview={() => setPreviewPanelOpen(true)}
+                  onFocusComposer={focusComposer}
+                  onRefine={async (instruction) => {
+                    setActiveAppSlug(m.appCard!.slug);
+                    setActiveAppCardMsgId(m.id);
+                    await runAppIterate(instruction);
+                  }}
+                  onDeploy={async () => {
+                    setActiveAppSlug(m.appCard!.slug);
+                    setActiveAppCardMsgId(m.id);
+                    await runAppPublish();
+                  }}
+                />
+              ) : null;
+
+              return (
+                <div
+                  key={m.id}
+                  className={cn(
+                    m.role === "user" ? "flex justify-end" : "w-full"
+                  )}
+                >
+                  {m.role === "assistant" ? (
+                    coderCompactCard ? (
+                      <div className="w-full">
+                        {toolCardNode}
+                        {appCardNode}
+                        {m.toolQuickReplies?.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {m.toolQuickReplies.map((q) => (
+                              <button
+                                key={q.label}
+                                type="button"
+                                disabled={!!streamingId || toolBusy}
+                                className="ios-tap-highlight min-h-[40px] rounded-full border border-[#E5E5E5] bg-white px-3 py-1.5 text-[13px] text-[#171717] transition-colors hover:border-[#69C400]/50 disabled:opacity-50"
+                                onClick={() => void runSuggested(q.prompt)}
+                              >
+                                {q.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                    <div className="flex w-full gap-3">
+                      <AgentAvatar
+                        workspace={workspace}
+                        size="sm"
+                        className="mt-1 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[12px] font-semibold text-ws-accent">
+                          {workspace === "fumero" ? "Max" : agentTheme.agentName}
+                        </p>
+                        <div className="text-[15px] leading-relaxed text-text-primary">
+                          {streamingId === m.id ? (
+                            <>
+                              {m.content.trim() ? (
+                                <MotorsChatMarkdown
+                                  content={m.content}
+                                  variant="assistant"
+                                />
+                              ) : (
+                                <MotorThinkingBlock
+                                  turbo={effectiveAgentMode}
+                                  statusLabel={streamStatus}
+                                  activities={streamActivities}
+                                  agentLabel={streamAgentLabel}
+                                  accent={fumeroOps}
+                                />
+                              )}
+                              {m.content.trim() ? (
+                                <MotorStreamPulse
+                                  statusLabel={streamStatus}
+                                  agentLabel={streamAgentLabel}
+                                  accent={fumeroOps}
+                                />
+                              ) : null}
+                            </>
+                          ) : (
+                            <>
+                              {!(
+                                splitPreviewOpen &&
+                                (m.toolCard || m.appCard)
+                              ) ? (
+                                <MotorsChatMarkdown
+                                  content={m.content}
+                                  variant="assistant"
+                                />
+                              ) : null}
+                              {m.toolQuickReplies?.length ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {m.toolQuickReplies.map((q) => (
+                                    <button
+                                      key={q.label}
+                                      type="button"
+                                      disabled={!!streamingId || toolBusy}
+                                      className="ios-tap-highlight min-h-[40px] rounded-full border border-[#E5E5E5] bg-white px-3 py-1.5 text-[13px] text-[#171717] transition-colors hover:border-[#69C400]/50 disabled:opacity-50"
+                                      onClick={() => void runSuggested(q.prompt)}
+                                    >
+                                      {q.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                              {toolCardNode}
+                              {appCardNode}
+                              {m.contentCard?.canvasMode ? (
+                                <button
+                                  type="button"
+                                  className="fumero-content-card ios-tap-highlight mt-3 flex w-full max-w-sm items-center justify-between gap-3 px-3 py-2.5 text-left"
+                                  onClick={() => {
+                                    if (!m.contentCard) return;
+                                    onFumeroContentPreview?.({
+                                      contentType:
+                                        m.contentCard.contentType ?? "seo_article",
+                                      platform: m.contentCard.platform ?? "blog",
+                                      content:
+                                        m.contentCard.documentContent ??
+                                        m.contentCard.contentSnippet,
+                                      mediaKind: "text",
+                                      postId: m.contentCard.postId,
+                                      status: "ready",
+                                      title:
+                                        m.contentCard.title ??
+                                        contentPreviewTitle(
+                                          m.contentCard.contentType ?? "seo_article",
+                                          m.contentCard.platform ?? "blog"
+                                        ),
+                                      canvasMode: true,
+                                    });
+                                    setLivePreview(null);
+                                    setPreviewPanelOpen(true);
+                                  }}
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-[13px] font-medium text-[#171717]">
+                                      {m.contentCard.title ?? "Schrijven-document"}
+                                    </p>
+                                    <p className="line-clamp-2 text-[11px] text-[#737373]">
+                                      {m.contentCard.contentSnippet ??
+                                        "Long-form document — tik om te openen"}
+                                    </p>
+                                  </div>
+                                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(105,196,0,0.1)] px-2.5 py-1 text-[11px] font-medium text-[#3d7a00]">
+                                    <PanelRightOpen className="h-3.5 w-3.5" />
+                                    Open
+                                  </span>
+                                </button>
+                              ) : null}
+                              {m.contentCard?.mediaUrl &&
+                              m.contentCard.mediaKind === "image" ? (
+                                <button
+                                  type="button"
+                                  className="mt-3 block max-w-[240px] overflow-hidden rounded-xl border border-[#E5E5E5] bg-white text-left shadow-sm transition hover:border-[#69C400]/40"
+                                  onClick={() => {
+                                    if (!m.contentCard) return;
+                                    onFumeroContentPreview?.({
+                                      contentType:
+                                        m.contentCard.contentType ?? "product_photo",
+                                      platform: m.contentCard.platform ?? "instagram",
+                                      mediaUrl: m.contentCard.mediaUrl,
+                                      mediaKind: "image",
+                                      postId: m.contentCard.postId,
+                                      status: "ready",
+                                      title: contentPreviewTitle(
+                                        m.contentCard.contentType ?? "product_photo",
+                                        m.contentCard.platform ?? "instagram"
+                                      ),
+                                    });
+                                    setLivePreview(null);
+                                  }}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={m.contentCard.mediaUrl}
+                                    alt="Gegenereerde afbeelding"
+                                    className="max-h-40 w-full object-cover"
+                                  />
+                                  <p className="px-2 py-1.5 text-[11px] text-[#525252]">
+                                    Tik voor preview-paneel
+                                  </p>
+                                </button>
+                              ) : null}
+                              {m.chatHistoryId != null &&
+                                m.content.trim() !== "" && (
+                                  <MessageFeedback
+                                    messageId={m.chatHistoryId}
+                                    klant={company}
+                                  />
+                                )}
+                              {m.content.trim() !== "" && m.usageLine && (
+                                <p className="mt-2 text-[11px] text-text-secondary/80">
+                                  {m.usageLine}
+                                </p>
+                              )}
+                              {m.content.trim() !== "" && (
+                                <div className="mt-2 flex flex-wrap gap-1 border-t border-border/30 pt-2">
+                                  <button
+                                    type="button"
+                                    className="ios-tap-highlight inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2 text-[12px] text-text-secondary hover:bg-border/50 hover:text-text-primary"
+                                    onClick={() => {
+                                      void navigator.clipboard.writeText(
+                                        m.content
+                                      );
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                    Kopiëren
+                                  </button>
+                                  {showRegenerate && (
+                                    <button
+                                      type="button"
+                                      disabled={!!streamingId}
+                                      className="ios-tap-highlight inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2 text-[12px] text-text-secondary hover:bg-border/50 hover:text-text-primary disabled:opacity-50"
+                                      onClick={() =>
+                                        void regenerate(chatSendOpts)
+                                      }
+                                    >
+                                      <RotateCcw className="h-3.5 w-3.5" />
+                                      Opnieuw
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    )
+                  ) : (
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed shadow-sm",
+                        fumeroOps
+                          ? "fumero-user-bubble"
+                          : "bg-accent text-white"
+                      )}
+                    >
+                      <MotorsChatMarkdown content={m.content} variant="user" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {!fumeroEmptyHome ? (
+              <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
+            ) : null}
+          </div>
+        </div>
+
+        {statusText && !fumeroEmptyHome && !(fumeroCoderMode && toolBusy) && (
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-between gap-2 border-t px-4 py-2 text-[13px]",
+              statusIsError ? "text-error" : "text-text-secondary"
+            )}
+          >
+            <span className="min-w-0 flex-1">{statusText}</span>
+            {statusIsError && (
+              <button
+                type="button"
+                className="ios-tap-highlight shrink-0 min-h-[36px] rounded-lg px-3 text-[13px] font-medium underline"
+                onClick={() => {
+                  clearError();
+                  setArtifactErr(null);
+                  setUploadNotice(null);
+                  void regenerate(chatSendOpts);
+                }}
+              >
+                Opnieuw proberen
+              </button>
+            )}
+          </div>
+        )}
+
+
+        {!fumeroOps ? (
+          <MotorUsageStrip company={company} refreshKey={messages.length} />
+        ) : null}
+
+        {planMode && !fumeroOps ? (
+          <p className="motors-chat-column px-3 pb-1 text-center text-[11px] text-violet-300/90">
+            Plan-modus — Motor maakt eerst een stappenplan. Zeg &quot;ga door&quot;
+            om uit te voeren.
+          </p>
+        ) : null}
+        {planMode && fumeroCoderMode ? (
+          <p className="motors-chat-column px-3 pb-1 text-center text-[11px] text-[#3d7a00]">
+            Plan-modus — ik bouw pas na <strong>Maak</strong>, een sjabloon of
+            expliciete tool-opdracht.
+          </p>
+        ) : null}
+
+        {fumeroCoderMode && fumeroOps && maxCompanion ? (
+          <ol className="motors-chat-column mb-2 flex w-full max-w-3xl list-none flex-wrap justify-center gap-2 self-center px-4 text-center">
+            {[
+              { n: "1", label: "Beschrijf je tool" },
+              { n: "2", label: "Bekijk preview rechts" },
+              { n: "3", label: "Deploy naar garage" },
+            ].map((step) => (
+              <li
+                key={step.n}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E5] bg-white px-3 py-1 text-[11px] font-medium text-[#525252]"
+              >
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[rgba(105,196,0,0.15)] text-[10px] font-semibold text-[#3d7a00]">
+                  {step.n}
+                </span>
+                {step.label}
+              </li>
+            ))}
+          </ol>
+        ) : null}
+
+        {visualEditMode && fumeroCoderMode ? (
+          <p className="motors-chat-column mb-1 text-center text-[11px] text-[#3d7a00]">
+            Klik in de preview of beschrijf hieronder wat je wilt wijzigen.
+          </p>
+        ) : null}
+
+        <form
+          onSubmit={onSubmit}
+          onDragOver={onComposerDragOver}
+          onDragLeave={onComposerDragLeave}
+          onDrop={(e) => void onComposerDrop(e)}
+          className={cn(
+            "motors-composer shrink-0 backdrop-blur-sm",
+            fumeroEmptyHome
+              ? "w-full max-w-3xl self-center border-0 bg-transparent px-4 pb-6 pt-2"
+              : "p-3",
+            !fumeroEmptyHome &&
+              fumeroOps &&
+              maxCompanion &&
+              "fumero-composer-gemini border-t border-[#E5E5E5]/80 bg-[#FAFAFA]/95",
+            !fumeroEmptyHome && !fumeroOps && "border-t border-border/40 bg-background/80",
+            !fumeroEmptyHome &&
+              fumeroOps &&
+              !maxCompanion &&
+              "border-t border-border/40 bg-background/80"
+          )}
+        >
+          {streamingId && streamStatus && !statusIsError && !coderBuildQuiet ? (
+            <p
+              className={cn(
+                "motors-chat-column mb-2 flex items-center justify-center gap-1.5 text-[11px]",
+                fumeroOps
+                  ? "text-[#525252]"
+                  : "text-text-secondary/80"
+              )}
+              aria-live="polite"
+            >
+              <MotorTypingDots accent={fumeroOps} />
+              <span>{streamStatus}</span>
+            </p>
+          ) : null}
+          <input
+            ref={fileRef}
+            type="file"
+            className="hidden"
+            accept={CHAT_UPLOAD_ACCEPT}
+            onChange={(e) => void onFile(e)}
+          />
+          {fumeroOps && maxCompanion ? (
+            <div
+              className={cn(
+                "motors-chat-column fumero-composer-shell relative overflow-visible transition-colors",
+                composerDragOver && "fumero-composer-drag",
+                streamingId && "ring-1 ring-[#69C400]/20"
+              )}
+            >
+              {composerDragOver ? (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-[rgba(105,196,0,0.06)] px-4 text-center text-[13px] font-medium text-[#3d7a00]">
+                  Laat los — afbeelding, PDF of screenshot (max 25 MB)
+                </div>
+              ) : null}
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={onComposerKeyDown}
+                placeholder={fumeroComposerPlaceholder(fumeroComposerMode)}
+                rows={1}
+                className="max-h-40 min-h-[52px] w-full resize-none bg-transparent px-4 pb-1 pt-3.5 text-[14px] leading-snug text-[#171717] outline-none placeholder:text-[#737373]"
+                autoComplete="off"
+                disabled={activeConversationId === undefined || artifactBusy}
+              />
+              <FumeroComposerToolbar
+                variant="inline"
+                modelTier={fumeroModelTier}
+                onModelTierChange={setFumeroModelTier}
+                onMenuAction={handleFumeroMenuAction}
+                onPrefill={(prefill) => {
+                  setText(prefill);
+                  focusComposer();
+                }}
+                composerMode={fumeroComposerMode}
+                onComposerModeChange={(mode) => {
+                  setFumeroComposerMode(mode);
+                  if (mode === "online") {
+                    setConnectorEnabled("online_research", true);
+                    setEnabledConnectors(readEnabledConnectors());
+                  }
+                }}
+                onConnectorsOpen={() => setConnectorsOpen(true)}
+                onUploadClick={() => fileRef.current?.click()}
+                disabled={!!streamingId || activeConversationId === undefined}
+                coderExtras={
+                  fumeroCoderMode ? (
+                    <>
+                      <MotorPlanButton
+                        active={planMode}
+                        disabled={!!streamingId}
+                        onToggle={() => togglePlanMode()}
+                      />
+                      <button
+                        type="button"
+                        title={
+                          visualEditMode
+                            ? "Klik een element in de preview"
+                            : "Visual edits — klik element of beschrijf wijziging"
+                        }
+                        className={cn(
+                          "ios-tap-highlight inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                          visualEditMode
+                            ? "border-[#69C400]/50 bg-[rgba(105,196,0,0.12)] text-[#3d7a00]"
+                            : "border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:border-[#69C400]/40"
+                        )}
+                        onClick={() => {
+                          const next = !visualEditMode;
+                          setVisualEditMode(next);
+                          onFumeroVisualEditModeChange?.(next);
+                          if (next) setPreviewPanelOpen(true);
+                        }}
+                      >
+                        <MousePointer2 className="h-3 w-3 shrink-0" />
+                        Visual edits
+                      </button>
+                      <a
+                        href="/fumero/apps"
+                        className="ios-tap-highlight inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-[#FAFAFA] px-2.5 py-1 text-[11px] font-medium text-[#525252] hover:border-[#69C400]/40 hover:text-[#171717]"
+                        title="Kies bestaande tool uit garage als referentie"
+                      >
+                        Kies uit garage
+                      </a>
+                      <button
+                        type="button"
+                        title="Connectors — live Fumero-data voor Max"
+                        className="ios-tap-highlight inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-[#FAFAFA] px-2.5 py-1 text-[11px] font-medium text-[#525252] hover:border-[#69C400]/40 hover:text-[#171717]"
+                        onClick={() => setConnectorsOpen(true)}
+                      >
+                        <Plug className="h-3 w-3 shrink-0 text-[#69C400]" />
+                        Connectors
+                      </button>
+                    </>
+                  ) : undefined
+                }
+              >
+                <MotorTurboButton
+                  active={fumeroTurboOn}
+                  disabled={!!streamingId}
+                  available={agentReadiness.canEnable}
+                  onToggle={() => {
+                    if (fumeroTurboOn) {
+                      setFumeroTurboOn(false);
+                      return;
+                    }
+                    if (!agentReadiness.canEnable) {
+                      reportError(
+                        agentReadiness.blockReason ??
+                          "Turbo is niet geconfigureerd op de server."
+                      );
+                      return;
+                    }
+                    setFumeroTurboOn(true);
+                  }}
+                />
+                <button
+                  type="button"
+                  className={cn(
+                    "ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#525252] transition-colors hover:bg-[#FAFAFA] hover:text-[#171717] disabled:opacity-40",
+                    listening && "text-[#69C400] ring-2 ring-[#69C400]/25"
+                  )}
+                  title="Spraak"
+                  disabled={!!streamingId || activeConversationId === undefined}
+                  onClick={startVoice}
+                >
+                  <Mic className="h-[18px] w-[18px]" />
+                </button>
+                {streamingId ? (
+                  <button
+                    type="button"
+                    className="ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#b91c1c]"
+                    title="Stop genereren"
+                    onClick={() => stop()}
+                  >
+                    <Square className="h-4 w-4 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#69C400] text-white hover:bg-[#5eb300] disabled:opacity-40"
+                    disabled={
+                      !text.trim() ||
+                      activeConversationId === undefined ||
+                      artifactBusy ||
+                      uploadBusy
+                    }
+                    title="Versturen"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                )}
+              </FumeroComposerToolbar>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "motors-composer motors-chat-column relative flex items-end gap-1 rounded-3xl border bg-surface/90 px-2 py-2 shadow-sm backdrop-blur-sm transition-colors",
+                streamingId && fumeroOps && "ring-1 ring-[#69C400]/25",
+                composerDragOver
+                  ? "border-accent ring-2 ring-accent/25"
+                  : "border-border/55"
+              )}
+            >
+              {composerDragOver && (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-accent/10 px-4 text-center text-[13px] font-medium text-accent">
+                  {fumeroOps
+                    ? "Laat los — afbeelding, PDF of document (max 25 MB)"
+                    : "Laat bestand los (PDF, DOCX, TXT, MD, HTML — max 25 MB)"}
+                </div>
+              )}
+              <button
+                type="button"
+                className="ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:opacity-40"
+                title="Bestand toevoegen"
+                disabled={
+                  !!streamingId ||
+                  activeConversationId === undefined ||
+                  uploadBusy
+                }
+                onClick={() => fileRef.current?.click()}
+              >
+                <Paperclip className="h-[18px] w-[18px]" />
+              </button>
+              <MotorPlanButton
+                active={planMode}
+                disabled={!!streamingId}
+                onToggle={() => togglePlanMode()}
+              />
+              <MotorTurboButton
+                active={motorChatMode === "motor_pro"}
+                disabled={!!streamingId}
+                available={agentReadiness.canEnable}
+                onToggle={() => {
+                  if (motorChatMode === "motor_pro") {
+                    setMotorChatMode("motor");
+                    return;
+                  }
+                  if (!agentReadiness.canEnable) {
+                    reportError(
+                      agentReadiness.blockReason ??
+                        "Turbo is niet geconfigureerd op de server."
+                    );
+                    return;
+                  }
+                  setMotorChatMode("motor_pro");
+                }}
+              />
+              <button
+                type="button"
+                className={cn(
+                  "ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:opacity-40",
+                  listening && "text-accent ring-2 ring-accent/25"
+                )}
+                title="Spraak"
+                disabled={!!streamingId || activeConversationId === undefined}
+                onClick={startVoice}
+              >
+                <Mic className="h-[18px] w-[18px]" />
+              </button>
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={onComposerKeyDown}
+                placeholder={
+                  unifiedMode
+                    ? hasActiveProject
+                      ? "Vraag of pas je project aan…"
+                      : "Vraag, bouw een app, of codeer in React/Next…"
+                    : preferProjectBuilds
+                      ? hasActiveProject
+                        ? "Pas het project aan… (Enter)"
+                        : "Beschrijf je project… (Enter)"
+                      : "Bericht… (Enter versturen, Shift+Enter nieuwe regel)"
+                }
+                rows={1}
+                className={cn(
+                  "max-h-40 min-h-[44px] flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-snug outline-none",
+                  fumeroOps
+                    ? "text-[#171717] caret-[#171717] placeholder:text-[#737373]"
+                    : "text-text-primary caret-text-primary placeholder:text-text-secondary"
+                )}
+                autoComplete="off"
+                disabled={
+                  activeConversationId === undefined || artifactBusy
+                }
+              />
+              {streamingId ? (
+                <button
+                  type="button"
+                  className="ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-error/10 text-error hover:bg-error/20"
+                  title="Stop genereren"
+                  onClick={() => stop()}
+                >
+                  <Square className="h-5 w-5 fill-current" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className={cn(
+                    "ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-white hover:opacity-90 disabled:opacity-40",
+                    fumeroOps ? "bg-[#69C400] hover:bg-[#5eb300]" : "bg-accent hover:bg-accent/90"
+                  )}
+                  disabled={
+                    !text.trim() ||
+                    activeConversationId === undefined ||
+                    artifactBusy ||
+                    uploadBusy
+                  }
+                  title="Versturen"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          )}
+          <p className="motors-chat-column mt-2 text-center text-[11px] text-text-secondary/70">
+            {workspace === "fumero"
+              ? fumeroCoderMode
+                ? fumeroEmptyHome
+                  ? "Beschrijf je tool · preview rechts · Deploy in de kaart"
+                  : !coderPlanHintDismissed && !activeToolId && !toolBusy
+                    ? (
+                        <>
+                          Verfijn hieronder · preview rechts ·{" "}
+                          <button
+                            type="button"
+                            className="text-[#3d7a00] underline-offset-2 hover:underline"
+                            onClick={() => togglePlanMode()}
+                          >
+                            {planMode ? "plan uit" : "plan aan"}
+                          </button>
+                          {" · "}
+                          <button
+                            type="button"
+                            className="text-[#737373] hover:text-[#171717]"
+                            aria-label="Tip sluiten"
+                            onClick={() => setCoderPlanHintDismissed(true)}
+                          >
+                            ×
+                          </button>
+                        </>
+                      )
+                    : "Verfijn hieronder · preview rechts · Deploy in de kaart"
+                : "Snel · Normaal · Pro — + voor foto, schrijven, bouwen, online"
+              : "Plan = eerst stappen · Turbo = browser · ⌘N nieuw · ⌘B gesprekken"}
+          </p>
+        </form>
+      </div>
+
+      <FumeroPublishModal
+        open={publishModalOpen}
+        payload={publishModal}
+        onClose={() => {
+          setPublishModalOpen(false);
+          setPublishModal(null);
+        }}
+      />
+      {fumeroOps && maxCompanion ? (
+        <FumeroConnectorsPanel
+          open={connectorsOpen}
+          onClose={() => setConnectorsOpen(false)}
+          onChange={setEnabledConnectors}
+        />
+      ) : null}
+    </div>
+  );
+}

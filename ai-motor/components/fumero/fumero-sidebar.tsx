@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
-  Bot,
   Camera,
   Grid3X3,
   MessageSquare,
@@ -90,7 +89,7 @@ export function FumeroSidebar() {
 
   return (
     <aside
-      className="flex h-full w-14 shrink-0 flex-col border-r border-[#E5E5E5] bg-white md:w-[var(--fumero-sidebar-w,240px)]"
+      className="flex h-full w-14 shrink-0 flex-col border-r border-[#E5E5E5] bg-white md:w-[var(--fumero-sidebar-w,200px)]"
       aria-label="Fumero Studio navigatie"
     >
       <div className="border-b border-[#E5E5E5] px-2 py-3 md:px-4 md:py-4">
@@ -117,9 +116,9 @@ export function FumeroSidebar() {
                   href={item.href}
                   title={item.label}
                   className={cn(
-                    "flex items-center justify-center gap-2.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors md:justify-start",
+                    "flex items-center justify-center gap-2.5 rounded-lg border-l-2 border-transparent px-2 py-2 text-sm font-medium transition-colors md:justify-start",
                     active
-                      ? "bg-[rgba(105,196,0,0.08)] text-[#69C400]"
+                      ? "border-l-[#69C400] bg-transparent text-[#171717]"
                       : "text-[#525252] hover:bg-[#FAFAFA] hover:text-[#171717]"
                   )}
                 >
@@ -130,7 +129,7 @@ export function FumeroSidebar() {
                       className={cn(
                         "hidden min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums md:inline-block",
                         active
-                          ? "bg-white/80 text-[#69C400]"
+                          ? "bg-[#F5F5F5] text-[#525252]"
                           : "bg-[#F5F5F5] text-[#737373]"
                       )}
                     >
@@ -144,16 +143,6 @@ export function FumeroSidebar() {
         </ul>
       </nav>
 
-      <div className="hidden border-t border-[#E5E5E5] p-2 md:block">
-        <Link
-          href="/chat"
-          title="Motor Chat (lab)"
-          className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-xs font-medium text-[#737373] transition-colors hover:bg-[#FAFAFA] hover:text-[#171717]"
-        >
-          <Bot className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
-          <span className="truncate">Motor Chat (lab)</span>
-        </Link>
-      </div>
     </aside>
   );
 }

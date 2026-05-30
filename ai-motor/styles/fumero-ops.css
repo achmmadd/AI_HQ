@@ -1,0 +1,321 @@
+/**
+ * Fumero Studio — operations dashboard (Linear / Stripe / Shopify Admin).
+ * Scoped to [data-fumero-ops] on html.
+ */
+
+[data-fumero-ops] {
+  --fumero-bg: #fafafa;
+  --fumero-surface: #ffffff;
+  --fumero-border: #e5e5e5;
+  --fumero-text: #171717;
+  --fumero-text-muted: #737373;
+  --fumero-text-subtle: #a3a3a3;
+  --fumero-accent: #69c400;
+  --fumero-accent-hover: #5db000;
+  --fumero-accent-muted: rgba(105, 196, 0, 0.08);
+  --fumero-radius: 8px;
+  --fumero-sidebar-w: 200px;
+  /* Elevation scale (3 levels) */
+  --fumero-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --fumero-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --fumero-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+
+  --background: var(--fumero-bg);
+  --surface: var(--fumero-surface);
+  --surface-elevated: var(--fumero-surface);
+  --border: var(--fumero-border);
+  --text-primary: var(--fumero-text);
+  --text-secondary: var(--fumero-text-muted);
+  --accent: var(--fumero-accent);
+  --accent-hover: var(--fumero-accent-hover);
+}
+
+[data-fumero-ops],
+[data-fumero-ops] body {
+  font-family: var(--font-geist), "Geist", system-ui, sans-serif;
+  background: var(--fumero-bg);
+  color: var(--fumero-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-fumero-ops] body {
+  min-height: 100vh;
+}
+
+@keyframes fumero-deploy-success-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-fumero-ops] .fumero-deploy-success {
+  animation: fumero-deploy-success-in 0.25s ease-out;
+}
+
+/* Force readable ops palette even if .dark leaks from persisted theme */
+html[data-fumero-ops],
+html[data-fumero-ops].dark,
+html[data-fumero-ops].light {
+  color-scheme: light;
+  --background: var(--fumero-bg);
+  --surface: var(--fumero-surface);
+  --surface-elevated: var(--fumero-surface);
+  --border: var(--fumero-border);
+  --text-primary: var(--fumero-text);
+  --text-secondary: var(--fumero-text-muted);
+  --accent: var(--fumero-accent);
+  --accent-hover: var(--fumero-accent-hover);
+}
+
+[data-fumero-ops] .motors-chat-column,
+[data-fumero-ops] .motors-composer {
+  color: var(--fumero-text);
+}
+
+[data-fumero-ops] .text-text-primary {
+  color: var(--fumero-text) !important;
+}
+
+[data-fumero-ops] .text-text-secondary {
+  color: var(--fumero-text-muted) !important;
+}
+
+/* Composer: explicit colors so dark-theme body text cannot leak (white on #FAFAFA) */
+[data-fumero-ops] .motors-composer textarea {
+  color: var(--fumero-text);
+  caret-color: var(--fumero-text);
+  -webkit-text-fill-color: var(--fumero-text);
+}
+
+[data-fumero-ops] .motors-composer textarea::placeholder {
+  color: var(--fumero-text-muted);
+  opacity: 1;
+}
+
+/* Gemini-style composer shell */
+[data-fumero-ops] .fumero-composer-gemini {
+  background: transparent;
+}
+
+[data-fumero-ops] .fumero-composer-shell {
+  border: 1px solid var(--fumero-border);
+  border-radius: 1rem;
+  background: var(--fumero-surface);
+  box-shadow: var(--fumero-shadow-sm), var(--fumero-shadow-md);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  isolation: isolate;
+}
+
+[data-fumero-ops] .fumero-composer-shell:focus-within {
+  border-color: rgba(105, 196, 0, 0.35);
+  box-shadow:
+    0 0 0 3px rgba(105, 196, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+[data-fumero-ops] .fumero-composer-shell.fumero-composer-drag {
+  border-color: var(--fumero-accent);
+  box-shadow: 0 0 0 3px rgba(105, 196, 0, 0.12);
+}
+
+[data-fumero-ops] .fumero-composer-popover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  pointer-events: auto;
+}
+
+[data-fumero-ops] .fumero-mode-pill[aria-pressed="true"],
+[data-fumero-ops] .fumero-canvas-pill[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px rgba(105, 196, 0, 0.15);
+}
+
+[data-fumero-ops] .fumero-canvas-doc {
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+[data-fumero-ops] .fumero-canvas-doc h1,
+[data-fumero-ops] .fumero-canvas-doc h2,
+[data-fumero-ops] .fumero-canvas-doc h3 {
+  color: var(--fumero-text);
+  font-weight: 600;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+
+[data-fumero-ops] .fumero-canvas-doc p {
+  margin-bottom: 0.75em;
+  color: #404040;
+}
+
+[data-fumero-ops] .fumero-canvas-panel {
+  border-left: 1px solid var(--fumero-border);
+}
+
+[data-fumero-ops] .fumero-content-card {
+  border: 1px solid var(--fumero-border);
+  border-radius: 12px;
+  background: var(--fumero-surface);
+  transition: border-color 0.15s ease;
+}
+
+[data-fumero-ops] .fumero-content-card:hover {
+  border-color: rgba(105, 196, 0, 0.45);
+}
+
+/* Chat home — KPI strip */
+[data-fumero-ops] .fumero-kpi-strip {
+  backdrop-filter: blur(8px);
+}
+
+[data-fumero-ops] .fumero-kpi-cell:focus-visible {
+  outline: 2px solid rgba(105, 196, 0, 0.35);
+  outline-offset: 2px;
+}
+
+/* Chat home — empty state + centered composer */
+[data-fumero-ops] .fumero-chat-empty-home {
+  min-height: min(100%, 32rem);
+}
+
+[data-fumero-ops] .fumero-starter-card:focus-visible {
+  outline: 2px solid rgba(105, 196, 0, 0.35);
+  outline-offset: 2px;
+}
+
+/* User bubbles: neutral (green reserved for send + primary CTAs) */
+[data-fumero-ops] .fumero-user-bubble {
+  background: var(--fumero-surface);
+  color: var(--fumero-text);
+  border: 1px solid var(--fumero-border);
+  box-shadow: var(--fumero-shadow-sm);
+}
+
+/* Elevated surfaces + hover lift */
+[data-fumero-ops] .fumero-card-elevated {
+  box-shadow: var(--fumero-shadow-sm);
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    border-color 0.15s ease;
+}
+
+[data-fumero-ops] .fumero-card-elevated:hover {
+  box-shadow: var(--fumero-shadow-md);
+  transform: translateY(-1px);
+}
+
+[data-fumero-ops] .fumero-popover-elevated {
+  box-shadow: var(--fumero-shadow-lg);
+}
+
+/* Coder — compact tool card in split chat (Lovable-style) */
+[data-fumero-ops] .fumero-tool-card-compact {
+  box-shadow: var(--fumero-shadow-sm);
+}
+
+[data-fumero-ops] .fumero-tool-card-compact:focus-within {
+  border-color: rgba(105, 196, 0, 0.35);
+}
+
+/* Coder split — typografie & 8px grid */
+[data-fumero-ops] .fumero-coder-split .motors-chat-column {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+[data-fumero-ops] .fumero-coder-split .motors-chat-column.space-y-6 > * + * {
+  margin-top: 16px;
+}
+
+[data-fumero-ops] .fumero-coder-split .motors-composer textarea {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+[data-fumero-ops] .fumero-coder-split .fumero-composer-shell {
+  border-radius: 12px;
+  box-shadow: var(--fumero-shadow-sm);
+}
+
+[data-fumero-ops] .fumero-coder-split .fumero-user-bubble {
+  border-color: rgba(229, 229, 229, 0.7);
+  box-shadow: none;
+}
+
+[data-fumero-ops] .fumero-coder-split .fumero-tool-card-compact {
+  border-color: rgba(229, 229, 229, 0.65);
+  box-shadow: none;
+}
+
+[data-fumero-ops] .fumero-live-preview-header {
+  min-height: 48px;
+}
+
+[data-fumero-ops] .fumero-live-preview {
+  background: #fafafa;
+}
+
+[data-fumero-ops] .fumero-coder-preview-rail {
+  background: #fafafa;
+  border-left: 1px solid rgba(229, 229, 229, 0.65);
+}
+
+[data-fumero-ops] .fumero-chat-sidebar-archive summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+[data-fumero-ops] .fumero-chat-sidebar-archive summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Toast */
+.fumero-toast-root {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.fumero-toast {
+  padding: 0.625rem 1rem;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  box-shadow: var(--fumero-shadow-md, 0 4px 16px rgba(0, 0, 0, 0.08));
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  color: #171717;
+}
+
+.fumero-toast--success {
+  border-color: rgba(105, 196, 0, 0.35);
+}
+
+.fumero-toast--error {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.fumero-toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
