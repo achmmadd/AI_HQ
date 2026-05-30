@@ -6,10 +6,10 @@ import { FumeroMaxChatShell } from "@/components/fumero/max/fumero-max-chat-shel
 
 export default function FumeroChatPage() {
   return (
-    <FumeroShell page="Max" flush>
-      <FumeroBriefingProvider>
+    <FumeroBriefingProvider>
+      <FumeroShell page="Max" flush showBriefing>
         <FumeroMaxChatShell />
-      </FumeroBriefingProvider>
-    </FumeroShell>
+      </FumeroShell>
+    </FumeroBriefingProvider>
   );
 }

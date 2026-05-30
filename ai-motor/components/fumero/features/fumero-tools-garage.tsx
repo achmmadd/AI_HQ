@@ -251,7 +251,7 @@ export function FumeroToolsGarage() {
               return (
                 <article
                   key={tool.id}
-                  className={`fumero-card-elevated group flex flex-col rounded-xl border border-[#E5E5E5] bg-white ${
+                  className={`fumero-card-flat group flex flex-col rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] ${
                     tool.archived ? "opacity-60" : ""
                   }`}
                 >

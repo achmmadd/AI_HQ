@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
+import { FumeroSidebarKpiFooter } from "@/components/fumero/ops/fumero-chat-kpi-strip";
 
 type NavItem = {
   href: string;
@@ -92,10 +93,12 @@ export function FumeroSidebar() {
       className="flex h-full w-14 shrink-0 flex-col border-r border-[#E5E5E5] bg-white md:w-[var(--fumero-sidebar-w,200px)]"
       aria-label="Fumero Studio navigatie"
     >
-      <div className="border-b border-[#E5E5E5] px-2 py-3 md:px-4 md:py-4">
+      <div className="border-b border-[var(--fumero-border)] px-2 py-3 md:px-4 md:py-4">
         <div className="hidden md:block">
           <FumeroLogoLockup compact />
-          <p className="mt-2 text-xs text-[#737373]">Product & operations</p>
+          <p className="fumero-text-caption mt-2 text-[var(--fumero-text-muted)]">
+            Studio
+          </p>
         </div>
         <div
           className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(105,196,0,0.12)] text-xs font-bold text-[#69C400] md:hidden"
@@ -116,21 +119,21 @@ export function FumeroSidebar() {
                   href={item.href}
                   title={item.label}
                   className={cn(
-                    "flex items-center justify-center gap-2.5 rounded-lg border-l-2 border-transparent px-2 py-2 text-sm font-medium transition-colors md:justify-start",
+                    "flex h-8 items-center justify-center gap-2 rounded-lg border-l-2 border-transparent px-2 py-1.5 fumero-text-body-sm font-medium transition-colors md:justify-start",
                     active
-                      ? "border-l-[#69C400] bg-transparent text-[#171717]"
-                      : "text-[#525252] hover:bg-[#FAFAFA] hover:text-[#171717]"
+                      ? "border-l-[var(--fumero-accent)] bg-transparent text-[var(--fumero-text)]"
+                      : "text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-bg)] hover:text-[var(--fumero-text)]"
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
+                  <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.5} />
                   <span className="hidden flex-1 truncate md:inline">{item.label}</span>
                   {typeof item.count === "number" ? (
                     <span
                       className={cn(
-                        "hidden min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums md:inline-block",
+                        "fumero-text-micro hidden min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center font-semibold tabular-nums md:inline-block",
                         active
-                          ? "bg-[#F5F5F5] text-[#525252]"
-                          : "bg-[#F5F5F5] text-[#737373]"
+                          ? "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)]"
+                          : "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)]"
                       )}
                     >
                       {item.count}
@@ -143,6 +146,7 @@ export function FumeroSidebar() {
         </ul>
       </nav>
 
+      <FumeroSidebarKpiFooter />
     </aside>
   );
 }

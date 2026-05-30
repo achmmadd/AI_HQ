@@ -6,7 +6,9 @@
 [data-fumero-ops] {
   --fumero-bg: #fafafa;
   --fumero-surface: #ffffff;
+  --fumero-surface-muted: #f5f5f5;
   --fumero-border: #e5e5e5;
+  --fumero-border-subtle: #f0f0f0;
   --fumero-text: #171717;
   --fumero-text-muted: #737373;
   --fumero-text-subtle: #a3a3a3;
@@ -14,7 +16,31 @@
   --fumero-accent-hover: #5db000;
   --fumero-accent-muted: rgba(105, 196, 0, 0.08);
   --fumero-radius: 8px;
+  --fumero-radius-lg: 12px;
   --fumero-sidebar-w: 200px;
+  /* Spacing — 8px grid */
+  --fumero-space-1: 8px;
+  --fumero-space-2: 16px;
+  --fumero-space-3: 24px;
+  --fumero-space-4: 32px;
+  --fumero-space-5: 48px;
+  /* Typography scale (Geist) */
+  --fumero-text-display-size: 28px;
+  --fumero-text-display-lh: 36px;
+  --fumero-text-h1-size: 24px;
+  --fumero-text-h1-lh: 32px;
+  --fumero-text-h2-size: 18px;
+  --fumero-text-h2-lh: 26px;
+  --fumero-text-h3-size: 15px;
+  --fumero-text-h3-lh: 22px;
+  --fumero-text-body-size: 14px;
+  --fumero-text-body-lh: 22px;
+  --fumero-text-body-sm-size: 13px;
+  --fumero-text-body-sm-lh: 20px;
+  --fumero-text-caption-size: 12px;
+  --fumero-text-caption-lh: 16px;
+  --fumero-text-micro-size: 11px;
+  --fumero-text-micro-lh: 14px;
   /* Elevation scale (3 levels) */
   --fumero-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --fumero-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
@@ -40,6 +66,55 @@
 
 [data-fumero-ops] body {
   min-height: 100vh;
+}
+
+/* Typography utility classes */
+[data-fumero-ops] .fumero-text-display {
+  font-size: var(--fumero-text-display-size);
+  line-height: var(--fumero-text-display-lh);
+  font-weight: 600;
+}
+
+[data-fumero-ops] .fumero-text-h1 {
+  font-size: var(--fumero-text-h1-size);
+  line-height: var(--fumero-text-h1-lh);
+  font-weight: 600;
+}
+
+[data-fumero-ops] .fumero-text-h2 {
+  font-size: var(--fumero-text-h2-size);
+  line-height: var(--fumero-text-h2-lh);
+  font-weight: 600;
+}
+
+[data-fumero-ops] .fumero-text-h3 {
+  font-size: var(--fumero-text-h3-size);
+  line-height: var(--fumero-text-h3-lh);
+  font-weight: 600;
+}
+
+[data-fumero-ops] .fumero-text-body {
+  font-size: var(--fumero-text-body-size);
+  line-height: var(--fumero-text-body-lh);
+  font-weight: 400;
+}
+
+[data-fumero-ops] .fumero-text-body-sm {
+  font-size: var(--fumero-text-body-sm-size);
+  line-height: var(--fumero-text-body-sm-lh);
+  font-weight: 400;
+}
+
+[data-fumero-ops] .fumero-text-caption {
+  font-size: var(--fumero-text-caption-size);
+  line-height: var(--fumero-text-caption-lh);
+  font-weight: 500;
+}
+
+[data-fumero-ops] .fumero-text-micro {
+  font-size: var(--fumero-text-micro-size);
+  line-height: var(--fumero-text-micro-lh);
+  font-weight: 500;
 }
 
 @keyframes fumero-deploy-success-in {
@@ -104,9 +179,9 @@ html[data-fumero-ops].light {
 
 [data-fumero-ops] .fumero-composer-shell {
   border: 1px solid var(--fumero-border);
-  border-radius: 1rem;
+  border-radius: var(--fumero-radius-lg);
   background: var(--fumero-surface);
-  box-shadow: var(--fumero-shadow-sm), var(--fumero-shadow-md);
+  box-shadow: none;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
@@ -117,7 +192,7 @@ html[data-fumero-ops].light {
   border-color: rgba(105, 196, 0, 0.35);
   box-shadow:
     0 0 0 3px rgba(105, 196, 0, 0.08),
-    0 4px 16px rgba(0, 0, 0, 0.04);
+    var(--fumero-shadow-sm);
 }
 
 [data-fumero-ops] .fumero-composer-shell.fumero-composer-drag {
@@ -171,9 +246,9 @@ html[data-fumero-ops].light {
   border-color: rgba(105, 196, 0, 0.45);
 }
 
-/* Chat home — KPI strip */
-[data-fumero-ops] .fumero-kpi-strip {
-  backdrop-filter: blur(8px);
+/* Sidebar KPI footer */
+[data-fumero-ops] .fumero-sidebar-kpi {
+  gap: var(--fumero-space-1);
 }
 
 [data-fumero-ops] .fumero-kpi-cell:focus-visible {
@@ -184,11 +259,21 @@ html[data-fumero-ops].light {
 /* Chat home — empty state + centered composer */
 [data-fumero-ops] .fumero-chat-empty-home {
   min-height: min(100%, 32rem);
+  padding-top: var(--fumero-space-5);
+  gap: var(--fumero-space-4);
+}
+
+[data-fumero-ops] .fumero-starter-card {
+  transition: border-color 0.15s ease;
 }
 
 [data-fumero-ops] .fumero-starter-card:focus-visible {
   outline: 2px solid rgba(105, 196, 0, 0.35);
   outline-offset: 2px;
+}
+
+[data-fumero-ops] .fumero-starter-card:hover {
+  border-color: rgba(105, 196, 0, 0.35);
 }
 
 /* User bubbles: neutral (green reserved for send + primary CTAs) */
@@ -199,18 +284,13 @@ html[data-fumero-ops].light {
   box-shadow: var(--fumero-shadow-sm);
 }
 
-/* Elevated surfaces + hover lift */
-[data-fumero-ops] .fumero-card-elevated {
-  box-shadow: var(--fumero-shadow-sm);
-  transition:
-    box-shadow 0.18s ease,
-    transform 0.18s ease,
-    border-color 0.15s ease;
+/* Flat cards — border-only hover (no lift) */
+[data-fumero-ops] .fumero-card-flat {
+  transition: border-color 0.15s ease;
 }
 
-[data-fumero-ops] .fumero-card-elevated:hover {
-  box-shadow: var(--fumero-shadow-md);
-  transform: translateY(-1px);
+[data-fumero-ops] .fumero-card-flat:hover {
+  border-color: rgba(105, 196, 0, 0.35);
 }
 
 [data-fumero-ops] .fumero-popover-elevated {
@@ -241,9 +321,19 @@ html[data-fumero-ops].light {
   line-height: 1.45;
 }
 
+[data-fumero-ops] .fumero-coder-split .motors-chat-column {
+  background: var(--fumero-surface);
+}
+
 [data-fumero-ops] .fumero-coder-split .fumero-composer-shell {
-  border-radius: 12px;
-  box-shadow: var(--fumero-shadow-sm);
+  border-radius: var(--fumero-radius-lg);
+  box-shadow: none;
+}
+
+[data-fumero-ops] .fumero-coder-split .fumero-composer-shell:focus-within {
+  box-shadow:
+    0 0 0 3px rgba(105, 196, 0, 0.08),
+    var(--fumero-shadow-sm);
 }
 
 [data-fumero-ops] .fumero-coder-split .fumero-user-bubble {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Copy,
   ChevronDown,
+  ClipboardList,
   Mic,
   Paperclip,
   PanelLeft,
@@ -18,6 +19,8 @@ import {
   PanelRightOpen,
   MousePointer2,
   Plug,
+  Grid3X3,
+  Zap,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMotorsChat } from "@/hooks/useMotorsChat";
@@ -52,6 +55,7 @@ import {
   FumeroComposerToolbar,
   type FumeroComposerMenuAction,
   type FumeroComposerMode,
+  type FumeroCoderOverflowItem,
 } from "@/components/fumero/fumero-composer-toolbar";
 import {
   readStoredFumeroModelTier,
@@ -1740,7 +1744,7 @@ export function MotorsChatPanel({
     });
   }, [maxCompanion, submitText]);
 
-  /* Briefing staat in FumeroBriefingStrip — geen dubbele openingsboodschap in chat. */
+  /* Briefing staat in topbar dagoverzicht — geen dubbele openingsboodschap in chat. */
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2108,6 +2112,78 @@ export function MotorsChatPanel({
   const streamAgentLabel = fumeroOps ? "Max" : agentTheme.agentName;
   const coderBuildQuiet = fumeroCoderMode && toolBusy && !streamingId;
 
+  const fumeroCoderOverflowItems = useMemo((): FumeroCoderOverflowItem[] | undefined => {
+    if (!fumeroCoderMode) return undefined;
+    return [
+      {
+        id: "plan",
+        label: planMode ? "Plan uit" : "Eerst plan maken",
+        icon: ClipboardList,
+        active: planMode,
+        disabled: !!streamingId,
+        onClick: () => togglePlanMode(),
+      },
+      {
+        id: "visual-edits",
+        label: "Klik om te wijzigen",
+        icon: MousePointer2,
+        active: visualEditMode,
+        onClick: () => {
+          const next = !visualEditMode;
+          setVisualEditMode(next);
+          onFumeroVisualEditModeChange?.(next);
+          if (next) setPreviewPanelOpen(true);
+        },
+      },
+      {
+        id: "garage",
+        label: "Mijn apps",
+        icon: Grid3X3,
+        href: "/fumero/apps",
+        onClick: () => {},
+      },
+      {
+        id: "connectors",
+        label: "Live shopdata",
+        icon: Plug,
+        onClick: () => setConnectorsOpen(true),
+      },
+      {
+        id: "turbo",
+        label: fumeroTurboOn ? "Uitgebreid uit" : "Uitgebreid",
+        icon: Zap,
+        active: fumeroTurboOn,
+        disabled: !!streamingId || (!agentReadiness.canEnable && !fumeroTurboOn),
+        onClick: () => {
+          if (fumeroTurboOn) {
+            setFumeroTurboOn(false);
+            return;
+          }
+          if (!agentReadiness.canEnable) {
+            reportError(
+              agentReadiness.blockReason ??
+                "Uitgebreid is niet geconfigureerd op de server."
+            );
+            return;
+          }
+          setFumeroTurboOn(true);
+        },
+      },
+    ];
+  }, [
+    fumeroCoderMode,
+    planMode,
+    streamingId,
+    togglePlanMode,
+    visualEditMode,
+    onFumeroVisualEditModeChange,
+    setPreviewPanelOpen,
+    fumeroTurboOn,
+    agentReadiness.canEnable,
+    agentReadiness.blockReason,
+    reportError,
+  ]);
+
   const statusText =
     convLoadError ||
     externalStatusError ||
@@ -2343,7 +2419,7 @@ export function MotorsChatPanel({
               "motors-chat-column space-y-6 px-4 py-6 md:py-8",
               splitPreviewOpen && "space-y-4 px-3 py-4 md:py-5",
               fumeroEmptyHome &&
-                "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center gap-8 py-10"
+                "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center py-10"
             )}
           >
             {(activeConversationId === undefined ||
@@ -2358,15 +2434,15 @@ export function MotorsChatPanel({
             {showEmpty && (
               <div
                 className={cn(
-                  "flex w-full flex-col items-center gap-6 text-center font-ws",
-                  fumeroEmptyHome && "max-w-3xl"
+                  "flex w-full flex-col items-center text-center font-ws",
+                  fumeroEmptyHome && "max-w-[720px] gap-8"
                 )}
               >
                 {(workspace === "fumero" || workspace === "bokas") && (
                   <AgentAvatar workspace={workspace} size="lg" />
                 )}
                 <div>
-                  <h2 className="text-lg font-semibold text-text-primary">
+                  <h2 className="fumero-text-display text-text-primary">
                     {workspace === "fumero"
                       ? `Hey — ik ben ${agentTheme.agentName}`
                       : workspace === "bokas"
@@ -2377,10 +2453,10 @@ export function MotorsChatPanel({
                           ? "Project bouwen"
                           : "Waar kan ik mee helpen?"}
                   </h2>
-                  <p className="mt-2 max-w-md text-[15px] leading-relaxed text-text-secondary">
+                  <p className="fumero-text-body mt-2 max-w-[480px] text-text-secondary">
                     {workspace === "fumero"
                       ? fumeroEmptyHome
-                        ? "Kies een startpunt of stel je vraag — Snel is standaard, + voor foto, schrijven, bouwen of online."
+                        ? "Typ je vraag — kies hieronder een startpunt."
                         : "Stel een vraag in gewone taal — Snel is standaard. + voor foto, schrijven, bouwen of online onderzoek."
                       : workspace === "bokas"
                         ? "Jouw Bokas AI voor restaurant, reserveringen en team."
@@ -2883,7 +2959,7 @@ export function MotorsChatPanel({
                 onKeyDown={onComposerKeyDown}
                 placeholder={fumeroComposerPlaceholder(fumeroComposerMode)}
                 rows={1}
-                className="max-h-40 min-h-[52px] w-full resize-none bg-transparent px-4 pb-1 pt-3.5 text-[14px] leading-snug text-[#171717] outline-none placeholder:text-[#737373]"
+                className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 pb-1 pt-3 fumero-text-body text-[#171717] outline-none placeholder:text-[#737373]"
                 autoComplete="off"
                 disabled={activeConversationId === undefined || artifactBusy}
               />
@@ -2907,76 +2983,29 @@ export function MotorsChatPanel({
                 onConnectorsOpen={() => setConnectorsOpen(true)}
                 onUploadClick={() => fileRef.current?.click()}
                 disabled={!!streamingId || activeConversationId === undefined}
-                coderExtras={
-                  fumeroCoderMode ? (
-                    <>
-                      <MotorPlanButton
-                        active={planMode}
-                        disabled={!!streamingId}
-                        onToggle={() => togglePlanMode()}
-                      />
-                      <button
-                        type="button"
-                        title={
-                          visualEditMode
-                            ? "Klik een element in de preview"
-                            : "Visual edits — klik element of beschrijf wijziging"
-                        }
-                        className={cn(
-                          "ios-tap-highlight inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                          visualEditMode
-                            ? "border-[#69C400]/50 bg-[rgba(105,196,0,0.12)] text-[#3d7a00]"
-                            : "border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:border-[#69C400]/40"
-                        )}
-                        onClick={() => {
-                          const next = !visualEditMode;
-                          setVisualEditMode(next);
-                          onFumeroVisualEditModeChange?.(next);
-                          if (next) setPreviewPanelOpen(true);
-                        }}
-                      >
-                        <MousePointer2 className="h-3 w-3 shrink-0" />
-                        Visual edits
-                      </button>
-                      <a
-                        href="/fumero/apps"
-                        className="ios-tap-highlight inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-[#FAFAFA] px-2.5 py-1 text-[11px] font-medium text-[#525252] hover:border-[#69C400]/40 hover:text-[#171717]"
-                        title="Kies bestaande tool uit garage als referentie"
-                      >
-                        Kies uit garage
-                      </a>
-                      <button
-                        type="button"
-                        title="Connectors — live Fumero-data voor Max"
-                        className="ios-tap-highlight inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-[#FAFAFA] px-2.5 py-1 text-[11px] font-medium text-[#525252] hover:border-[#69C400]/40 hover:text-[#171717]"
-                        onClick={() => setConnectorsOpen(true)}
-                      >
-                        <Plug className="h-3 w-3 shrink-0 text-[#69C400]" />
-                        Connectors
-                      </button>
-                    </>
-                  ) : undefined
-                }
+                coderOverflowItems={fumeroCoderOverflowItems}
               >
-                <MotorTurboButton
-                  active={fumeroTurboOn}
-                  disabled={!!streamingId}
-                  available={agentReadiness.canEnable}
-                  onToggle={() => {
-                    if (fumeroTurboOn) {
-                      setFumeroTurboOn(false);
-                      return;
-                    }
-                    if (!agentReadiness.canEnable) {
-                      reportError(
-                        agentReadiness.blockReason ??
-                          "Turbo is niet geconfigureerd op de server."
-                      );
-                      return;
-                    }
-                    setFumeroTurboOn(true);
-                  }}
-                />
+                {!fumeroCoderMode ? (
+                  <MotorTurboButton
+                    active={fumeroTurboOn}
+                    disabled={!!streamingId}
+                    available={agentReadiness.canEnable}
+                    onToggle={() => {
+                      if (fumeroTurboOn) {
+                        setFumeroTurboOn(false);
+                        return;
+                      }
+                      if (!agentReadiness.canEnable) {
+                        reportError(
+                          agentReadiness.blockReason ??
+                            "Turbo is niet geconfigureerd op de server."
+                        );
+                        return;
+                      }
+                      setFumeroTurboOn(true);
+                    }}
+                  />
+                ) : null}
                 <button
                   type="button"
                   className={cn(
