@@ -233,7 +233,7 @@ export async function buildFumeroBriefing(opts?: {
   } catch {
     summary = "Operationele Fumero briefing (gebaseerd op live database).";
     actions = [
-      "Controleer content drafts en plan publicatie via Content Studio.",
+      "Controleer content drafts en plan publicatie via Studio.",
       "Run order-sync als WooCommerce-dashboard afwijkt.",
     ];
     opportunities = [

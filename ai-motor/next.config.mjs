@@ -71,6 +71,11 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: "/fumero/studio",
+        destination: "/fumero/photo-studio",
+        permanent: false,
+      },
+      {
         source: "/fumero/chat",
         has: [{ type: "query", key: "mode", value: "coder" }],
         destination: "/fumero/bouwen",
