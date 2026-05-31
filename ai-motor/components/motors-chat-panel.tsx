@@ -410,7 +410,7 @@ export function MotorsChatPanel({
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [convLoadError, setConvLoadError] = useState<string | null>(null);
   const [fumeroModelTier, setFumeroModelTier] =
-    useState<FumeroComposerModelTier>("flash");
+    useState<FumeroComposerModelTier>(bouwenWorkspace ? "normaal" : "flash");
   const [connectorsOpen, setConnectorsOpen] = useState(false);
   const [enabledConnectors, setEnabledConnectors] = useState<ConnectorId[]>([]);
 
@@ -1441,6 +1441,13 @@ export function MotorsChatPanel({
     updateMessage,
   ]);
 
+  const runToolPublishRef = useRef(runToolPublish);
+  const runAppPublishRef = useRef(runAppPublish);
+  const runUxReviewRef = useRef(runUxReview);
+  runToolPublishRef.current = runToolPublish;
+  runAppPublishRef.current = runAppPublish;
+  runUxReviewRef.current = runUxReview;
+
   useEffect(() => {
     if (!onBouwenBridgeUpdate) return;
     const activeToolCard = messages.find((m) => m.id === activeToolCardMsgId)?.toolCard;
@@ -1462,10 +1469,10 @@ export function MotorsChatPanel({
       livePreview: livePreviewRef.current,
       runtime,
       publish: async () => {
-        if (activeAppSlug) await runAppPublish();
-        else await runToolPublish();
+        if (activeAppSlug) await runAppPublishRef.current();
+        else await runToolPublishRef.current();
       },
-      runUxReview,
+      runUxReview: () => runUxReviewRef.current(),
       toolSlug: activeToolCard?.slug ?? null,
       embedCode:
         livePreviewRef.current?.embedCode ??
@@ -1480,9 +1487,6 @@ export function MotorsChatPanel({
     projectStack,
     messages,
     onBouwenBridgeUpdate,
-    runAppPublish,
-    runToolPublish,
-    runUxReview,
     toolBusy,
   ]);
 

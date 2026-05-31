@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Rocket, Settings2 } from "lucide-react";
 import { FumeroGeavanceerdPanel } from "@/components/fumero/features/fumero-geavanceerd-panel";
@@ -97,6 +97,44 @@ function BouwenShellInner() {
     [sendFromBriefing]
   );
 
+  const registerSend = useCallback((fn: (prompt: string) => void) => {
+    sendPromptRef.current = fn;
+  }, []);
+
+  const maxCompanion = useMemo(
+    () => ({
+      briefing: data,
+      openingMessage,
+      quickActions,
+      registerSend,
+    }),
+    [data, openingMessage, quickActions, registerSend]
+  );
+
+  const handlePublishSuccess = useCallback((payload: FumeroPublishModalPayload) => {
+    setPublishPayload(payload);
+    setPublishOpen(true);
+  }, []);
+
+  const handleBridgeUpdate = useCallback((next: FumeroBouwenBridge) => {
+    setBridge((prev) => {
+      if (
+        prev.activeToolId === next.activeToolId &&
+        prev.activeAppSlug === next.activeAppSlug &&
+        prev.canPublish === next.canPublish &&
+        prev.canUxReview === next.canUxReview &&
+        prev.toolBusy === next.toolBusy &&
+        prev.livePreview === next.livePreview &&
+        prev.runtime === next.runtime &&
+        prev.toolSlug === next.toolSlug &&
+        prev.embedCode === next.embedCode
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--fumero-bg)]">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5E5E5] bg-white px-4 py-2.5">
@@ -151,19 +189,9 @@ function BouwenShellInner() {
           initialComposerMode="coder"
           bouwenWorkspace
           initialPrompt={initialPrompt}
-          maxCompanion={{
-            briefing: data,
-            openingMessage,
-            quickActions,
-            registerSend: (fn) => {
-              sendPromptRef.current = fn;
-            },
-          }}
-          onBouwenBridgeUpdate={setBridge}
-          onPublishSuccess={(payload) => {
-            setPublishPayload(payload);
-            setPublishOpen(true);
-          }}
+          maxCompanion={maxCompanion}
+          onBouwenBridgeUpdate={handleBridgeUpdate}
+          onPublishSuccess={handlePublishSuccess}
         />
       </div>
 

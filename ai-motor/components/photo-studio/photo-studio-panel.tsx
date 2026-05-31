@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { ContentStudioOutputGrid } from "@/components/photo-studio/content-studio-output-grid";
 import { ContentStudioPromptBar } from "@/components/photo-studio/content-studio-prompt-bar";
@@ -21,6 +22,7 @@ type MeerView = "carousel" | "menu" | "postprocess" | "recipes" | null;
 type Props = {
   klant: CompanyId;
   title?: string;
+  subtitle?: string;
   className?: string;
 };
 
@@ -38,7 +40,8 @@ function recipeToDraft(recipe: ContentStudioTemplateRow): ContentStudioDrawerDra
 
 export function PhotoStudioPanel({
   klant,
-  title = "Content Studio",
+  title = "Studio",
+  subtitle = "Foto's, video en teksten — alleen content, geen apps of code.",
   className = "",
 }: Props) {
   const [items, setItems] = useState<ContentStudioGridItem[]>([]);
@@ -246,7 +249,20 @@ export function PhotoStudioPanel({
   return (
     <div className={`flex h-full min-h-0 flex-col ${className}`}>
       <header className="flex shrink-0 items-center justify-between px-4 py-3 md:px-6">
-        <h1 className="fumero-text-h2 text-[var(--fumero-text)]">{title}</h1>
+        <div className="min-w-0">
+          <h1 className="fumero-text-h2 text-[var(--fumero-text)]">{title}</h1>
+          {subtitle ? (
+            <p className="mt-0.5 fumero-text-body-sm text-[var(--fumero-text-muted)]">
+              {subtitle}{" "}
+              <Link
+                href="/fumero/bibliotheek"
+                className="font-medium text-[#3d7a00] hover:underline"
+              >
+                Bekijk in Bibliotheek
+              </Link>
+            </p>
+          ) : null}
+        </div>
         <div className="relative">
           <button
             type="button"

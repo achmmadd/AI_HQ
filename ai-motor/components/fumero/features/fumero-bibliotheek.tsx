@@ -125,15 +125,15 @@ export function FumeroBibliotheek() {
     <div className="mx-auto max-w-7xl">
       <FumeroPageHeader
         title="Bibliotheek"
-        description="Al je gegenereerde content — beeld, teksten en scripts. Nieuwe content maak je in Studio of via Chat."
-        actionLabel="Nieuw in chat"
-        actionHref="/fumero/chat"
+        description="Alles wat je in Studio hebt gemaakt — beeld, teksten en scripts."
+        actionLabel="Nieuw in Studio"
+        actionHref="/fumero/photo-studio"
       />
       <p className="-mt-4 mb-4 text-[12px] text-[#737373]">
-        Productfoto&apos;s en banners?{" "}
-        <a href="/fumero/photo-studio" className="font-medium text-[#3d7a00] hover:underline">
+        Studio is voor maken · Bibliotheek is je archief.{" "}
+        <Link href="/fumero/photo-studio" className="font-medium text-[#3d7a00] hover:underline">
           Open Studio
-        </a>
+        </Link>
       </p>
 
       {error ? (
@@ -171,11 +171,11 @@ export function FumeroBibliotheek() {
         <div className="rounded-xl border border-dashed border-[#E5E5E5] bg-white px-6 py-12 text-center">
           <p className="text-sm font-medium text-[#525252]">Nog geen content in de bibliotheek</p>
           <p className="mt-1 text-xs text-[#737373]">
-            Genereer productfoto&apos;s, teksten of scripts via chat — ze verschijnen hier
+            Genereer productfoto&apos;s, teksten of scripts in Studio — ze verschijnen hier
             automatisch.
           </p>
           <Button asChild className="mt-4 rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]">
-            <Link href="/fumero/chat">Maak content in chat</Link>
+            <Link href="/fumero/photo-studio">Nieuw in Studio</Link>
           </Button>
         </div>
       ) : filtered.length === 0 ? (

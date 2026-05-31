@@ -116,7 +116,7 @@ export const FUMERO_COMPOSER_MENU_SECTIONS: FumeroComposerMenuSection[] = [
       {
         id: "foto",
         label: "Afbeelding maken",
-        description: "Productfoto of banner in het preview-paneel",
+        description: "Productfoto of banner — open Studio",
         icon: Camera,
         action: {
           kind: "content",
