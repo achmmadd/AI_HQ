@@ -61,9 +61,20 @@ const nextConfig = {
         permanent: true,
       },
       {
-        source: "/fumero/tools",
-        destination: "/fumero/apps",
+        source: "/fumero/apps",
+        destination: "/fumero/projecten",
         permanent: true,
+      },
+      {
+        source: "/fumero/tools",
+        destination: "/fumero/projecten",
+        permanent: true,
+      },
+      {
+        source: "/fumero/chat",
+        has: [{ type: "query", key: "mode", value: "coder" }],
+        destination: "/fumero/bouwen",
+        permanent: false,
       },
       approvalsCoworkRedirect,
     ];

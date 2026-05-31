@@ -93,7 +93,13 @@ function CardSkeleton() {
   );
 }
 
-export function FumeroToolsGarage() {
+export function FumeroToolsGarage({
+  title = "Apps & garage",
+  description = "Gebouwde widgets, tools en full-stack apps. Alles bouw en bewerk je via Max in chat.",
+}: {
+  title?: string;
+  description?: string;
+} = {}) {
   const [garageTools, setGarageTools] = useState<GarageTool[]>([]);
   const [garageApps, setGarageApps] = useState<GarageApp[]>([]);
   const [error, setError] = useState("");
@@ -160,10 +166,7 @@ export function FumeroToolsGarage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <FumeroPageHeader
-        title="Apps & garage"
-        description="Gebouwde widgets, tools en full-stack apps. Alles bouw en bewerk je via Max in chat."
-      />
+      <FumeroPageHeader title={title} description={description} />
 
       {error ? (
         <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -202,7 +205,7 @@ export function FumeroToolsGarage() {
           asChild
           className="rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
         >
-          <Link href="/fumero/chat?mode=coder">
+          <Link href="/fumero/bouwen">
             <Plus className="mr-1.5 h-4 w-4" />
             Nieuw in chat (Bouwen)
           </Link>
@@ -240,7 +243,7 @@ export function FumeroToolsGarage() {
               asChild
               className="mt-4 rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
             >
-              <Link href="/fumero/chat?mode=coder">Start in chat</Link>
+              <Link href="/fumero/bouwen">Start in Bouwen</Link>
             </Button>
           </div>
         ) : viewMode === "cards" ? (
@@ -292,7 +295,7 @@ export function FumeroToolsGarage() {
                           size="sm"
                           className="h-8 flex-1 rounded-lg bg-[#69C400] text-xs shadow-none hover:bg-[#5db000]"
                         >
-                          <Link href={`/fumero/chat?mode=coder&tool=${tool.id}`}>
+                          <Link href={`/fumero/bouwen?tool=${tool.id}`}>
                             <MessageSquare className="mr-1 h-3 w-3" />
                             Bewerk
                           </Link>
@@ -385,7 +388,7 @@ export function FumeroToolsGarage() {
                     <td className="px-4 py-2 text-right">
                       {!tool.archived ? (
                         <Link
-                          href={`/fumero/chat?mode=coder&tool=${tool.id}`}
+                          href={`/fumero/bouwen?tool=${tool.id}`}
                           className="text-xs text-[#69C400] hover:underline"
                         >
                           Bewerk
@@ -412,8 +415,8 @@ export function FumeroToolsGarage() {
             variant="secondary"
             className="h-8 rounded-lg border-[#E5E5E5] text-xs"
           >
-            <Link href="/fumero/chat?q=maak%20een%20volledige%20app%20voor%20voorraad">
-              Nieuwe app in chat
+            <Link href="/fumero/bouwen?q=maak%20een%20volledige%20app%20voor%20voorraad">
+              Nieuwe app in Bouwen
             </Link>
           </Button>
         </div>
@@ -477,7 +480,7 @@ export function FumeroToolsGarage() {
                       size="sm"
                       className="h-8 flex-1 rounded-lg bg-[#69C400] text-xs shadow-none hover:bg-[#5db000]"
                     >
-                      <Link href={`/fumero/chat?app=${app.slug}`}>
+                      <Link href={`/fumero/bouwen?app=${app.slug}`}>
                         <MessageSquare className="mr-1 h-3 w-3" />
                         Bewerk
                       </Link>
@@ -546,7 +549,7 @@ export function FumeroToolsGarage() {
                     <td className="px-4 py-2 text-right">
                       <div className="flex justify-end gap-2">
                         <Link
-                          href={`/fumero/chat?app=${app.slug}`}
+                          href={`/fumero/bouwen?app=${app.slug}`}
                           className="text-xs text-[#69C400] hover:underline"
                         >
                           Bewerk

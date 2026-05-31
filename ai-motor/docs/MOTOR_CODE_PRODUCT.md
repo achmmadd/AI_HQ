@@ -37,7 +37,8 @@ LOCAL_EXECUTOR_SECRET=...
 LOCAL_WORKSPACE_ROOT=/home/pietje/AI_HQ/projects
 OPENROUTER_API_KEY=...                      # aanbevolen voor /code agent
 MOTOR_CODE_PROVIDER=openrouter|anthropic|auto # auto = OR als key aanwezig
-MOTOR_CODE_MODEL=qwen/qwen3.7-max           # default OpenRouter
+MOTOR_CODE_MODEL=deepseek/deepseek-v4-flash  # default OpenRouter (override)
+# OPENROUTER_FALLBACK_MODEL=deepseek/deepseek-v4-flash  # retry bij 429
 # MOTOR_CODE_MODEL=openrouter/pareto-code   # goedkoper, auto-routing
 # MOTOR_CODE_MIN_CODING_SCORE=0.65
 ANTHROPIC_API_KEY=...                       # fallback / web research

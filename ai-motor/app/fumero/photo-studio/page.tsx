@@ -7,18 +7,18 @@ import { PhotoStudioPanel } from "@/components/photo-studio/photo-studio-panel";
 export default function FumeroPhotoStudioPage() {
   return (
     <FumeroShell
-      page="Content Studio"
+      page="Studio"
       flush
       breadcrumbs={[{ label: "Fumero Studio", href: "/fumero/chat" }]}
     >
       <Suspense
         fallback={
           <p className="py-8 text-center fumero-text-body-sm text-[var(--fumero-text-muted)]">
-            Content Studio laden…
+            Studio laden…
           </p>
         }
       >
-        <PhotoStudioPanel klant="fumero" title="Content Studio" className="h-full" />
+        <PhotoStudioPanel klant="fumero" title="Studio" className="h-full" />
       </Suspense>
     </FumeroShell>
   );

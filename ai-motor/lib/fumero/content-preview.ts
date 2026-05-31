@@ -1,5 +1,6 @@
 import { stripChatOutput } from "@/lib/strip-response";
 import type { FumeroStudioContentType } from "@/lib/fumero-quick-actions";
+import type { ProjectRuntime } from "@/lib/fumero/project-runtime";
 
 export type FumeroContentPreviewPayload = {
   contentType: FumeroStudioContentType | string;
@@ -26,6 +27,10 @@ export type FumeroLivePreviewPayload = {
   building?: boolean;
   /** Widget embed snippet (na build). */
   embedCode?: string | null;
+  /** Bouw-runtime voor preview-badge (Widget | Website | App). */
+  runtime?: ProjectRuntime;
+  /** UX-check beschikbaar (HTML-tools). */
+  uxReviewAvailable?: boolean;
 };
 
 /** Strip Factory OS envelope from generated content before UI preview. */

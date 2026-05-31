@@ -118,3 +118,45 @@ export type ContentStudioGridItem = {
     height: number;
   }>;
 };
+
+export type PromptBlockKey =
+  | "subject"
+  | "lighting"
+  | "style"
+  | "composition"
+  | "mood";
+
+export type PromptBlocks = Record<PromptBlockKey, string>;
+
+export type ContentStudioPlatform =
+  | "Website"
+  | "Instagram"
+  | "TikTok"
+  | "Print";
+
+export type ContentStudioTemplateCategory =
+  | "Product"
+  | "Food"
+  | "Lifestyle"
+  | "Banner"
+  | "Social";
+
+export type StarterTemplate = {
+  id: string;
+  title: string;
+  category: ContentStudioTemplateCategory;
+  platform: ContentStudioPlatform;
+  blocks: PromptBlocks;
+  aspect_ratio: ContentStudioAspectRatio;
+  quality: ContentStudioQuality;
+  tags: string[];
+};
+
+export type ContentStudioTemplateRow = StarterTemplate & {
+  klant: CompanyId;
+  thumbnail_url: string | null;
+  is_recipe: boolean;
+  created_at: string;
+};
+
+export type PromptVariationMode = "exact" | "light" | "bold";

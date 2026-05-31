@@ -1,6 +1,7 @@
 "use client";
 
 import { unwrapFetchFailure } from "@/lib/client-fetch-errors";
+import { formatOpenRouterUserError } from "@/lib/openrouter-errors";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -34,14 +35,17 @@ export function failedResponseToError(text: string, status: number): Error {
       typeof (v as { error?: unknown }).error === "string"
     ) {
       const body = v as { error: string; detail?: string };
-      return new Error(
-        body.detail ? `${body.error} — ${body.detail}` : body.error
-      );
+      const combined = body.detail
+        ? `${body.error} — ${body.detail}`
+        : body.error;
+      return new Error(formatOpenRouterUserError(combined));
     }
   } catch {
     /* val terug op raw */
   }
-  return new Error(text.trim() || `HTTP ${status}`);
+  return new Error(
+    formatOpenRouterUserError(text.trim() || `HTTP ${status}`)
+  );
 }
 
 function parseMaybeJson(text: string): JsonRecord | null {

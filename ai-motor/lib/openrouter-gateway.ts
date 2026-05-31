@@ -8,6 +8,8 @@ import {
   openRouterResearchTimeoutMs,
   resolveOpenRouterModelForTurn,
 } from "@/lib/chat-models";
+import { formatOpenRouterUserError } from "@/lib/openrouter-errors";
+import { fetchOpenRouterCompletions } from "@/lib/openrouter-request";
 
 export type OpenRouterChatMessage = {
   role: "system" | "user" | "assistant";
@@ -105,16 +107,19 @@ export async function streamOpenRouterChat(opts: {
     max_tokens: chatMaxTokens(),
   };
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
+  const { res, errorBody, modelUsed } = await fetchOpenRouterCompletions({
     headers: openRouterHeaders(),
-    body: JSON.stringify(body),
+    body,
+    primaryModel: model,
     signal: opts.signal ?? AbortSignal.timeout(timeoutMs),
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`OpenRouter HTTP ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(
+      formatOpenRouterUserError(
+        `OpenRouter HTTP ${res.status}: ${errorBody.slice(0, 300)}`
+      )
+    );
   }
 
   const ct = res.headers.get("content-type") || "";
@@ -134,7 +139,7 @@ export async function streamOpenRouterChat(opts: {
             completion_tokens: Number(u.completion_tokens) || 0,
           }
         : null;
-    return { message: message.trim(), model, usage };
+    return { message: message.trim(), model: modelUsed, usage };
   }
 
   const reader = res.body.getReader();
@@ -160,7 +165,7 @@ export async function streamOpenRouterChat(opts: {
     }
   }
 
-  return { message: acc.trim(), model, usage };
+  return { message: acc.trim(), model: modelUsed, usage };
 }
 
 /** Blocking completion (builder / non-streaming callers). */
@@ -179,21 +184,24 @@ export async function completeOpenRouterChat(opts: {
     resolveOpenRouterModelForTurn({ research: false });
   const timeoutMs = openRouterChatTimeoutMs();
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
+  const { res, errorBody, modelUsed } = await fetchOpenRouterCompletions({
     headers: openRouterHeaders(),
-    body: JSON.stringify({
+    body: {
       model,
       messages: opts.messages,
       stream: false,
       max_tokens: opts.maxTokens ?? chatMaxTokens(),
-    }),
+    },
+    primaryModel: model,
     signal: opts.signal ?? AbortSignal.timeout(timeoutMs),
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`OpenRouter HTTP ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(
+      formatOpenRouterUserError(
+        `OpenRouter HTTP ${res.status}: ${errorBody.slice(0, 300)}`
+      )
+    );
   }
 
   const json = (await res.json()) as {
@@ -210,5 +218,5 @@ export async function completeOpenRouterChat(opts: {
           completion_tokens: Number(u.completion_tokens) || 0,
         }
       : null;
-  return { message, model, usage };
+  return { message, model: modelUsed, usage };
 }

@@ -15,6 +15,8 @@ import {
   isOpenRouterDirectConfigured,
 } from "@/lib/openrouter-gateway";
 
+import { loadFumeroBuilderDesignContext } from "@/lib/fumero/design-builder-context";
+
 const BUILDER_HINT =
   "Lever één volledig HTML5-document met <!DOCTYPE html>, <html>, <head>, <body>, minstens één <script> zonder type=module, vanilla DOM (geen React/JSX). Tailwind mag via CDN in <head>. Geen markdown-fences; alleen ruwe HTML.";
 
@@ -226,15 +228,22 @@ export async function generateArtifactHtml(
 ): Promise<{ html: string; attempts: number; error?: string }> {
   const errors: string[] = [];
   const preferStrong = opts?.preferStrongBuilder === true;
+  const fumeroDesign =
+    klant === "fumero" && (afdeling === "tools" || afdeling === "fumero")
+      ? loadFumeroBuilderDesignContext()
+      : "";
+  const promptWithDesign = fumeroDesign
+    ? `${userPrompt}\n\n${fumeroDesign}`
+    : userPrompt;
 
   if (preferStrong) {
     if (builderUseAnthropic()) {
-      const anthropic = await generateViaAnthropic(userPrompt, maxAttempts);
+      const anthropic = await generateViaAnthropic(promptWithDesign, maxAttempts);
       if (anthropic.html) return anthropic;
       if (anthropic.error) errors.push(anthropic.error);
     }
     if (isOpenRouterDirectConfigured()) {
-      const openrouter = await generateViaOpenRouter(userPrompt, maxAttempts);
+      const openrouter = await generateViaOpenRouter(promptWithDesign, maxAttempts);
       if (openrouter.html) return openrouter;
       if (openrouter.error) errors.push(openrouter.error);
     }
@@ -242,7 +251,7 @@ export async function generateArtifactHtml(
 
   if (assertDifyConfigured()) {
     const dify = await generateArtifactHtmlViaDify(
-      userPrompt,
+      promptWithDesign,
       klant,
       afdeling,
       maxAttempts
@@ -252,17 +261,17 @@ export async function generateArtifactHtml(
   }
 
   if (isOpenRouterDirectConfigured()) {
-    const openrouter = await generateViaOpenRouter(userPrompt, maxAttempts);
+    const openrouter = await generateViaOpenRouter(promptWithDesign, maxAttempts);
     if (openrouter.html) return openrouter;
     if (openrouter.error) errors.push(openrouter.error);
   }
 
-  const n8n = await generateViaN8n(userPrompt, klant, afdeling, maxAttempts);
+  const n8n = await generateViaN8n(promptWithDesign, klant, afdeling, maxAttempts);
   if (n8n.html) return n8n;
   if (n8n.error) errors.push(n8n.error);
 
   if (!preferStrong && builderUseAnthropic()) {
-    const anthropic = await generateViaAnthropic(userPrompt, maxAttempts);
+    const anthropic = await generateViaAnthropic(promptWithDesign, maxAttempts);
     if (anthropic.html) return anthropic;
     if (anthropic.error) errors.push(anthropic.error);
   }

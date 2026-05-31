@@ -291,7 +291,9 @@ export function useMotorsChat(
         onStreamCompleteRef.current?.();
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
-        setError(e instanceof Error ? e.message : "Fout bij versturen");
+        setError(
+          e instanceof Error ? e.message : "Fout bij versturen"
+        );
         setMessages((m) =>
           m.map((x) =>
             x.id === asstId

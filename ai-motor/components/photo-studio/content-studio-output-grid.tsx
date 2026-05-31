@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, Copy, Download, Loader2 } from "lucide-react";
 import type { CompanyId } from "@/lib/types";
 import type { ContentStudioGridItem, ContentStudioSkeletonMode } from "@/lib/photo-studio/types";
-import { ContentStudioTileDrawer } from "@/components/photo-studio/content-studio-tile-drawer";
+import { starterTemplatesForKlant } from "@/lib/photo-studio/starter-templates";
+import {
+  ContentStudioTileDrawer,
+  starterToDrawerDraft,
+  type ContentStudioDrawerDraft,
+} from "@/components/photo-studio/content-studio-tile-drawer";
 
 type Props = {
   klant: CompanyId;
@@ -12,6 +17,9 @@ type Props = {
   skeletonCount: number;
   skeletonMode?: ContentStudioSkeletonMode;
   onScheduled?: () => void;
+  onGenerated?: (items: ContentStudioGridItem[]) => void;
+  externalDraft?: ContentStudioDrawerDraft | null;
+  onExternalDraftClose?: () => void;
 };
 
 export function ContentStudioOutputGrid({
@@ -20,10 +28,32 @@ export function ContentStudioOutputGrid({
   skeletonCount,
   skeletonMode = "generate",
   onScheduled,
+  onGenerated,
+  externalDraft,
+  onExternalDraftClose,
 }: Props) {
   const [selected, setSelected] = useState<ContentStudioGridItem | null>(null);
+  const [localDraft, setLocalDraft] = useState<ContentStudioDrawerDraft | null>(
+    null
+  );
+  const starterTemplates = starterTemplatesForKlant(klant);
   const skeletonLabel =
     skeletonMode === "edit" ? "Bezig met bewerken…" : "Bezig met genereren…";
+
+  const draft = externalDraft ?? localDraft;
+
+  useEffect(() => {
+    if (externalDraft) {
+      setSelected(null);
+      setLocalDraft(null);
+    }
+  }, [externalDraft]);
+
+  const closeDrawer = () => {
+    setSelected(null);
+    setLocalDraft(null);
+    onExternalDraftClose?.();
+  };
 
   const schedule = async (item: ContentStudioGridItem) => {
     if (!item.content_id) return;
@@ -65,10 +95,37 @@ export function ContentStudioOutputGrid({
     <>
       <div className="content-studio-grid flex min-h-[60vh] flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
         {isEmpty ? (
-          <div className="flex h-full min-h-[50vh] items-center justify-center">
+          <div className="flex h-full min-h-[50vh] w-full flex-col items-center justify-center gap-6">
             <p className="max-w-md text-center fumero-text-body-sm text-[var(--fumero-text-muted)]">
-              Typ hieronder wat je wilt maken — je beelden verschijnen hier.
+              Kies een voorbeeldtemplate of typ hieronder wat je wilt maken —
+              je beelden verschijnen hier.
             </p>
+            {starterTemplates.length > 0 ? (
+              <div className="w-full max-w-3xl">
+                <h2 className="mb-3 text-center fumero-text-body-sm font-medium text-[var(--fumero-text)]">
+                  Voorbeelden
+                </h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {starterTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      className="content-studio-tile rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] p-3 text-left transition-colors hover:border-[rgba(105,196,0,0.35)] hover:bg-[var(--fumero-surface)]"
+                      onClick={() =>
+                        setLocalDraft(starterToDrawerDraft(template))
+                      }
+                    >
+                      <span className="mb-1 block fumero-text-body-sm font-medium text-[var(--fumero-text)]">
+                        {template.title}
+                      </span>
+                      <span className="fumero-text-caption text-[var(--fumero-text-muted)]">
+                        {template.platform} · {template.aspect_ratio}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
@@ -89,10 +146,14 @@ export function ContentStudioOutputGrid({
               <article
                 key={item.tracking_id}
                 className="content-studio-tile group relative aspect-square cursor-pointer overflow-hidden rounded-xl bg-[var(--fumero-surface-muted)]"
-                onClick={() => setSelected(item)}
+                onClick={() => {
+                  setLocalDraft(null);
+                  setSelected(item);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
+                    setLocalDraft(null);
                     setSelected(item);
                   }
                 }}
@@ -168,8 +229,13 @@ export function ContentStudioOutputGrid({
       <ContentStudioTileDrawer
         klant={klant}
         item={selected}
-        onClose={() => setSelected(null)}
+        draft={draft}
+        onClose={closeDrawer}
         onScheduled={onScheduled}
+        onGenerated={(newItems) => {
+          onGenerated?.(newItems);
+          closeDrawer();
+        }}
       />
     </>
   );

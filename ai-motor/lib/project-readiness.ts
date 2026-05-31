@@ -26,7 +26,7 @@ export function projectBuilderStatus(): {
     ? dify
       ? "Project-build: Dify → OpenRouter → n8n (Anthropic uit, tenzij MOTOR_BUILDER_USE_ANTHROPIC=1)."
       : openrouter
-        ? "Project-build: OpenRouter (qwen) → n8n fallback."
+        ? "Project-build: OpenRouter → n8n fallback."
         : "Project-build: n8n Factory + kennisbank."
     : "Geen builder-backend: zet DIFY_API_KEY of OPENROUTER_API_KEY (of start n8n).";
   return { ok, anthropic, dify, openrouter, n8n, hint };

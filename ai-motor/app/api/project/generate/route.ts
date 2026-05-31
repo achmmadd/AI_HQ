@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       {
         error: "Project-builder niet geconfigureerd",
         hint:
-          "Builder: Dify → OpenRouter (qwen) → n8n Factory. Anthropic uit (MOTOR_BUILDER_USE_ANTHROPIC=1 om aan te zetten).",
+          "Builder: Dify → OpenRouter → n8n Factory. Anthropic uit (MOTOR_BUILDER_USE_ANTHROPIC=1 om aan te zetten).",
       },
       { status: 503 }
     );

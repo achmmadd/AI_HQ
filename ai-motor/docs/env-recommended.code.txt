@@ -1,7 +1,10 @@
 # MotorsAI /code agent — voeg toe aan .env.local
 OPENROUTER_API_KEY=sk-or-...
 MOTOR_CODE_PROVIDER=openrouter
-MOTOR_CODE_MODEL=qwen/qwen3.7-max
+# Stabiel default (geen upstream rate limits); optioneel expliciet zetten:
+# MOTOR_CODE_MODEL=deepseek/deepseek-v4-flash
+# Bij 429 op primair model: automatische retry met fallback:
+# OPENROUTER_FALLBACK_MODEL=deepseek/deepseek-v4-flash
 # Kostenefficiënt alternatief (auto-routing op coding score):
 # MOTOR_CODE_MODEL=openrouter/pareto-code
 # MOTOR_CODE_MIN_CODING_SCORE=0.65

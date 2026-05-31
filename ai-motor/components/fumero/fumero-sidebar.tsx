@@ -6,8 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   Camera,
-  Code2,
-  Grid3X3,
+  FolderKanban,
+  Hammer,
   MessageSquare,
   ShoppingBag,
   Workflow,
@@ -32,11 +32,11 @@ function isActive(pathname: string, href: string): boolean {
       pathname.startsWith("/fumero/chat/")
     );
   }
-  if (href === "/fumero/apps") {
-    return pathname === "/fumero/apps" || pathname === "/fumero/tools";
+  if (href === "/fumero/projecten") {
+    return pathname === "/fumero/projecten" || pathname.startsWith("/fumero/projecten/");
   }
-  if (href === "/fumero/code") {
-    return pathname === "/fumero/code" || pathname.startsWith("/fumero/code/");
+  if (href === "/fumero/bouwen") {
+    return pathname === "/fumero/bouwen" || pathname.startsWith("/fumero/bouwen/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -77,14 +77,14 @@ export function FumeroSidebar() {
       { href: "/fumero/chat", label: "Chat", icon: MessageSquare },
       { href: "/fumero/photo-studio", label: "Studio", icon: Camera },
       { href: "/fumero/automations", label: "Automations", icon: Workflow },
-      { href: "/fumero/code", label: "Code", icon: Code2 },
+      { href: "/fumero/bouwen", label: "Bouwen", icon: Hammer },
       {
         href: "/fumero/bibliotheek",
         label: "Bibliotheek",
         icon: BookOpen,
         count: libraryCount ?? undefined,
       },
-      { href: "/fumero/apps", label: "Apps", icon: Grid3X3 },
+      { href: "/fumero/projecten", label: "Projecten", icon: FolderKanban },
       {
         href: "/fumero/orders",
         label: "Orders",

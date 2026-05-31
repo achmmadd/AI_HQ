@@ -45,6 +45,9 @@ export function formatFumeroBuilderError(raw: string): string {
   if (/Geen HTML|te kort|markdown-fence/i.test(msg)) {
     return "Het model leverde geen geldige preview. Beschrijf je tool opnieuw met iets meer detail.";
   }
+  if (/OpenRouter\s+429|rate-limited|rate limit/i.test(msg)) {
+    return "Model tijdelijk druk — probeer Flash of Pro, of over een minuut opnieuw.";
+  }
   if (/OpenRouter|Anthropic|n8n mislukt|503|502|500/i.test(msg)) {
     return "De builder is tijdelijk niet beschikbaar. Wacht even en probeer opnieuw.";
   }

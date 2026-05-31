@@ -1,7 +1,7 @@
 import { CODE_AGENT_TOOLS } from "@/lib/code-agent/tools";
+import { formatOpenRouterUserError } from "@/lib/openrouter-errors";
 import { isOpenRouterDirectConfigured } from "@/lib/openrouter-gateway";
-
-const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
+import { fetchOpenRouterCompletions } from "@/lib/openrouter-request";
 
 export type OpenRouterToolCall = {
   id: string;
@@ -90,17 +90,22 @@ export async function createOpenRouterCodeMessage(opts: {
     }
   }
 
-  const res = await fetch(OPENROUTER_API, {
-    method: "POST",
+  const { res, errorBody } = await fetchOpenRouterCompletions({
     headers: openRouterHeaders(),
-    body: JSON.stringify(body),
+    body,
+    primaryModel: opts.model,
     signal: AbortSignal.timeout(180_000),
   });
 
-  const raw = await res.text();
   if (!res.ok) {
-    throw new Error(`OpenRouter ${res.status}: ${raw.slice(0, 400)}`);
+    throw new Error(
+      formatOpenRouterUserError(
+        `OpenRouter ${res.status}: ${errorBody.slice(0, 400)}`
+      )
+    );
   }
+
+  const raw = await res.text();
 
   const json = JSON.parse(raw) as {
     choices?: Array<{

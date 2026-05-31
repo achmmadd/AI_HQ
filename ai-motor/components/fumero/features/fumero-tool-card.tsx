@@ -105,12 +105,12 @@ function ToolCardMoreMenu({
         </button>
       ) : null}
       <Link
-        href="/fumero/apps"
+        href="/fumero/projecten"
         role="menuitem"
         className="ios-tap-highlight flex w-full items-center px-3 py-2 text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
         onClick={onClose}
       >
-        Open in Apps
+        Open in Projecten
       </Link>
       {codeWorkspaceHref ? (
         <Link
@@ -460,10 +460,10 @@ export function FumeroToolCard({
               {card.version != null ? ` — v${card.version}` : ""}
             </p>
             <Link
-              href="/fumero/apps"
+              href="/fumero/projecten"
               className="text-xs font-medium text-[#3d7a00] underline-offset-2 hover:underline"
             >
-              Open in Apps →
+              Open in Projecten →
             </Link>
           </div>
           {liveUrl ? (

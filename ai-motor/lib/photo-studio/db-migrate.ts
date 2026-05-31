@@ -70,5 +70,25 @@ export function ensurePhotoStudioSchema(): void {
     WHERE fal_prompt IS NULL;
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS content_studio_templates (
+      id TEXT PRIMARY KEY,
+      klant TEXT NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      thumbnail_url TEXT,
+      blocks_json TEXT NOT NULL,
+      aspect_ratio TEXT NOT NULL DEFAULT '1:1',
+      quality TEXT NOT NULL DEFAULT '2K',
+      tags_json TEXT,
+      is_recipe INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_content_studio_templates_klant
+      ON content_studio_templates(klant, is_recipe, created_at DESC);
+  `);
+
   done = true;
 }

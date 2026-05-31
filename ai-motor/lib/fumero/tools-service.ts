@@ -2,6 +2,7 @@ import db from "@/lib/db/database";
 import { generateArtifactHtml } from "@/lib/artifact-generate";
 import { formatFumeroBuilderError } from "@/lib/fumero/builder-config";
 import { getTemplate, buildTemplatePreviewHtml, type FumeroDeployType } from "@/lib/fumero/tool-templates";
+import { loadFumeroBuilderDesignContext } from "@/lib/fumero/design-builder-context";
 import {
   ensureFumeroToolsSchema,
   getConceptVersion,
@@ -74,6 +75,7 @@ function templateBuildHint(templateId?: string): string {
 }
 
 function buildPrompt(deployType: FumeroDeployType, userPrompt: string, templateId?: string) {
+  const design = loadFumeroBuilderDesignContext();
   const tpl = templateId ? getTemplate(templateId) : undefined;
   const typeHint =
     deployType === "internal"
@@ -84,7 +86,7 @@ function buildPrompt(deployType: FumeroDeployType, userPrompt: string, templateI
           ? "Standalone rekenmachine-widget (max ~360px breed, geen e-commerce flows)."
           : "Compacte embeddable website-widget voor fumero.nl (past in een smalle kolom, max ~480px breed).";
   const extra = templateBuildHint(templateId);
-  return `${typeHint} ${extra} ${tpl?.promptSeed ?? ""} ${userPrompt}`.trim();
+  return `${typeHint} ${extra} ${tpl?.promptSeed ?? ""} ${userPrompt}\n\n${design}`.trim();
 }
 
 /**

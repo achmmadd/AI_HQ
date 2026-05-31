@@ -31,7 +31,7 @@ export function isCanvasContentType(
 }
 
 const NAV_ONLY_RE =
-  /\b(open|ga\s+naar|naar|bekijk|toon|lijst)\s+(de\s+)?(bibliotheek|content\s*studio|library)\b/i;
+  /\b(open|ga\s+naar|naar|bekijk|toon|lijst)\s+(de\s+)?(bibliotheek|studio|content\s*studio|library)\b/i;
 
 function detectPlatform(prompt: string): string {
   const p = prompt.toLowerCase();

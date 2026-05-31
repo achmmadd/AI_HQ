@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw, X } from "lucide-react";
+import { ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw, ScanEye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FumeroBuildTimeline } from "@/components/fumero/features/fumero-build-timeline";
 import { cacheBustPreviewUrl } from "@/lib/fumero/builder-config";
@@ -9,6 +9,20 @@ import {
   fumeroConceptVersionLabel,
   type FumeroLivePreviewPayload,
 } from "@/lib/fumero/content-preview";
+import {
+  runtimeBadgeLabel,
+  type ProjectRuntime,
+} from "@/lib/fumero/project-runtime";
+
+function RuntimeBadgePill({ runtime }: { runtime?: ProjectRuntime }) {
+  if (!runtime) return null;
+  const label = runtimeBadgeLabel(runtime);
+  return (
+    <span className="rounded-full border border-[#E5E5E5] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#525252]">
+      {label}
+    </span>
+  );
+}
 
 export function FumeroLivePreviewPanel({
   preview,
@@ -16,15 +30,20 @@ export function FumeroLivePreviewPanel({
   onRefresh,
   visualEditMode,
   onVisualEditPick,
+  onUxReview,
+  uxReviewDisabled,
 }: {
   preview: FumeroLivePreviewPayload;
   onClose: () => void;
   onRefresh?: () => void;
   visualEditMode?: boolean;
   onVisualEditPick?: (hint: string) => void;
+  onUxReview?: () => void;
+  uxReviewDisabled?: boolean;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [uxBusy, setUxBusy] = useState(false);
 
   const isGenerating =
     preview.status === "generating" || preview.building === true;
@@ -38,6 +57,13 @@ export function FumeroLivePreviewPanel({
   const subtitle = isGenerating
     ? `Max bouwt je ${preview.title}…`
     : versionLabel ?? "Live preview";
+
+  const showUxReview =
+    Boolean(onUxReview) &&
+    (preview.uxReviewAvailable ||
+      preview.runtime === "html" ||
+      preview.runtime === "full_app" ||
+      preview.runtime === "react");
 
   const attachVisualEditListener = useCallback(() => {
     if (!visualEditMode || !onVisualEditPick || !iframeRef.current) return;
@@ -91,6 +117,16 @@ export function FumeroLivePreviewPanel({
     return () => document.removeEventListener("keydown", onKey);
   }, [fullscreen]);
 
+  const handleUxReview = async () => {
+    if (!onUxReview || uxReviewDisabled || uxBusy) return;
+    setUxBusy(true);
+    try {
+      await onUxReview();
+    } finally {
+      setUxBusy(false);
+    }
+  };
+
   const panel = (
     <div
       className={
@@ -101,9 +137,12 @@ export function FumeroLivePreviewPanel({
     >
       <div className="fumero-live-preview-header flex shrink-0 items-center justify-between gap-2 border-b border-[#E5E5E5]/80 px-4 py-2">
         <div className="min-w-0">
-          <p className="truncate text-[14px] font-semibold leading-tight text-[#171717]">
-            {preview.title}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-[14px] font-semibold leading-tight text-[#171717]">
+              {preview.title}
+            </p>
+            <RuntimeBadgePill runtime={preview.runtime} />
+          </div>
           <p
             className="mt-0.5 text-[12px] leading-tight text-[#737373]"
             aria-live={isGenerating ? "polite" : undefined}
@@ -123,6 +162,19 @@ export function FumeroLivePreviewPanel({
             <span className="rounded-full bg-[rgba(105,196,0,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#3d7a00]">
               Klik element
             </span>
+          ) : null}
+          {showUxReview ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={uxReviewDisabled || uxBusy || isGenerating}
+              className="h-8 rounded-lg border-[#E5E5E5] px-2.5 text-[11px]"
+              onClick={() => void handleUxReview()}
+            >
+              <ScanEye className="mr-1 h-3.5 w-3.5" />
+              UX-check
+            </Button>
           ) : null}
           {onRefresh && src ? (
             <Button
@@ -194,7 +246,11 @@ export function FumeroLivePreviewPanel({
       {!isGenerating && src ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#E5E5E5]/60 px-4 py-2">
           <span className="text-[12px] text-[#525252]">
-            Klik in de preview om je tool te testen.
+            {preview.runtime === "full_app"
+              ? "Test je app in de preview — data wordt opgeslagen via de app-API."
+              : preview.runtime === "react"
+                ? "Multi-file website — preview via projectbestanden."
+                : "Klik in de preview om je tool te testen."}
           </span>
           {preview.embedCode ? (
             <button

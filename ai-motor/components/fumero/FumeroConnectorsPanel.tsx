@@ -148,7 +148,9 @@ export function FumeroConnectorsPanel({
   onChange?: (enabled: ConnectorId[]) => void;
 }) {
   const dataConnectors = getFumeroDataConnectors();
-  const specialistConnectors = getFumeroSpecialistConnectors();
+  const specialistConnectors = getFumeroSpecialistConnectors().filter(
+    (c) => c.id !== "copywriter" && c.id !== "seo"
+  );
   const [enabled, setEnabled] = useState<ConnectorId[]>([]);
 
   useEffect(() => {

@@ -141,13 +141,13 @@ export function FumeroPublishModal({
 
           <div className="flex flex-wrap gap-2 pt-1">
             <Link
-              href="/fumero/apps"
+              href="/fumero/projecten"
               className={cn(
                 "inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#69C400] px-3 text-[12px] font-medium text-white hover:bg-[#5db000]"
               )}
               onClick={onClose}
             >
-              Open in Apps
+              Open in Projecten
             </Link>
             {payload.liveUrl ? (
               <a

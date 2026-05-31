@@ -124,6 +124,7 @@ export function FumeroComposerToolbar({
   onComposerModeChange,
   onUploadClick,
   onConnectorsOpen,
+  hideModePill = false,
   children,
   disabled,
   coderExtras,
@@ -138,6 +139,8 @@ export function FumeroComposerToolbar({
   onComposerModeChange?: (mode: FumeroComposerMode) => void;
   onUploadClick?: () => void;
   onConnectorsOpen?: () => void;
+  /** Verberg mode-pill (bv. vaste Bouwen-workspace). */
+  hideModePill?: boolean;
   children?: ReactNode;
   disabled?: boolean;
   /** Coder-only overflow actions (Plan, Visual edits, etc.) — max 2 visible pills (mode + model). */
@@ -402,7 +405,7 @@ export function FumeroComposerToolbar({
         {menuPanel}
       </div>
 
-      {activeModeMeta && ModeIcon && onComposerModeChange ? (
+      {activeModeMeta && ModeIcon && onComposerModeChange && !hideModePill ? (
         <button
           type="button"
           disabled={disabled}

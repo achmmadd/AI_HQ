@@ -7,12 +7,18 @@ import { useFumeroBriefing } from "@/components/fumero/max/fumero-briefing-provi
 import { MotorsChatWorkspace } from "@/components/motors-chat-workspace";
 import type { FumeroComposerMode } from "@/lib/fumero/composer-actions";
 
-export function FumeroMaxChatShell() {
+export function FumeroMaxChatShell({
+  forceCoderMode = false,
+}: {
+  forceCoderMode?: boolean;
+} = {}) {
   const sp = useSearchParams();
   const sendPromptRef = useRef<(prompt: string) => void>(() => {});
   const { data, openingMessage, quickActions, registerSendPrompt } =
     useFumeroBriefing();
-  const [coderActive, setCoderActive] = useState(sp.get("mode") === "coder");
+  const [coderActive, setCoderActive] = useState(
+    forceCoderMode || sp.get("mode") === "coder"
+  );
 
   const registerSend = useCallback((fn: (prompt: string) => void) => {
     sendPromptRef.current = fn;
@@ -40,6 +46,7 @@ export function FumeroMaxChatShell() {
         >
           <MotorsChatWorkspace
             className="bg-[var(--fumero-bg)]"
+            initialComposerMode={forceCoderMode ? "coder" : undefined}
             maxCompanion={{
               briefing: data,
               openingMessage,

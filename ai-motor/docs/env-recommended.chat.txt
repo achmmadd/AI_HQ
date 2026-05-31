@@ -1,4 +1,7 @@
 # MotorsAI chat stack — voeg toe aan .env.local
+# Fumero Max snelle chat (default = JUNIOR_MODEL = deepseek-v4-flash):
+# FUMERO_CHAT_MODEL=deepseek/deepseek-v4-flash
+# OPENROUTER_FALLBACK_MODEL=deepseek/deepseek-v4-flash
 CHAT_MODEL=deepseek/deepseek-v4-pro
 CHAT_RESEARCH_MODEL=perplexity/sonar-pro
 CHAT_MAX_TOKENS=4096

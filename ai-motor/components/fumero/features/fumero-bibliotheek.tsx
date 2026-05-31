@@ -125,10 +125,16 @@ export function FumeroBibliotheek() {
     <div className="mx-auto max-w-7xl">
       <FumeroPageHeader
         title="Bibliotheek"
-        description="Al je gegenereerde content op één plek — beeld, teksten en scripts."
+        description="Al je gegenereerde content — beeld, teksten en scripts. Nieuwe content maak je in Studio of via Chat."
         actionLabel="Nieuw in chat"
         actionHref="/fumero/chat"
       />
+      <p className="-mt-4 mb-4 text-[12px] text-[#737373]">
+        Productfoto&apos;s en banners?{" "}
+        <a href="/fumero/photo-studio" className="font-medium text-[#3d7a00] hover:underline">
+          Open Studio
+        </a>
+      </p>
 
       {error ? (
         <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">

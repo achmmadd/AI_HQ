@@ -19,6 +19,7 @@ import type { CodeAgentToolName } from "@/lib/code-agent/tools";
 import { logMotorChatUsage } from "@/lib/chat-usage";
 import { estimateTokens } from "@/lib/chat-usage-labels";
 
+import { formatOpenRouterUserError } from "@/lib/openrouter-errors";
 import { runOpenRouterCodeAgentStream } from "@/lib/code-agent/run-code-agent-openrouter";
 import type { CodeAgentStreamEvent } from "@/lib/code-agent/code-agent-events";
 
@@ -175,7 +176,9 @@ export async function runCodeAgentStream(opts: {
       response: fullAssistantText,
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = formatOpenRouterUserError(
+      e instanceof Error ? e.message : String(e)
+    );
     opts.onEvent({ type: "error", error: msg });
     logMotorChatUsage({
       klant: opts.klant,

@@ -23,13 +23,17 @@ const WIRE_ICONS: Record<FumeroChatStarterWire, LucideIcon> = {
 export function FumeroChatStarterCards({
   disabled,
   onWire,
+  excludeWires,
 }: {
   disabled?: boolean;
   onWire: (wire: FumeroChatStarterWire) => void;
+  excludeWires?: FumeroChatStarterWire[];
 }) {
+  const excluded = new Set(excludeWires ?? []);
+  const cards = FUMERO_CHAT_STARTER_CARDS.filter((c) => !excluded.has(c.wire));
   return (
     <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
-      {FUMERO_CHAT_STARTER_CARDS.map((card) => {
+      {cards.map((card) => {
         const Icon = WIRE_ICONS[card.wire];
         return (
           <button

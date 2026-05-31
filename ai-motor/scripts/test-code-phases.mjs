@@ -469,9 +469,9 @@ function phase13() {
     path.join(process.cwd(), "lib/code-agent/code-models.ts"),
     "utf-8"
   );
-  if (models.includes("qwen/qwen3.7-max")) {
-    pass("13", "default model qwen/qwen3.7-max");
-  } else fail("13", "code-models mist qwen default");
+  if (models.includes("deepseek/deepseek-v4-flash")) {
+    pass("13", "default model deepseek/deepseek-v4-flash");
+  } else fail("13", "code-models mist deepseek default");
 }
 
 async function phase18() {

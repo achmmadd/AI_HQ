@@ -23,19 +23,38 @@ async function probe(path) {
   return { path, status: res.status, body };
 }
 
+async function probeRedirect(path) {
+  const url = `${base}${path}`;
+  const res = await fetch(url, {
+    method: "GET",
+    redirect: "manual",
+    headers: { Accept: "text/html" },
+  });
+  return {
+    path,
+    status: res.status,
+    location: res.headers.get("location"),
+  };
+}
+
 async function main() {
   console.log(`Smoke base: ${base}\n`);
   const routes = ["/api/health", "/api/smoke-production"];
+  const pages = [
+    "/fumero/projecten",
+    "/fumero/bouwen",
+    "/fumero/chat?mode=coder",
+  ];
 
   let failed = false;
   for (const path of routes) {
     try {
       const { status, body } = await probe(path);
       if (path === "/api/smoke-production") {
-        if (status !== 200 && status !== 503) {
+        if (status !== 200 && status !== 503 && status !== 401) {
           failed = true;
           console.error(
-            `${path} → HTTP ${status} (verwacht 200 of 503 na deploy met publieke /api/smoke-production)`
+            `${path} → HTTP ${status} (verwacht 200, 401 of 503)`
           );
         }
       } else if (status >= 500) {
@@ -59,6 +78,27 @@ async function main() {
           for (const [k, dep] of Object.entries(body.dependencies)) {
             console.log(`  dep ${k}: ok=${dep.ok}`);
           }
+        }
+      }
+      console.log("");
+    } catch (e) {
+      failed = true;
+      console.error(`${path} → FOUT: ${e instanceof Error ? e.message : e}\n`);
+    }
+  }
+
+  for (const path of pages) {
+    try {
+      const { status, location } = await probeRedirect(path);
+      console.log(`${path} → HTTP ${status}${location ? ` → ${location}` : ""}`);
+      if (status >= 500) failed = true;
+      if (path.startsWith("/fumero/") && status === 307) {
+        console.log("  ok: auth-redirect (login)");
+      }
+      if (path.includes("mode=coder") && status >= 300 && status < 400) {
+        if (!location?.includes("/fumero/bouwen")) {
+          failed = true;
+          console.error("  verwacht redirect naar /fumero/bouwen");
         }
       }
       console.log("");

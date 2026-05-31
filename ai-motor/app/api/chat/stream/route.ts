@@ -18,6 +18,7 @@ import {
   planMotorActivitySteps,
 } from "@/lib/chat-activity-messages";
 import { getFumeroChatModelId } from "@/lib/chat-models";
+import { formatOpenRouterUserError } from "@/lib/openrouter-errors";
 import { shouldUseFumeroOpenRouterFastPath, parseChatModelTier } from "@/lib/chat-routing-policy";
 import {
   callFactoryN8n,
@@ -611,9 +612,10 @@ export async function POST(req: NextRequest) {
           }),
         });
       } catch (e: unknown) {
+        const raw = e instanceof Error ? e.message : String(e);
         push({
           type: "error",
-          message: e instanceof Error ? e.message : String(e),
+          message: formatOpenRouterUserError(raw),
         });
       } finally {
         endStream();

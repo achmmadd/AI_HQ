@@ -9,6 +9,7 @@ import {
   createOpenRouterCodeMessage,
   type OpenRouterChatMessage,
 } from "@/lib/code-agent/openrouter-tools";
+import { formatOpenRouterUserError } from "@/lib/openrouter-errors";
 import { executeCodeAgentTool } from "@/lib/code-agent/execute-tool";
 import type { CodeAgentToolName } from "@/lib/code-agent/tools";
 import { logMotorChatUsage } from "@/lib/chat-usage";
@@ -175,7 +176,9 @@ export async function runOpenRouterCodeAgentStream(opts: {
       response: fullAssistantText,
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = formatOpenRouterUserError(
+      e instanceof Error ? e.message : String(e)
+    );
     opts.onEvent({ type: "error", error: msg });
     logMotorChatUsage({
       klant: opts.klant,

@@ -20,7 +20,9 @@ import type {
 } from "@/lib/fumero/content-preview";
 import { cn } from "@/lib/utils";
 import type { FumeroBriefingPayload } from "@/lib/fumero/briefing";
+import type { FumeroBouwenBridge } from "@/lib/fumero/bouwen-bridge";
 import type { FumeroComposerMode } from "@/lib/fumero/composer-actions";
+import type { FumeroPublishModalPayload } from "@/components/fumero/features/fumero-publish-modal";
 
 export type MaxCompanionConfig = {
   briefing: FumeroBriefingPayload | null;
@@ -33,13 +35,27 @@ export function MotorsChatWorkspace({
   className,
   maxCompanion,
   onComposerModeChange,
+  initialComposerMode,
+  bouwenWorkspace = false,
+  initialPrompt: initialPromptProp,
+  onBouwenBridgeUpdate,
+  onPublishSuccess,
 }: {
   className?: string;
   maxCompanion?: MaxCompanionConfig;
   onComposerModeChange?: (mode: FumeroComposerMode) => void;
+  initialComposerMode?: FumeroComposerMode;
+  /** Dedicated /fumero/bouwen shell — always coder split, bouwen defaults. */
+  bouwenWorkspace?: boolean;
+  initialPrompt?: string | null;
+  onBouwenBridgeUpdate?: (bridge: FumeroBouwenBridge) => void;
+  onPublishSuccess?: (payload: FumeroPublishModalPayload) => void;
 } = {}) {
   const sp = useSearchParams();
-  const initialCoderMode = sp.get("mode") === "coder";
+  const initialCoderMode =
+    bouwenWorkspace ||
+    initialComposerMode === "coder" ||
+    sp.get("mode") === "coder";
   const [fumeroCoderActive, setFumeroCoderActive] = useState(initialCoderMode);
   const workspace = useCompanyStore((s) => s.workspace);
   const company = chatKlantForWorkspace(workspace);
@@ -51,6 +67,7 @@ export function MotorsChatWorkspace({
     useState<FumeroLivePreviewPayload | null>(null);
   const [visualEditMode, setVisualEditMode] = useState(false);
   const visualEditPickRef = useRef<(hint: string) => void>(() => {});
+  const uxReviewRef = useRef<() => Promise<void>>(async () => {});
   const { artifact, loading: artifactLoading, buildArtifact, closeArtifact, saveArtifact } =
     useArtifact(company);
   const {
@@ -111,7 +128,8 @@ export function MotorsChatWorkspace({
           <MotorsChatPanel
             layout="split"
             unifiedMode
-            initialPrompt={sp.get("q")}
+            bouwenWorkspace={bouwenWorkspace}
+            initialPrompt={initialPromptProp ?? sp.get("q")}
             initialToolId={
               (() => {
                 const raw = sp.get("tool");
@@ -135,6 +153,11 @@ export function MotorsChatWorkspace({
             onRegisterVisualEditPick={(fn) => {
               visualEditPickRef.current = fn;
             }}
+            onRegisterUxReview={(fn) => {
+              uxReviewRef.current = fn;
+            }}
+            onBouwenBridgeUpdate={onBouwenBridgeUpdate}
+            onPublishSuccess={onPublishSuccess}
             onProjectPrompt={async (prompt, conversationId) => {
               if (project) {
                 await iterateProject(prompt);
@@ -143,6 +166,7 @@ export function MotorsChatWorkspace({
               }
             }}
             hasActiveProject={Boolean(project)}
+            projectStack={project?.spec.stack ?? null}
             artifactBusy={busy}
             externalStatusError={projectError}
           />
@@ -200,6 +224,8 @@ export function MotorsChatWorkspace({
                     onRefresh={bumpLivePreviewEpoch}
                     visualEditMode={visualEditMode}
                     onVisualEditPick={(hint) => visualEditPickRef.current(hint)}
+                    onUxReview={() => uxReviewRef.current()}
+                    uxReviewDisabled={false}
                   />
                 )}
                 {!artifact &&

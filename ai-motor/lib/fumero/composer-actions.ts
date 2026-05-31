@@ -142,7 +142,7 @@ export const FUMERO_COMPOSER_MENU_SECTIONS: FumeroComposerMenuSection[] = [
       {
         id: "coder",
         label: "Bouwen",
-        description: "Tool, widget of webapp bouwen",
+        description: "Tool, widget of webapp — opent Bouwen",
         icon: Code2,
         action: {
           kind: "coder",

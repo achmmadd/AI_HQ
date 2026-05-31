@@ -11,7 +11,6 @@ import {
   CheckSquare,
   Code2,
   Folder,
-  Grid3X3,
   Image,
   LogOut,
   MessageSquare,
@@ -40,10 +39,11 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const NAV_BY_WORKSPACE: Record<WorkspaceId, NavItem[]> = {
   fumero: [
     { href: "/fumero/chat", label: "Chat", icon: MessageSquare },
+    { href: "/fumero/photo-studio", label: "Studio", icon: Image },
     { href: "/fumero/automations", label: "Automations", icon: Workflow },
+    { href: "/fumero/bouwen", label: "Bouwen", icon: Code2 },
     { href: "/fumero/bibliotheek", label: "Bibliotheek", icon: BookOpen },
-    { href: "/fumero/apps", label: "Apps", icon: Grid3X3 },
-    { href: "/fumero/code", label: "Code", icon: Code2 },
+    { href: "/fumero/projecten", label: "Projecten", icon: Folder },
     { href: "/fumero/orders", label: "Orders", icon: ShoppingBag },
   ],
   personal: [

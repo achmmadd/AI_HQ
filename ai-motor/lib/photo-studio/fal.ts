@@ -45,6 +45,7 @@ export function contentTypeForKlant(klant: CompanyId): PhotoStudioContentType {
   return klant === "bokas" ? "food" : "product";
 }
 
+/** Server-side enrichment appended to user prompts before fal.ai (not shown in UI). */
 export function enrichTextToImagePrompt(
   userPrompt: string,
   type: PhotoStudioContentType
