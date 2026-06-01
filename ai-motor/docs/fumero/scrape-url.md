@@ -1,50 +1,25 @@
-# scrape_url (Max · Jina Reader)
+# scrape_url (Max · URL Reader)
 
-Max kan live pagina-inhoud ophalen van toegestane domeinen en die als context in chat gebruiken.
-
-## Omgeving
-
-| Variabele | Verplicht | Beschrijving |
-|-----------|-----------|--------------|
-| `JINA_API_KEY` | Ja (voor scrape) | API key van [jina.ai](https://jina.ai) |
-| `QDRANT_URL` | Voor kennisbank-upsert | Bestaande Qdrant-stack |
-| `QDRANT_FUMERO_KENNISBANK_COLLECTION` | Nee | Default: `fumero_kennisbank` |
-| `FUMERO_KENNISBANK_NOTIFY_MAX` | Nee | Zet op `0` om Telegram na refresh uit te zetten |
-
-Voeg `JINA_API_KEY` toe in `~/AI_HQ/.env` of `.env.local` — commit geen echte keys.
-
-## Domein-whitelist
-
-- `fumero.nl`
-- `bigfarmers.nl`
-- `hhcshop.nl`
-- `nos.nl`
-
-## API
-
-`POST /api/fumero/scrape-url` (Fumero-workspace auth)
-
-```json
-{
-  "url": "https://fumero.nl/shop/",
-  "reason": "handmatige test",
-  "upsert_qdrant": false
-}
-```
+Platform-architectuur: [docs/platform/url-reader.md](../platform/url-reader.md)
 
 ## Chat
 
-Bij Fumero Max-chat wordt Jina automatisch aangeroepen wanneer:
+- *"Check de actuele prijzen op fumero.nl/shop"*
+- `scrape_url: https://fumero.nl/shop/`
 
-- de gebruiker een **live/check**-intent heeft én een whitelist-URL noemt, of
-- `scrape_url: https://…` in het bericht staat.
+Provider: **auto** (Jina indien key, anders native). Geen aparte Grok/Qwen-scrape nodig.
 
-Voorbeeld: *"Check de actuele prijzen op fumero.nl/shop"*
+## API
+
+`POST /api/fumero/scrape-url` — response bevat `provider` (`jina` | `native`).
 
 ## Automation
 
-Taak `fumero_kennisbank_refresh` — **maandag 09:00** (cron via `POST /api/cron/automation`).
+`fumero_kennisbank_refresh` — maandag 09:00, pagina's uit tenant-config.
 
-Scrapet vaste shop-pagina's en upsert naar Qdrant `fumero_kennisbank`. Optionele Telegram-melding.
+## Env
 
-Handmatig: Fumero Automations hub → **Run nu**, of automation API.
+| Variabele | Verplicht |
+|-----------|-----------|
+| `JINA_API_KEY` | Nee (aanbevolen productie) |
+| `SCRAPE_PROVIDER` | Nee (default `auto`) |

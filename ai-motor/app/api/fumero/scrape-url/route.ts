@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
 import {
   assertScrapeUrlAllowed,
-  isJinaScrapeConfigured,
-  scrapeUrlViaJina,
+  isScrapeConfigured,
+  scrapeUrl,
+  activeScrapeProviderLabel,
 } from "@/lib/fumero/scrape-url";
 import { upsertScrapedPageToKennisbank } from "@/lib/fumero/kennisbank-qdrant";
 
@@ -45,18 +46,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: deny }, { status: 403 });
   }
 
-  if (!isJinaScrapeConfigured()) {
+  if (!isScrapeConfigured()) {
     return NextResponse.json(
       {
-        error:
-          "Jina Reader is niet geconfigureerd. Zet JINA_API_KEY in de omgeving.",
+        error: "URL-reader is niet beschikbaar.",
         configured: false,
       },
       { status: 503 }
     );
   }
 
-  const scrape = await scrapeUrlViaJina({ url, reason });
+  const scrape = await scrapeUrl({ url, tenant: "fumero", reason });
   if (!scrape.ok) {
     return NextResponse.json(
       { error: scrape.error, url: scrape.url ?? url },
@@ -76,6 +76,8 @@ export async function POST(req: NextRequest) {
     markdown: scrape.markdown,
     truncated: scrape.truncated,
     fetched_at: scrape.fetchedAt,
+    provider: scrape.provider,
+    reader: activeScrapeProviderLabel(),
     reason,
     qdrant,
   });

@@ -1,8 +1,8 @@
 import {
   assertScrapeUrlAllowed,
   normalizeScrapeUrl,
+  scrapeUrl,
   scrapeUrlHostnameAllowed,
-  scrapeUrlViaJina,
 } from "@/lib/fumero/scrape-url";
 
 const URL_RE = /https?:\/\/[^\s<>"{}|\\^`\[\])]+/gi;
@@ -68,7 +68,7 @@ export async function buildScrapeUrlChatContext(
     const reason = explicit
       ? "explicit scrape_url command"
       : "live page check in chat";
-    const result = await scrapeUrlViaJina({ url, reason });
+    const result = await scrapeUrl({ url, tenant: "fumero", reason });
     if (!result.ok) {
       blocks.push(`### ${url}\nFout: ${result.error}`);
       continue;
@@ -81,7 +81,7 @@ export async function buildScrapeUrlChatContext(
   if (!blocks.length) return "";
 
   return [
-    "--- LIVE PAGINA (scrape_url / Jina Reader — gebruik voor je antwoord, niet letterlijk dumpen) ---",
+    "--- LIVE PAGINA (scrape_url — gebruik voor je antwoord, niet letterlijk dumpen) ---",
     blocks.join("\n\n---\n\n"),
     "--- EINDE LIVE PAGINA ---",
     "",

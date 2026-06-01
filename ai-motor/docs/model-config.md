@@ -15,7 +15,7 @@ Doel: **normale chat** is je dagelijkse werkpaard (OpenClaw + geheugen + tools).
 
 Kopieer `.env.recommended` naar `.env.local` en vul `OPENROUTER_API_KEY` in.
 
-Voor Max live pagina-scrape (Fumero): `JINA_API_KEY` — zie [docs/fumero/scrape-url.md](fumero/scrape-url.md).
+Max live pagina's: `SCRAPE_PROVIDER=auto` (default) — Jina als `JINA_API_KEY` gezet, anders native fetch. Zie [docs/platform/url-reader.md](platform/url-reader.md).
 
 ## OpenClaw primary model
 

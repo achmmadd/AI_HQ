@@ -24,6 +24,10 @@ Legacy redirects: `/fumero/apps`, `/fumero/tools` → Projecten; `/fumero/chat?m
 - Team-tab placeholder (NL)
 - pm2 `ai-motor` op motorsai.app
 
+## Platform (wrap-ready)
+
+- **URL Reader** (`lib/scrape/`) — tenant whitelist + provider `auto|jina|native`. Zie `docs/platform/url-reader.md`.
+
 ## Post-v1 backlog
 
 - React HMR sandbox in preview
