@@ -13,6 +13,7 @@ const FUMERO_TASK_KEYS = [
   "vendor_check_weekly",
   "fumero_max_briefing",
   "fumero_max_research",
+  "fumero_kennisbank_refresh",
 ];
 
 export async function GET(req: NextRequest) {

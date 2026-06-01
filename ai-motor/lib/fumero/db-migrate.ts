@@ -63,6 +63,15 @@ function runFumeroSchemaMigration(): void {
       null,
       "openrouter"
     );
+    ins.run(
+      "fumero_kennisbank_refresh",
+      "Kennisbank refresh (shop-pagina's)",
+      "Scrape vaste fumero.nl-pagina's via Jina → Qdrant collectie fumero_kennisbank. Maandag 09:00.",
+      "weekly",
+      "09:00",
+      1,
+      "jina"
+    );
   });
 
   migrate();

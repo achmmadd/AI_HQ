@@ -7,6 +7,7 @@ import { runSocialScheduleWeekly } from "@/lib/automation/run-social-weekly";
 import { runAnalyticsReportWeekly } from "@/lib/automation/run-analytics-weekly";
 import { runFumeroMaxBriefing } from "@/lib/automation/run-fumero-max-briefing";
 import { runFumeroMaxResearch } from "@/lib/automation/run-fumero-max-research";
+import { runFumeroKennisbankRefresh } from "@/lib/automation/run-fumero-kennisbank-refresh";
 import {
   runMotorSchoolExamWeekly,
   runMotorSchoolLessonDaily,
@@ -37,6 +38,8 @@ export async function executeAutomationTaskExtended(
       return runFumeroMaxBriefing();
     case "fumero_max_research":
       return runFumeroMaxResearch();
+    case "fumero_kennisbank_refresh":
+      return runFumeroKennisbankRefresh();
     default:
       return { ok: false, detail: `Onbekende task_key: ${task.task_key}` };
   }

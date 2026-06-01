@@ -77,7 +77,7 @@ function gatherContext() {
       `SELECT task_key, title, enabled, schedule_kind, schedule_time
        FROM automation_tasks
        WHERE task_key IN (
-         'fumero_orders_daily','fumero_max_briefing','fumero_max_research',
+         'fumero_orders_daily','fumero_max_briefing','fumero_max_research','fumero_kennisbank_refresh',
          'send_invoice_emails','social_schedule_weekly','analytics_report_weekly','vendor_check_weekly'
        )
        ORDER BY id ASC`

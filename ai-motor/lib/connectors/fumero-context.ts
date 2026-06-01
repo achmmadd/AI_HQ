@@ -7,6 +7,7 @@ import {
   FUMERO_DESIGN_SYSTEM_BLOCK,
   formatTemplatesConnectorBlock,
 } from "@/lib/connectors/specialists";
+import { buildScrapeUrlChatContext } from "@/lib/fumero/scrape-url-chat";
 
 type OrdersResponse = {
   orders: Array<{
@@ -193,6 +194,11 @@ export async function augmentPromptWithFumeroConnectors(
 
   if (onlineActive && !shouldRunChatWebResearch(prompt)) {
     prompt = `Zoek op het web naar ${prompt}`;
+  }
+
+  const scrapeBlock = await buildScrapeUrlChatContext(userPrompt);
+  if (scrapeBlock) {
+    prompt = [scrapeBlock, prompt].join("\n");
   }
 
   if (blocks.length === 0) return prompt;

@@ -17,6 +17,7 @@ const FUMERO_TASK_KEYS = new Set([
   "vendor_check_weekly",
   "fumero_max_briefing",
   "fumero_max_research",
+  "fumero_kennisbank_refresh",
 ]);
 
 function isFumeroTask(taskKey: string): boolean {
