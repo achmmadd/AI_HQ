@@ -5,9 +5,7 @@ import {
   scrapeUrlHostnameAllowed,
   scrapeUrlDocumentId,
 } from "@/lib/fumero/scrape-url";
-import {
-  shouldScrapeUrlsForMaxChat,
-} from "@/lib/fumero/scrape-url-chat";
+import { shouldScrapeUrlsForMaxChat } from "@/lib/fumero/scrape-url-chat";
 
 test("scrapeUrlHostnameAllowed: fumero en subdomein", () => {
   assert.equal(scrapeUrlHostnameAllowed("fumero.nl"), true);
@@ -58,6 +56,15 @@ test("shouldScrapeUrlsForMaxChat: explicit scrape_url", () => {
 test("shouldScrapeUrlsForMaxChat: jina(url) alias", () => {
   assert.equal(
     shouldScrapeUrlsForMaxChat("jina(https://fumero.nl/shop/)"),
+    true
+  );
+});
+
+test("shouldScrapeUrlsForMaxChat: scrape fumero.nl voor chatbot", () => {
+  assert.equal(
+    shouldScrapeUrlsForMaxChat(
+      "scrape de info van fumero.nl voor alle benodigde info om de chatbot te bouwen"
+    ),
     true
   );
 });

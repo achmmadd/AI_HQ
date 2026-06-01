@@ -137,6 +137,7 @@ import {
 import { showFumeroToast } from "@/lib/fumero/fumero-toast";
 import { FumeroConnectorsPanel } from "@/components/fumero/FumeroConnectorsPanel";
 import { augmentPromptWithFumeroConnectors } from "@/lib/connectors/fumero-context";
+import { buildScrapeContextForToolBuild } from "@/lib/fumero/scrape-url-chat";
 import { applyDesignerHints } from "@/lib/connectors/specialists";
 import {
   type FumeroBouwenBridge,
@@ -922,6 +923,27 @@ export function MotorsChatPanel({
       const deployType = deployTypeForTemplate(templateId);
       const seedLine = templateId ? getTemplate(templateId)?.promptSeed : undefined;
       let merged = buildInitialToolPrompt(seed, userText, seedLine);
+
+      let scrapeNotice: string | null = null;
+      if (workspace === "fumero") {
+        try {
+          const scrapeCtx = await buildScrapeContextForToolBuild(userText, "fumero");
+          if (scrapeCtx?.block) {
+            merged = `${scrapeCtx.block}\n\n${merged}`;
+            const pages = scrapeCtx.urls.length;
+            scrapeNotice =
+              pages > 1
+                ? `Ik heb **${pages} pagina's** van fumero.nl uitgelezen — die info gebruik ik in je chatbot.`
+                : `Ik heb **fumero.nl** uitgelezen — die info gebruik ik in je chatbot.`;
+            if (scrapeCtx.errors.length) {
+              scrapeNotice += `\n\n_Niet alle pagina's gelukt: ${scrapeCtx.errors.slice(0, 2).join("; ")}_`;
+            }
+          }
+        } catch {
+          /* bouwen gaat door zonder scrape */
+        }
+      }
+
       if (enabledConnectors.includes("designer")) {
         merged = applyDesignerHints(merged, templateId);
       }
@@ -951,9 +973,10 @@ export function MotorsChatPanel({
       onFumeroContentPreview?.(null);
 
       const cardMsgId = appendAssistantMessage(
-        fumeroCoderMode && layout === "split"
-          ? "Ik bouw je tool — preview rechts."
-          : "Ik genereer je tool — dit kan even duren.",
+        scrapeNotice ??
+          (fumeroCoderMode && layout === "split"
+            ? "Ik bouw je tool — preview rechts."
+            : "Ik genereer je tool — dit kan even duren."),
         {
           toolCard: {
             toolId: 0,
@@ -1027,6 +1050,7 @@ export function MotorsChatPanel({
       scrollBottom,
       setPreviewPanelOpen,
       updateMessage,
+      workspace,
     ]
   );
 

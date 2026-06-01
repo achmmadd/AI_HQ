@@ -7,11 +7,11 @@ import {
 
 /** Keywords die tool-builder in chat starten (geen redirect). */
 const TOOL_INTENT_RE =
-  /\b(maak\s+(een\s+)?(widget|tool|rekenmachine|calculator)|bouw\s+(een\s+)?(tool|rekenmachine|calculator|widget)|build\s+(a\s+)?(tool|calculator|widget)|create\s+(a\s+)?(tool|calculator|widget)|keuzehulp|chatbot\s+voor|popup|loyalty|quiz|leeftijdscheck|rekenmachine|calculator|embed\s*widget|website\s*widget)\b/i;
+  /\b(maak\s+(een\s+)?(widget|tool|rekenmachine|calculator)|bouw\s+(een\s+)?(tool|rekenmachine|calculator|widget|chatbot|website)|bouwen\s+(?:een\s+)?(?:chat\s*bot|chatbot|tool|widget)|build\s+(a\s+)?(tool|calculator|widget)|create\s+(a\s+)?(tool|calculator|widget)|keuzehulp|chatbot|chat\s*bot|popup|loyalty|quiz|leeftijdscheck|rekenmachine|calculator|embed\s*widget|website\s*widget|scrape.*(?:tool|chatbot|widget))\b/i;
 
 /** Expliciete build-trigger (plan-modus "Maak", deploy, start). */
 export const CODER_BUILD_TRIGGER_RE =
-  /\b(maak|bouw|genereer|start|deploy|concept)\b/i;
+  /\b(maak|bouw|bouwen|genereer|start|deploy|concept|scrape|scrapen)\b/i;
 
 export function isToolRefinePrompt(prompt: string): boolean {
   return /\b(pas|aanpas|verfijn|wijzig|voeg|verwijder|kleur|groen|rood|tekst|update|add|change)\b/i.test(

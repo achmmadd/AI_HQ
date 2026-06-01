@@ -17,7 +17,7 @@ export function formatMaxScrapeUrlCapabilityBlock(): string {
   return [
     "### Max — live pagina's (scrape_url, al actief)",
     `URL-reader: ${reader}. Geen aparte tool om in te schakelen in Factory OS.`,
-    "Wanneer de gebruiker een toegestane URL noemt met intentie (check, bekijk, actuele prijzen, live, scrape_url:, jina(url)), haalt het systeem de pagina al op vóór je antwoord.",
+    "Wanneer de gebruiker scrape/haal info vraagt of fumero.nl noemt (ook zonder https), haalt het systeem pagina's al op vóór je antwoord of vóór een tool-build in Bouwen.",
     "Je ziet die inhoud in een blok LIVE PAGINA in de context — gebruik die data, verzin geen prijzen.",
     `Toegestane domeinen: ${domains}.`,
     "Zeg nooit dat de gebruiker een jina-tool moet activeren of de chat moet herstarten voor scrape — dat klopt niet.",
