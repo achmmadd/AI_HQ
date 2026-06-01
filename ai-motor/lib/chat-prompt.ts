@@ -11,6 +11,7 @@ import {
 import { buildResumeContextBlock } from "@/lib/resume-preamble";
 import { getLatestFumeroBriefing } from "@/lib/fumero/briefing";
 import { formatMaxBriefingSystemBlock } from "@/lib/fumero/max-briefing-chat";
+import { formatMaxScrapeUrlCapabilityBlock } from "@/lib/fumero/max-scrape-capability";
 
 function klantDisplayName(klant: string): string {
   const byId: Record<string, string> = {
@@ -31,16 +32,20 @@ function buildChatInstructionPrefix(opts: {
   knowledgeBlock: string;
   resumeBlock: string;
   maxBriefingBlock?: string;
+  maxScrapeBlock?: string;
 }): string {
   const maxBlock = opts.maxBriefingBlock
     ? `\n\n${opts.maxBriefingBlock}\n`
+    : "";
+  const scrapeBlock = opts.maxScrapeBlock
+    ? `\n\n${opts.maxScrapeBlock}\n`
     : "";
   return (
     CHAT_OUTPUT_INSTRUCTION_PREFIX +
     `${opts.personaLine} Werk conversationeel en concreet (zoals een sterke Claude-chat): heldere stappen bij complexe taken, maximaal één verduidelijkende vraag als iets ontbreekt, bullet lists voor actiepunten. Antwoord in het Nederlands, tenzij de gebruiker expliciet een andere taal vraagt. Bij live webonderzoek: vermeld bronnen met URL. Gebruik onderstaand geheugen en kennis waar relevant; verzin geen feiten die daar niet in staan. Bij twijfel tussen bronnen: geef voorkeur aan de snippet met nieuwere indexdatum of expliciete bron-URI.\n\n` +
     `${opts.resumeBlock}\n\n` +
     `### Qdrant-geheugen\n${opts.memoriesBlock}\n\n` +
-    `### Kennisbank\n${opts.knowledgeBlock}${maxBlock}`
+    `### Kennisbank\n${opts.knowledgeBlock}${maxBlock}${scrapeBlock}`
   );
 }
 
@@ -56,6 +61,11 @@ function maxBriefingBlockForKlant(klant: string): string | undefined {
   const b = getLatestFumeroBriefing();
   if (!b) return undefined;
   return formatMaxBriefingSystemBlock(b);
+}
+
+function maxScrapeCapabilityBlockForKlant(klant: string): string | undefined {
+  if (klant.trim().toLowerCase() !== "fumero") return undefined;
+  return formatMaxScrapeUrlCapabilityBlock();
 }
 
 /**
@@ -95,6 +105,7 @@ export async function buildChatSystemPreamble(
       knowledgeBlock: "(OpenClaw: kennis via gateway)",
       resumeBlock,
       maxBriefingBlock: maxBriefingBlockForKlant(klant),
+      maxScrapeBlock: maxScrapeCapabilityBlockForKlant(klant),
     });
   }
 
@@ -128,5 +139,6 @@ export async function buildChatSystemPreamble(
     knowledgeBlock,
     resumeBlock,
     maxBriefingBlock: maxBriefingBlockForKlant(klant),
+    maxScrapeBlock: maxScrapeCapabilityBlockForKlant(klant),
   });
 }

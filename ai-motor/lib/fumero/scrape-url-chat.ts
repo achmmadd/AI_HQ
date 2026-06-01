@@ -10,6 +10,10 @@ const URL_RE = /https?:\/\/[^\s<>"{}|\\^`\[\])]+/gi;
 const EXPLICIT_SCRAPE_RE =
   /(?:^|\s)scrape_url\s*:\s*(https?:\/\/\S+|[^\s]+\.nl[^\s]*)/i;
 
+/** Alias die Max soms suggereert — zelfde pad als scrape_url. */
+const EXPLICIT_JINA_RE =
+  /(?:^|\s)jina\s*\(\s*(https?:\/\/[^)\s]+|[^)\s]+\.nl[^)\s]*)\s*\)/i;
+
 const LIVE_PAGE_INTENT_RE =
   /\b(check|bekijk|lees|actuele|live|prijzen|pagina|webshop|voorraad|wat\s+staat\s+er|inhoud\s+van|op\s+de\s+site)\b/i;
 
@@ -25,8 +29,10 @@ function extractUrlsFromText(text: string): string[] {
 
 function extractExplicitScrapeUrl(prompt: string): string | null {
   const m = prompt.match(EXPLICIT_SCRAPE_RE);
-  if (!m?.[1]) return null;
-  return normalizeScrapeUrl(m[1]);
+  if (m?.[1]) return normalizeScrapeUrl(m[1]);
+  const j = prompt.match(EXPLICIT_JINA_RE);
+  if (j?.[1]) return normalizeScrapeUrl(j[1]);
+  return null;
 }
 
 function whitelistedUrlsInPrompt(prompt: string): string[] {

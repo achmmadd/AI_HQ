@@ -54,3 +54,10 @@ test("shouldScrapeUrlsForMaxChat: explicit scrape_url", () => {
     true
   );
 });
+
+test("shouldScrapeUrlsForMaxChat: jina(url) alias", () => {
+  assert.equal(
+    shouldScrapeUrlsForMaxChat("jina(https://fumero.nl/shop/)"),
+    true
+  );
+});
