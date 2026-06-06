@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw, ScanEye, X } from "lucide-react";
+import { ExternalLink, Gamepad2, Loader2, Maximize2, Minimize2, RefreshCw, ScanEye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FumeroBuildTimeline } from "@/components/fumero/features/fumero-build-timeline";
 import { cacheBustPreviewUrl } from "@/lib/fumero/builder-config";
@@ -9,6 +9,11 @@ import {
   fumeroConceptVersionLabel,
   type FumeroLivePreviewPayload,
 } from "@/lib/fumero/content-preview";
+import {
+  isInteractivePreview,
+  isStaticPreviewPlaceholder,
+  PLAYABLE_PREVIEW_SANDBOX,
+} from "@/lib/fumero/preview-interactive";
 import {
   runtimeBadgeLabel,
   type ProjectRuntime,
@@ -22,6 +27,22 @@ function RuntimeBadgePill({ runtime }: { runtime?: ProjectRuntime }) {
       {label}
     </span>
   );
+}
+
+function previewModeLabel(preview: FumeroLivePreviewPayload, interactive: boolean): string {
+  if (preview.status === "generating" || preview.building) {
+    return "Statische placeholder — Max bouwt je app…";
+  }
+  if (!interactive) {
+    return "Statische preview — wacht tot de build klaar is";
+  }
+  if (preview.runtime === "full_app") {
+    return "Interactieve app — klik en test; data via de app-API";
+  }
+  if (preview.runtime === "react") {
+    return "Interactieve website-preview — voor volledige stack: Code workspace";
+  }
+  return "Interactieve app — klik in de preview om te spelen of te testen";
 }
 
 export function FumeroLivePreviewPanel({
@@ -51,22 +72,35 @@ export function FumeroLivePreviewPanel({
     ? cacheBustPreviewUrl(preview.previewUrl, preview.previewEpoch)
     : null;
 
+  const interactive =
+    preview.interactive ??
+    isInteractivePreview({
+      previewUrl: preview.previewUrl,
+      status: preview.status,
+      building: preview.building,
+    });
+
   const versionLabel =
     preview.version != null ? fumeroConceptVersionLabel(preview.version) : null;
 
   const subtitle = isGenerating
     ? `Max bouwt je ${preview.title}…`
-    : versionLabel ?? "Live preview";
+    : interactive
+      ? "Klaar om te spelen"
+      : versionLabel ?? "Live preview";
 
   const showUxReview =
     Boolean(onUxReview) &&
+    interactive &&
     (preview.uxReviewAvailable ||
       preview.runtime === "html" ||
       preview.runtime === "full_app" ||
       preview.runtime === "react");
 
   const attachVisualEditListener = useCallback(() => {
-    if (!visualEditMode || !onVisualEditPick || !iframeRef.current) return;
+    if (!visualEditMode || !onVisualEditPick || !iframeRef.current || !interactive) {
+      return;
+    }
     try {
       const doc = iframeRef.current.contentDocument;
       if (!doc) return;
@@ -90,10 +124,10 @@ export function FumeroLivePreviewPanel({
     } catch {
       return undefined;
     }
-  }, [visualEditMode, onVisualEditPick]);
+  }, [visualEditMode, onVisualEditPick, interactive]);
 
   useEffect(() => {
-    if (!src || !visualEditMode) return;
+    if (!src || !visualEditMode || !interactive) return;
     const iframe = iframeRef.current;
     if (!iframe) return;
     const onLoad = () => {
@@ -106,7 +140,7 @@ export function FumeroLivePreviewPanel({
       iframe.removeEventListener("load", onLoad);
       cleanup?.();
     };
-  }, [src, visualEditMode, attachVisualEditListener]);
+  }, [src, visualEditMode, interactive, attachVisualEditListener]);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -127,6 +161,15 @@ export function FumeroLivePreviewPanel({
     }
   };
 
+  const focusPreviewForPlay = () => {
+    iframeRef.current?.focus();
+    try {
+      iframeRef.current?.contentWindow?.focus();
+    } catch {
+      /* cross-origin guard */
+    }
+  };
+
   const panel = (
     <div
       className={
@@ -142,6 +185,15 @@ export function FumeroLivePreviewPanel({
               {preview.title}
             </p>
             <RuntimeBadgePill runtime={preview.runtime} />
+            {interactive ? (
+              <span className="rounded-full bg-[rgba(105,196,0,0.12)] px-2 py-0.5 text-[10px] font-semibold text-[#3d7a00]">
+                Speelbaar
+              </span>
+            ) : isGenerating || isStaticPreviewPlaceholder(src) ? (
+              <span className="rounded-full bg-[#F5F5F5] px-2 py-0.5 text-[10px] font-medium text-[#737373]">
+                Statisch
+              </span>
+            ) : null}
           </div>
           <p
             className="mt-0.5 text-[12px] leading-tight text-[#737373]"
@@ -158,7 +210,7 @@ export function FumeroLivePreviewPanel({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {visualEditMode ? (
+          {visualEditMode && interactive ? (
             <span className="rounded-full bg-[rgba(105,196,0,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#3d7a00]">
               Klik element
             </span>
@@ -189,8 +241,20 @@ export function FumeroLivePreviewPanel({
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           ) : null}
-          {src ? (
+          {src && interactive ? (
             <>
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-lg bg-[#69C400] px-2.5 text-[11px] font-semibold text-white shadow-none hover:bg-[#5db000]"
+                onClick={() => {
+                  focusPreviewForPlay();
+                  window.open(src, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <Gamepad2 className="mr-1 h-3.5 w-3.5" />
+                Speel / Open app
+              </Button>
               <Button
                 type="button"
                 size="icon"
@@ -206,16 +270,17 @@ export function FumeroLivePreviewPanel({
                   <Maximize2 className="h-3.5 w-3.5" />
                 )}
               </Button>
-              <a
-                href={src}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[12px] text-[#525252] hover:bg-[#E5E5E5] hover:text-[#171717]"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open
-              </a>
             </>
+          ) : src ? (
+            <a
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[12px] text-[#525252] hover:bg-[#E5E5E5] hover:text-[#171717]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open
+            </a>
           ) : null}
           <Button
             type="button"
@@ -243,15 +308,20 @@ export function FumeroLivePreviewPanel({
         </div>
       ) : null}
 
-      {!isGenerating && src ? (
+      {src ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#E5E5E5]/60 px-4 py-2">
           <span className="text-[12px] text-[#525252]">
-            {preview.runtime === "full_app"
-              ? "Test je app in de preview — data wordt opgeslagen via de app-API."
-              : preview.runtime === "react"
-                ? "Multi-file website — preview via projectbestanden."
-                : "Klik in de preview om je tool te testen."}
+            {previewModeLabel(preview, interactive)}
           </span>
+          {interactive ? (
+            <button
+              type="button"
+              className="text-[12px] font-medium text-[#69C400] hover:underline"
+              onClick={focusPreviewForPlay}
+            >
+              Klik hier eerst voor toetsenbord
+            </button>
+          ) : null}
           {preview.embedCode ? (
             <button
               type="button"
@@ -273,8 +343,9 @@ export function FumeroLivePreviewPanel({
             key={preview.previewEpoch ?? preview.previewUrl ?? "live"}
             title={`Preview ${preview.title}`}
             src={src}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            sandbox={PLAYABLE_PREVIEW_SANDBOX}
             className="pointer-events-auto h-full min-h-[320px] w-full border-0"
+            onLoad={interactive ? focusPreviewForPlay : undefined}
           />
         ) : (
           <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center">

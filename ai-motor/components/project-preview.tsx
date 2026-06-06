@@ -5,6 +5,7 @@ import { Code, Copy, ExternalLink, Eye, FolderGit2, Save, X } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { DeployButton } from "@/components/DeployButton";
 import { cn } from "@/lib/utils";
+import { PLAYABLE_PREVIEW_SANDBOX } from "@/lib/fumero/preview-interactive";
 import type { ProjectFiles } from "@/lib/project-types";
 
 export function ProjectPreview({
@@ -178,8 +179,8 @@ export function ProjectPreview({
           <iframe
             title={title}
             srcDoc={previewHtml}
-            sandbox="allow-scripts allow-same-origin"
-            className="h-full w-full border-0 bg-white"
+            sandbox={PLAYABLE_PREVIEW_SANDBOX}
+            className="pointer-events-auto h-full w-full border-0 bg-white"
           />
         </div>
       ) : (

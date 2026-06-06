@@ -1162,6 +1162,7 @@ export function MotorsChatPanel({
           embedCode: card.embedCode ?? null,
           runtime: runtimeFromDeployType(card.deployType),
           uxReviewAvailable: true,
+          interactive: true,
         });
         setPreviewPanelOpen(true);
         updateMessage(cardMsgId, {
@@ -1310,6 +1311,7 @@ export function MotorsChatPanel({
           building: false,
           buildPhase: undefined,
           embedCode: card.embedCode ?? null,
+          interactive: true,
         });
         const versionNote =
           detail.concept?.version != null
@@ -1727,6 +1729,7 @@ export function MotorsChatPanel({
           version: card.version,
           runtime: runtimeFromDeployType(card.deployType),
           uxReviewAvailable: true,
+          interactive: true,
         });
         setActiveToolCardMsgId(msgId);
       } catch (err) {
@@ -2095,7 +2098,7 @@ export function MotorsChatPanel({
           }
         }
 
-        if (onProjectPrompt) {
+        if (onProjectPrompt && !bouwenWorkspace) {
           const action = resolveMotorsChatAction({ prompt: t, hasActiveProject });
           if (action.type === "code-workspace") {
             showPromptInChat();

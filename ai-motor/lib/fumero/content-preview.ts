@@ -31,6 +31,8 @@ export type FumeroLivePreviewPayload = {
   runtime?: ProjectRuntime;
   /** UX-check beschikbaar (HTML-tools). */
   uxReviewAvailable?: boolean;
+  /** True wanneer preview klikbaar/speelbaar is (geen statische placeholder). */
+  interactive?: boolean;
 };
 
 /** Strip Factory OS envelope from generated content before UI preview. */

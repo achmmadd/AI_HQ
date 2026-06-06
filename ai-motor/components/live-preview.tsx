@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { normalizeVanillaAppHtml } from "@/lib/builder-code.live";
+import { PLAYABLE_PREVIEW_SANDBOX } from "@/lib/fumero/preview-interactive";
 
 export function LivePreview({
   code,
@@ -21,7 +22,7 @@ export function LivePreview({
     <iframe
       title={title}
       srcDoc={srcDoc}
-      sandbox="allow-scripts allow-same-origin allow-forms"
+      sandbox={PLAYABLE_PREVIEW_SANDBOX}
       className={className ?? "h-full min-h-[320px] w-full rounded-xl border border-border bg-white"}
     />
   );

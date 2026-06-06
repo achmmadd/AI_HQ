@@ -44,6 +44,9 @@ export type ToolDetailDto = {
 const FUMERO_INTERACTIVE_HINT =
   " VERPLICHT: één <script>-blok met vanilla JS (addEventListener op knoppen/inputs) zodat de widget direct klikbaar en bruikbaar is in een iframe — geen React, geen type=module.";
 
+const FUMERO_GAME_HINT =
+  " Voor games/spellen: gebruik <canvas> + requestAnimationFrame game-loop, klik/tap of spatiebalk als input, start-scherm met Start-knop, score zichtbaar — volledig speelbaar in iframe zonder modules.";
+
 const FUMERO_BRAND_HINT =
   "Fumero ops-stijl: rustig, professioneel B2B, Geist/system-ui font, witte (#FFFFFF) of lichtgrijze (#FAFAFA) achtergrond, groen (#69C400) alleen voor primaire knoppen/positieve accenten, geen emoji in de UI-chrome. Mobielvriendelijk en toegankelijk.";
 
@@ -111,8 +114,11 @@ export async function generateToolHtml(
       ? `\n\nDit is de HUIDIGE HTML van de tool. Pas deze aan volgens de instructie hierboven en lever het VOLLEDIGE bijgewerkte HTML-document opnieuw (behoud wat goed werkt).${layoutPreserveHint}\n\n${currentCode.trim()}`
       : "";
 
+  const gameHint = /\b(flappy|game|spel|snake|pong|tetris|arcade|canvas)\b/i.test(prompt)
+    ? FUMERO_GAME_HINT
+    : "";
   const built = await generateArtifactHtml(
-    `Bouw één compleet, zelfstandig HTML-document (inline CSS, responsive). ${FUMERO_BRAND_HINT}${FUMERO_INTERACTIVE_HINT} ${full}${iterationContext}`,
+    `Bouw één compleet, zelfstandig HTML-document (inline CSS, responsive). ${FUMERO_BRAND_HINT}${FUMERO_INTERACTIVE_HINT}${gameHint} ${full}${iterationContext}`,
     "fumero",
     "tools",
     2,

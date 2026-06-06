@@ -27,6 +27,10 @@ export function isComplexBuildPrompt(prompt: string): boolean {
 const SIMPLE_WIDGET_RE =
   /\b(rekenmachine|calculator|timer|klok|todo|widget|countdown|stopwatch|counter|dice|dobbelsteen)\b/i;
 
+/** Eén HTML-bestand: games en arcade — geen multi-file project in bouwen. */
+const SINGLE_PAGE_GAME_RE =
+  /\b(flappy|bird|game|spel|snake|pong|tetris|arcade|platformer|canvas\s*game|mini\s*game)\b/i;
+
 /** Eén HTML-bestand: QR-menu, menukaart, landings — geen multi-file project. */
 const SINGLE_FILE_HTML_RE =
   /\b(qr\s*menu|menukaart|digitale\s*menu|menu\s*kaart|één\s*html|een\s*html|single\s*file|één\s*bestand|srcdoc|iframe\s*app)\b/i;
@@ -36,7 +40,10 @@ export function shouldUseArtifactBuild(prompt: string): boolean {
   const t = prompt.trim();
   if (!t || COMPLEX_BUILD_RE.test(t)) return false;
   if (SINGLE_FILE_HTML_RE.test(t) && !COMPLEX_BUILD_RE.test(t)) return true;
-  if (isProjectLikePrompt(t) && !SIMPLE_WIDGET_RE.test(t)) return false;
+  if (SINGLE_PAGE_GAME_RE.test(t) && !COMPLEX_BUILD_RE.test(t)) return true;
+  if (isProjectLikePrompt(t) && !SIMPLE_WIDGET_RE.test(t) && !SINGLE_PAGE_GAME_RE.test(t)) {
+    return false;
+  }
   if (SIMPLE_WIDGET_RE.test(t) && t.length < 220) return true;
   if (isDesignArtifactPrompt(t) && t.length < 280 && !COMPLEX_BUILD_RE.test(t)) {
     return true;
