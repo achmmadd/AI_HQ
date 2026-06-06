@@ -11,6 +11,8 @@ build/
 # Python
 venv/
 .venv/
+agent_service/.venv/
+**/.venv/
 __pycache__/
 *.py[cod]
 *.egg-info/
