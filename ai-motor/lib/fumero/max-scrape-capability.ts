@@ -32,5 +32,6 @@ export function formatMaxScrapeUrlCapabilityBlock(klant = "fumero"): string {
     "Zeg nooit dat de gebruiker een jina-tool moet activeren, moet herstarten, of een technische prompt moet schrijven.",
     "Als --- LIVE PAGINA --- aanwezig is: gebruik die tekst; vraag niet om handmatig plakken.",
     "Als er geen LIVE PAGINA-blok is: vraag in gewone taal welke pagina (bv. fumero.nl/shop) — geen scrape_url-syntax naar de gebruiker.",
+    "Live pagina-lezen is alleen voor het huidige antwoord — het schrijft NIET naar de kennisbank. Voor permanente opslag: knop \"Opslaan in kennisbank\", /kennisbank upload, of de wekelijkse scrape-cron voor vaste fumero.nl-pagina's.",
   ].join("\n\n");
 }

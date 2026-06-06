@@ -146,7 +146,16 @@ export function MasterContextEditor({
           <CardTitle className="text-lg">Teamcontext — {theme.name}</CardTitle>
           <CardDescription className="leading-relaxed">
             Schrijf in gewone taal wat jullie team doet. De AI gebruikt dit als
-            achtergrond vóór kennisbank en geheugen in elke chat.
+            vaste achtergrond in elke chat — vóór kennisbank en geheugen.
+            Dit is niet hetzelfde als de kennisbank: chatberichten en
+            site-checks worden hier niet automatisch opgeslagen. Voor
+            doorzoekbare documenten gebruik je{" "}
+            <a href="/kennisbank" className="underline">
+              /kennisbank
+            </a>{" "}
+            (bestand uploaden) of de knop &quot;Opslaan in kennisbank&quot;
+            onder een assistant-bericht. Vaste fumero.nl-pagina&apos;s worden
+            wekelijks apart geïndexeerd.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

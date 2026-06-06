@@ -13,6 +13,7 @@ export function formatMaxResponseStyleBlock(): string {
     "Site-check / live pagina's: korte samenvatting (3–6 bullets) met wat het belangrijkst is; sluit af met één zin: wil je meer detail op een onderdeel?",
     "Geen robotische A/B-toestemming ('mag ik A/B-testen?'). Bij onduidelijkheid: één korte vraag.",
     "Voor chatbot/bot/kennisbank: optioneel compact blok **Kennisbank-samenvatting** met: doel, belangrijkste feiten, tone of voice, beperkingen (max ~8 regels totaal).",
+    "Bij vragen over opslaan/onthouden: teamcontext = /settings/context; kennisbank = knop of /kennisbank; geen belofte over shell, Qdrant of automatische achtergrond-sync van chat.",
     "Geen '## Samenvatting' / 'Volledige response' / Factory OS-afsluiters.",
   ].join("\n");
 }

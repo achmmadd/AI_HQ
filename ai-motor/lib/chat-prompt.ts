@@ -16,6 +16,7 @@ import { buildResumeContextBlock } from "@/lib/resume-preamble";
 import { getLatestFumeroBriefing } from "@/lib/fumero/briefing";
 import { formatMaxBriefingSystemBlock } from "@/lib/fumero/max-briefing-chat";
 import { formatMaxScrapeUrlCapabilityBlock } from "@/lib/fumero/max-scrape-capability";
+import { formatMaxKnowledgeGuidanceBlock } from "@/lib/fumero/max-knowledge-guidance";
 import { formatMaxResponseStyleBlock } from "@/lib/fumero/max-response-style";
 
 function klantDisplayName(klant: string): string {
@@ -40,6 +41,7 @@ function buildChatInstructionPrefix(opts: {
   maxBriefingBlock?: string;
   maxScrapeBlock?: string;
   maxStyleBlock?: string;
+  maxKnowledgeBlock?: string;
 }): string {
   const masterBlock = opts.masterContextBlock
     ? `\n\n${opts.masterContextBlock}\n`
@@ -51,12 +53,15 @@ function buildChatInstructionPrefix(opts: {
     ? `\n\n${opts.maxScrapeBlock}\n`
     : "";
   const styleBlock = opts.maxStyleBlock ? `\n\n${opts.maxStyleBlock}\n` : "";
+  const knowledgeGuideBlock = opts.maxKnowledgeBlock
+    ? `\n\n${opts.maxKnowledgeBlock}\n`
+    : "";
   return (
     CHAT_OUTPUT_INSTRUCTION_PREFIX +
     `${opts.personaLine} Werk conversationeel en concreet (zoals een sterke Claude-chat): heldere stappen bij complexe taken, maximaal één verduidelijkende vraag als iets ontbreekt. Antwoord in het Nederlands, tenzij de gebruiker expliciet een andere taal vraagt. Bij live webonderzoek: vermeld bronnen met URL. Gebruik onderstaand geheugen en kennis waar relevant; verzin geen feiten die daar niet in staan. Bij twijfel tussen bronnen: geef voorkeur aan de snippet met nieuwere indexdatum of expliciete bron-URI.\n\n` +
     `${opts.resumeBlock}${masterBlock}\n\n` +
     `### Qdrant-geheugen\n${opts.memoriesBlock}\n\n` +
-    `### Kennisbank\n${opts.knowledgeBlock}${styleBlock}${maxBlock}${scrapeBlock}`
+    `### Kennisbank\n${opts.knowledgeBlock}${styleBlock}${knowledgeGuideBlock}${maxBlock}${scrapeBlock}`
   );
 }
 
@@ -65,9 +70,14 @@ function maxStyleBlockForKlant(klant: string): string | undefined {
   return formatMaxResponseStyleBlock();
 }
 
+function maxKnowledgeBlockForKlant(klant: string): string | undefined {
+  if (klant.trim().toLowerCase() !== "fumero") return undefined;
+  return formatMaxKnowledgeGuidanceBlock();
+}
+
 function personaForKlant(klant: string, klantDisplay: string): string {
   if (klant.trim().toLowerCase() === "fumero") {
-    return "Je bent Max, proactieve AI-collega voor Fumero (fumero.nl) — geen passieve chatbot. Je werkt mee alsof je op de achtergrond al briefings en studio's hebt gecheckt. Gebruikers typen informeel; leid intent af zonder prompt-coaching of technische formules.";
+    return "Je bent Max, proactieve AI-collega voor Fumero (fumero.nl) — geen passieve chatbot. Je werkt mee alsof je op de achtergrond al briefings en studio's hebt gecheckt. Gebruikers typen informeel; leid intent af zonder prompt-coaching of technische formules. Je hebt geen shell of directe Qdrant-schrijftoegang; voor permanente context verwijs je naar /settings/context (teamcontext) en voor doorzoekbare docs naar de kennisbank-knop of /kennisbank.";
   }
   return `Je bent MotorsAI, de primaire AI-assistent voor ${klantDisplay}.`;
 }
@@ -128,6 +138,7 @@ export async function buildChatSystemPreamble(
       maxBriefingBlock: maxBriefingBlockForKlant(klant),
       maxScrapeBlock: maxScrapeCapabilityBlockForKlant(klant),
       maxStyleBlock: maxStyleBlockForKlant(klant),
+      maxKnowledgeBlock: maxKnowledgeBlockForKlant(klant),
     });
   }
 
@@ -167,5 +178,6 @@ export async function buildChatSystemPreamble(
     maxBriefingBlock: maxBriefingBlockForKlant(klant),
     maxScrapeBlock: maxScrapeCapabilityBlockForKlant(klant),
     maxStyleBlock: maxStyleBlockForKlant(klant),
+    maxKnowledgeBlock: maxKnowledgeBlockForKlant(klant),
   });
 }
