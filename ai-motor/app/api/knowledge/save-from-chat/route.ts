@@ -9,8 +9,14 @@ import {
 import { validateKnowledgeText } from "@/lib/knowledge-upload-validate";
 import { upsertKnowledgeChunks } from "@/lib/qdrant-ingest";
 import { qdrantCollectionForScope } from "@/lib/qdrant-collection";
+import type { AuthSession } from "@/lib/auth-session";
+import { isMotorsInternalAuthorized } from "@/lib/motors-internal-auth";
 import { requireApiAuthForKlant } from "@/lib/require-api-auth";
-import { resolveWorkspaceIdBySlug } from "@/lib/workspace-context";
+import { shouldUsePostgres } from "@/lib/db/pg-flags";
+import {
+  applyPgWorkspaceContext,
+  resolveWorkspaceIdBySlug,
+} from "@/lib/workspace-context";
 
 export const runtime = "nodejs";
 
@@ -38,7 +44,8 @@ function defaultTitleFromContent(content: string): string {
 
 /**
  * Permanent chat → Qdrant ingest + knowledge_documents catalog.
- * Auth: session (cookie / x-motorsai-token / Bearer). OpenClaw: see factory-os/openclaw/motors-tools.json.
+ * Auth: session (cookie / x-motorsai-token / Bearer) OR internal Bearer MOTORS_INTERNAL_TOKEN.
+ * OpenClaw: motors__motors_knowledge_save_from_chat — see factory-os/openclaw/motors-tools.json.
  */
 export async function POST(req: NextRequest) {
   ensurePlatformSchema();
@@ -63,8 +70,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const auth = await requireApiAuthForKlant(req, klant);
-    if (auth instanceof NextResponse) return auth;
+    const internal = isMotorsInternalAuthorized(req);
+    let session: AuthSession;
+
+    if (internal) {
+      session = {
+        userId: null,
+        email: "internal@motorsai.local",
+        role: "admin",
+        scope: "all",
+        workspaceSlug: klant,
+      };
+      if (shouldUsePostgres()) {
+        await applyPgWorkspaceContext(session, klant).catch((err) => {
+          console.error(
+            "[save-from-chat] applyPgWorkspaceContext (internal) failed:",
+            err
+          );
+        });
+      }
+    } else {
+      const auth = await requireApiAuthForKlant(req, klant);
+      if (auth instanceof NextResponse) return auth;
+      session = auth.session;
+    }
 
     const text = content.trim();
     if (!text) {
@@ -149,8 +178,7 @@ export async function POST(req: NextRequest) {
     docRowId = Number(ins.lastInsertRowid);
 
     const workspaceId =
-      auth.session.workspaceId ??
-      (await resolveWorkspaceIdBySlug(klant));
+      session.workspaceId ?? (await resolveWorkspaceIdBySlug(klant));
 
     const up = await upsertKnowledgeChunks({
       klant,

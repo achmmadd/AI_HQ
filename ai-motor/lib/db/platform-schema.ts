@@ -129,5 +129,9 @@ export function ensurePlatformSchema(): void {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_knowledge_documents_dedup ON knowledge_documents(klant, content_sha256);
   `);
 
+  if (!colExists("knowledge_documents", "canonical_source")) {
+    addCol(`ALTER TABLE knowledge_documents ADD COLUMN canonical_source TEXT`);
+  }
+
   ready = true;
 }

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchMotorMemories } from "@/lib/motor-memory";
+import { isMotorsInternalAuthorized } from "@/lib/motors-internal-auth";
 
 export const runtime = "nodejs";
 
 function authorized(req: NextRequest): boolean {
   const expected = process.env.MOTORS_INTERNAL_TOKEN?.trim();
   if (!expected) return true;
-  const auth = req.headers.get("authorization") || "";
-  return auth === `Bearer ${expected}`;
+  return isMotorsInternalAuthorized(req);
 }
 
 export async function POST(req: NextRequest) {

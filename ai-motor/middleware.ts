@@ -30,8 +30,17 @@ const PUBLIC_PATHS = new Set([
   "/api/health",
 ]);
 
+/** Route handlers enforce MOTORS_INTERNAL_TOKEN or session; skip edge session gate. */
+const INTERNAL_API_PATHS = new Set([
+  "/api/motors/memory-search",
+  "/api/knowledge/save-from-chat",
+  "/api/project/generate",
+  "/api/project/iterate",
+]);
+
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
+  if (INTERNAL_API_PATHS.has(pathname)) return true;
   if (pathname.startsWith("/embed")) return true;
   // PC-bridge register/poll/result blijft publiek; overige chat/conversations via route-auth + cookie.
   if (pathname.startsWith("/api/chat/bridge/")) return true;
