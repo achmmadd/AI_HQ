@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Naloop na sprint / vóór live: lint, build, native module voor de Node die PM2 ook gebruikt.
+# Na build: productie-deploy via scripts/safe-deploy.sh (npm run deploy:safe) — niet pm2 restart vóór build klaar is.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -50,4 +51,4 @@ if [[ "${REQUIRE_HYBRID:-0}" == "1" ]]; then
   }
 fi
 
-echo "== klaar. Start PM2: pm2 start ecosystem.config.cjs --update-env =="
+echo "== klaar. Productie: npm run deploy:safe (of bash scripts/safe-deploy.sh). Eerste start: pm2 start ecosystem.config.cjs --update-env =="
