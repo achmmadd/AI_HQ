@@ -2097,6 +2097,12 @@ export function MotorsChatPanel({
 
         if (onProjectPrompt) {
           const action = resolveMotorsChatAction({ prompt: t, hasActiveProject });
+          if (action.type === "code-workspace") {
+            showPromptInChat();
+            router.push(`/fumero/code?q=${encodeURIComponent(t)}`);
+            scrollBottom(true);
+            return;
+          }
           if (action.type === "project-start" || action.type === "project-iterate") {
             showPromptInChat();
             setPreviewPanelOpen(true);
@@ -2289,6 +2295,13 @@ export function MotorsChatPanel({
         } finally {
           setBuildStatus(null);
         }
+        scrollBottom(true);
+        return;
+      }
+
+      if (action.type === "code-workspace") {
+        showPromptInChat();
+        router.push(`/fumero/code?q=${encodeURIComponent(t)}`);
         scrollBottom(true);
         return;
       }

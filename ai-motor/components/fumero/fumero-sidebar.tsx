@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   Camera,
+  Code2,
   FolderKanban,
   Hammer,
   MessageSquare,
@@ -38,6 +39,9 @@ function isActive(pathname: string, href: string): boolean {
   }
   if (href === "/fumero/bouwen") {
     return pathname === "/fumero/bouwen" || pathname.startsWith("/fumero/bouwen/");
+  }
+  if (href === "/fumero/code") {
+    return pathname === "/fumero/code" || pathname.startsWith("/fumero/code/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -79,6 +83,7 @@ export function FumeroSidebar() {
       { href: "/fumero/photo-studio", label: "Studio", icon: Camera },
       { href: "/fumero/automations", label: "Automations", icon: Workflow },
       { href: "/fumero/bouwen", label: "Bouwen", icon: Hammer },
+      { href: "/fumero/code", label: "Code", icon: Code2 },
       {
         href: "/fumero/bibliotheek",
         label: "Bibliotheek",

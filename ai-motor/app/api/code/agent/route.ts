@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { runCodeAgentStream } from "@/lib/code-agent/run-code-agent";
+import { resolveReviewWrites } from "@/lib/code-agent/review-writes-policy";
 import {
   parseCodeKlant,
   validateProjectSlug,
@@ -13,6 +14,7 @@ import {
   touchCodeSession,
 } from "@/lib/code-sessions";
 import { checkBudgetBeforeUsage } from "@/lib/usage-budget";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
@@ -22,6 +24,11 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const klant = parseCodeKlant(typeof body.klant === "string" ? body.klant : null);
+
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof Response) return auth;
+  const { session } = auth;
+
   const project =
     typeof body.workspace === "string"
       ? body.workspace.trim()
@@ -49,7 +56,10 @@ export async function POST(req: NextRequest) {
           text: body.selection.text,
         }
       : null;
-  const reviewWrites = body.reviewWrites !== false;
+  const reviewWrites = resolveReviewWrites(
+    session,
+    body.reviewWrites !== false
+  );
 
   if (!project || !validateProjectSlug(project)) {
     return new Response(JSON.stringify({ error: "workspace vereist" }), {

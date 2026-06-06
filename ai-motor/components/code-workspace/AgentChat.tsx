@@ -11,6 +11,7 @@ import {
   codeTerminalKey,
   useCodeTerminalStore,
 } from "@/stores/useCodeTerminalStore";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 const EXECUTOR_OFFLINE_MSG =
   "Geen code-executor bereikbaar. Koppel je laptop via PC bridge of start de NUC executor.";
@@ -74,6 +75,8 @@ export function AgentChat({
   >([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { role: sessionRole } = useAuthSession();
+  const reviewWrites = sessionRole !== "admin";
 
   const terminalOutput = useCodeTerminalStore((s) =>
     workspace ? s.outputByKey[codeTerminalKey(klant, workspace)] ?? "" : ""
@@ -373,7 +376,7 @@ export function AgentChat({
           selection,
           sessionId: activeSessionId,
           terminalOutput: extraTerminal ? terminalOutput.slice(-4000) : undefined,
-          reviewWrites: true,
+          reviewWrites,
         }),
       });
 

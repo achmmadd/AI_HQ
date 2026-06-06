@@ -10,13 +10,19 @@ export type MotorsChatAction =
   | { type: "chat" }
   | { type: "artifact" }
   | { type: "project-start" }
-  | { type: "project-iterate" };
+  | { type: "project-iterate" }
+  | { type: "code-workspace" };
 
 const QUESTION_RE =
   /^(wat|hoe|waarom|wie|when|what|how|why|leg\s+uit|uitleg|vertel|explain)\b/i;
 
 const COMPLEX_BUILD_RE =
   /\b(react|next\.?js|nextjs|typescript|tsx|jsx|vite|motor\s*ai|motorsai|factory\s*os|api\s*route|database|prisma|auth|saas|platform|volledige\s*app|multi.?file|component|hooks|node\.?js|express|full.?stack)\b/i;
+
+/** Multi-file / stack builds → code workspace, not artifact or lightweight project builder. */
+export function isComplexBuildPrompt(prompt: string): boolean {
+  return COMPLEX_BUILD_RE.test(prompt.trim());
+}
 
 const SIMPLE_WIDGET_RE =
   /\b(rekenmachine|calculator|timer|klok|todo|widget|countdown|stopwatch|counter|dice|dobbelsteen)\b/i;
@@ -70,6 +76,7 @@ export function resolveMotorsChatAction(opts: {
 
   if (!wantsBuild) return { type: "chat" };
 
+  if (isComplexBuildPrompt(t)) return { type: "code-workspace" };
   if (shouldUseArtifactBuild(t)) return { type: "artifact" };
   return { type: "project-start" };
 }
@@ -82,6 +89,8 @@ export function motorsActionLabel(action: MotorsChatAction): string | null {
       return "Project coderen…";
     case "project-iterate":
       return "Project bijwerken…";
+    case "code-workspace":
+      return "Code workspace…";
     default:
       return null;
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createProjectFromPrompt } from "@/lib/project-generate";
 import { projectBuilderStatus } from "@/lib/project-readiness";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 import {
   buildProjectSummary,
   upsertProjectResumeNote,
@@ -19,6 +20,9 @@ export async function POST(req: NextRequest) {
     typeof body?.klant === "string" && body.klant ? body.klant : "system";
   const conversationId =
     typeof body?.conversation_id === "number" ? body.conversation_id : null;
+
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof NextResponse) return auth;
 
   if (!prompt) {
     return NextResponse.json({ error: "prompt required" }, { status: 400 });
