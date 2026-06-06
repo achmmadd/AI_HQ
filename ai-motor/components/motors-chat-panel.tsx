@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ClipboardList,
   Code2,
+  BookMarked,
   Mic,
   Paperclip,
   PanelLeft,
@@ -485,6 +486,9 @@ export function MotorsChatPanel({
     useState<FumeroComposerModelTier>(bouwenWorkspace ? "normaal" : "flash");
   const [connectorsOpen, setConnectorsOpen] = useState(false);
   const [enabledConnectors, setEnabledConnectors] = useState<ConnectorId[]>([]);
+  const [knowledgeSaveMsgId, setKnowledgeSaveMsgId] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     if (initialComposerMode) {
@@ -2414,6 +2418,50 @@ export function MotorsChatPanel({
     textareaRef.current?.focus();
   }, []);
 
+  const saveMessageToKnowledgeBank = useCallback(
+    async (messageId: string, content: string) => {
+      const trimmed = content.trim();
+      if (!trimmed || knowledgeSaveMsgId) return;
+
+      setKnowledgeSaveMsgId(messageId);
+      try {
+        const res = await fetch("/api/knowledge/save-from-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            klant: company,
+            content: trimmed,
+            source: "chat",
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+          message?: string;
+          pointsUpserted?: number;
+        };
+        if (!res.ok) {
+          throw new Error(
+            data.message || data.error || `Opslaan mislukt (${res.status})`
+          );
+        }
+        showFumeroToast(
+          data.pointsUpserted
+            ? `Opgeslagen in kennisbank (${data.pointsUpserted} stukjes tekst)`
+            : "Opgeslagen in kennisbank"
+        );
+      } catch (err) {
+        showFumeroToast(
+          err instanceof Error ? err.message : "Opslaan in kennisbank mislukt"
+        );
+      } finally {
+        setKnowledgeSaveMsgId(null);
+      }
+    },
+    [company, knowledgeSaveMsgId]
+  );
+
   const handleVisualEditPick = useCallback(
     (hint: string) => {
       setVisualEditMode(false);
@@ -3073,8 +3121,8 @@ export function MotorsChatPanel({
             activeConversationId !== undefined && (
               <p className="min-w-0 flex-1 truncate text-[11px] text-text-secondary/80">
                 {workspace === "fumero"
-                  ? "Max onthoudt dit gesprek"
-                  : "MotorsAI onthoudt context in dit gesprek + kennisbank"}
+                  ? "Max onthoudt dit gesprek · kennisbank = doorzoekbare docs · teamcontext in instellingen"
+                  : "MotorsAI onthoudt dit gesprek · kennisbank = doorzoekbare docs · teamcontext in /settings/context"}
               </p>
             )}
         </div>
@@ -3484,7 +3532,7 @@ export function MotorsChatPanel({
                                 <div className="mt-2 flex flex-wrap gap-1 border-t border-border/30 pt-2">
                                   <button
                                     type="button"
-                                    className="ios-tap-highlight inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2 text-[12px] text-text-secondary hover:bg-border/50 hover:text-text-primary"
+                                    className="ios-tap-highlight inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-[12px] text-text-secondary hover:bg-border/50 hover:text-text-primary"
                                     onClick={() => {
                                       void navigator.clipboard.writeText(
                                         m.content
@@ -3494,11 +3542,33 @@ export function MotorsChatPanel({
                                     <Copy className="h-3.5 w-3.5" />
                                     Kopiëren
                                   </button>
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      !!streamingId ||
+                                      knowledgeSaveMsgId === m.id
+                                    }
+                                    title="Permanent in de kennisbank (doorzoekbaar). Vaste teamachtergrond staat in instellingen → context."
+                                    className="ios-tap-highlight inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-[12px] text-text-secondary hover:bg-border/50 hover:text-text-primary disabled:opacity-50"
+                                    onClick={() =>
+                                      void saveMessageToKnowledgeBank(
+                                        m.id,
+                                        m.content
+                                      )
+                                    }
+                                  >
+                                    {knowledgeSaveMsgId === m.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <BookMarked className="h-3.5 w-3.5" />
+                                    )}
+                                    Opslaan in kennisbank
+                                  </button>
                                   {showRegenerate && (
                                     <button
                                       type="button"
                                       disabled={!!streamingId}
-                                      className="ios-tap-highlight inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2 text-[12px] text-text-secondary hover:bg-border/50 hover:text-text-primary disabled:opacity-50"
+                                      className="ios-tap-highlight inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-[12px] text-text-secondary hover:bg-border/50 hover:text-text-primary disabled:opacity-50"
                                       onClick={() =>
                                         void regenerate(chatSendOpts)
                                       }

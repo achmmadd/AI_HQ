@@ -22,7 +22,7 @@ export type KnowledgeChunkPayload = {
   chunk_index: number;
   document_id: number;
   ingested_at: string;
-  doc_kind: "file";
+  doc_kind: "file" | "chat";
   /** Optioneel: waar de SSOT staat (URL, vault-pad, Confluence-ID, …). */
   canonical_source?: string;
 };
@@ -74,6 +74,9 @@ export async function upsertKnowledgeChunks(opts: {
   documentId: number;
   chunks: string[];
   workspaceId?: string | null;
+  /** Qdrant multitenant source tag (default file ingest). */
+  payloadSource?: QdrantPayloadSource;
+  docKind?: KnowledgeChunkPayload["doc_kind"];
   basePayload: Omit<
     KnowledgeChunkPayload,
     | "text"
@@ -86,14 +89,22 @@ export async function upsertKnowledgeChunks(opts: {
     | "workspace_id"
   >;
 }): Promise<{ upserted: number; collection: string } | { error: string }> {
-  const { klant, documentId, chunks, basePayload, workspaceId } = opts;
+  const {
+    klant,
+    documentId,
+    chunks,
+    basePayload,
+    workspaceId,
+    payloadSource = "file",
+    docKind = "file",
+  } = opts;
   if (!chunks.length) return { error: "Geen chunks" };
 
   const collection = collectionForKlant(klant);
   const ingested_at = new Date().toISOString();
   const multitenant = buildMultitenantPayloadFields({
     tenant: klant,
-    source: "file",
+    source: payloadSource,
     workspaceId,
   });
 
@@ -131,7 +142,7 @@ export async function upsertKnowledgeChunks(opts: {
         chunk_index: chunkIndex,
         document_id: documentId,
         ingested_at,
-        doc_kind: "file",
+        doc_kind: docKind,
       };
       points.push({
         id,

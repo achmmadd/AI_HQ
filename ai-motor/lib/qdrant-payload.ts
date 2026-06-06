@@ -3,7 +3,7 @@
  * All ingest paths set workspace_id + tenant + source; searches filter on these.
  */
 
-export type QdrantPayloadSource = "file" | "scrape";
+export type QdrantPayloadSource = "file" | "scrape" | "chat";
 
 /** Canonical payload keys for workspace isolation. */
 export type QdrantMultitenantFields = {
