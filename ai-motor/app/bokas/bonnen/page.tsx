@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type BookkeepingHealth = {
+  ok?: boolean;
   status?: string;
   pending_approvals?: number;
   retry_queue?: number;
@@ -710,6 +711,17 @@ export default function BokasBonnenPage() {
         {err && (
           <p className="rounded-xl border border-error/40 bg-error/10 px-3 py-2 text-sm text-error">
             {err}
+          </p>
+        )}
+
+        {(health?.status === "offline" || health?.error) && (
+          <p
+            className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
+            role="status"
+          >
+            Bookkeeping-bot offline
+            {health?.error ? ` — ${health.error}` : ""}. Bonnen en Odoo-sync zijn
+            tijdelijk niet beschikbaar; Motor-goedkeuringen blijven werken.
           </p>
         )}
 

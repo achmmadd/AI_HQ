@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Copy, ExternalLink, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Check, Copy, ExternalLink } from "lucide-react";
+import {
+  Button,
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "@/design-system/components";
 import { cn } from "@/lib/utils";
 
 export type FumeroPublishModalPayload = {
@@ -26,7 +34,7 @@ export function FumeroPublishModal({
 }) {
   const [copied, setCopied] = useState<"url" | "embed" | null>(null);
 
-  if (!open || !payload) return null;
+  if (!payload) return null;
 
   const codeExportHref = payload.slug
     ? `/fumero/code?import=fumero-tool&slug=${encodeURIComponent(payload.slug)}`
@@ -45,67 +53,61 @@ export function FumeroPublishModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="fumero-publish-title"
-      onClick={onClose}
+    <Modal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <div
-        className="fumero-publish-modal w-full max-w-md overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+      <ModalContent
+        className="max-w-md border-[#E5E5E5] bg-white p-0"
+        onPointerDownOutside={onClose}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[rgba(105,196,0,0.25)] bg-[rgba(105,196,0,0.08)] px-4 py-3">
-          <div className="flex gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#69C400] text-white">
-              <Check className="h-4 w-4" strokeWidth={3} />
-            </span>
-            <div>
-              <h2
-                id="fumero-publish-title"
-                className="text-[15px] font-semibold text-[#171717]"
-              >
-                Live — {payload.name}
-              </h2>
-              <p className="mt-0.5 text-[12px] text-[#525252]">
-                {payload.version != null ? `v${payload.version} gepubliceerd` : "Gepubliceerd naar garage"}
-              </p>
+        <div className="border-b border-[rgba(105,196,0,0.25)] bg-[rgba(105,196,0,0.08)] px-4 py-3">
+          <ModalHeader className="pr-8">
+            <div className="flex gap-2">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#69C400] text-white">
+                <Check className="h-5 w-5" strokeWidth={3} aria-hidden />
+              </span>
+              <div>
+                <ModalTitle className="text-base text-[#171717]">
+                  Online — {payload.name}
+                </ModalTitle>
+                <ModalDescription className="text-[#525252]">
+                  {payload.version != null
+                    ? `Versie ${payload.version} staat live in de garage`
+                    : "Je app staat live in de garage"}
+                </ModalDescription>
+              </div>
             </div>
-          </div>
-          <button
-            type="button"
-            className="ios-tap-highlight rounded-lg p-1 text-[#737373] hover:bg-white/80 hover:text-[#171717]"
-            aria-label="Sluiten"
-            onClick={onClose}
-          >
-            <X className="h-5 w-5" />
-          </button>
+          </ModalHeader>
         </div>
 
-        <div className="space-y-3 px-4 py-4">
+        <div className="space-y-4 px-4 py-4">
           {payload.liveUrl ? (
             <div>
-              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-[#737373]">
-                Live URL
+              <p className="mb-2 text-sm font-medium text-[#171717]">
+                Link naar je app
               </p>
               <div className="flex gap-2">
                 <input
                   readOnly
                   value={payload.liveUrl}
-                  className="h-9 min-w-0 flex-1 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] px-2.5 font-mono text-[11px] text-[#171717]"
+                  aria-label="Live link"
+                  className="min-h-[var(--ds-touch-min)] min-w-0 flex-1 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] px-3 font-mono text-xs text-[#171717]"
                 />
                 <Button
                   type="button"
-                  size="sm"
+                  size="iconTouch"
                   variant="secondary"
-                  className="h-9 shrink-0 rounded-lg border-[#E5E5E5]"
+                  className="shrink-0 rounded-xl border-[#E5E5E5]"
+                  aria-label="Link kopiëren"
                   onClick={() => void handleCopy(payload.liveUrl!, "url")}
                 >
                   {copied === "url" ? (
-                    <Check className="h-3.5 w-3.5 text-[#69C400]" />
+                    <Check className="h-4 w-4 text-[#69C400]" aria-hidden />
                   ) : (
-                    <Copy className="h-3.5 w-3.5" />
+                    <Copy className="h-4 w-4" aria-hidden />
                   )}
                 </Button>
               </div>
@@ -114,69 +116,77 @@ export function FumeroPublishModal({
 
           {payload.embedCode ? (
             <div>
-              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-[#737373]">
-                Embed
+              <p className="mb-2 text-sm font-medium text-[#171717]">
+                Code voor op je website
               </p>
-              <div className="relative rounded-lg border border-[#E5E5E5] bg-[#171717]">
-                <pre className="max-h-24 overflow-x-auto p-2.5 pr-12 font-mono text-[10px] leading-relaxed text-[#e5e5e5]">
+              <div className="relative rounded-xl border border-[#E5E5E5] bg-[#171717]">
+                <pre className="max-h-28 overflow-x-auto p-3 pr-24 font-mono text-[11px] leading-relaxed text-[#e5e5e5]">
                   <code>{payload.embedCode}</code>
                 </pre>
                 <Button
                   type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="absolute right-1.5 top-1.5 h-7 rounded-md border border-[#404040] bg-[#262626] px-2 text-[10px] text-white"
+                  size="touch"
+                  variant="secondary"
+                  className="absolute right-2 top-2 h-auto min-h-[var(--ds-touch-min)] rounded-lg border-[#404040] bg-[#262626] px-3 text-xs text-white"
                   onClick={() => void handleCopy(payload.embedCode!, "embed")}
                 >
-                  {copied === "embed" ? "✓" : "Kopieer"}
+                  {copied === "embed" ? "Gekopieerd" : "Kopiëren"}
                 </Button>
               </div>
             </div>
           ) : null}
 
-          <p className="text-[11px] leading-relaxed text-[#737373]">
-            PWA: gebruikers kunnen de app via de browser installeren (Add to Home Screen).
-            Volledige App Store-build volgt later via Capacitor.
+          <p className="text-sm leading-relaxed text-[#737373]">
+            Bezoekers kunnen de app op hun telefoon toevoegen via &ldquo;Zet op
+            beginscherm&rdquo; in de browser.
           </p>
 
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Link
-              href="/fumero/projecten"
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#69C400] px-3 text-[12px] font-medium text-white hover:bg-[#5db000]"
-              )}
-              onClick={onClose}
+          <ModalFooter className="flex-wrap justify-start gap-2 pt-1 sm:justify-start">
+            <Button
+              asChild
+              size="touch"
+              className="rounded-xl bg-[#69C400] text-white hover:bg-[#5db000]"
             >
-              Open in Projecten
-            </Link>
+              <Link href="/fumero/projecten" onClick={onClose}>
+                Naar projecten
+              </Link>
+            </Button>
             {payload.liveUrl ? (
-              <a
-                href={payload.liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E5E5] px-3 text-[12px] font-medium text-[#171717] hover:bg-[#FAFAFA]"
+              <Button
+                asChild
+                size="touch"
+                variant="secondary"
+                className="rounded-xl border-[#E5E5E5]"
               >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open live
-              </a>
+                <a
+                  href={payload.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                  App openen
+                </a>
+              </Button>
             ) : null}
             <details className="relative w-full">
-              <summary className="cursor-pointer text-[12px] font-medium text-[#3d7a00] underline-offset-2 hover:underline">
+              <summary className="min-h-[var(--ds-touch-min)] cursor-pointer text-sm font-medium text-[#3d7a00] underline-offset-2 hover:underline">
                 Meer opties
               </summary>
-              <div className="mt-2 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] p-2">
+              <div className="mt-2 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] p-2">
                 <Link
                   href={codeExportHref}
-                  className="block rounded-md px-2 py-1.5 text-[12px] text-[#171717] hover:bg-white"
+                  className={cn(
+                    "flex min-h-[var(--ds-touch-min)] items-center rounded-lg px-3 text-sm text-[#171717] hover:bg-white"
+                  )}
                   onClick={onClose}
                 >
-                  Export naar Code workspace
+                  Naar code-werkplek
                 </Link>
               </div>
             </details>
-          </div>
+          </ModalFooter>
         </div>
-      </div>
-    </div>
+      </ModalContent>
+    </Modal>
   );
 }

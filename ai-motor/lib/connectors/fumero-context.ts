@@ -7,7 +7,8 @@ import {
   FUMERO_DESIGN_SYSTEM_BLOCK,
   formatTemplatesConnectorBlock,
 } from "@/lib/connectors/specialists";
-import { buildScrapeUrlChatContext } from "@/lib/fumero/scrape-url-chat";
+import { buildScrapeContextForPrompt } from "@/lib/scrape/build-scrape-context";
+import { resolveScrapePageLimit } from "@/lib/scrape/resolve-scrape-targets";
 
 type OrdersResponse = {
   orders: Array<{
@@ -165,27 +166,49 @@ const CONTEXT_HEADER =
   "--- LIVE CONNECTOR DATA (context voor Max — niet letterlijk aan gebruiker tonen) ---";
 const CONTEXT_FOOTER = "--- EINDE CONNECTOR DATA ---";
 
+export type FumeroAugmentedPrompt = {
+  prompt: string;
+  scrapeUrls: string[];
+};
+
 /**
  * Bouwt API-prompt met live connector-context. UI toont alleen `userPrompt`.
  */
 export async function augmentPromptWithFumeroConnectors(
   userPrompt: string,
   enabled: ConnectorId[],
-  opts?: { onlineMode?: boolean; buildIntent?: boolean }
-): Promise<string> {
+  opts?: {
+    onlineMode?: boolean;
+    buildIntent?: boolean;
+    onProgress?: (label: string) => void;
+  }
+): Promise<FumeroAugmentedPrompt> {
   let prompt = userPrompt.trim();
-  if (!prompt) return prompt;
+  if (!prompt) return { prompt, scrapeUrls: [] };
 
+  const report = opts?.onProgress;
   const toFetch = connectorsToFetch(enabled, prompt, opts);
   const blocks: string[] = [];
 
+  const connectorIds = toFetch.filter((id) => id !== "online_research");
+  if (connectorIds.length) {
+    report?.(
+      connectorIds.length === 1
+        ? `Connector: ${connectorIds[0]}…`
+        : `Connectors laden (${connectorIds.length})…`
+    );
+  }
+
   await Promise.all(
-    toFetch.map(async (id) => {
-      if (id === "online_research") return;
+    connectorIds.map(async (id) => {
       const block = await fetchConnectorBlock(id);
       if (block) blocks.push(block);
     })
   );
+
+  if (connectorIds.length && blocks.length) {
+    report?.("Connector-data geladen…");
+  }
 
   const onlineActive =
     opts?.onlineMode ||
@@ -196,12 +219,41 @@ export async function augmentPromptWithFumeroConnectors(
     prompt = `Zoek op het web naar ${prompt}`;
   }
 
-  const scrapeBlock = await buildScrapeUrlChatContext(userPrompt);
-  if (scrapeBlock) {
-    prompt = [scrapeBlock, prompt].join("\n");
+  const scrapeResult = await buildScrapeContextForPrompt(userPrompt, "fumero", {
+    maxPages: resolveScrapePageLimit(userPrompt, {
+      buildIntent: opts?.buildIntent,
+    }),
+    maxTotalChars: opts?.buildIntent ? 28_000 : 24_000,
+    reason: opts?.buildIntent ? "bouwen chat context" : "max chat context",
+    onProgress: report,
+  });
+  const scrapeUrls = scrapeResult?.urls ?? [];
+  if (scrapeResult?.block) {
+    prompt = [scrapeResult.block, prompt].join("\n");
   }
 
-  if (blocks.length === 0) return prompt;
+  if (blocks.length === 0) {
+    return { prompt, scrapeUrls };
+  }
 
-  return [CONTEXT_HEADER, ...blocks, CONTEXT_FOOTER, "", prompt].join("\n");
+  return {
+    prompt: [CONTEXT_HEADER, ...blocks, CONTEXT_FOOTER, "", prompt].join("\n"),
+    scrapeUrls,
+  };
+}
+
+export function formatFumeroScrapeChatNotice(urls: string[]): string | null {
+  if (!urls.length) return null;
+  if (urls.length === 1) {
+    try {
+      const u = new URL(urls[0]);
+      const path = u.pathname.replace(/\/$/, "") || "/";
+      const where =
+        path === "/" ? u.hostname : `${u.hostname}${path}`;
+      return `Ik las **${where}** voor je — even samenvatten.`;
+    } catch {
+      return `Ik las **${urls[0]}** voor je — even samenvatten.`;
+    }
+  }
+  return `Ik las **${urls.length} pagina's** op fumero.nl voor je — even samenvatten.`;
 }

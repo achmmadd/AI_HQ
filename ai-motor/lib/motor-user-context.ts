@@ -69,7 +69,7 @@ export function maybeLearnFromPrompt(klant: string, prompt: string): void {
   const t = prompt.trim();
   if (t.length < 20) return;
   const goalMatch = t.match(
-    /\b(ik wil|mijn doel|we willen|focus op|belangrijk voor mij)\b[^.!?]{10,120}/i
+    /\b(ik wil|mijn doel|ons doel|we willen|focus op|belangrijk voor mij|doel is|einddoel|north star)\b[^.!?]{10,120}/i
   );
   if (goalMatch) {
     const existing = getMotorUserContext(klant);

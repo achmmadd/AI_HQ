@@ -14,6 +14,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Loader2,
   Send,
   Square,
   Trash2,
@@ -67,6 +68,7 @@ import {
 } from "@/lib/fumero/composer-model-tier";
 import {
   FUMERO_CMD_EVENTS,
+  type FumeroCmdFocusComposerDetail,
   type FumeroCmdSetComposerModeDetail,
 } from "@/lib/fumero/command-palette";
 import { BOKAS_CHAT_SUGGESTIONS } from "@/lib/bokas-quick-actions";
@@ -136,7 +138,24 @@ import {
 } from "@/lib/fumero/builder-config";
 import { showFumeroToast } from "@/lib/fumero/fumero-toast";
 import { FumeroConnectorsPanel } from "@/components/fumero/FumeroConnectorsPanel";
-import { augmentPromptWithFumeroConnectors } from "@/lib/connectors/fumero-context";
+import {
+  augmentPromptWithFumeroConnectors,
+  formatFumeroScrapeChatNotice,
+} from "@/lib/connectors/fumero-context";
+import {
+  enrichCasualBouwenPrompt,
+  isFumeroSiteCheckChatIntent,
+} from "@/lib/fumero/casual-prompt";
+import { fumeroStuckHintLabel } from "@/lib/fumero/fumero-live-steps";
+import { fumeroPrepStatusLabel } from "@/lib/fumero/fumero-prep-status";
+import {
+  bouwenClarifyingQuestions,
+  buildMaxClarifyChatPrompt,
+  dispatchFumeroGoalUpdated,
+  formatBouwenClarifyAssistantMessage,
+  parseMaxGoalCommand,
+} from "@/lib/fumero/max-goal-shared";
+import { shouldScrapeUrlsForMaxChat } from "@/lib/fumero/scrape-url-chat";
 import { buildScrapeContextForToolBuild } from "@/lib/fumero/scrape-url-chat";
 import { applyDesignerHints } from "@/lib/connectors/specialists";
 import {
@@ -294,6 +313,58 @@ function MotorThinkingBlock({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Claude/Perplexity-achtige stappenfeed voor Max (prep + stream). */
+function FumeroMaxActivityFeed({
+  statusLabel,
+  activities,
+  stuckHint,
+}: {
+  statusLabel?: string | null;
+  activities: string[];
+  stuckHint?: string | null;
+}) {
+  const lines =
+    activities.length > 0
+      ? activities
+      : statusLabel
+        ? [statusLabel]
+        : ["Max werkt…"];
+  const current = statusLabel?.trim() || lines[lines.length - 1] || "Max werkt…";
+  const completed =
+    lines.length > 1 && lines[lines.length - 1] === current
+      ? lines.slice(0, -1)
+      : lines.filter((line) => line !== current);
+
+  return (
+    <div className="space-y-2">
+      <ul className="max-h-52 space-y-1 overflow-y-auto border-l-2 border-[#69C400]/35 pl-3">
+        {completed.map((line, i) => (
+          <li
+            key={`done-${i}-${line}`}
+            className="flex items-start gap-2 text-[12px] leading-snug text-[#737373]"
+          >
+            <span className="mt-0.5 shrink-0 font-semibold text-[#69C400]">
+              ✓
+            </span>
+            <span>{line}</span>
+          </li>
+        ))}
+        <li className="flex items-start gap-2 text-[13px] font-medium leading-snug text-[#171717]">
+          <span className="mt-0.5 shrink-0">
+            <MotorTypingDots accent />
+          </span>
+          <span>{current}</span>
+        </li>
+      </ul>
+      {stuckHint ? (
+        <p className="text-[11px] text-[#737373]" aria-live="polite">
+          {stuckHint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -573,6 +644,14 @@ export function MotorsChatPanel({
     [fumeroCoderMode]
   );
   const [toolBusy, setToolBusy] = useState(false);
+  const [fumeroPrepStatus, setFumeroPrepStatus] = useState<string | null>(null);
+  const [fumeroPrepActivities, setFumeroPrepActivities] = useState<string[]>([]);
+  const [fumeroStuckHint, setFumeroStuckHint] = useState<string | null>(null);
+  const [fumeroSubmitting, setFumeroSubmitting] = useState(false);
+  const prepStepAtRef = useRef(Date.now());
+  const lastPrepStepRef = useRef("");
+  const fumeroPrepActivitiesRef = useRef<string[]>([]);
+  const pendingSubmitRef = useRef<string | null>(null);
   const [coderBuildPhase, setCoderBuildPhase] = useState<string>(
     CODER_BUILD_PHASES[0]
   );
@@ -683,6 +762,60 @@ export function MotorsChatPanel({
     }
   }, [messages, streamingId, streamStatus, streamActivities, scrollBottom]);
 
+  const pushFumeroPrepStep = useCallback((label: string) => {
+    const step = label.trim();
+    if (!step) return;
+    prepStepAtRef.current = Date.now();
+    lastPrepStepRef.current = step;
+    setFumeroStuckHint(null);
+    setFumeroPrepActivities((prev) => {
+      if (prev[prev.length - 1] === step) return prev;
+      const next = [...prev, step];
+      fumeroPrepActivitiesRef.current = next;
+      return next;
+    });
+    setFumeroPrepStatus(step);
+  }, []);
+
+  const resetFumeroPrep = useCallback(() => {
+    fumeroPrepActivitiesRef.current = [];
+    setFumeroPrepActivities([]);
+    setFumeroPrepStatus(null);
+    setFumeroStuckHint(null);
+  }, []);
+
+  useEffect(() => {
+    if (!fumeroPrepStatus && !streamingId) {
+      setFumeroStuckHint(null);
+      return;
+    }
+    const tick = window.setInterval(() => {
+      if (Date.now() - prepStepAtRef.current > 45_000) {
+        setFumeroStuckHint(
+          fumeroStuckHintLabel(
+            lastPrepStepRef.current ||
+              fumeroPrepStatus ||
+              streamStatus ||
+              "bezig"
+          )
+        );
+      }
+    }, 5000);
+    return () => window.clearInterval(tick);
+  }, [fumeroPrepStatus, streamingId, streamStatus]);
+
+  useEffect(() => {
+    if (streamStatus?.trim()) {
+      prepStepAtRef.current = Date.now();
+      lastPrepStepRef.current = streamStatus;
+      setFumeroStuckHint(null);
+    }
+  }, [streamStatus]);
+
+  useEffect(() => {
+    if (fumeroPrepStatus) scrollBottom(true);
+  }, [fumeroPrepStatus, fumeroPrepActivities, scrollBottom]);
+
   const resizeComposer = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -717,7 +850,9 @@ export function MotorsChatPanel({
     const onNewChat = () => {
       void newChat();
     };
-    const onFocusComposer = () => {
+    const onFocusComposer = (e: Event) => {
+      const detail = (e as CustomEvent<FumeroCmdFocusComposerDetail>).detail;
+      if (detail?.prompt) setText(detail.prompt);
       textareaRef.current?.focus();
     };
     const onSetMode = (e: Event) => {
@@ -911,6 +1046,10 @@ export function MotorsChatPanel({
 
   const runToolBuild = useCallback(
     async (userText: string, seedOverride?: string) => {
+      setFumeroPrepStatus(null);
+      setFumeroSubmitting(false);
+      setFumeroPrepActivities([]);
+      fumeroPrepActivitiesRef.current = [];
       const seed = (seedOverride ?? activeToolPrompt ?? userText).trim();
       const quick = resolveTemplateFromQuickReply(userText);
       const tplFromText =
@@ -922,10 +1061,15 @@ export function MotorsChatPanel({
           : tplFromText;
       const deployType = deployTypeForTemplate(templateId);
       const seedLine = templateId ? getTemplate(templateId)?.promptSeed : undefined;
-      let merged = buildInitialToolPrompt(seed, userText, seedLine);
+      let merged = buildInitialToolPrompt(
+        seed,
+        enrichCasualBouwenPrompt(userText),
+        seedLine
+      );
 
       let scrapeNotice: string | null = null;
       if (workspace === "fumero") {
+        setBuildStatusUnlessCoder("Live info ophalen…");
         try {
           const scrapeCtx = await buildScrapeContextForToolBuild(userText, "fumero");
           if (scrapeCtx?.block) {
@@ -1114,6 +1258,8 @@ export function MotorsChatPanel({
   const runToolIterate = useCallback(
     async (instruction: string) => {
       if (!activeToolId) return;
+      setFumeroPrepStatus(null);
+      setFumeroSubmitting(false);
       setToolBusy(true);
       setBuildStatusUnlessCoder("Tool verfijnen…");
       const merged = mergeToolPrompt(activeToolPrompt, instruction);
@@ -1273,6 +1419,8 @@ export function MotorsChatPanel({
   // Fase 5 full-app handlers (Lovable UX in chat card, data preserved on refine)
   const runFullAppBuild = useCallback(
     async (userText: string) => {
+      setFumeroPrepStatus(null);
+      setFumeroSubmitting(false);
       const seed = userText.trim();
       const nameGuess = seed.slice(0, 48) || "Nieuwe App";
       setToolBusy(true);
@@ -1708,14 +1856,109 @@ export function MotorsChatPanel({
     ]
   );
 
+  const sendFumeroMaxReply = useCallback(
+    async (userText: string, buildIntent: boolean) => {
+      setFumeroSubmitting(true);
+      const first = fumeroPrepStatusLabel(userText);
+      prepStepAtRef.current = Date.now();
+      lastPrepStepRef.current = first;
+      fumeroPrepActivitiesRef.current = [first];
+      setFumeroPrepActivities([first]);
+      setFumeroPrepStatus(first);
+      clearError();
+      try {
+        pushFumeroPrepStep("Context samenstellen…");
+        const augmented = await augmentPromptWithFumeroConnectors(
+          userText,
+          enabledConnectors,
+          {
+            onlineMode: fumeroComposerMode === "online",
+            buildIntent,
+            onProgress: pushFumeroPrepStep,
+          }
+        );
+        const scrapeNotice = formatFumeroScrapeChatNotice(augmented.scrapeUrls);
+        if (scrapeNotice) {
+          appendAssistantMessage(scrapeNotice);
+          scrollBottom(true);
+        }
+        pushFumeroPrepStep("Max · antwoord streamen…");
+        await send(augmented.prompt, {
+          ...chatSendOpts,
+          skipUserMessage: true,
+          initialActivities: [...fumeroPrepActivitiesRef.current],
+        });
+      } catch (e) {
+        reportError(
+          e instanceof Error ? e.message : "Kon Max-antwoord niet starten"
+        );
+      } finally {
+        resetFumeroPrep();
+        setFumeroSubmitting(false);
+      }
+    },
+    [
+      appendAssistantMessage,
+      chatSendOpts,
+      clearError,
+      enabledConnectors,
+      fumeroComposerMode,
+      pushFumeroPrepStep,
+      reportError,
+      resetFumeroPrep,
+      scrollBottom,
+      send,
+    ]
+  );
+
   const submitText = useCallback(
-    async (raw: string) => {
+    async (raw: string, opts?: { skipShowPrompt?: boolean }) => {
     const t = raw.trim();
-    if (!t || streamingId || artifactBusy || toolBusy) return;
+    if (!t) return;
+    if (streamingId) {
+      reportError("Even wachten — Max is nog bezig met het vorige antwoord.");
+      return;
+    }
+    if (fumeroPrepStatus) return;
+    if (artifactBusy) {
+      reportError("Even wachten — er loopt nog een andere taak.");
+      return;
+    }
+    if (toolBusy) {
+      reportError(
+        "Even wachten — de build is nog bezig. Verstuur opnieuw zodra de preview klaar is."
+      );
+      return;
+    }
+    if (activeConversationId === undefined) {
+      if (convLoadError) {
+        reportError(convLoadError);
+        return;
+      }
+      if (!opts?.skipShowPrompt) {
+        appendUserMessage(t);
+        setText("");
+        scrollBottom(true);
+      }
+      pendingSubmitRef.current = t;
+      setFumeroPrepStatus("Gesprek laden…");
+      return;
+    }
+    if (!historyLoaded) {
+      if (!opts?.skipShowPrompt) {
+        appendUserMessage(t);
+        setText("");
+        scrollBottom(true);
+      }
+      pendingSubmitRef.current = t;
+      setFumeroPrepStatus("Gesprek laden…");
+      return;
+    }
     if (!ensureChatReady()) return;
     stickToBottomRef.current = true;
 
     const showPromptInChat = () => {
+      if (opts?.skipShowPrompt) return;
       const isFirstUser =
         messages.filter((m) => m.role === "user").length === 0;
       appendUserMessage(t);
@@ -1725,6 +1968,86 @@ export function MotorsChatPanel({
     };
 
     if (workspace === "fumero") {
+      const goalCmd = parseMaxGoalCommand(t);
+      if (goalCmd) {
+        showPromptInChat();
+        try {
+          const res = await fetch("/api/fumero/goal", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ klant: "fumero", command: t }),
+          });
+          const data = (await res.json()) as { reply?: string; error?: string };
+          if (!res.ok) {
+            throw new Error(data.error || "Doel kon niet worden opgeslagen");
+          }
+          appendAssistantMessage(
+            typeof data.reply === "string" ? data.reply : "Doel bijgewerkt."
+          );
+          dispatchFumeroGoalUpdated();
+        } catch (err) {
+          reportError(
+            err instanceof Error ? err.message : "Doel kon niet worden opgeslagen"
+          );
+        }
+        scrollBottom(true);
+        return;
+      }
+
+      const fetchFumeroGoals = async (): Promise<string | null> => {
+        try {
+          const res = await fetch("/api/fumero/goal?klant=fumero", {
+            credentials: "include",
+          });
+          if (!res.ok) return null;
+          const json = (await res.json()) as { goals?: string | null };
+          return json.goals?.trim() || null;
+        } catch {
+          return null;
+        }
+      };
+
+      const maybeBouwenClarifyBeforeBuild = async (
+        userPrompt: string
+      ): Promise<boolean> => {
+        const goals = await fetchFumeroGoals();
+        const questions = bouwenClarifyingQuestions(userPrompt, goals);
+        if (!questions?.length) return false;
+        appendAssistantMessage(formatBouwenClarifyAssistantMessage(questions));
+        scrollBottom(true);
+        await sendFumeroMaxReply(
+          buildMaxClarifyChatPrompt(userPrompt, questions, goals),
+          true
+        );
+        return true;
+      };
+
+      const endFumeroActivity = () => {
+        setFumeroSubmitting(false);
+        resetFumeroPrep();
+      };
+
+      const beginFumeroActivity = () => {
+        const first = fumeroPrepStatusLabel(t);
+        setFumeroSubmitting(true);
+        prepStepAtRef.current = Date.now();
+        lastPrepStepRef.current = first;
+        fumeroPrepActivitiesRef.current = [first];
+        setFumeroPrepActivities([first]);
+        setFumeroPrepStatus(first);
+      };
+
+      if (maxCompanion) {
+        beginFumeroActivity();
+      }
+
+      if (isFumeroSiteCheckChatIntent(t)) {
+        showPromptInChat();
+        await sendFumeroMaxReply(t, fumeroCoderMode);
+        return;
+      }
+
       if (maxCompanion) {
         const maxAction = resolveMaxChatAction(t, maxCompanion.briefing);
         if (maxAction?.type === "inline_briefing" && maxCompanion.briefing) {
@@ -1733,6 +2056,7 @@ export function MotorsChatPanel({
             formatMaxBriefingDetailMarkdown(maxCompanion.briefing)
           );
           scrollBottom(true);
+          endFumeroActivity();
           return;
         }
         if (maxAction?.type === "redirect") {
@@ -1741,6 +2065,7 @@ export function MotorsChatPanel({
             `**${maxAction.notice}**\n\nIk open de juiste studio met je opdracht.`
           );
           scrollBottom(true);
+          endFumeroActivity();
           router.push(maxAction.href);
           return;
         }
@@ -1810,12 +2135,14 @@ export function MotorsChatPanel({
                 `**Doel:** ${t}`
             );
             scrollBottom(true);
+            endFumeroActivity();
             return;
           }
         }
 
         if (toolAction?.type === "tool_intent_pick") {
           showPromptInChat();
+          endFumeroActivity();
           showToolTemplatePicker(awaitingToolTemplate ? activeToolPrompt : t);
           scrollBottom(true);
           return;
@@ -1828,6 +2155,7 @@ export function MotorsChatPanel({
         }
         if (toolAction?.type === "tool_build") {
           showPromptInChat();
+          if (await maybeBouwenClarifyBeforeBuild(t)) return;
           setPreviewPanelOpen(true);
           await runToolBuild(t, awaitingToolTemplate ? activeToolPrompt : undefined);
           return;
@@ -1835,16 +2163,7 @@ export function MotorsChatPanel({
 
         if (coderQuestionOnly) {
           showPromptInChat();
-          let apiPrompt = t;
-          try {
-            apiPrompt = await augmentPromptWithFumeroConnectors(t, enabledConnectors, {
-              onlineMode: false,
-              buildIntent: true,
-            });
-          } catch {
-            apiPrompt = t;
-          }
-          void send(apiPrompt, { ...chatSendOpts, skipUserMessage: true });
+          await sendFumeroMaxReply(t, true);
           return;
         }
 
@@ -1889,6 +2208,7 @@ export function MotorsChatPanel({
       if (toolAction) {
         showPromptInChat();
         if (toolAction.type === "tool_intent_pick") {
+          endFumeroActivity();
           showToolTemplatePicker(t);
           scrollBottom(true);
           return;
@@ -1898,6 +2218,7 @@ export function MotorsChatPanel({
           return;
         }
         if (toolAction.type === "tool_build") {
+          if (await maybeBouwenClarifyBeforeBuild(t)) return;
           await runToolBuild(t, awaitingToolTemplate ? activeToolPrompt : undefined);
           return;
         }
@@ -2020,18 +2341,11 @@ export function MotorsChatPanel({
     }
 
     showPromptInChat();
-    let apiPrompt = t;
     if (workspace === "fumero" && maxCompanion) {
-      try {
-        apiPrompt = await augmentPromptWithFumeroConnectors(t, enabledConnectors, {
-          onlineMode: fumeroComposerMode === "online",
-          buildIntent: fumeroComposerMode === "coder",
-        });
-      } catch {
-        apiPrompt = t;
-      }
+      await sendFumeroMaxReply(t, fumeroComposerMode === "coder");
+      return;
     }
-    void send(apiPrompt, { ...chatSendOpts, skipUserMessage: true });
+    await send(t, { ...chatSendOpts, skipUserMessage: true });
   },
   [
     activeConversationId,
@@ -2042,11 +2356,15 @@ export function MotorsChatPanel({
     artifactBusy,
     awaitingToolTemplate,
     chatSendOpts,
+    convLoadError,
     ensureChatReady,
+    fumeroPrepStatus,
     hasActiveProject,
     enabledConnectors,
     fumeroComposerMode,
+    historyLoaded,
     maxCompanion,
+    sendFumeroMaxReply,
     onBuildArtifact,
     onProjectPrompt,
     preferArtifactBuilds,
@@ -2064,6 +2382,7 @@ export function MotorsChatPanel({
     send,
     showToolTemplatePicker,
     streamingId,
+    toolBusy,
     unifiedMode,
     workspace,
     activeAppSlug,
@@ -2220,6 +2539,15 @@ export function MotorsChatPanel({
   const initialPromptSentRef = useRef(false);
   const submitTextRef = useRef(submitText);
   submitTextRef.current = submitText;
+
+  useEffect(() => {
+    if (!pendingSubmitRef.current) return;
+    if (activeConversationId === undefined || !historyLoaded || streamingId) return;
+    const pending = pendingSubmitRef.current;
+    pendingSubmitRef.current = null;
+    setFumeroPrepStatus(null);
+    void submitTextRef.current(pending, { skipShowPrompt: true });
+  }, [activeConversationId, historyLoaded, streamingId]);
 
   useEffect(() => {
     initialPromptSentRef.current = false;
@@ -2540,6 +2868,7 @@ export function MotorsChatPanel({
     artifactErr ||
     error ||
     uploadNotice?.text ||
+    fumeroPrepStatus ||
     (coderBuildQuiet ? null : buildStatus) ||
     (streamingId && streamStatus ? streamStatus : null) ||
     (toolBusy && !coderBuildQuiet ? (buildStatus ?? "Bezig…") : null);
@@ -3004,13 +3333,25 @@ export function MotorsChatPanel({
                                   variant="assistant"
                                 />
                               ) : (
-                                <MotorThinkingBlock
-                                  turbo={effectiveAgentMode}
-                                  statusLabel={streamStatus}
-                                  activities={streamActivities}
-                                  agentLabel={streamAgentLabel}
-                                  accent={fumeroOps}
-                                />
+                                fumeroOps ? (
+                                  <FumeroMaxActivityFeed
+                                    statusLabel={streamStatus}
+                                    activities={
+                                      streamActivities.length
+                                        ? streamActivities
+                                        : fumeroPrepActivities
+                                    }
+                                    stuckHint={fumeroStuckHint}
+                                  />
+                                ) : (
+                                  <MotorThinkingBlock
+                                    turbo={effectiveAgentMode}
+                                    statusLabel={streamStatus}
+                                    activities={streamActivities}
+                                    agentLabel={streamAgentLabel}
+                                    accent={fumeroOps}
+                                  />
+                                )
                               )}
                               {m.content.trim() ? (
                                 <MotorStreamPulse
@@ -3192,6 +3533,19 @@ export function MotorsChatPanel({
                 </div>
               );
             })}
+            {fumeroPrepStatus && !streamingId ? (
+              <div className="flex gap-3 px-4 py-3">
+                <AgentAvatar workspace={workspace} size="sm" className="mt-0.5 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="mb-1 text-[12px] font-semibold text-ws-accent">Max</p>
+                  <FumeroMaxActivityFeed
+                    statusLabel={fumeroPrepStatus}
+                    activities={fumeroPrepActivities}
+                    stuckHint={fumeroStuckHint}
+                  />
+                </div>
+              </div>
+            ) : null}
             {!fumeroEmptyHome ? (
               <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
             ) : null}
@@ -3295,7 +3649,22 @@ export function MotorsChatPanel({
               "border-t border-border/40 bg-background/80"
           )}
         >
-          {streamingId && streamStatus && !statusIsError && !coderBuildQuiet ? (
+          {fumeroOps && maxCompanion && (fumeroPrepStatus || streamingId) ? (
+            <div
+              className="motors-chat-column mb-2 flex max-w-full items-center gap-2 px-1 text-[11px] text-[#525252]"
+              aria-live="polite"
+            >
+              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[#69C400]" />
+              <span className="min-w-0 truncate font-medium text-[#3d7a00]">
+                {fumeroPrepStatus || streamStatus || "Max werkt…"}
+              </span>
+              {fumeroStuckHint ? (
+                <span className="hidden shrink-0 text-[#737373] sm:inline">
+                  · {fumeroStuckHint}
+                </span>
+              ) : null}
+            </div>
+          ) : (streamingId && streamStatus && !statusIsError && !coderBuildQuiet) ? (
             <p
               className={cn(
                 "motors-chat-column mb-2 flex items-center justify-center gap-1.5 text-[11px]",
@@ -3321,7 +3690,8 @@ export function MotorsChatPanel({
               className={cn(
                 "motors-chat-column fumero-composer-shell relative overflow-visible transition-colors",
                 composerDragOver && "fumero-composer-drag",
-                streamingId && "ring-1 ring-[#69C400]/20"
+                (streamingId || fumeroPrepStatus || fumeroSubmitting) &&
+                  "ring-1 ring-[#69C400]/20 fumero-composer-busy"
               )}
             >
               {composerDragOver ? (
@@ -3336,11 +3706,17 @@ export function MotorsChatPanel({
                 onKeyDown={onComposerKeyDown}
                 placeholder={fumeroComposerPlaceholder(fumeroComposerMode, {
                   modelTier: fumeroModelTier,
+                  bouwenWorkspace,
                 })}
                 rows={1}
                 className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 pb-1 pt-3 fumero-text-body text-[#171717] outline-none placeholder:text-[#737373]"
                 autoComplete="off"
-                disabled={activeConversationId === undefined || artifactBusy}
+                disabled={
+                  activeConversationId === undefined ||
+                  artifactBusy ||
+                  toolBusy ||
+                  Boolean(fumeroPrepStatus)
+                }
               />
               <FumeroComposerToolbar
                 variant="inline"
@@ -3362,7 +3738,12 @@ export function MotorsChatPanel({
                 hideModePill={bouwenWorkspace}
                 onConnectorsOpen={() => setConnectorsOpen(true)}
                 onUploadClick={() => fileRef.current?.click()}
-                disabled={!!streamingId || activeConversationId === undefined}
+                disabled={
+                  !!streamingId ||
+                  activeConversationId === undefined ||
+                  toolBusy ||
+                  Boolean(fumeroPrepStatus)
+                }
                 coderOverflowItems={fumeroCoderOverflowItems}
               >
                 {!fumeroCoderMode ? (
@@ -3389,7 +3770,7 @@ export function MotorsChatPanel({
                 <button
                   type="button"
                   className={cn(
-                    "ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#525252] transition-colors hover:bg-[#FAFAFA] hover:text-[#171717] disabled:opacity-40",
+                    "ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-[#525252] transition-colors hover:bg-[#FAFAFA] hover:text-[#171717] disabled:opacity-40",
                     listening && "text-[#69C400] ring-2 ring-[#69C400]/25"
                   )}
                   title="Spraak"
@@ -3398,24 +3779,33 @@ export function MotorsChatPanel({
                 >
                   <Mic className="h-[18px] w-[18px]" />
                 </button>
-                {streamingId ? (
+                {streamingId || fumeroPrepStatus || fumeroSubmitting ? (
                   <button
                     type="button"
-                    className="ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#b91c1c]"
-                    title="Stop genereren"
-                    onClick={() => stop()}
+                    className="ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#b91c1c]"
+                    title={streamingId ? "Stop genereren" : "Bezig…"}
+                    disabled={Boolean(fumeroPrepStatus || fumeroSubmitting) && !streamingId}
+                    onClick={() => {
+                      if (streamingId) stop();
+                    }}
                   >
-                    <Square className="h-4 w-4 fill-current" />
+                    {streamingId ? (
+                      <Square className="h-4 w-4 fill-current" />
+                    ) : (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
                   </button>
                 ) : (
                   <button
                     type="submit"
-                    className="ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#69C400] text-white hover:bg-[#5eb300] disabled:opacity-40"
+                    className="ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full bg-[#69C400] text-white hover:bg-[#5eb300] disabled:opacity-40"
                     disabled={
                       !text.trim() ||
                       activeConversationId === undefined ||
                       artifactBusy ||
-                      uploadBusy
+                      uploadBusy ||
+                      toolBusy ||
+                      fumeroSubmitting
                     }
                     title="Versturen"
                   >
@@ -3443,7 +3833,7 @@ export function MotorsChatPanel({
               )}
               <button
                 type="button"
-                className="ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:opacity-40"
+                className="ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:opacity-40"
                 title="Bestand toevoegen"
                 disabled={
                   !!streamingId ||
@@ -3481,7 +3871,7 @@ export function MotorsChatPanel({
               <button
                 type="button"
                 className={cn(
-                  "ios-tap-highlight flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:opacity-40",
+                  "ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:opacity-40",
                   listening && "text-accent ring-2 ring-accent/25"
                 )}
                 title="Spraak"
@@ -3498,13 +3888,13 @@ export function MotorsChatPanel({
                 placeholder={
                   unifiedMode
                     ? hasActiveProject
-                      ? "Vraag of pas je project aan…"
-                      : "Vraag, bouw een app, of codeer in React/Next…"
+                      ? "Stel een vraag of pas je project aan…"
+                      : "Stel een vraag, bouw een app of schrijf code…"
                     : preferProjectBuilds
                       ? hasActiveProject
-                        ? "Pas het project aan… (Enter)"
-                        : "Beschrijf je project… (Enter)"
-                      : "Bericht… (Enter versturen, Shift+Enter nieuwe regel)"
+                        ? "Pas je project aan…"
+                        : "Beschrijf je project…"
+                      : "Typ je bericht… (Enter = versturen)"
                 }
                 rows={1}
                 className={cn(

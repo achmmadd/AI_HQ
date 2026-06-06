@@ -1,0 +1,42 @@
+# LiteLLM proxy — Hetzner sidecar (Sprint 2.1 skeleton)
+# Deploy: infra/litellm/docker-compose.yml on Hetzner (16 GB box).
+# Motor NUC sets LITELLM_BASE_URL=http://hetzner-motor:4000 via Tailscale.
+#
+# Docs: https://docs.litellm.ai/docs/proxy/configs
+
+model_list:
+  - model_name: chat-primary
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v4-pro
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: chat-research
+    litellm_params:
+      model: openrouter/perplexity/sonar-pro
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: chat-flash
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v4-flash
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: builder
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  success_callback: []
+  failure_callback: []
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: null
+
+router_settings:
+  routing_strategy: simple-shuffle
+  model_group_alias:
+    motor-chat: chat-primary
+    motor-research: chat-research

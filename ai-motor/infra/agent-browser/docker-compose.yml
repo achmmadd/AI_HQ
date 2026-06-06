@@ -1,0 +1,59 @@
+# agent-browser on-demand stack — Hetzner (Sprint 2.2 skeleton)
+#
+# RAM budget: 1–2 GB while running — DO NOT keep up 24/7 (MASTER-BUILD-PLAN appendix C).
+# Full Stagehand integration lands in Fase 3; this skeleton wires n8n computer-use → browser.
+#
+# Prerequisites:
+#   - Tailscale on Hetzner + NUC
+#   - n8n workflow that calls AGENT_BROWSER_URL (or uses COMPUTER_USE_URL webhook chain)
+#
+# Motor NUC (.env.local):
+#   COMPUTER_USE_URL=http://<hetzner-n8n>/webhook/agent-mvp   # primary agent chat webhook
+#   AGENT_BROWSER_URL=http://<hetzner-tailscale>:8787          # optional direct health/screenshot
+#   COMPUTER_USE_VIEWER_URL=...                                 # VNC/stream iframe (see computer-use-n8n.md)
+#
+# Start on demand (Hetzner):
+#   cd infra/agent-browser && docker compose --profile on-demand up -d
+#
+# Stop after task / idle:
+#   docker compose --profile on-demand down
+#
+# Health (from NUC via Tailscale):
+#   curl -sf http://<host>:8787/health || echo offline
+
+services:
+  agent-browser:
+    profiles: ["on-demand"]
+    image: browserless/chrome:latest
+    container_name: motor-agent-browser
+    restart: "no"
+    ports:
+      - "${AGENT_BROWSER_BIND:-127.0.0.1}:8787:3000"
+    environment:
+      MAX_CONCURRENT_SESSIONS: "${AGENT_BROWSER_MAX_SESSIONS:-1}"
+      CONNECTION_TIMEOUT: "${AGENT_BROWSER_IDLE_MS:-300000}"
+      PREBOOT_CHROME: "true"
+      TOKEN: ${AGENT_BROWSER_TOKEN:-}
+    shm_size: "1gb"
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
+
+  # Placeholder for Stagehand sidecar — enable in Fase 3 when replacing browserless.
+  stagehand:
+    profiles: ["on-demand", "stagehand"]
+    image: alpine:3.20
+    container_name: motor-stagehand-placeholder
+    restart: "no"
+    command: ["sh", "-c", "echo Stagehand sidecar skeleton — wire in Fase 3 && sleep infinity"]
+    deploy:
+      resources:
+        limits:
+          memory: 256m

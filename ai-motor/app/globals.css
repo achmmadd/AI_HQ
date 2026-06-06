@@ -1,3 +1,6 @@
+@import "../design-system/tokens.css";
+@import "../design-system/workspaces.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,34 +8,6 @@
 @layer base {
   * {
     @apply border-border;
-  }
-
-  .dark {
-    --background: #0a0a0b;
-    --surface: #141416;
-    --surface-elevated: #1c1c1f;
-    --border: rgba(255, 255, 255, 0.08);
-    --accent: #0a84ff;
-    --accent-hover: #409cff;
-    --success: #30d158;
-    --warning: #ff9f0a;
-    --error: #ff453a;
-    --text-primary: #f5f5f7;
-    --text-secondary: rgba(245, 245, 247, 0.55);
-  }
-
-  .light {
-    --background: #f5f5f7;
-    --surface: #ffffff;
-    --surface-elevated: #ffffff;
-    --border: rgba(0, 0, 0, 0.08);
-    --accent: #0071e3;
-    --accent-hover: #0077ed;
-    --success: #34c759;
-    --warning: #ff9500;
-    --error: #ff3b30;
-    --text-primary: #1d1d1f;
-    --text-secondary: rgba(29, 29, 31, 0.55);
   }
 
   html {

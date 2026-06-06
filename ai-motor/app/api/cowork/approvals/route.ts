@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { fetchBookkeepingHealth } from "@/lib/bookkeeping-bot";
 
 export const runtime = "nodejs";
 
@@ -14,27 +15,27 @@ export type CoworkApprovalItem = {
   meta?: Record<string, unknown>;
 };
 
-function bookkeepingBase(): string {
-  return (
-    process.env.BOOKKEEPING_BOT_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:8001"
-  );
-}
+type BookkeepingInboxResult = {
+  items: CoworkApprovalItem[];
+  status: "ok" | "offline" | "skipped";
+  error?: string;
+};
 
-async function fetchBookkeepingPending(): Promise<CoworkApprovalItem[]> {
-  try {
-    const res = await fetch(`${bookkeepingBase()}/health`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(6_000),
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as {
-      pending_approvals?: number;
-      status?: string;
+async function fetchBookkeepingPending(): Promise<BookkeepingInboxResult> {
+  const health = await fetchBookkeepingHealth(6_000);
+  if (!health.ok) {
+    return {
+      items: [],
+      status: "offline",
+      error: health.error ?? "bookkeeping-bot offline",
     };
-    const count = data.pending_approvals ?? 0;
-    if (count <= 0) return [];
-    return [
+  }
+  const count = health.pending_approvals;
+  if (count <= 0) {
+    return { items: [], status: "ok" };
+  }
+  return {
+    items: [
       {
         id: "bookkeeping:pending",
         source: "bookkeeping",
@@ -43,12 +44,11 @@ async function fetchBookkeepingPending(): Promise<CoworkApprovalItem[]> {
         status: "pending",
         action: "bookkeeping_approve",
         created_at: new Date().toISOString(),
-        meta: { pending_approvals: count, bot_status: data.status },
+        meta: { pending_approvals: count, bot_status: health.status },
       },
-    ];
-  } catch {
-    return [];
-  }
+    ],
+    status: "ok",
+  };
 }
 
 /** Geaggregeerde inbox: approvals + automation_runs pending_approval + bookkeeping proxy. */
@@ -117,9 +117,14 @@ export async function GET(req: NextRequest) {
     })),
   ];
 
+  let bookkeepingStatus: BookkeepingInboxResult["status"] = "skipped";
+  let bookkeepingError: string | undefined;
+
   if (includeBookkeeping) {
     const bk = await fetchBookkeepingPending();
-    items.push(...bk);
+    items.push(...bk.items);
+    bookkeepingStatus = bk.status;
+    bookkeepingError = bk.error;
   }
 
   items.sort(
@@ -134,6 +139,10 @@ export async function GET(req: NextRequest) {
       approvals: tableApprovals.length,
       automation_runs: runApprovals.length,
       bookkeeping: items.filter((i) => i.source === "bookkeeping").length,
+    },
+    bookkeeping: {
+      status: bookkeepingStatus,
+      ...(bookkeepingError ? { error: bookkeepingError } : {}),
     },
   });
 }

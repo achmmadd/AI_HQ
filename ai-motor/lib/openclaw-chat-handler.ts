@@ -13,22 +13,15 @@ import {
 } from "@/lib/openclaw-router";
 import type { ChatContextMsg } from "@/lib/chat-n8n";
 import {
-  shouldOpenRouterFallbackOnClawFailure,
-  shouldRouteChatViaOpenClaw,
-  shouldUseAnthropicDirectPath,
-  shouldUseFumeroOpenRouterFastPath,
-  shouldUseOpenRouterFastPath,
-  shouldUseResearchModelPath,
-} from "@/lib/chat-routing-policy";
-import {
-  getFumeroChatModelId,
-  getFumeroProChatModelId,
-  getOpenRouterChatModelId,
-  resolveOpenRouterModelForTurn,
-} from "@/lib/chat-models";
+  resolveOpenClawStreamRoute,
+  shouldFallbackToOpenRouter,
+  type OpenClawStreamRoute,
+} from "@/lib/model-router";
 import type { FumeroComposerModelTier } from "@/lib/fumero/composer-model-tier";
 import { runAnthropicChatTurn } from "@/lib/chat-anthropic";
+import { chatAgentName, modelBadgeForId } from "@/lib/chat-activity-messages";
 import { streamChunks } from "@/lib/chat-n8n";
+import { stripChatOutput } from "@/lib/strip-response";
 
 export type OpenClawChatStreamResult =
   | {
@@ -52,6 +45,36 @@ function mergeAbortSignals(
   timeout?.addEventListener("abort", onAbort, { once: true });
   if (parent?.aborted || timeout?.aborted) ac.abort();
   return ac.signal;
+}
+
+function isFumeroFlashFastPath(route: OpenClawStreamRoute): boolean {
+  return (
+    route.provider === "openrouter" &&
+    route.fastPath === "fumero_openrouter_direct"
+  );
+}
+
+function openRouterMetaForRoute(
+  route: Extract<OpenClawStreamRoute, { provider: "openrouter" }>,
+  metaRecord: Record<string, unknown>
+): Record<string, unknown> {
+  const tier =
+    route.fastPath === "fumero_openrouter_pro"
+      ? "pro"
+      : route.fastPath === "fumero_openrouter_balanced"
+        ? "normaal"
+        : route.fastPath === "fumero_openrouter_direct"
+          ? "flash"
+          : route.research
+            ? "research"
+            : undefined;
+  return {
+    ...metaRecord,
+    ...(route.fastPath ? { fast_path: route.fastPath } : {}),
+    ...(route.model ? { model_id: route.model } : {}),
+    ...(tier ? { model_tier: tier } : {}),
+    research: route.research,
+  };
 }
 
 async function streamViaOpenRouter(opts: {
@@ -78,7 +101,7 @@ async function streamViaOpenRouter(opts: {
       opts.onDelta(text);
     },
   });
-  const trimmed = message.trim();
+  const trimmed = stripChatOutput(message.trim());
   if (!trimmed) {
     return { handled: false, reason: "openrouter_empty_response" };
   }
@@ -96,200 +119,21 @@ async function streamViaOpenRouter(opts: {
   };
 }
 
-export async function tryOpenClawChatStream(opts: {
-  prompt: string;
+async function streamViaOpenClawGateway(opts: {
+  messages: Awaited<ReturnType<typeof buildOpenClawMessages>>["messages"];
+  metaRecord: Record<string, unknown>;
   klant: string;
   conversationId: number | null;
-  context: ChatContextMsg[];
-  agentMode: boolean;
-  planMode?: boolean;
-  hasActiveProject?: boolean;
-  activeProjectId?: number;
-  useResearchModel?: boolean;
-  fumeroModelTier?: FumeroComposerModelTier;
-  onDelta: (text: string) => void;
-  onPrepare?: () => void;
-  onStreamStart?: (routing: "openclaw" | "openrouter" | "anthropic") => void;
   signal?: AbortSignal;
+  onStreamStart?: (routing: "openclaw" | "openrouter") => void;
+  onDelta: (text: string) => void;
 }): Promise<OpenClawChatStreamResult> {
-  const useResearch = Boolean(opts.useResearchModel);
-  const routeOpts = {
-    agentMode: opts.agentMode,
-    hasActiveProject: opts.hasActiveProject,
-    useResearchModel: useResearch,
-  };
-  const fumeroFast = shouldUseFumeroOpenRouterFastPath(
-    opts.klant,
-    routeOpts,
-    opts.fumeroModelTier
-  );
-  opts.onPrepare?.();
-  const built = await buildOpenClawMessages({
-    prompt: opts.prompt,
-    klant: opts.klant,
-    conversationId: opts.conversationId,
-    context: opts.context,
-    agentMode: opts.agentMode,
-    planMode: opts.planMode,
-    hasActiveProject: opts.hasActiveProject,
-    activeProjectId: opts.activeProjectId,
-    fastPreamble: fumeroFast,
-  });
-  const { messages, meta } = built;
-  const metaRecord = meta as unknown as Record<string, unknown>;
-
-  if (shouldUseAnthropicDirectPath()) {
-    try {
-      const system = messages.find((m) => m.role === "system")?.content ?? "";
-      opts.onStreamStart?.("anthropic");
-      const { text, model } = await runAnthropicChatTurn({
-        system,
-        context: opts.context,
-        userPrompt: opts.prompt,
-      });
-      const trimmed = text.trim();
-      if (trimmed) {
-        for (const chunk of streamChunks(trimmed, 18)) {
-          opts.onDelta(chunk);
-        }
-        return {
-          handled: true,
-          message: trimmed,
-          routing: "openrouter",
-          meta: { ...metaRecord, provider: "anthropic", model },
-        };
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { handled: false, reason: `anthropic_failed: ${msg.slice(0, 120)}` };
-    }
-  }
-
-  if (fumeroFast) {
-    try {
-      return await streamViaOpenRouter({
-        messages,
-        meta: {
-          ...metaRecord,
-          fast_path: "fumero_openrouter_direct",
-          model_id: getFumeroChatModelId(),
-          model_tier: "flash",
-        },
-        research: false,
-        model: getFumeroChatModelId(),
-        signal: mergeAbortSignals(opts.signal),
-        onStreamStart: opts.onStreamStart,
-        onDelta: opts.onDelta,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { handled: false, reason: `fumero_fast_failed: ${msg.slice(0, 120)}` };
-    }
-  }
-
-  if (
-    opts.klant.trim().toLowerCase() === "fumero" &&
-    opts.fumeroModelTier === "normaal" &&
-    isOpenRouterDirectConfigured()
-  ) {
-    const modelId = getOpenRouterChatModelId();
-    try {
-      return await streamViaOpenRouter({
-        messages,
-        meta: {
-          ...metaRecord,
-          fast_path: "fumero_openrouter_balanced",
-          model_id: modelId,
-          model_tier: "normaal",
-        },
-        research: false,
-        model: modelId,
-        signal: mergeAbortSignals(opts.signal),
-        onStreamStart: opts.onStreamStart,
-        onDelta: opts.onDelta,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { handled: false, reason: `fumero_normaal_failed: ${msg.slice(0, 120)}` };
-    }
-  }
-
-  if (
-    opts.klant.trim().toLowerCase() === "fumero" &&
-    opts.fumeroModelTier === "pro" &&
-    isOpenRouterDirectConfigured()
-  ) {
-    const modelId = getFumeroProChatModelId();
-    try {
-      return await streamViaOpenRouter({
-        messages,
-        meta: {
-          ...metaRecord,
-          fast_path: "fumero_openrouter_pro",
-          model_id: modelId,
-          model_tier: "pro",
-        },
-        research: false,
-        model: modelId,
-        signal: mergeAbortSignals(opts.signal),
-        onStreamStart: opts.onStreamStart,
-        onDelta: opts.onDelta,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { handled: false, reason: `fumero_pro_failed: ${msg.slice(0, 120)}` };
-    }
-  }
-
-  if (shouldUseResearchModelPath(useResearch)) {
-    try {
-      return await streamViaOpenRouter({
-        messages,
-        meta: {
-          ...metaRecord,
-          model_tier: "research",
-          model_id: resolveOpenRouterModelForTurn({ research: true }),
-        },
-        research: true,
-        signal: mergeAbortSignals(opts.signal),
-        onStreamStart: opts.onStreamStart,
-        onDelta: opts.onDelta,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { handled: false, reason: `openrouter_research_failed: ${msg.slice(0, 120)}` };
-    }
-  }
-
-  if (shouldUseOpenRouterFastPath(routeOpts)) {
-    try {
-      return await streamViaOpenRouter({
-        messages,
-        meta: { ...metaRecord, fast_path: "openrouter_direct" },
-        research: false,
-        signal: mergeAbortSignals(opts.signal),
-        onStreamStart: opts.onStreamStart,
-        onDelta: opts.onDelta,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { handled: false, reason: `openrouter_failed: ${msg.slice(0, 120)}` };
-    }
-  }
-
-  if (!shouldRouteChatViaOpenClaw(routeOpts)) {
-    if (!isOpenRouterDirectConfigured()) {
-      return { handled: false, reason: "openrouter_not_configured" };
-    }
-    return { handled: false, reason: "openrouter_skipped" };
-  }
-
   if (!isOpenClawGatewayConfigured()) {
-    if (shouldOpenRouterFallbackOnClawFailure()) {
+    if (shouldFallbackToOpenRouter()) {
       try {
         return await streamViaOpenRouter({
-          messages,
-          meta: metaRecord,
+          messages: opts.messages,
+          meta: opts.metaRecord,
           research: false,
           signal: mergeAbortSignals(opts.signal),
           onStreamStart: opts.onStreamStart,
@@ -305,11 +149,11 @@ export async function tryOpenClawChatStream(opts: {
 
   const health = await fetchOpenClawGatewayHealth();
   if (!health.reachable) {
-    if (shouldOpenRouterFallbackOnClawFailure()) {
+    if (shouldFallbackToOpenRouter()) {
       try {
         return await streamViaOpenRouter({
-          messages,
-          meta: metaRecord,
+          messages: opts.messages,
+          meta: opts.metaRecord,
           research: false,
           signal: mergeAbortSignals(opts.signal),
           onStreamStart: opts.onStreamStart,
@@ -336,7 +180,7 @@ export async function tryOpenClawChatStream(opts: {
   let started = false;
   try {
     const { message } = await streamOpenClawChat({
-      messages,
+      messages: opts.messages,
       userKey,
       signal: opts.signal,
       onDelta: (text) => {
@@ -348,7 +192,7 @@ export async function tryOpenClawChatStream(opts: {
       },
     });
 
-    const trimmed = message.trim();
+    const trimmed = stripChatOutput(message.trim());
     const failed =
       !trimmed ||
       /LLM (error|request failed)/i.test(trimmed) ||
@@ -357,10 +201,10 @@ export async function tryOpenClawChatStream(opts: {
       /context window too small/i.test(trimmed);
 
     if (failed) {
-      if (shouldOpenRouterFallbackOnClawFailure()) {
+      if (shouldFallbackToOpenRouter()) {
         return await streamViaOpenRouter({
-          messages,
-          meta: metaRecord,
+          messages: opts.messages,
+          meta: opts.metaRecord,
           research: false,
           signal: mergeAbortSignals(opts.signal),
           onStreamStart: opts.onStreamStart,
@@ -378,15 +222,15 @@ export async function tryOpenClawChatStream(opts: {
       handled: true,
       message: trimmed,
       routing: "openclaw",
-      meta: metaRecord,
+      meta: opts.metaRecord,
     };
   } catch (e) {
-    if (shouldOpenRouterFallbackOnClawFailure()) {
+    if (shouldFallbackToOpenRouter()) {
       try {
         const msg = e instanceof Error ? e.message : String(e);
         return await streamViaOpenRouter({
-          messages,
-          meta: metaRecord,
+          messages: opts.messages,
+          meta: opts.metaRecord,
           research: false,
           signal: mergeAbortSignals(opts.signal),
           onStreamStart: opts.onStreamStart,
@@ -400,4 +244,132 @@ export async function tryOpenClawChatStream(opts: {
     const msg = e instanceof Error ? e.message : String(e);
     return { handled: false, reason: msg.slice(0, 120) };
   }
+}
+
+export async function tryOpenClawChatStream(opts: {
+  prompt: string;
+  klant: string;
+  conversationId: number | null;
+  context: ChatContextMsg[];
+  agentMode: boolean;
+  planMode?: boolean;
+  hasActiveProject?: boolean;
+  activeProjectId?: number;
+  useResearchModel?: boolean;
+  fumeroModelTier?: FumeroComposerModelTier;
+  onDelta: (text: string) => void;
+  onPrepare?: () => void;
+  onActivity?: (label: string) => void;
+  onStreamStart?: (routing: "openclaw" | "openrouter" | "anthropic") => void;
+  signal?: AbortSignal;
+}): Promise<OpenClawChatStreamResult> {
+  const useResearch = Boolean(opts.useResearchModel);
+  const route = resolveOpenClawStreamRoute({
+    klant: opts.klant,
+    agentMode: opts.agentMode,
+    hasActiveProject: opts.hasActiveProject,
+    useResearchModel: useResearch,
+    fumeroModelTier: opts.fumeroModelTier,
+  });
+  const fumeroFast = isFumeroFlashFastPath(route);
+
+  opts.onPrepare?.();
+  const built = await buildOpenClawMessages({
+    prompt: opts.prompt,
+    klant: opts.klant,
+    conversationId: opts.conversationId,
+    context: opts.context,
+    agentMode: opts.agentMode,
+    planMode: opts.planMode,
+    hasActiveProject: opts.hasActiveProject,
+    activeProjectId: opts.activeProjectId,
+    fastPreamble: fumeroFast,
+  });
+  const { messages, meta } = built;
+  const metaRecord = meta as unknown as Record<string, unknown>;
+  opts.onActivity?.(`${chatAgentName(opts.klant)} · context geladen`);
+
+  if (route.provider === "anthropic") {
+    try {
+      const system = messages.find((m) => m.role === "system")?.content ?? "";
+      opts.onStreamStart?.("anthropic");
+      const { text, model } = await runAnthropicChatTurn({
+        system,
+        context: opts.context,
+        userPrompt: opts.prompt,
+      });
+      const trimmed = text.trim();
+      if (trimmed) {
+        for (const chunk of streamChunks(trimmed, 18)) {
+          opts.onDelta(chunk);
+        }
+        return {
+          handled: true,
+          message: trimmed,
+          routing: "openrouter",
+          meta: { ...metaRecord, provider: "anthropic", model },
+        };
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { handled: false, reason: `anthropic_failed: ${msg.slice(0, 120)}` };
+    }
+  }
+
+  if (route.provider === "openrouter") {
+    try {
+      if (fumeroFast && route.model) {
+        const badge = modelBadgeForId(route.model);
+        opts.onActivity?.(
+          badge ? `Max · ${badge} — verbonden` : "Max · model starten…"
+        );
+      }
+      return await streamViaOpenRouter({
+        messages,
+        meta: openRouterMetaForRoute(route, metaRecord),
+        research: route.research,
+        model: route.model,
+        signal: mergeAbortSignals(opts.signal),
+        onStreamStart: (routing) => {
+          if (fumeroFast && route.model) {
+            const badge = modelBadgeForId(route.model);
+            opts.onActivity?.(
+              badge ? `Max antwoordt · ${badge}…` : "Max antwoordt…"
+            );
+          }
+          opts.onStreamStart?.(routing);
+        },
+        onDelta: opts.onDelta,
+        reason: route.reason,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const prefix = route.fastPath ?? (route.research ? "openrouter_research" : "openrouter");
+      return {
+        handled: false,
+        reason: `${prefix}_failed: ${msg.slice(0, 120)}`,
+      };
+    }
+  }
+
+  if (route.provider === "openclaw") {
+    return streamViaOpenClawGateway({
+      messages,
+      metaRecord,
+      klant: opts.klant,
+      conversationId: opts.conversationId,
+      signal: opts.signal,
+      onStreamStart: opts.onStreamStart,
+      onDelta: opts.onDelta,
+    });
+  }
+
+  if (route.provider === "none") {
+    return { handled: false, reason: route.reason };
+  }
+
+  if (!isOpenRouterDirectConfigured()) {
+    return { handled: false, reason: "openrouter_not_configured" };
+  }
+  return { handled: false, reason: "openrouter_skipped" };
 }

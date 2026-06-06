@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   MessageSquare,
   Sparkles,
@@ -16,6 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCompanyStore } from "@/stores/useCompanyStore";
+import { isOnboardingDone } from "@/lib/onboarding-storage";
 import { cn } from "@/lib/utils";
 import type { CompanyId } from "@/lib/types";
 
@@ -61,9 +63,16 @@ function Dot({ ok, muted }: { ok: boolean; muted?: boolean }) {
 }
 
 export function HomeMotorStart() {
+  const router = useRouter();
   const company = useCompanyStore((s) => s.company);
   const [data, setData] = useState<StartPayload | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isOnboardingDone()) {
+      router.replace("/onboarding");
+    }
+  }, [router]);
 
   const load = useCallback(async (klant: CompanyId) => {
     setLoading(true);

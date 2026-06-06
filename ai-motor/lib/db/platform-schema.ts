@@ -108,5 +108,26 @@ export function ensurePlatformSchema(): void {
     VALUES ('bokas', 100, 80), ('fumero', 100, 80);
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS knowledge_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      klant TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      mime TEXT,
+      content_sha256 TEXT NOT NULL,
+      chunk_count INTEGER NOT NULL DEFAULT 0,
+      qdrant_collection TEXT,
+      category TEXT,
+      tags_json TEXT,
+      warnings_json TEXT,
+      strategy TEXT,
+      max_chunk_chars INTEGER,
+      canonical_source TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_knowledge_documents_klant ON knowledge_documents(klant);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_knowledge_documents_dedup ON knowledge_documents(klant, content_sha256);
+  `);
+
   ready = true;
 }

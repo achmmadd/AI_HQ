@@ -25,6 +25,7 @@ import {
   readEnabledConnectors,
   writeEnabledConnectors,
 } from "@/lib/connectors/session";
+import { FumeroGoalBadge } from "@/components/fumero/features/fumero-goal-badge";
 import { cn } from "@/lib/utils";
 
 function BouwenTemplateChips({
@@ -155,7 +156,8 @@ function BouwenShellInner() {
                 : "Beschrijf je tool — preview rechts · online zetten wanneer klaar"}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <FumeroGoalBadge />
           <Button
             type="button"
             variant="secondary"

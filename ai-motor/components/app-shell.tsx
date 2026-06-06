@@ -36,8 +36,10 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "transition-[padding] duration-200 ease-out",
-        flush ? "h-[100dvh] overflow-hidden" : "min-h-screen min-h-[100dvh]"
+        "transition-[padding] duration-200 ease-out max-md:!pl-0",
+        flush
+          ? "h-[100dvh] overflow-hidden max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
+          : "min-h-screen min-h-[100dvh] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
       )}
       style={{ paddingLeft: navPad }}
     >

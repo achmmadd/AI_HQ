@@ -12,6 +12,13 @@ import {
   fetchLocalExecutorHealth,
   isLocalExecutorConfigured,
 } from "@/lib/local-executor";
+import { probeQdrantCollections } from "@/lib/qdrant-health";
+import {
+  listMonitoredQdrantCollections,
+  qdrantCollectionForScope,
+} from "@/lib/qdrant-collection";
+import { fetchOpenClawGatewayHealth } from "@/lib/openclaw-gateway";
+import { buildHybridReadiness } from "@/lib/hybrid-readiness";
 
 export const runtime = "nodejs";
 
@@ -43,6 +50,11 @@ export async function GET() {
   const localExecutorHealth = localExecutorConfigured
     ? await fetchLocalExecutorHealth()
     : null;
+  const qdrantCollections = await probeQdrantCollections();
+  const [openclawHealth, hybrid] = await Promise.all([
+    fetchOpenClawGatewayHealth(),
+    buildHybridReadiness(qdrantCollections),
+  ]);
 
   const notes: string[] = [];
   notes.push(
@@ -144,11 +156,26 @@ export async function GET() {
       anthropic_api_key_configured: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
       motor_memory_collection:
         process.env.QDRANT_MEMORY_COLLECTION?.trim() || "motor_memory",
+      knowledge_collections: listMonitoredQdrantCollections(),
+      knowledge_collection_fumero: qdrantCollectionForScope("fumero"),
+      knowledge_collection_bokas: qdrantCollectionForScope("bokas"),
+      qdrant_collections_ok: qdrantCollections.ok,
+      qdrant_collections: qdrantCollections.collections,
       chat_memory_active: Boolean(
         process.env.QDRANT_URL?.trim() ||
           process.env.OLLAMA_URL?.trim() ||
           process.env.ANTHROPIC_API_KEY?.trim()
       ),
+    },
+    openclaw: {
+      gateway_url_configured: openclawHealth.configured,
+      reachable: openclawHealth.reachable,
+      chat_completions_enabled: openclawHealth.chatCompletionsEnabled !== false,
+      ok:
+        openclawHealth.configured &&
+        Boolean(openclawHealth.reachable) &&
+        openclawHealth.chatCompletionsEnabled !== false,
+      ...(openclawHealth.error ? { error: openclawHealth.error } : {}),
     },
     flags: {
       agent_mode_question_uses_factory_webhook: agentRoutesViaFactoryOs,
@@ -156,6 +183,7 @@ export async function GET() {
     dify_builder_configured: assertDifyConfigured(),
     deploy_configured: Boolean(gh && vz),
     missing_recommended: missingRecommended,
+    hybrid,
     notes,
   });
 }

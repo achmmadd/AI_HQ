@@ -1,6 +1,9 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import db from "@/lib/db/database";
 import type { AuthRole, WorkspaceScope } from "@/lib/auth-session";
+import { scheduleDualWriteAuthUser } from "@/lib/db/pg-adapter";
+
+export type { AuthRole, WorkspaceScope };
 
 type AuthUserRow = {
   id: number;
@@ -115,7 +118,15 @@ export function seedAuthUsersFromEnv(): void {
   );
   for (const seed of seeds) {
     if (existingSet.has(seed.email)) continue;
-    ins.run(seed.email, makeHash(seed.password), seed.role, seed.scope);
+    const hash = makeHash(seed.password);
+    const result = ins.run(seed.email, hash, seed.role, seed.scope);
+    scheduleDualWriteAuthUser({
+      email: seed.email,
+      passwordHash: hash,
+      role: seed.role,
+      scope: seed.scope,
+      sqliteId: Number(result.lastInsertRowid),
+    });
   }
 }
 
@@ -131,14 +142,23 @@ export function createAuthUser(params: {
   if (!email || !password) {
     throw new Error("email and password required");
   }
+  const hash = makeHash(password);
   const result = db
     .prepare(
       `INSERT INTO auth_users (email, password_hash, role, scope, active)
        VALUES (?,?,?,?,1)`
     )
-    .run(email, makeHash(password), params.role, params.scope);
+    .run(email, hash, params.role, params.scope);
+  const id = Number(result.lastInsertRowid);
+  scheduleDualWriteAuthUser({
+    email,
+    passwordHash: hash,
+    role: params.role,
+    scope: params.scope,
+    sqliteId: id,
+  });
   return {
-    id: Number(result.lastInsertRowid),
+    id,
     email,
     role: params.role,
     scope: params.scope,

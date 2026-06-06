@@ -18,13 +18,16 @@ type CoworkApprovalItem = {
 
 const SOURCE_LABEL: Record<CoworkApprovalItem["source"], string> = {
   approvals: "Goedkeuring",
-  automation_run: "Automation",
-  bookkeeping: "Bookkeeping",
+  automation_run: "Automatisering",
+  bookkeeping: "Boekhouding",
 };
 
 export function CoworkApprovalsInbox() {
   const [items, setItems] = useState<CoworkApprovalItem[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [bookkeepingOffline, setBookkeepingOffline] = useState<string | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -40,9 +43,16 @@ export function CoworkApprovalsInbox() {
       const json = (await res.json()) as {
         items?: CoworkApprovalItem[];
         counts?: Record<string, number>;
+        bookkeeping?: { status?: string; error?: string };
       };
       setItems(json.items ?? []);
       setCounts(json.counts ?? {});
+      const bk = json.bookkeeping;
+      setBookkeepingOffline(
+        bk?.status === "offline"
+          ? bk.error ?? "Boekhoud-service is offline"
+          : null
+      );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Laden mislukt");
     } finally {
@@ -107,7 +117,7 @@ export function CoworkApprovalsInbox() {
         </p>
         <Button
           type="button"
-          size="sm"
+          size="touch"
           variant="secondary"
           className="rounded-xl"
           onClick={() => void load()}
@@ -115,6 +125,16 @@ export function CoworkApprovalsInbox() {
           Vernieuwen
         </Button>
       </div>
+
+      {bookkeepingOffline && (
+        <p
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
+          role="status"
+        >
+          Bookkeeping-bot offline — bon-goedkeuringen zijn nu niet beschikbaar.
+          Andere goedkeuringen werken nog wel. ({bookkeepingOffline})
+        </p>
+      )}
 
       {err && (
         <p className="rounded-xl border border-error/40 bg-error/10 px-3 py-2 text-sm text-error">
@@ -155,18 +175,14 @@ export function CoworkApprovalsInbox() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {item.source === "bookkeeping" ? (
-                  <Button
-                    asChild
-                    size="sm"
-                    className="rounded-xl"
-                  >
-                    <Link href="/bokas/bonnen">Open bonnen</Link>
+                  <Button asChild size="touch" className="rounded-xl">
+                    <Link href="/bokas/bonnen">Naar bonnen</Link>
                   </Button>
                 ) : (
                   <>
                     <Button
                       type="button"
-                      size="sm"
+                      size="touch"
                       className="rounded-xl"
                       disabled={busyId === item.id}
                       onClick={() => void resolveItem(item, "approved")}
@@ -175,7 +191,7 @@ export function CoworkApprovalsInbox() {
                     </Button>
                     <Button
                       type="button"
-                      size="sm"
+                      size="touch"
                       variant="secondary"
                       className="rounded-xl"
                       disabled={busyId === item.id}

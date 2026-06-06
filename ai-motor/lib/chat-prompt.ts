@@ -8,10 +8,15 @@ import {
   payloadTextWithProvenance,
   searchKnowledge,
 } from "@/lib/knowledge-service";
+import {
+  formatMasterContextBlock,
+  getMasterContextForKlant,
+} from "@/lib/master-context";
 import { buildResumeContextBlock } from "@/lib/resume-preamble";
 import { getLatestFumeroBriefing } from "@/lib/fumero/briefing";
 import { formatMaxBriefingSystemBlock } from "@/lib/fumero/max-briefing-chat";
 import { formatMaxScrapeUrlCapabilityBlock } from "@/lib/fumero/max-scrape-capability";
+import { formatMaxResponseStyleBlock } from "@/lib/fumero/max-response-style";
 
 function klantDisplayName(klant: string): string {
   const byId: Record<string, string> = {
@@ -28,30 +33,41 @@ function klantDisplayName(klant: string): string {
 function buildChatInstructionPrefix(opts: {
   klantDisplay: string;
   personaLine: string;
+  masterContextBlock?: string;
   memoriesBlock: string;
   knowledgeBlock: string;
   resumeBlock: string;
   maxBriefingBlock?: string;
   maxScrapeBlock?: string;
+  maxStyleBlock?: string;
 }): string {
+  const masterBlock = opts.masterContextBlock
+    ? `\n\n${opts.masterContextBlock}\n`
+    : "";
   const maxBlock = opts.maxBriefingBlock
     ? `\n\n${opts.maxBriefingBlock}\n`
     : "";
   const scrapeBlock = opts.maxScrapeBlock
     ? `\n\n${opts.maxScrapeBlock}\n`
     : "";
+  const styleBlock = opts.maxStyleBlock ? `\n\n${opts.maxStyleBlock}\n` : "";
   return (
     CHAT_OUTPUT_INSTRUCTION_PREFIX +
-    `${opts.personaLine} Werk conversationeel en concreet (zoals een sterke Claude-chat): heldere stappen bij complexe taken, maximaal één verduidelijkende vraag als iets ontbreekt, bullet lists voor actiepunten. Antwoord in het Nederlands, tenzij de gebruiker expliciet een andere taal vraagt. Bij live webonderzoek: vermeld bronnen met URL. Gebruik onderstaand geheugen en kennis waar relevant; verzin geen feiten die daar niet in staan. Bij twijfel tussen bronnen: geef voorkeur aan de snippet met nieuwere indexdatum of expliciete bron-URI.\n\n` +
-    `${opts.resumeBlock}\n\n` +
+    `${opts.personaLine} Werk conversationeel en concreet (zoals een sterke Claude-chat): heldere stappen bij complexe taken, maximaal één verduidelijkende vraag als iets ontbreekt. Antwoord in het Nederlands, tenzij de gebruiker expliciet een andere taal vraagt. Bij live webonderzoek: vermeld bronnen met URL. Gebruik onderstaand geheugen en kennis waar relevant; verzin geen feiten die daar niet in staan. Bij twijfel tussen bronnen: geef voorkeur aan de snippet met nieuwere indexdatum of expliciete bron-URI.\n\n` +
+    `${opts.resumeBlock}${masterBlock}\n\n` +
     `### Qdrant-geheugen\n${opts.memoriesBlock}\n\n` +
-    `### Kennisbank\n${opts.knowledgeBlock}${maxBlock}${scrapeBlock}`
+    `### Kennisbank\n${opts.knowledgeBlock}${styleBlock}${maxBlock}${scrapeBlock}`
   );
+}
+
+function maxStyleBlockForKlant(klant: string): string | undefined {
+  if (klant.trim().toLowerCase() !== "fumero") return undefined;
+  return formatMaxResponseStyleBlock();
 }
 
 function personaForKlant(klant: string, klantDisplay: string): string {
   if (klant.trim().toLowerCase() === "fumero") {
-    return "Je bent Max, proactieve AI-collega voor Fumero (fumero.nl) — geen passieve chatbot. Je werkt mee alsof je op de achtergrond al briefings en studio's hebt gecheckt.";
+    return "Je bent Max, proactieve AI-collega voor Fumero (fumero.nl) — geen passieve chatbot. Je werkt mee alsof je op de achtergrond al briefings en studio's hebt gecheckt. Gebruikers typen informeel; leid intent af zonder prompt-coaching of technische formules.";
   }
   return `Je bent MotorsAI, de primaire AI-assistent voor ${klantDisplay}.`;
 }
@@ -65,7 +81,7 @@ function maxBriefingBlockForKlant(klant: string): string | undefined {
 
 function maxScrapeCapabilityBlockForKlant(klant: string): string | undefined {
   if (klant.trim().toLowerCase() !== "fumero") return undefined;
-  return formatMaxScrapeUrlCapabilityBlock();
+  return formatMaxScrapeUrlCapabilityBlock(klant);
 }
 
 /**
@@ -94,29 +110,38 @@ export async function buildChatSystemPreamble(
   const fast = opts?.fast ?? (openClawFastPreambleEnabled() && !rich);
 
   if (fast) {
-    const resumeBlock = await buildResumeContextBlock(klant, {
-      userPrompt: q,
-      activeProjectId: opts?.activeProjectId,
-    });
+    const [resumeBlock, masterContextRaw] = await Promise.all([
+      buildResumeContextBlock(klant, {
+        userPrompt: q,
+        activeProjectId: opts?.activeProjectId,
+      }),
+      getMasterContextForKlant(klant),
+    ]);
+    const masterContextBlock = formatMasterContextBlock(masterContextRaw ?? "");
     return buildChatInstructionPrefix({
       klantDisplay: klantDisplayName(klant),
       personaLine: personaForKlant(klant, klantDisplayName(klant)),
+      masterContextBlock,
       memoriesBlock: "(OpenClaw: geheugen via gateway-tools)",
       knowledgeBlock: "(OpenClaw: kennis via gateway)",
       resumeBlock,
       maxBriefingBlock: maxBriefingBlockForKlant(klant),
       maxScrapeBlock: maxScrapeCapabilityBlockForKlant(klant),
+      maxStyleBlock: maxStyleBlockForKlant(klant),
     });
   }
 
-  const [memRes, knowRes, resumeBlock] = await Promise.all([
+  const [memRes, knowRes, resumeBlock, masterContextRaw] = await Promise.all([
     searchMotorMemories(q, klant, 5),
     searchKnowledge(q, { klant, limit: 3 }),
     buildResumeContextBlock(klant, {
       userPrompt: q,
       activeProjectId: opts?.activeProjectId,
     }),
+    getMasterContextForKlant(klant),
   ]);
+
+  const masterContextBlock = formatMasterContextBlock(masterContextRaw ?? "");
 
   const memoriesBlock =
     memRes.results.length > 0
@@ -135,10 +160,12 @@ export async function buildChatSystemPreamble(
   return buildChatInstructionPrefix({
     klantDisplay: klantDisplayName(klant),
     personaLine: personaForKlant(klant, klantDisplayName(klant)),
+    masterContextBlock,
     memoriesBlock,
     knowledgeBlock,
     resumeBlock,
     maxBriefingBlock: maxBriefingBlockForKlant(klant),
     maxScrapeBlock: maxScrapeCapabilityBlockForKlant(klant),
+    maxStyleBlock: maxStyleBlockForKlant(klant),
   });
 }

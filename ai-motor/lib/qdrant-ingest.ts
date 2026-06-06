@@ -1,5 +1,9 @@
 import { embedForQdrant } from "@/lib/knowledge-service";
 import { qdrantCollectionForScope } from "@/lib/qdrant-collection";
+import {
+  buildMultitenantPayloadFields,
+  type QdrantPayloadSource,
+} from "@/lib/qdrant-payload";
 
 const QDRANT_URL = (process.env.QDRANT_URL || "http://127.0.0.1:6333").replace(
   /\/$/,
@@ -9,6 +13,9 @@ const QDRANT_URL = (process.env.QDRANT_URL || "http://127.0.0.1:6333").replace(
 export type KnowledgeChunkPayload = {
   text: string;
   client: string;
+  tenant: string;
+  source: QdrantPayloadSource;
+  workspace_id?: string;
   category: string;
   tags: string[];
   source_filename: string;
@@ -66,16 +73,29 @@ export async function upsertKnowledgeChunks(opts: {
   klant: string;
   documentId: number;
   chunks: string[];
+  workspaceId?: string | null;
   basePayload: Omit<
     KnowledgeChunkPayload,
-    "text" | "chunk_index" | "document_id" | "ingested_at" | "doc_kind"
+    | "text"
+    | "chunk_index"
+    | "document_id"
+    | "ingested_at"
+    | "doc_kind"
+    | "tenant"
+    | "source"
+    | "workspace_id"
   >;
 }): Promise<{ upserted: number; collection: string } | { error: string }> {
-  const { klant, documentId, chunks, basePayload } = opts;
+  const { klant, documentId, chunks, basePayload, workspaceId } = opts;
   if (!chunks.length) return { error: "Geen chunks" };
 
   const collection = collectionForKlant(klant);
   const ingested_at = new Date().toISOString();
+  const multitenant = buildMultitenantPayloadFields({
+    tenant: klant,
+    source: "file",
+    workspaceId,
+  });
 
   const firstVec = await embedForQdrant(chunks[0].slice(0, 8000));
   if (!firstVec.length) return { error: "Embedding mislukt (Ollama?)" };
@@ -106,6 +126,7 @@ export async function upsertKnowledgeChunks(opts: {
       const id = documentId * 1_000_000 + chunkIndex;
       const payload: KnowledgeChunkPayload = {
         ...basePayload,
+        ...multitenant,
         text,
         chunk_index: chunkIndex,
         document_id: documentId,

@@ -45,3 +45,35 @@ test("coder: actieve tool → iterate", () => {
     "tool_iterate"
   );
 });
+
+test("coder: informele bouw-wens → tool_build", () => {
+  assert.equal(
+    resolveMaxToolChatAction("iets op de site zodat klanten vragen kunnen stellen", {
+      hasActiveTool: false,
+      coderMode: true,
+    })?.type,
+    "tool_build"
+  );
+});
+
+test("coder: check ff → chat (geen template picker)", () => {
+  assert.equal(isCoderQuestionOnly("check ff"), true);
+  assert.equal(
+    resolveMaxToolChatAction("check ff", {
+      hasActiveTool: false,
+      coderMode: true,
+    }),
+    null
+  );
+});
+
+test("coder: kan je een chatbot maken → geen pure Q&A", () => {
+  assert.equal(isCoderQuestionOnly("kan je een chatbot maken voor de shop"), false);
+  assert.equal(
+    resolveMaxToolChatAction("kan je een chatbot maken voor de shop", {
+      hasActiveTool: false,
+      coderMode: true,
+    })?.type,
+    "tool_build"
+  );
+});

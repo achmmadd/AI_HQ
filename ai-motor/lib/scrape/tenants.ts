@@ -15,6 +15,7 @@ const TENANT_REGISTRY: Record<string, ScrapeTenantConfig> = {
       "nos.nl",
     ],
     kennisbankRefreshPages: [
+      "https://fumero.nl/veel-gestelde-vragen/",
       "https://fumero.nl/shop/",
       "https://fumero.nl/contact/",
       "https://fumero.nl/betaalmethoden/",

@@ -2,18 +2,12 @@ import { existsSync, readFileSync } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { runDependencyChecks } from "@/lib/dependency-checks";
+import { fetchBookkeepingHealth } from "@/lib/bookkeeping-bot";
 import { getN8nApiKey } from "@/lib/n8n-workflows-api";
 import { getCodeExecutorStatus } from "@/lib/code-executor";
 import { isOpenRouterDirectConfigured } from "@/lib/openrouter-gateway";
 
 export const runtime = "nodejs";
-
-function bookkeepingBase(): string {
-  return (
-    process.env.BOOKKEEPING_BOT_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:8001"
-  );
-}
 
 async function probeBookkeeping(): Promise<{
   ok: boolean;
@@ -21,26 +15,13 @@ async function probeBookkeeping(): Promise<{
   retry_queue?: number;
   error?: string;
 }> {
-  try {
-    const res = await fetch(`${bookkeepingBase()}/health`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(6_000),
-    });
-    const j = (await res.json()) as {
-      pending_approvals?: number;
-      retry_queue?: number;
-    };
-    return {
-      ok: res.ok,
-      pending_approvals: j.pending_approvals,
-      retry_queue: j.retry_queue,
-    };
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "unreachable",
-    };
-  }
+  const health = await fetchBookkeepingHealth(6_000);
+  return {
+    ok: health.ok,
+    pending_approvals: health.pending_approvals,
+    retry_queue: health.retry_queue,
+    ...(health.error ? { error: health.error } : {}),
+  };
 }
 
 async function probeOdoo(): Promise<{
@@ -164,6 +145,14 @@ export async function GET(req: NextRequest) {
         latency_ms: deps.ollama.ms,
         host: deps.ollama.url_host,
         ...(deps.ollama.error ? { error: deps.ollama.error } : {}),
+      },
+      openclaw: {
+        configured: deps.openclaw.configured,
+        ok: deps.openclaw.ok,
+        http_status: deps.openclaw.status,
+        latency_ms: deps.openclaw.ms,
+        host: deps.openclaw.url_host,
+        ...(deps.openclaw.error ? { error: deps.openclaw.error } : {}),
       },
     },
     integrations: {

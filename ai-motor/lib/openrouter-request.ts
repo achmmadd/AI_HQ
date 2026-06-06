@@ -2,8 +2,7 @@ import {
   getOpenRouterFallbackModel,
   isOpenRouterRateLimited,
 } from "@/lib/openrouter-errors";
-
-const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
+import { resolveChatCompletionsUrl } from "@/lib/model-router";
 
 export type OpenRouterFetchResult = {
   res: Response;
@@ -23,7 +22,7 @@ export async function fetchOpenRouterCompletions(opts: {
   const fallback = getOpenRouterFallbackModel();
 
   const attempt = async (model: string): Promise<OpenRouterFetchResult> => {
-    const res = await fetch(OPENROUTER_API, {
+    const res = await fetch(resolveChatCompletionsUrl(), {
       method: "POST",
       headers: opts.headers,
       body: JSON.stringify({ ...opts.body, model }),

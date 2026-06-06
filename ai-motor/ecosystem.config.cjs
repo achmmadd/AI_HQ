@@ -1,6 +1,10 @@
 /**
  * PM2: vaste Node-binary zodat better-sqlite3 (native) bij de runtime past.
  * Op andere machines: export AI_MOTOR_NODE="$(nvm which node)" vóór pm2 start.
+ *
+ * instances: 1 — bewust tot SQLite uit productie (ADR-002 M6, ~9 aug 2026).
+ * better-sqlite3 is single-writer; cluster mode breekt tot POSTGRES_PRIMARY=1
+ * en SQLITE_FALLBACK=0. Her-evalueer instances na PG cutover (M4/M6).
  */
 const path = require("path");
 const fs = require("fs");
@@ -44,6 +48,7 @@ module.exports = {
       script: path.join(__dirname, "node_modules/next/dist/bin/next"),
       args: "start -p 3040",
       exec_mode: "fork",
+      /** ADR-002 M6: blijft 1 tot SQLite uit prod — zie header comment. */
       instances: 1,
       autorestart: true,
       max_memory_restart: "1G",

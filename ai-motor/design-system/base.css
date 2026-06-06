@@ -1,0 +1,17 @@
+/**
+ * Base element styles — applied via globals.css @layer base
+ */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-background text-text-primary min-h-screen;
+  }
+}

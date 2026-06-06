@@ -533,3 +533,16 @@ if (automationSeedCount === 0) {
 }
 
 export default db;
+
+/** Postgres dual-write (Sprint 1.1, ADR-002). Prefer `@/lib/db/pg-adapter` for new code. */
+export {
+  dualWriteAuthUser,
+  ensurePgReady,
+  getDatabaseUrl,
+  isPostgresPrimary,
+  scheduleDualWriteAuthUser,
+  setPgWorkspaceContext,
+  shouldDualWrite,
+  shouldUsePostgres,
+} from "./pg-adapter";
+export type { DualWriteAuthUserParams } from "./pg-adapter";

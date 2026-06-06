@@ -1,16 +1,30 @@
 /** Shared auth session helpers (Edge-safe): signed JSON session + legacy password token fallback. */
 
+import { NextResponse } from "next/server";
+
 export const TOKEN_COOKIE = "motorsai_token";
 const SESSION_VERSION = "v2";
 
 export type AuthRole = "admin" | "fumero" | "bokas";
 export type WorkspaceScope = "all" | "fumero" | "bokas" | "personal";
+export type MembershipRole = "admin" | "editor" | "viewer";
+
+export const SCOPED_KLANTS = ["fumero", "bokas"] as const;
+export type ScopedKlant = (typeof SCOPED_KLANTS)[number];
 
 export interface AuthSession {
   userId: number | null;
   email: string;
   role: AuthRole;
   scope: WorkspaceScope;
+  /** Default workspace slug (fumero, bokas, motor, personal). Sprint 1.2+. */
+  workspaceSlug?: string;
+  /** Postgres workspace UUID when DATABASE_URL resolves. */
+  workspaceId?: string | null;
+  /** Role within workspace (maps workspace_memberships.role). */
+  membershipRole?: MembershipRole;
+  /** Postgres users.id UUID. */
+  pgUserId?: string | null;
   legacy?: boolean;
 }
 
@@ -143,6 +157,21 @@ export async function readAuthSession(
       email: payload.email,
       role: payload.role,
       scope: payload.scope,
+      workspaceSlug:
+        typeof payload.workspaceSlug === "string"
+          ? payload.workspaceSlug
+          : undefined,
+      workspaceId:
+        typeof payload.workspaceId === "string" ? payload.workspaceId : null,
+      membershipRole:
+        payload.membershipRole === "admin" ||
+        payload.membershipRole === "editor" ||
+        payload.membershipRole === "viewer"
+          ? payload.membershipRole
+          : undefined,
+      pgUserId:
+        typeof payload.pgUserId === "string" ? payload.pgUserId : null,
+      legacy: payload.legacy === true,
     };
   } catch {
     return null;
@@ -161,4 +190,42 @@ export async function isValidSessionTokenStrict(
   token: string | undefined
 ): Promise<boolean> {
   return (await readAuthSession(token)) != null;
+}
+
+/** Normaliseer klant-parameter naar bekende tenant-id of null. */
+export function normalizeScopedKlant(
+  klant: string | null | undefined
+): ScopedKlant | null {
+  const k = (klant || "").trim().toLowerCase();
+  if (k === "fumero" || k === "bokas") return k;
+  return null;
+}
+
+/**
+ * Tenant-toegang op basis van sessie:
+ * - admin of scope `all` → fumero + bokas
+ * - scope `fumero` / `bokas` → alleen die klant
+ * - scope `personal` → geen multi-tenant klant-API's (Motor shell)
+ */
+export function canAccessKlant(session: AuthSession, klant: string): boolean {
+  const scoped = normalizeScopedKlant(klant);
+  if (!scoped) return false;
+
+  if (session.role === "admin" || session.scope === "all") return true;
+  if (session.scope === "personal") return false;
+  if (session.scope === "fumero") return scoped === "fumero";
+  if (session.scope === "bokas") return scoped === "bokas";
+  return false;
+}
+
+/** 403 als sessie geen toegang heeft tot `klant`; anders null. */
+export function assertScopeAccess(
+  session: AuthSession,
+  klant: string
+): NextResponse | null {
+  if (canAccessKlant(session, klant)) return null;
+  return NextResponse.json(
+    { error: "Forbidden: geen toegang tot deze klant-workspace" },
+    { status: 403 }
+  );
 }

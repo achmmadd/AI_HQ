@@ -7,6 +7,7 @@ import {
   Image,
   MessageSquare,
   Receipt,
+  Settings,
   ShoppingBag,
   TrendingUp,
   UtensilsCrossed,
@@ -29,6 +30,7 @@ const NAV = [
       { href: "/bokas/content", label: "Content", icon: Image },
       { href: "/bokas/photo-studio", label: "Studio", icon: Camera },
       { href: "/bokas/marketing", label: "Marketing", icon: TrendingUp },
+      { href: "/bokas/settings/context", label: "Instellingen", icon: Settings },
     ],
   },
 ] as const;

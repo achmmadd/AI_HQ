@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,8 +40,42 @@ export function KennisbankFileIngest() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
+  const [collectionLabels, setCollectionLabels] = useState<string[]>([]);
 
   const klantOk = company === "fumero" || company === "bokas";
+
+  useEffect(() => {
+    if (!klantOk) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/knowledge/catalog?klant=${encodeURIComponent(company)}`,
+          { credentials: "include" }
+        );
+        const j = (await res.json()) as {
+          qdrant_collections?: string[];
+        };
+        if (cancelled) return;
+        if (Array.isArray(j.qdrant_collections)) {
+          setCollectionLabels(
+            j.qdrant_collections.filter((c) => typeof c === "string" && c.trim())
+          );
+        }
+      } catch {
+        if (!cancelled) setCollectionLabels([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [company, klantOk]);
+
+  const activeCollections = klantOk ? collectionLabels : [];
+  const collectionHint =
+    activeCollections.length > 0
+      ? activeCollections.map((c) => `\`${c}\``).join(", ")
+      : "`factory_os_[klant]`";
 
   async function ingest() {
     if (!file || !klantOk) return;
@@ -117,9 +151,10 @@ export function KennisbankFileIngest() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-text-secondary">
-          PDF, DOCX, TXT of MD → tekst → chunk → embed (Ollama) → upsert in de
-          collectie <code className="rounded bg-muted px-1">factory_os_[klant]</code>.
-          Dubbele inhoud (zelfde hash) wordt geweigerd.
+          PDF, DOCX, TXT of MD → tekst → chunk → embed (Ollama) → upsert in{" "}
+          {activeCollections.length > 0 ? "collectie(s)" : "de per-klant collectie"}{" "}
+          <code className="rounded bg-muted px-1">{collectionHint}</code>. Dubbele
+          inhoud (zelfde hash) wordt geweigerd.
         </p>
 
         {!klantOk && (

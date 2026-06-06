@@ -1,0 +1,7 @@
+/**
+ * Motor AI Design System — entry point
+ * Tokens + workspaces imported directly from app/globals.css.
+ * This file exists for documentation and external tooling.
+ */
+@import "./tokens.css";
+@import "./workspaces.css";

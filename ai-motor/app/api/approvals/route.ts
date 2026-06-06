@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { sendInngestEvent } from "@/lib/inngest/client";
+import { INNGEST_EVENTS } from "@/lib/inngest/events";
 import { sendTelegramMessage } from "@/lib/telegram";
 
 export const runtime = "nodejs";
@@ -59,6 +61,18 @@ export async function POST(req: NextRequest) {
     `Goedkeuring nodig #${id}\n\n${String(title)}\n${description != null ? String(description) : ""}\n\nActie: ${String(action)}\n\nOpen: ${appUrl}/approvals?approve=${id}\nOf afwijzen: ${appUrl}/approvals?reject=${id}`
   );
 
+  void sendInngestEvent(
+    INNGEST_EVENTS.approvalRequested,
+    {
+      approvalId: id,
+      title: String(title),
+      action: String(action),
+      klant: body.klant != null ? String(body.klant) : null,
+      requestedBy: String(requested_by),
+    },
+    { id: `approval-request-${id}` }
+  );
+
   return NextResponse.json({
     id,
     message: "Goedkeuring aangevraagd — check Telegram",
@@ -67,7 +81,11 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const body = await req.json();
-  const { id, status } = body as { id?: number; status?: string };
+  const { id, status } = body as {
+    id?: number;
+    status?: string;
+    decided_by?: string;
+  };
 
   if (id == null || !status) {
     return NextResponse.json(
@@ -89,6 +107,16 @@ export async function PATCH(req: NextRequest) {
 
   const emoji = status === "approved" ? "✅" : "❌";
   void sendTelegramMessage(`${emoji} Goedkeuring #${id}: ${status}`);
+
+  void sendInngestEvent(
+    INNGEST_EVENTS.approvalDecided,
+    {
+      approvalId: id,
+      status: status as "approved" | "rejected",
+      decidedBy: body.decided_by != null ? String(body.decided_by) : null,
+    },
+    { id: `approval-decided-${id}-${status}` }
+  );
 
   return NextResponse.json({ message: status });
 }

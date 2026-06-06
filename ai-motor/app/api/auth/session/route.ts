@@ -18,6 +18,9 @@ export async function GET(req: NextRequest) {
       email: session.email,
       role: session.role,
       scope: session.scope,
+      workspaceId: session.workspaceId ?? null,
+      workspaceSlug: session.workspaceSlug ?? null,
+      membershipRole: session.membershipRole ?? null,
     },
   });
 }

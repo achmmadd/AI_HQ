@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import db from "@/lib/db/database";
+import { ensurePlatformSchema } from "@/lib/db/platform-schema";
 import { extractDocumentText } from "@/lib/extract-document-text";
 import {
   chunkKnowledgeText,
@@ -10,6 +11,8 @@ import {
 import { validateKnowledgeText } from "@/lib/knowledge-upload-validate";
 import { upsertKnowledgeChunks } from "@/lib/qdrant-ingest";
 import { qdrantCollectionForScope } from "@/lib/qdrant-collection";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
+import { resolveWorkspaceIdBySlug } from "@/lib/workspace-context";
 
 export const runtime = "nodejs";
 
@@ -25,6 +28,7 @@ function parseTags(raw: string | null): string[] {
 }
 
 export async function POST(req: NextRequest) {
+  ensurePlatformSchema();
   let docRowId: number | null = null;
 
   try {
@@ -42,6 +46,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const auth = await requireApiAuthForKlant(req, klant);
+    if (auth instanceof NextResponse) return auth;
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: "file required" }, { status: 400 });
@@ -155,10 +162,15 @@ export async function POST(req: NextRequest) {
 
     docRowId = Number(ins.lastInsertRowid);
 
+    const workspaceId =
+      auth.session.workspaceId ??
+      (await resolveWorkspaceIdBySlug(klant));
+
     const up = await upsertKnowledgeChunks({
       klant,
       documentId: docRowId,
       chunks,
+      workspaceId,
       basePayload: {
         client: klant,
         category,

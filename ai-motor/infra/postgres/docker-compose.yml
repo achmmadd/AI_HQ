@@ -1,0 +1,37 @@
+# Motor AI Factory OS — Postgres 16 + pgvector (Hetzner)
+# Deploy: see docs/fase1-postgres.md
+#
+# Reachable from NUC via Tailscale hostname (e.g. hetzner-motor:5432).
+# Do NOT expose 5432 on public IPv4.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: motor-postgres
+    restart: unless-stopped
+    shm_size: 256mb
+    ports:
+      # Bind Tailscale interface only in prod — override POSTGRES_BIND in .env
+      - "${POSTGRES_BIND:-127.0.0.1}:5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-motor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-motor_ai}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - motor_pg_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-motor} -d ${POSTGRES_DB:-motor_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+volumes:
+  motor_pg_data:
+    driver: local

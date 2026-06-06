@@ -580,7 +580,11 @@ export function FumeroToolsGarage({
       </section>
 
       {viewingApp ? (
-        <FumeroAppDataModal app={viewingApp} onClose={() => setViewingApp(null)} />
+        <FumeroAppDataModal
+          app={viewingApp}
+          open
+          onClose={() => setViewingApp(null)}
+        />
       ) : null}
     </div>
   );

@@ -1,3 +1,5 @@
+import { shouldScrapeFromPrompt } from "@/lib/scrape/resolve-scrape-targets";
+
 const URL_RE = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
 
 function hostFromUrl(url: string): string {
@@ -73,8 +75,15 @@ export function planMotorActivitySteps(opts: {
   }
 
   if (opts.fumeroFast) {
-    steps.push(`${agent} denkt na…`);
-    steps.push(`${agent} antwoordt…`);
+    if (shouldScrapeFromPrompt(opts.prompt, "fumero")) {
+      steps.push("Site-check voorbereiden…");
+      steps.push("Live pagina's ophalen…");
+      steps.push(`${agent} formuleert antwoord…`);
+    } else {
+      steps.push("Opdracht verwerken…");
+      steps.push(`${agent} · context laden…`);
+      steps.push(`${agent} antwoordt…`);
+    }
     return steps;
   }
 

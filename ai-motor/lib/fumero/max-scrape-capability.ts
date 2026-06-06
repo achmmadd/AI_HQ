@@ -1,3 +1,6 @@
+import { formatMaxCasualUserLanguageBlock } from "@/lib/fumero/casual-prompt";
+import { formatMaxLongTermGoalBlock } from "@/lib/fumero/max-goal";
+import { getMotorUserContext } from "@/lib/motor-user-context";
 import {
   activeScrapeProviderLabel,
   isScrapeConfigured,
@@ -7,20 +10,27 @@ import { getScrapeTenantConfig } from "@/lib/scrape/tenants";
 /**
  * Vertelt Max dat live pagina-scrape al server-side gebeurt — geen aparte "jina" tool in Factory OS.
  */
-export function formatMaxScrapeUrlCapabilityBlock(): string {
+export function formatMaxScrapeUrlCapabilityBlock(klant = "fumero"): string {
   const tenant = getScrapeTenantConfig("fumero");
+  const userCtx =
+    klant.trim().toLowerCase() === "fumero"
+      ? getMotorUserContext(klant)
+      : null;
   const domains = tenant?.domainWhitelist.join(", ") ?? "fumero.nl";
   const reader = isScrapeConfigured()
     ? activeScrapeProviderLabel()
     : "niet geconfigureerd";
 
   return [
-    "### Max — live pagina's (scrape_url, al actief)",
+    formatMaxCasualUserLanguageBlock(),
+    formatMaxLongTermGoalBlock(userCtx),
+    "### Max — live pagina's (automatisch, niet tonen aan gebruiker)",
     `URL-reader: ${reader}. Geen aparte tool om in te schakelen in Factory OS.`,
-    "Wanneer de gebruiker scrape/haal info vraagt of fumero.nl noemt (ook zonder https), haalt het systeem pagina's al op vóór je antwoord of vóór een tool-build in Bouwen.",
-    "Je ziet die inhoud in een blok LIVE PAGINA in de context — gebruik die data, verzin geen prijzen.",
+    "Bij zinnen als 'haal info van fumero', 'onze FAQ', 'wat op de site staat' (ook zonder https) haalt het systeem pagina's al op vóór je antwoord of een build in Bouwen.",
+    "Je ziet die inhoud tussen --- LIVE PAGINA --- en --- EINDE LIVE PAGINA --- — gebruik die data, verzin geen prijzen.",
     `Toegestane domeinen: ${domains}.`,
-    "Zeg nooit dat de gebruiker een jina-tool moet activeren of de chat moet herstarten voor scrape — dat klopt niet.",
-    "Als er geen LIVE PAGINA-blok is: vraag om een volledige https-link of formuleer: scrape_url: https://…",
-  ].join("\n");
+    "Zeg nooit dat de gebruiker een jina-tool moet activeren, moet herstarten, of een technische prompt moet schrijven.",
+    "Als --- LIVE PAGINA --- aanwezig is: gebruik die tekst; vraag niet om handmatig plakken.",
+    "Als er geen LIVE PAGINA-blok is: vraag in gewone taal welke pagina (bv. fumero.nl/shop) — geen scrape_url-syntax naar de gebruiker.",
+  ].join("\n\n");
 }

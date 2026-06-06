@@ -3,10 +3,11 @@ import {
   chunkMarkdownForQdrant,
   scrapeUrlDocumentId,
 } from "@/lib/scrape/normalize";
-import { requireScrapeTenantConfig } from "@/lib/scrape/tenants";
-import type { ScrapeUrlResult, ScrapeTenantId } from "@/lib/scrape/types";
 import { ensureQdrantCollection } from "@/lib/qdrant-ingest";
-import { qdrantCollectionForScope } from "@/lib/qdrant-collection";
+import { qdrantScrapeCollectionForScope } from "@/lib/qdrant-collection";
+import { buildMultitenantPayloadFields } from "@/lib/qdrant-payload";
+import { resolveWorkspaceIdBySlug } from "@/lib/workspace-context";
+import type { ScrapeUrlResult, ScrapeTenantId } from "@/lib/scrape/types";
 
 const QDRANT_URL = (process.env.QDRANT_URL || "http://127.0.0.1:6333").replace(
   /\/$/,
@@ -14,11 +15,10 @@ const QDRANT_URL = (process.env.QDRANT_URL || "http://127.0.0.1:6333").replace(
 );
 
 export function kennisbankCollectionForTenant(tenantId: ScrapeTenantId): string {
-  const tenant = requireScrapeTenantConfig(tenantId);
-  if (tenant.kennisbankCollection?.trim()) {
-    return tenant.kennisbankCollection.trim();
-  }
-  return `${qdrantCollectionForScope(tenantId)}_kennisbank`;
+  return (
+    qdrantScrapeCollectionForScope(tenantId) ??
+    `${tenantId.trim().toLowerCase()}_kennisbank`
+  );
 }
 
 export async function upsertScrapedPageToKennisbank(opts: {
@@ -28,6 +28,12 @@ export async function upsertScrapedPageToKennisbank(opts: {
 }): Promise<{ upserted: number; collection: string } | { error: string }> {
   const tenantId = opts.tenant.trim().toLowerCase();
   const collection = kennisbankCollectionForTenant(tenantId);
+  const workspaceId = await resolveWorkspaceIdBySlug(tenantId);
+  const multitenant = buildMultitenantPayloadFields({
+    tenant: tenantId,
+    source: "scrape",
+    workspaceId,
+  });
   const chunks = chunkMarkdownForQdrant(opts.scrape.markdown);
   if (!chunks.length) return { error: "Geen tekst om te indexeren" };
 
@@ -70,8 +76,8 @@ export async function upsertScrapedPageToKennisbank(opts: {
         id,
         vector,
         payload: {
+          ...multitenant,
           text,
-          client: tenantId,
           category,
           tags: ["scrape_url", "kennisbank_refresh"],
           source_filename: opts.scrape.url,

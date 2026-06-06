@@ -12,9 +12,11 @@ import { DevDeployPanel } from "@/components/dev-deploy-panel";
 
 type Dependency = {
   ok?: boolean;
+  configured?: boolean;
   host?: string;
   latency_ms?: number;
   http_status?: number;
+  error?: string;
 };
 
 type HealthJson = {
@@ -82,11 +84,38 @@ type IntegrationReadiness = {
     ollama_url_configured?: boolean;
     anthropic_api_key_configured?: boolean;
     motor_memory_collection?: string;
+    knowledge_collections?: string[];
+    qdrant_collections_ok?: boolean;
+    qdrant_collections?: Array<{
+      name: string;
+      exists: boolean;
+      points_count?: number;
+      error?: string;
+    }>;
+  };
+  openclaw?: {
+    gateway_url_configured?: boolean;
+    reachable?: boolean;
+    chat_completions_enabled?: boolean;
+    ok?: boolean;
+    error?: string;
   };
   flags?: { agent_mode_question_uses_factory_webhook?: boolean };
   dify_builder_configured?: boolean;
   deploy_configured?: boolean;
   missing_recommended?: string[];
+  hybrid?: {
+    docs?: string;
+    checklist_doc?: string;
+    hetzner_core_ok?: boolean;
+    all_configured_ok?: boolean;
+    smoke_script?: string;
+    services?: Record<
+      string,
+      { configured?: boolean; ok?: boolean; url_host?: string; ms?: number; error?: string }
+    >;
+    checklist?: Array<{ id: string; label: string; ok: boolean }>;
+  };
   notes?: string[];
 };
 
@@ -218,6 +247,10 @@ export default function DevPage() {
   };
 
   const deps = ext?.dependencies ?? health?.dependencies ?? {};
+  const criticalOk =
+    Boolean(deps.qdrant?.ok) &&
+    Boolean(ext?.bookkeeping?.ok ?? true) &&
+    (deps.openclaw?.configured ? Boolean(deps.openclaw?.ok) : true);
   const filteredLines = useMemo(() => {
     const lines = logs?.lines ?? [];
     const q = logFilter.trim().toLowerCase();
@@ -284,6 +317,84 @@ export default function DevPage() {
           </TabsContent>
 
           <TabsContent value="status">
+            <Card className="mb-4 border-accent/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Kritieke integraties</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 sm:grid-cols-3">
+                <ServiceLine
+                  name="Qdrant"
+                  ok={!!deps.qdrant?.ok}
+                  meta={
+                    readiness?.memory?.qdrant_collections_ok
+                      ? "collecties OK"
+                      : deps.qdrant?.host ?? "—"
+                  }
+                />
+                <ServiceLine
+                  name="Bookkeeping-bot"
+                  ok={!!ext?.bookkeeping?.ok}
+                  meta={
+                    ext?.bookkeeping?.ok
+                      ? `${ext.bookkeeping.pending_approvals ?? 0} pending`
+                      : ext?.bookkeeping?.error ?? "offline"
+                  }
+                />
+                <ServiceLine
+                  name="OpenClaw"
+                  ok={
+                    deps.openclaw?.configured
+                      ? !!deps.openclaw?.ok
+                      : !!readiness?.openclaw?.ok
+                  }
+                  meta={
+                    deps.openclaw?.configured || readiness?.openclaw?.gateway_url_configured
+                      ? deps.openclaw?.host ?? "gateway"
+                      : "niet geconfigureerd"
+                  }
+                />
+              </CardContent>
+              <CardContent className="border-t border-border pt-2 text-sm">
+                Fase 0 health:{" "}
+                <span className={cn("font-medium", criticalOk ? "text-green-600" : "text-red-600")}>
+                  {criticalOk ? "groen" : "check deps"}
+                </span>
+              </CardContent>
+            </Card>
+
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Hybrid NUC → Hetzner</CardTitle>
+                <p className="text-[12px] text-text-secondary">
+                  Sprint 3.1 — docs/hybrid-env.md ·{" "}
+                  <code className="text-[11px]">node scripts/hybrid-smoke.mjs</code>
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <ServiceLine
+                  name="Hetzner core"
+                  ok={!!readiness?.hybrid?.hetzner_core_ok}
+                  meta={
+                    readiness?.hybrid?.hetzner_core_ok
+                      ? "Qdrant + Ollama (+ PG indien gezet)"
+                      : "check Tailscale URLs"
+                  }
+                />
+                {(readiness?.hybrid?.checklist ?? []).map((item) => (
+                  <ServiceLine
+                    key={item.id}
+                    name={item.label}
+                    ok={!!item.ok}
+                  />
+                ))}
+                {!readiness?.hybrid && (
+                  <p className="text-xs text-text-secondary">
+                    Hybrid-block ontbreekt — vernieuw na deploy Sprint 3.1.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -317,7 +428,9 @@ export default function DevPage() {
                     ok={!!ext?.bookkeeping?.ok}
                     meta={
                       ext?.bookkeeping
-                        ? `${ext.bookkeeping.pending_approvals ?? 0} pending · ${ext.bookkeeping.retry_queue ?? 0} retry`
+                        ? ext.bookkeeping.ok
+                          ? `${ext.bookkeeping.pending_approvals ?? 0} pending · ${ext.bookkeeping.retry_queue ?? 0} retry`
+                          : `offline${ext.bookkeeping.error ? ` · ${ext.bookkeeping.error}` : ""}`
                         : "laden"
                     }
                   />
@@ -335,12 +448,54 @@ export default function DevPage() {
                     ok={!!ext?.pm2?.pid_file_exists}
                     meta={ext?.pm2?.pid_path ? "pid gevonden" : "pid ontbreekt"}
                   />
+                  <ServiceLine
+                    name="OpenClaw gateway"
+                    ok={
+                      deps.openclaw?.configured ? !!deps.openclaw?.ok : false
+                    }
+                    meta={
+                      deps.openclaw?.configured
+                        ? `${deps.openclaw?.host ?? "-"} · ${deps.openclaw?.latency_ms ?? "?"}ms`
+                        : "OPENCLAW_GATEWAY_URL ontbreekt"
+                    }
+                  />
+                  {deps.openclaw?.error && (
+                    <p className="text-xs text-error">{deps.openclaw.error}</p>
+                  )}
                   {ext?.bookkeeping?.error && (
                     <p className="text-xs text-error">{ext.bookkeeping.error}</p>
                   )}
                   {ext?.odoo?.error && (
                     <p className="text-xs text-error">{ext.odoo.error}</p>
                   )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Qdrant collecties</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {(readiness?.memory?.qdrant_collections ?? []).map((col) => (
+                    <ServiceLine
+                      key={col.name}
+                      name={col.name}
+                      ok={!!col.exists && (col.points_count ?? 0) > 0}
+                      meta={
+                        col.exists
+                          ? `${col.points_count ?? 0} punten`
+                          : col.error ?? "ontbreekt"
+                      }
+                    />
+                  ))}
+                  {!readiness?.memory?.qdrant_collections?.length && (
+                    <p className="text-xs text-text-secondary">
+                      Geen collectie-info — vernieuw of check QDRANT_URL.
+                    </p>
+                  )}
+                  <div className="pt-1 text-xs text-text-secondary">
+                    Dual-search: factory_os_fumero/bokas + scrape-collecties.
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -518,6 +673,21 @@ export default function DevPage() {
                         <ServiceLine
                           name="ANTHROPIC_API_KEY (geheugen-ingest)"
                           ok={Boolean(readiness.memory.anthropic_api_key_configured)}
+                        />
+                      </li>
+                    </ul>
+                  )}
+                  {readiness?.openclaw && (
+                    <ul className="mb-2 list-none space-y-1 p-0">
+                      <li>
+                        <ServiceLine
+                          name="OPENCLAW_GATEWAY_URL"
+                          ok={Boolean(readiness.openclaw.gateway_url_configured)}
+                          meta={
+                            readiness.openclaw.reachable
+                              ? "bereikbaar"
+                              : readiness.openclaw.error ?? "offline"
+                          }
                         />
                       </li>
                     </ul>

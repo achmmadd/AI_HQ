@@ -1,0 +1,263 @@
+        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="success-state" id="success-state" aria-live="polite">
+    <div class="success-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2>Aanvraag verzonden</h2>
+    <p>Bedankt. U ontvangt zo een bevestiging per e-mail.</p>
+    <div class="ref-code" id="ref-code">OFF-000000</div>
+  </div>
+
+  <div class="widget-footer">
+    <div class="footer-brand">Powered by <span>Fumero</span></div>
+    <div class="footer-secure" aria-label="Beveiligde verbinding">
+      <svg viewBox="0 0 12 12"><path d="M6 1L2 3v3c0 2.2 1.7 4.3 4 4.8 2.3-.5 4-2.6 4-4.8V3L6 1z"/></svg>
+      SSL beveiligd
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var MIN_QTY = 12;
+  var currentStep = 1;
+  var selected = {};
+
+  var PRODUCT_META = {
+    "cbd-olie": { name: "CBD Olie Premium", sub: "10ml · 5%, 10%, 20%", unitPrice: 8.4 },
+    "cbd-capsules": { name: "CBD Capsules", sub: "30 caps · 15mg & 25mg", unitPrice: 11.2 },
+    "hhc-vape": { name: "HHC Vape", sub: "1ml · diverse smaken", unitPrice: 7.6 },
+    "cbd-crème": { name: "CBD Crème", sub: "50ml · 300mg CBD", unitPrice: 9.8 },
+  };
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function selectedKeys() {
+    return Object.keys(selected).filter(function (k) {
+      return selected[k] && selected[k].qty >= MIN_QTY;
+    });
+  }
+
+  function goToStep(step) {
+    currentStep = step;
+    for (var i = 1; i <= 3; i++) {
+      var panel = $("panel-" + i);
+      var ind = $("step-ind-" + i);
+      if (panel) {
+        var on = i === step;
+        panel.classList.toggle("active", on);
+        panel.style.display = on ? "flex" : "none";
+        panel.style.flexDirection = "column";
+        panel.setAttribute("aria-hidden", on ? "false" : "true");
+      }
+      if (ind) {
+        ind.classList.toggle("active", i === step);
+        ind.classList.toggle("done", i < step);
+        if (i === step) ind.setAttribute("aria-current", "step");
+        else ind.removeAttribute("aria-current");
+      }
+    }
+    if (step === 3) renderSummary();
+    window.scrollTo(0, 0);
+  }
+
+  function updateNext1() {
+    var btn = $("btn-next-1");
+    var ok = selectedKeys().length > 0;
+    btn.disabled = !ok;
+    btn.setAttribute("aria-disabled", ok ? "false" : "true");
+    var err = $("err-1");
+    if (err) err.classList.toggle("visible", !ok && err.dataset.touched === "1");
+  }
+
+  function toggleProduct(card) {
+    var key = card.getAttribute("data-product");
+    if (!key) return;
+    if (selected[key]) {
+      delete selected[key];
+      card.classList.remove("selected");
+      card.setAttribute("aria-checked", "false");
+    } else {
+      selected[key] = { qty: MIN_QTY };
+      card.classList.add("selected");
+      card.setAttribute("aria-checked", "true");
+    }
+    renderQtySection();
+    updateNext1();
+  }
+
+  function renderQtySection() {
+    var section = $("qty-section");
+    var list = $("qty-list");
+    var keys = selectedKeys();
+    if (!section || !list) return;
+    if (!keys.length) {
+      section.style.display = "none";
+      list.innerHTML = "";
+      return;
+    }
+    section.style.display = "block";
+    list.innerHTML = "";
+    keys.forEach(function (key) {
+      var meta = PRODUCT_META[key];
+      var row = document.createElement("div");
+      row.className = "qty-row";
+      row.innerHTML =
+        '<span class="qty-label">' +
+        meta.name +
+        "</span>" +
+        '<div class="qty-control">' +
+        '<button type="button" class="qty-btn" data-action="dec" data-key="' +
+        key +
+        '" aria-label="Minder">−</button>' +
+        '<span class="qty-val" id="qty-val-' +
+        key +
+        '">' +
+        selected[key].qty +
+        "</span>" +
+        '<button type="button" class="qty-btn" data-action="inc" data-key="' +
+        key +
+        '" aria-label="Meer">+</button>' +
+        "</div>";
+      list.appendChild(row);
+    });
+    list.querySelectorAll(".qty-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var key = btn.getAttribute("data-key");
+        var action = btn.getAttribute("data-action");
+        if (!selected[key]) return;
+        if (action === "inc") selected[key].qty += 1;
+        else selected[key].qty = Math.max(MIN_QTY, selected[key].qty - 1);
+        var val = $("qty-val-" + key);
+        if (val) val.textContent = String(selected[key].qty);
+      });
+    });
+  }
+
+  function validateStep2() {
+    var bedrijf = ($("f-bedrijf").value || "").trim();
+    var kvk = ($("f-kvk").value || "").trim();
+    var voornaam = ($("f-voornaam").value || "").trim();
+    var achternaam = ($("f-achternaam").value || "").trim();
+    var email = ($("f-email").value || "").trim();
+    var land = ($("f-land").value || "").trim();
+    var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    var kvkOk = /^\d{8}$/.test(kvk);
+    return bedrijf && kvkOk && voornaam && achternaam && emailOk && land;
+  }
+
+  function renderSummary() {
+    var productsEl = $("summary-products");
+    var contactEl = $("summary-contact-inner");
+    if (!productsEl || !contactEl) return;
+    var html = "";
+    var total = 0;
+    selectedKeys().forEach(function (key) {
+      var meta = PRODUCT_META[key];
+      var qty = selected[key].qty;
+      var line = meta.unitPrice * qty;
+      total += line;
+      html +=
+        '<div class="summary-row"><span class="s-label">' +
+        meta.name +
+        " × " +
+        qty +
+        '</span><span class="s-value">€ ' +
+        line.toFixed(2).replace(".", ",") +
+        "</span></div>";
+    });
+    html +=
+      '<div class="summary-row total"><span class="s-label">Indicatie totaal</span><span class="s-value">€ ' +
+      total.toFixed(2).replace(".", ",") +
+      "</span></div>";
+    productsEl.innerHTML = html;
+    contactEl.innerHTML =
+      "<div><strong>Bedrijf</strong><br/>" +
+      $("f-bedrijf").value +
+      "</div>" +
+      "<div><strong>KvK</strong><br/>" +
+      $("f-kvk").value +
+      "</div>" +
+      "<div><strong>Contact</strong><br/>" +
+      $("f-voornaam").value +
+      " " +
+      $("f-achternaam").value +
+      "</div>" +
+      "<div><strong>E-mail</strong><br/>" +
+      $("f-email").value +
+      "</div>";
+  }
+
+  function showSuccess() {
+    var ref = "OFF-" + String(Date.now()).slice(-6);
+    $("ref-code").textContent = ref;
+    document.querySelectorAll(".panel, .steps-bar, .widget-header, .widget-footer").forEach(function (el) {
+      el.style.display = "none";
+    });
+    $("success-state").classList.add("active");
+  }
+
+  document.querySelectorAll(".product-card").forEach(function (card) {
+    card.addEventListener("click", function () {
+      toggleProduct(card);
+    });
+    card.addEventListener("keydown", function (e) {
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        toggleProduct(card);
+      }
+    });
+  });
+
+  $("btn-next-1").addEventListener("click", function () {
+    $("err-1").dataset.touched = "1";
+    if (!selectedKeys().length) {
+      $("err-1").classList.add("visible");
+      return;
+    }
+    goToStep(2);
+  });
+
+  $("btn-back-2").addEventListener("click", function () {
+    goToStep(1);
+  });
+
+  $("btn-next-2").addEventListener("click", function () {
+    var err = $("err-2");
+    if (!validateStep2()) {
+      err.classList.add("visible");
+      return;
+    }
+    err.classList.remove("visible");
+    goToStep(3);
+  });
+
+  $("btn-back-3").addEventListener("click", function () {
+    goToStep(2);
+  });
+
+  $("btn-submit").addEventListener("click", function () {
+    showSuccess();
+  });
+
+  for (var i = 2; i <= 3; i++) {
+    var p = $("panel-" + i);
+    if (p) p.setAttribute("aria-hidden", "true");
+  }
+  var success = $("success-state");
+  if (success) {
+    success.classList.remove("active");
+    success.style.display = "none";
+  }
+  goToStep(1);
+  updateNext1();
+})();
+</script>
+</body>
+</html>

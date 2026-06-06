@@ -39,7 +39,7 @@ export const FUMERO_COMPOSER_MODE_META: Record<
   coder: {
     label: "Bouwen",
     icon: Code2,
-    placeholder: "Beschrijf je tool of stel een snelle vraag…",
+    placeholder: "Typ gewoon wat je wilt — geen perfecte prompt nodig…",
   },
   online: {
     label: "Online",
@@ -216,11 +216,14 @@ export const FUMERO_RESEARCH_PREFILL = "Zoek op het web naar ";
 
 export function fumeroComposerPlaceholder(
   mode: FumeroComposerMode,
-  opts?: { modelTier?: FumeroComposerModelTier }
+  opts?: { modelTier?: FumeroComposerModelTier; bouwenWorkspace?: boolean }
 ): string {
   if (mode === "default") return "Stel je vraag aan Max…";
+  if (mode === "coder" && opts?.bouwenWorkspace) {
+    return "Bv. chatbot voor klantvragen, of haal info van fumero.nl…";
+  }
   if (mode === "coder" && opts?.modelTier === "flash") {
-    return "Snelle vraag — shop, orders, tools…";
+    return "Gewone vraag — shop, orders, site…";
   }
   return FUMERO_COMPOSER_MODE_META[mode].placeholder;
 }

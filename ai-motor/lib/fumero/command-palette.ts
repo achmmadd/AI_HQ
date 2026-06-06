@@ -22,6 +22,10 @@ export type FumeroCmdCycleModelTierDetail = {
   tier?: FumeroComposerModelTier;
 };
 
+export type FumeroCmdFocusComposerDetail = {
+  prompt?: string;
+};
+
 export function dispatchFumeroCmd(
   event: (typeof FUMERO_CMD_EVENTS)[keyof typeof FUMERO_CMD_EVENTS],
   detail?: unknown

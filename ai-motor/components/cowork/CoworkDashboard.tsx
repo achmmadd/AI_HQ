@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useCallback } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CoworkTasksPanel } from "@/components/cowork/CoworkTasksPanel";
@@ -46,7 +47,12 @@ function CoworkDashboardInner() {
         </h1>
         <p className="text-sm text-text-secondary">
           Taken, goedkeuringen, skills, n8n-runs, PC-bridge en audit — alles op
-          één plek.
+          één plek. Inbox:{" "}
+          <Link href="/cowork?tab=approvals" className="text-accent hover:underline">
+            Goedkeuringen
+          </Link>
+          . Telegram deeplinks blijven op{" "}
+          <code className="text-xs">/approvals?approve=</code> (niet de sidebar).
         </p>
       </div>
 

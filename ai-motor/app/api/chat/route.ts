@@ -19,6 +19,7 @@ import {
 } from "@/lib/chat-request";
 import { tryHandleLocalExecutorChat } from "@/lib/chat-local-handler";
 import { resolveChatWebhookUrl } from "@/lib/intent-detection";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest) {
       context?: ChatContextMsg[];
       conversation_id?: number | null;
     };
+
+    const auth = await requireApiAuthForKlant(req, klant);
+    if (auth instanceof Response) return auth;
 
     const conversationId =
       typeof conversationIdRaw === "number" && Number.isFinite(conversationIdRaw)

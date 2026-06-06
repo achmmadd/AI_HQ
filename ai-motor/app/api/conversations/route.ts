@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const klant =
     new URL(req.url).searchParams.get("klant")?.trim() || "fumero";
+
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof NextResponse) return auth;
+
   const rows = db
     .prepare(
       `SELECT id, klant, title, created_at, updated_at
@@ -29,6 +34,9 @@ export async function POST(req: NextRequest) {
     typeof body?.title === "string" && body.title.trim()
       ? body.title.trim().slice(0, 200)
       : "Nieuwe chat";
+
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof NextResponse) return auth;
 
   const r = db
     .prepare(

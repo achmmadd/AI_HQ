@@ -1,3 +1,12 @@
+import {
+  qdrantSearchCollectionsForScope,
+} from "@/lib/qdrant-collection";
+import { buildQdrantSearchFilter } from "@/lib/qdrant-payload";
+import {
+  resolveWorkspaceIdBySlug,
+  workspaceSlugForKlant,
+} from "@/lib/workspace-context";
+
 const QDRANT_URL = (process.env.QDRANT_URL || "http://127.0.0.1:6333").replace(
   /\/$/,
   "",
@@ -7,7 +16,6 @@ const OLLAMA_URL = (process.env.OLLAMA_URL || "http://127.0.0.1:11434").replace(
   "",
 );
 const EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
-const COLLECTION = process.env.QDRANT_COLLECTION || "factory_os";
 
 export type QdrantHit = {
   id?: unknown;
@@ -65,11 +73,61 @@ export function payloadTextWithProvenance(hit: QdrantHit): string {
 
 /**
  * Vector search in Qdrant (zelfde logica als /api/qdrant/search), voor server-side automation.
+ * Fan-out naar ingest-collectie (`factory_os_{klant}`) én scrape-collectie (`{klant}_kennisbank`).
  */
+async function searchQdrantCollection(
+  collection: string,
+  vector: number[],
+  opts: { klant?: string; workspaceId?: string | null; limit: number }
+): Promise<{ results: QdrantHit[]; error?: string; missing?: boolean }> {
+  const body: Record<string, unknown> = {
+    vector,
+    limit: opts.limit,
+    with_payload: true,
+  };
+
+  const filter = buildQdrantSearchFilter({
+    tenant: opts.klant,
+    workspaceId: opts.workspaceId,
+  });
+  if (filter) body.filter = filter;
+
+  const res = await fetch(
+    `${QDRANT_URL}/collections/${encodeURIComponent(collection)}/points/search`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+    }
+  );
+
+  if (res.status === 404) {
+    return { results: [], missing: true };
+  }
+
+  const text = await res.text();
+  if (!res.ok) {
+    return { results: [], error: text || `Qdrant ${res.status} (${collection})` };
+  }
+
+  const data = JSON.parse(text) as { result?: QdrantHit[] };
+  const results = Array.isArray(data.result) ? data.result : [];
+  return { results };
+}
+
 export async function searchKnowledge(
   query: string,
-  opts?: { klant?: string; limit?: number },
-): Promise<{ results: QdrantHit[]; error?: string }> {
+  opts?: {
+    klant?: string;
+    limit?: number;
+    workspaceId?: string | null;
+  },
+): Promise<{
+  results: QdrantHit[];
+  error?: string;
+  collections?: string[];
+}> {
   const q = query.trim();
   if (!q) return { results: [], error: "empty query" };
 
@@ -80,37 +138,39 @@ export async function searchKnowledge(
     }
 
     const cap = Math.min(Number(opts?.limit) || 10, 50);
-    const body: Record<string, unknown> = {
-      vector,
-      limit: cap,
-      with_payload: true,
-    };
-
     const klant = opts?.klant;
-    if (klant && ["fumero", "bokas"].includes(klant)) {
-      body.filter = {
-        must: [{ key: "client", match: { value: klant } }],
-      };
-    }
+    const workspaceId =
+      opts?.workspaceId ??
+      (klant
+        ? await resolveWorkspaceIdBySlug(workspaceSlugForKlant(klant))
+        : null);
+    const collections = qdrantSearchCollectionsForScope(klant);
 
-    const res = await fetch(
-      `${QDRANT_URL}/collections/${COLLECTION}/points/search`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
-      },
+    const searches = await Promise.all(
+      collections.map((collection) =>
+        searchQdrantCollection(collection, vector, {
+          klant,
+          workspaceId,
+          limit: cap,
+        })
+      )
     );
 
-    const text = await res.text();
-    if (!res.ok) {
-      return { results: [], error: text || `Qdrant ${res.status}` };
-    }
+    const errors = searches
+      .filter((s) => s.error)
+      .map((s) => s.error as string);
+    const merged = searches.flatMap((s) => s.results);
+    merged.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    const results = merged.slice(0, cap);
 
-    const data = JSON.parse(text) as { result?: QdrantHit[] };
-    const results = Array.isArray(data.result) ? data.result : [];
-    return { results };
+    return {
+      results,
+      collections,
+      error:
+        errors.length > 0 && results.length === 0
+          ? errors.join("; ")
+          : undefined,
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { results: [], error: msg };

@@ -4,10 +4,17 @@ import {
   type FumeroDeployType,
   type FumeroToolTemplateId,
 } from "@/lib/fumero/tool-templates";
+import {
+  isFumeroSiteCheckChatIntent,
+  looksLikeCasualBuildRequest,
+} from "@/lib/fumero/casual-prompt";
 
 /** Keywords die tool-builder in chat starten (geen redirect). */
 const TOOL_INTENT_RE =
-  /\b(maak\s+(een\s+)?(widget|tool|rekenmachine|calculator)|bouw\s+(een\s+)?(tool|rekenmachine|calculator|widget|chatbot|website)|bouwen\s+(?:een\s+)?(?:chat\s*bot|chatbot|tool|widget)|build\s+(a\s+)?(tool|calculator|widget)|create\s+(a\s+)?(tool|calculator|widget)|keuzehulp|chatbot|chat\s*bot|popup|loyalty|quiz|leeftijdscheck|rekenmachine|calculator|embed\s*widget|website\s*widget|scrape.*(?:tool|chatbot|widget))\b/i;
+  /\b(maak\s+(een\s+)?(widget|tool|rekenmachine|calculator|iets|wat)|bouw\s+(een\s+)?(tool|rekenmachine|calculator|widget|chatbot|website|iets|wat)|bouwen\s+(?:een\s+)?(?:chat\s*bot|chatbot|tool|widget)|build\s+(a\s+)?(tool|calculator|widget)|create\s+(a\s+)?(tool|calculator|widget)|keuzehulp|chatbot|chat\s*bot|popup|loyalty|quiz|leeftijdscheck|rekenmachine|calculator|embed\s*widget|website\s*widget|klantenservice|helpdesk|kennisbank|widgetje)\b/i;
+
+const BUILD_VERB_QUESTION_RE =
+  /\b(kan|kun|zou)\s+(je|u)\s+.+\s+(maken|bouwen|zetten|toevoegen|fixen)\b/i;
 
 /** Expliciete build-trigger (plan-modus "Maak", deploy, start). */
 export const CODER_BUILD_TRIGGER_RE =
@@ -26,6 +33,8 @@ export function hasExplicitCoderBuildIntent(
 ): boolean {
   const t = prompt.trim();
   if (!t) return false;
+  if (looksLikeCasualBuildRequest(t)) return true;
+  if (BUILD_VERB_QUESTION_RE.test(t)) return true;
   if (CODER_BUILD_TRIGGER_RE.test(t) && detectFumeroToolIntent(t)) return true;
   if (CODER_BUILD_TRIGGER_RE.test(t) && resolveTemplateFromUserText(t)) return true;
   if (detectFumeroToolIntent(t)) return true;
@@ -46,8 +55,10 @@ export function isCoderQuestionOnly(
   const t = prompt.trim();
   if (!t) return true;
   if (opts?.awaitingTemplate) return false;
+  if (isFumeroSiteCheckChatIntent(t)) return true;
   if (hasExplicitCoderBuildIntent(t, opts)) return false;
-  if (t.endsWith("?")) return true;
+  if (BUILD_VERB_QUESTION_RE.test(t)) return false;
+  if (t.endsWith("?") && !looksLikeCasualBuildRequest(t)) return true;
   const lower = t.toLowerCase();
   if (
     /^(wat|hoe|waarom|wanneer|wie|welke|kan|kun|mag|is|zijn|heeft|hebben|help|uitleg|vertel)\b/.test(
@@ -139,7 +150,8 @@ export function resolveTemplateFromUserText(
 ): FumeroToolTemplateId | undefined {
   const lower = prompt.toLowerCase();
   if (/\b(rekenmachine|calculator|calc\b)\b/.test(lower)) return "calculator";
-  if (/\b(chat\s*widget|chatbot|chat\s*bot)\b/.test(lower)) return "chat";
+  if (/\b(chat\s*widget|chatbot|chat\s*bot|klantenservice|helpdesk|support|vragen\s*beantwoord)\b/.test(lower)) return "chat";
+  if (/\b(faq|veelgestelde|kennisbank)\b/.test(lower)) return "chat";
   if (/\bkeuzehulp|quiz\b/.test(lower)) return "quiz";
   if (/\bleeftijd|18\+\b/.test(lower)) return "age";
   if (/\bloyalty|punten|beloningen\b/.test(lower)) return "loyalty";
@@ -150,9 +162,9 @@ export function resolveTemplateFromUserText(
 
 export function toolIntentAssistantIntro(): string {
   return (
-    "Ik zet de **tool-editor** in deze thread klaar — je blijft in chat, geen apart scherm.\n\n" +
-    "Kies een sjabloon hieronder of beschrijf je tool (bv. kleuren, stappen, teksten). " +
-    "Daarna zie je een live preview, kun je verfijnen met **Pas aan**, en **Deploy** zet hem in de garage."
+    "Vertel gewoon wat je wilt — geen perfecte prompt nodig.\n\n" +
+    "Kies een sjabloon of typ bv. *chatbot voor klantvragen* of *info van fumero.nl*. " +
+    "Preview rechts · daarna **Pas aan** of **Online zetten**."
   );
 }
 
@@ -228,6 +240,9 @@ export function resolveMaxToolChatAction(
   if (!t) return null;
 
   if (opts.coderMode) {
+    if (isFumeroSiteCheckChatIntent(t)) {
+      return null;
+    }
     if (isCoderQuestionOnly(t, { awaitingTemplate: opts.awaitingTemplate })) {
       return null;
     }
@@ -246,7 +261,15 @@ export function resolveMaxToolChatAction(
     }
     const quick = resolveTemplateFromQuickReply(t);
     const tpl = resolveTemplateFromUserText(t);
-    if (quick?.templateId === "custom" || (!quick && !tpl && !detectFumeroToolIntent(t))) {
+    if (
+      looksLikeCasualBuildRequest(t) ||
+      detectFumeroToolIntent(t) ||
+      tpl ||
+      (quick && quick.templateId !== "custom")
+    ) {
+      return { type: "tool_build" };
+    }
+    if (quick?.templateId === "custom" || t.length < 10) {
       return { type: "tool_intent_pick" };
     }
     return { type: "tool_build" };

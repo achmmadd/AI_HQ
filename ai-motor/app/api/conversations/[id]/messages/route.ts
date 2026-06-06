@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,9 @@ export async function GET(
 
   const klant =
     new URL(req.url).searchParams.get("klant")?.trim() || "fumero";
+
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof NextResponse) return auth;
 
   const conv = db
     .prepare(`SELECT id, klant FROM conversations WHERE id = ?`)

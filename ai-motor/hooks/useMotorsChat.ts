@@ -175,6 +175,8 @@ export function useMotorsChat(
         skipUserMessage?: boolean;
         planMode?: boolean;
         modelTier?: FumeroComposerModelTier;
+        /** Prep-stappen (scrape) behouden bij start stream. */
+        initialActivities?: string[];
       }
     ) => {
       if (conversationId === undefined) return;
@@ -213,8 +215,14 @@ export function useMotorsChat(
         ]);
       }
       setStreamingId(asstId);
-      setStreamActivities([]);
-      setStreamStatus(chatThinkingLabel(company));
+      const seed = optsStream?.initialActivities?.filter(Boolean) ?? [];
+      if (seed.length) {
+        setStreamActivities(seed);
+        setStreamStatus(seed[seed.length - 1] ?? chatThinkingLabel(company));
+      } else {
+        setStreamActivities([]);
+        setStreamStatus(chatThinkingLabel(company));
+      }
       abortRef.current?.abort();
       const ac = new AbortController();
       abortRef.current = ac;
@@ -384,6 +392,7 @@ export function useMotorsChat(
         skipUserMessage?: boolean;
         planMode?: boolean;
         modelTier?: FumeroComposerModelTier;
+        initialActivities?: string[];
       }
     ) => {
       if (conversationId === undefined) return;
@@ -393,6 +402,7 @@ export function useMotorsChat(
         skipUserMessage: optsSend?.skipUserMessage,
         planMode: optsSend?.planMode,
         modelTier: optsSend?.modelTier,
+        initialActivities: optsSend?.initialActivities,
       });
     },
     [conversationId, streamReply]

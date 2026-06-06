@@ -17,7 +17,9 @@ export type ConnectorId =
   | "seo"
   | "stripe"
   | "google_sheets"
-  | "gmail";
+  | "gmail"
+  | "odoo"
+  | "mollie";
 
 export type ConnectorDefinition = {
   id: ConnectorId;
@@ -146,6 +148,22 @@ export const CONNECTORS_REGISTRY: ConnectorDefinition[] = [
     name: "Gmail",
     description: "E-mail & facturen — binnenkort",
     iconKey: "mail",
+    status: "coming_soon",
+    scope: "fumero",
+  },
+  {
+    id: "odoo",
+    name: "Odoo",
+    description: "Boekhouding en ERP — OAuth via Nango (binnenkort)",
+    iconKey: "database",
+    status: "coming_soon",
+    scope: "motor_lab",
+  },
+  {
+    id: "mollie",
+    name: "Mollie",
+    description: "Betalingen — OAuth via Nango (binnenkort)",
+    iconKey: "credit-card",
     status: "coming_soon",
     scope: "fumero",
   },

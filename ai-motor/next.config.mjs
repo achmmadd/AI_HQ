@@ -21,11 +21,15 @@ const allowedDevOrigins = [
 
 const nextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ["better-sqlite3", "playwright", "pdfkit"],
+  serverExternalPackages: ["better-sqlite3", "playwright", "pdfkit", "postgres"],
   allowedDevOrigins,
   async rewrites() {
     return {
       beforeFiles: [
+        {
+          source: "/api/qdrant/search",
+          destination: "/api/knowledge/qdrant-search",
+        },
         {
           source: "/api/content/generate",
           destination: "/api/fumero/content/generate",

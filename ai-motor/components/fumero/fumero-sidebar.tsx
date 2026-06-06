@@ -9,6 +9,7 @@ import {
   FolderKanban,
   Hammer,
   MessageSquare,
+  Settings,
   ShoppingBag,
   Workflow,
 } from "lucide-react";
@@ -91,6 +92,7 @@ export function FumeroSidebar() {
         icon: ShoppingBag,
         count: orderCount ?? undefined,
       },
+      { href: "/fumero/settings/context", label: "Instellingen", icon: Settings },
     ],
     [libraryCount, orderCount]
   );

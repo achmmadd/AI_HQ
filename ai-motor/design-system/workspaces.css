@@ -1,0 +1,47 @@
+/**
+ * Workspace theme overrides — fumero / bokas / personal
+ * Applied via [data-workspace] on <html> (see lib/workspace-themes.ts)
+ */
+
+[data-workspace="fumero"] {
+  --ws-accent: #69c400;
+  --ws-accent-hover: #5db000;
+  --ws-accent-lt: rgba(105, 196, 0, 0.08);
+  --ws-black: #080808;
+  --ws-white: #ffffff;
+  --ws-yellow: #feb601;
+  --ws-font: var(--font-geist), "Geist", sans-serif;
+  --ws-name: "Fumero Studio";
+  --accent: var(--ws-accent);
+  --accent-hover: var(--ws-accent-hover);
+  --background: #fafafa;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --border: #e5e5e5;
+  --text-primary: #171717;
+  --text-secondary: #737373;
+}
+
+[data-workspace="personal"] {
+  --ws-accent: #6366f1;
+  --ws-accent-hover: #4f46e5;
+  --ws-accent-lt: rgba(99, 102, 241, 0.08);
+  --ws-font: var(--font-geist), "Geist", sans-serif;
+  --ws-name: "Motor AI";
+  --accent: var(--ws-accent);
+  --accent-hover: var(--ws-accent-hover);
+}
+
+[data-workspace="bokas"] {
+  --ws-accent: #0ea5e9;
+  --ws-accent-hover: #0284c7;
+  --ws-accent-lt: rgba(14, 165, 233, 0.08);
+  --ws-font: inherit;
+  --ws-name: "Bokas";
+  --accent: var(--ws-accent);
+  --accent-hover: var(--ws-accent-hover);
+}
+
+.font-ws {
+  font-family: var(--ws-font);
+}

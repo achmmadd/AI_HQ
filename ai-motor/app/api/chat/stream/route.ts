@@ -17,9 +17,21 @@ import {
   modelBadgeForId,
   planMotorActivitySteps,
 } from "@/lib/chat-activity-messages";
-import { getFumeroChatModelId } from "@/lib/chat-models";
 import { formatOpenRouterUserError } from "@/lib/openrouter-errors";
-import { shouldUseFumeroOpenRouterFastPath, parseChatModelTier } from "@/lib/chat-routing-policy";
+import {
+  formatRouteChain,
+  getFumeroChatModelId,
+  parseChatModelTier,
+  resolveChatRoutingDecision,
+  routeProviderLabel,
+} from "@/lib/model-router";
+import {
+  endChatLangfuseTrace,
+  flushLangfuse,
+  startChatLangfuseTrace,
+  updateChatLangfuseRoutingPlan,
+  type ChatLangfuseTrace,
+} from "@/lib/observability/langfuse";
 import {
   callFactoryN8n,
   extractMessage,
@@ -41,6 +53,7 @@ import {
   usageCostEur,
   type TokenUsage,
 } from "@/lib/chat-usage";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
@@ -56,11 +69,14 @@ function buildChatUsagePayload(opts: {
   agentMode: boolean;
   useResearch: boolean;
   routing: string;
+  routingPlan?: string;
   model: string;
   openrouterModel?: string | null;
   reportedUsage?: TokenUsage | null;
   durationMs: number;
   afdeling?: string | null;
+  conversationId?: number | null;
+  workspaceId?: string | null;
 }) {
   const agentLabel = chatUsageAgentLabel({
     agentMode: opts.agentMode,
@@ -73,6 +89,7 @@ function buildChatUsagePayload(opts: {
     estimatePromptTokens(opts.prompt, opts.context);
   const completionTokens =
     opts.reportedUsage?.completion_tokens ?? estimateTokens(opts.message);
+  const costEur = usageCostEur(model, promptTokens, completionTokens);
   logMotorChatUsage({
     klant: opts.klant,
     afdeling: opts.afdeling,
@@ -83,9 +100,13 @@ function buildChatUsagePayload(opts: {
     durationMs: opts.durationMs,
     prompt: opts.prompt,
     response: opts.message,
+    routing: opts.routing,
+    routingPlan: opts.routingPlan,
+    conversationId: opts.conversationId,
+    workspaceId: opts.workspaceId,
+    costEur,
   });
   const kind = chatUsageDisplayKind(agentLabel);
-  const costEur = usageCostEur(model, promptTokens, completionTokens);
   return {
     usage_label: agentLabel,
     usage_kind: kind,
@@ -95,6 +116,7 @@ function buildChatUsagePayload(opts: {
     total_tokens: promptTokens + completionTokens,
     cost_eur: costEur,
     usage_model: model,
+    routing_plan: opts.routingPlan,
     usage_line: formatTokenUsageLine({
       model,
       promptTokens,
@@ -125,6 +147,10 @@ export async function POST(req: NextRequest) {
     context?: ChatContextMsg[];
     conversation_id?: number | null;
   };
+
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof Response) return auth;
+  const { session } = auth;
 
   const modelTier = parseChatModelTier(modelTierRaw);
 
@@ -198,6 +224,8 @@ export async function POST(req: NextRequest) {
       push({ type: "user_echo", content: prompt.trim() });
       push({ type: "status", phase: "thinking" });
 
+      let langfuseTrace: ChatLangfuseTrace | null = null;
+
       try {
         db.prepare(
           `INSERT INTO chat_history (klant, role, content, afdeling, conversation_id)
@@ -211,6 +239,18 @@ export async function POST(req: NextRequest) {
         }
 
         const intent = detectChatIntent(prompt.trim());
+        langfuseTrace = startChatLangfuseTrace(
+          {
+            conversationId,
+            klant,
+            workspaceId: session.workspaceId,
+            workspaceSlug: session.workspaceSlug ?? klant,
+            userId: session.pgUserId ?? session.email,
+            agentMode: Boolean(agent_mode),
+            intent,
+          },
+          prompt.trim()
+        );
         const agentMode = Boolean(agent_mode);
         const planMode = Boolean(plan_mode);
         const browserTask =
@@ -218,10 +258,28 @@ export async function POST(req: NextRequest) {
         const ctx = mergeConversationContext(conversationId, context);
 
         const useResearch = shouldRunChatWebResearch(prompt.trim());
-        const fumeroFast = shouldUseFumeroOpenRouterFastPath(klant, {
-          agentMode,
-          useResearchModel: useResearch,
-        }, modelTier);
+        const routingDecision = resolveChatRoutingDecision(
+          {
+            klant,
+            agentMode,
+            useResearchModel: useResearch,
+            fumeroModelTier: modelTier,
+          },
+          { includeLocalExecutor: true }
+        );
+        const routingPlanStr = formatRouteChain(routingDecision.routeChain);
+        updateChatLangfuseRoutingPlan(langfuseTrace, {
+          routeChain: routingDecision.routeChain.map(routeProviderLabel),
+          primary: routeProviderLabel(
+            routingDecision.primaryProvider === "none"
+              ? "n8n"
+              : routingDecision.primaryProvider
+          ),
+          litellm: routingDecision.litellm,
+          plannedModel: routingDecision.plannedModel ?? null,
+          fastPath: routingDecision.fastPath ?? null,
+        });
+        const fumeroFast = routingDecision.fastPath === "fumero_openrouter_direct";
         const activitySteps = planMotorActivitySteps({
           klant,
           prompt: prompt.trim(),
@@ -232,8 +290,16 @@ export async function POST(req: NextRequest) {
           fumeroFast,
         });
         push({ type: "activities", steps: activitySteps });
+        push({
+          type: "routing_plan",
+          plan: routingDecision.routeChain,
+          plan_label: routingPlanStr,
+          primary: routingDecision.primaryProvider,
+          litellm: routingDecision.litellm,
+        });
         if (fumeroFast) {
-          const modelId = getFumeroChatModelId();
+          const modelId =
+            routingDecision.plannedModel ?? getFumeroChatModelId();
           const badge = modelBadgeForId(modelId);
           push({
             type: "activity",
@@ -286,6 +352,30 @@ export async function POST(req: NextRequest) {
             );
           }
           maybeIngestMotorMemory(conversationId, klant);
+          const localUsage = buildChatUsagePayload({
+            klant,
+            prompt: prompt.trim(),
+            message,
+            context: ctx,
+            agentMode,
+            useResearch,
+            routing: "local_executor",
+            routingPlan: routingPlanStr,
+            model: "nuc-local-executor",
+            durationMs: latencyMs,
+            afdeling: afdelingStr,
+            conversationId,
+            workspaceId: session.workspaceId,
+          });
+          endChatLangfuseTrace(langfuseTrace, {
+            output: message,
+            model: "nuc-local-executor",
+            routing: "local_executor",
+            promptTokens: localUsage.prompt_tokens,
+            completionTokens: localUsage.completion_tokens,
+            durationMs: latencyMs,
+            metadata: { routing_plan: routingPlanStr },
+          });
           push({
             type: "done",
             message,
@@ -304,18 +394,7 @@ export async function POST(req: NextRequest) {
             routing: "local_executor",
             memory_active: true,
             timestamp: new Date().toISOString(),
-            ...buildChatUsagePayload({
-              klant,
-              prompt: prompt.trim(),
-              message,
-              context: ctx,
-              agentMode,
-              useResearch,
-              routing: "local_executor",
-              model: "nuc-local-executor",
-              durationMs: latencyMs,
-              afdeling: afdelingStr,
-            }),
+            ...localUsage,
           });
           endStream();
           return;
@@ -335,16 +414,29 @@ export async function POST(req: NextRequest) {
           onPrepare: () => {
             push({
               type: "activity",
-              label: fumeroFast ? "Max bereidt antwoord…" : "Motor bereidt antwoord…",
+              label: fumeroFast
+                ? "Max · systeemprompt laden…"
+                : "Motor bereidt antwoord…",
             });
+          },
+          onActivity: (label) => {
+            push({ type: "activity", label });
           },
           onStreamStart: (routing) => {
             if (firstOpenClawDeltaAt === null) {
               firstOpenClawDeltaAt = Date.now();
+              const ttft = firstOpenClawDeltaAt - openClawT0;
               push({
                 type: "routing",
                 routing,
-                ttft_ms: firstOpenClawDeltaAt - openClawT0,
+                ttft_ms: ttft,
+              });
+              push({
+                type: "activity",
+                label:
+                  routing === "openrouter"
+                    ? `Eerste tokens (${(ttft / 1000).toFixed(1)}s)…`
+                    : "Antwoord streamt…",
               });
             }
           },
@@ -402,6 +494,42 @@ export async function POST(req: NextRequest) {
                   completion_tokens: Number(metaUsage.completion_tokens) || 0,
                 }
               : null;
+          const clawUsage = buildChatUsagePayload({
+            klant,
+            prompt: prompt.trim(),
+            message,
+            context: ctx,
+            agentMode,
+            useResearch,
+            routing: openClawResult.routing,
+            routingPlan: routingPlanStr,
+            model:
+              openClawResult.routing === "openrouter"
+                ? "openrouter-direct"
+                : "openclaw-gateway",
+            openrouterModel,
+            reportedUsage,
+            durationMs: latencyMs,
+            afdeling: afdelingStr,
+            conversationId,
+            workspaceId: session.workspaceId,
+          });
+          endChatLangfuseTrace(langfuseTrace, {
+            output: message,
+            model: clawUsage.usage_model,
+            routing: openClawResult.routing,
+            promptTokens: clawUsage.prompt_tokens,
+            completionTokens: clawUsage.completion_tokens,
+            durationMs: latencyMs,
+            metadata: {
+              routing_plan: routingPlanStr,
+              openrouter_model: openrouterModel,
+              ttft_ms:
+                firstOpenClawDeltaAt !== null
+                  ? firstOpenClawDeltaAt - openClawT0
+                  : null,
+            },
+          });
           push({
             type: "done",
             message,
@@ -428,23 +556,7 @@ export async function POST(req: NextRequest) {
             openrouter_model: openrouterModel,
             memory_active: true,
             timestamp: new Date().toISOString(),
-            ...buildChatUsagePayload({
-              klant,
-              prompt: prompt.trim(),
-              message,
-              context: ctx,
-              agentMode,
-              useResearch,
-              routing: openClawResult.routing,
-              model:
-                openClawResult.routing === "openrouter"
-                  ? "openrouter-direct"
-                  : "openclaw-gateway",
-              openrouterModel,
-              reportedUsage,
-              durationMs: latencyMs,
-              afdeling: afdelingStr,
-            }),
+            ...clawUsage,
           });
           endStream();
           return;
@@ -581,6 +693,35 @@ export async function POST(req: NextRequest) {
               }
             : null;
 
+        const n8nUsage = buildChatUsagePayload({
+          klant,
+          prompt: prompt.trim(),
+          message,
+          context: ctx,
+          agentMode,
+          useResearch,
+          routing: "n8n",
+          routingPlan: routingPlanStr,
+          model,
+          reportedUsage: n8nReported,
+          durationMs: latencyMs,
+          afdeling: outAfdeling,
+          conversationId,
+          workspaceId: session.workspaceId,
+        });
+        endChatLangfuseTrace(langfuseTrace, {
+          output: message,
+          model,
+          routing: "n8n",
+          promptTokens: n8nUsage.prompt_tokens,
+          completionTokens: n8nUsage.completion_tokens,
+          durationMs: latencyMs,
+          metadata: {
+            routing_plan: routingPlanStr,
+            experiment_id: experimentId,
+            experiment_variant: experimentVariant,
+          },
+        });
         push({
           type: "done",
           message,
@@ -597,27 +738,25 @@ export async function POST(req: NextRequest) {
           routing: "n8n",
           memory_active: true,
           timestamp: new Date().toISOString(),
-          ...buildChatUsagePayload({
-            klant,
-            prompt: prompt.trim(),
-            message,
-            context: ctx,
-            agentMode,
-            useResearch,
-            routing: "n8n",
-            model,
-            reportedUsage: n8nReported,
-            durationMs: latencyMs,
-            afdeling: outAfdeling,
-          }),
+          ...n8nUsage,
         });
       } catch (e: unknown) {
         const raw = e instanceof Error ? e.message : String(e);
+        endChatLangfuseTrace(langfuseTrace, {
+          output: raw,
+          model: "error",
+          routing: "error",
+          promptTokens: 0,
+          completionTokens: 0,
+          durationMs: 0,
+          success: false,
+        });
         push({
           type: "error",
           message: formatOpenRouterUserError(raw),
         });
       } finally {
+        await flushLangfuse();
         endStream();
       }
     },

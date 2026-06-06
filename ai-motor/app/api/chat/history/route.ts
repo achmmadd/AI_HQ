@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const klant = url.searchParams.get("klant") || "fumero";
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof Response) return auth;
   const convRaw = url.searchParams.get("conversation_id");
 
   let messages: unknown[];
@@ -49,8 +52,11 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const klant = new URL(req.url).searchParams.get("klant");
-  if (klant) {
-    db.prepare("DELETE FROM chat_history WHERE klant = ?").run(klant);
+  if (!klant) {
+    return NextResponse.json({ error: "klant is required" }, { status: 400 });
   }
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof Response) return auth;
+  db.prepare("DELETE FROM chat_history WHERE klant = ?").run(klant);
   return NextResponse.json({ ok: true });
 }

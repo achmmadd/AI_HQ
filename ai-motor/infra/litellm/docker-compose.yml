@@ -1,0 +1,39 @@
+# LiteLLM proxy sidecar — Hetzner only (Sprint 2.1 skeleton)
+#
+# Prerequisites:
+#   - Tailscale on Hetzner + NUC
+#   - OPENROUTER_API_KEY in .env
+#   - LITELLM_MASTER_KEY (random secret for Motor → proxy auth)
+#
+# Motor NUC (.env.local):
+#   LITELLM_BASE_URL=http://<hetzner-tailscale-host>:4000
+#   OPENROUTER_API_KEY=<same key or use LiteLLM virtual key later>
+#
+# Start on Hetzner:
+#   cd infra/litellm && docker compose up -d
+#
+# RAM budget: ~300–500 MB (see MASTER-BUILD-PLAN appendix C)
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: motor-litellm
+    restart: unless-stopped
+    ports:
+      - "${LITELLM_BIND:-127.0.0.1}:4000:4000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:4000/health/liveliness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512m

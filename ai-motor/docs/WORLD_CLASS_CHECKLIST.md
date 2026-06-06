@@ -1,7 +1,7 @@
 # MotorsAI — wereldklasse-checklist
 
 Doel: één platform dat Claude/Cursor/Lovable voor Fumero/Bokas vervangt.  
-Status: **sterke interne basis** · **nog geen wereldklasse vs. Claude/Cursor/Lovable**
+Status: **sterke interne basis** · **Fase 4 polish afgerond** · items 8–10 gedeeltelijk op weg naar wereldklasse
 
 | # | Criterium | Status | Notities |
 |---|-----------|--------|----------|
@@ -12,9 +12,9 @@ Status: **sterke interne basis** · **nog geen wereldklasse vs. Claude/Cursor/Lo
 | 5 | React/Next projectstack | ✅ | `project-stack.ts`, preview |
 | 6 | PC-bridge + VS Code skeleton | ✅ | `/api/chat/bridge/*`, `motors-vscode/` |
 | 7 | Multi-file repo-agent | ❌ | Geen Cursor-niveau edits |
-| 8 | Betrouwbare SLA / self-serve | ❌ | NUC-setup, geen billing |
-| 9 | Productie-apps + CI | ❌ | Prototypes, geen volledige pipeline |
-| 10 | Laptop = eerste klas | ❌ | Bridge MVP |
+| 8 | Betrouwbare SLA / self-serve | 🟡 | Onboarding, Master Context UI, team-invite skeleton, white-label runbook (`docs/white-label-deploy.md`); **nog geen** Stripe billing of SLA-contract |
+| 9 | Productie-apps + CI | 🟡 | `hybrid-smoke.mjs`, `verify-live.sh`, design system, Hetzner hybrid; **nog geen** volledige deploy-pipeline per klant-app |
+| 10 | Laptop = eerste klas | 🟡 | Mobile bottom-nav, opa-proof touch targets, workspace shells; bridge nog MVP |
 
 ## NUC-model (OpenClaw)
 
@@ -33,3 +33,9 @@ BASE_URL=http://127.0.0.1:3040 node scripts/smoke-chat-openclaw.mjs
 **Snelheid (ingebouwd):** OpenClaw-chat slaat Qdrant-preamble over (`OPENCLAW_FAST_PREAMBLE`, default aan), cachet gateway-health 45s, parallel health + prompt-bouw. SSE toont `routing` + `ttft_ms` bij eerste token.
 
 Chat: https://motorsai.app/chat — in SSE `done` controleren: `routing: "openclaw"`.
+
+## Fase 4 additions (Sprint 4.3)
+
+- **Master Context:** `/settings/context` — bewerken + chat-preview snippet
+- **Team:** `/settings/team` — admin/editor/viewer, invite-link stub (geen e-mail infra)
+- **White-label:** [`white-label-deploy.md`](white-label-deploy.md) — nieuwe tenant &lt; 1 dag

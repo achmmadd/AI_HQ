@@ -53,6 +53,50 @@ async function getJson(path, headers = defaultHeaders) {
   return { path, status: res.status, body };
 }
 
+async function probeIntegrationReadiness() {
+  console.log("\n── Fase 1b: Integration readiness ──");
+
+  const ir = await getJson("/api/admin/integration-readiness", authHeaders);
+  if (ir.status === 401) {
+    warn(
+      "/api/admin/integration-readiness",
+      "401 — zet MOTORSAI_TOKEN voor volledige check"
+    );
+    return;
+  }
+  if (ir.status !== 200 || !ir.body) {
+    fail("/api/admin/integration-readiness", `HTTP ${ir.status}`);
+    return;
+  }
+
+  pass("/api/admin/integration-readiness", "200");
+  const mem = ir.body.memory ?? {};
+  if (mem.qdrant_url_configured) pass("QDRANT_URL", "geconfigureerd");
+  else warn("QDRANT_URL", "ontbreekt");
+
+  const cols = mem.qdrant_collections ?? [];
+  if (cols.length === 0) {
+    warn("qdrant collections", "geen collecties in payload");
+  } else {
+    for (const col of cols) {
+      const ok = col.exists && (col.points_count ?? 0) > 0;
+      if (ok) pass(`qdrant ${col.name}`, `${col.points_count} punten`);
+      else warn(`qdrant ${col.name}`, col.error ?? "leeg of ontbreekt");
+    }
+  }
+
+  if (mem.qdrant_collections_ok) pass("qdrant dual-search", "minstens één collectie met data");
+  else warn("qdrant dual-search", "geen vectors — check ADR-001 collecties");
+
+  const oc = ir.body.openclaw ?? {};
+  if (oc.gateway_url_configured) {
+    if (oc.ok) pass("openclaw (readiness)", "gateway OK");
+    else warn("openclaw (readiness)", oc.error ?? "niet bereikbaar");
+  } else {
+    warn("openclaw (readiness)", "OPENCLAW_GATEWAY_URL niet gezet");
+  }
+}
+
 async function probeStack() {
   console.log("\n── Fase 1: Stack ──");
 
@@ -283,6 +327,7 @@ function printSummary() {
 async function main() {
   console.log(`Smoke quality — ${base} (klant=${klant})`);
   await probeStack();
+  await probeIntegrationReadiness();
   await probeChat();
   await probeBuilderRoutes();
   await probeSchool();

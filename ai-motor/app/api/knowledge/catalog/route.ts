@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { ensurePlatformSchema } from "@/lib/db/platform-schema";
+import { qdrantSearchCollectionsForScope } from "@/lib/qdrant-collection";
+import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
@@ -16,7 +19,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const auth = await requireApiAuthForKlant(req, klant);
+  if (auth instanceof NextResponse) return auth;
+
   try {
+    ensurePlatformSchema();
     const cols = db
       .prepare(`PRAGMA table_info(knowledge_documents)`)
       .all() as { name: string }[];
@@ -65,6 +72,8 @@ export async function GET(req: NextRequest) {
         }));
 
     return NextResponse.json({
+      klant,
+      qdrant_collections: qdrantSearchCollectionsForScope(klant),
       documents: rows.map((r) => ({
         id: r.id,
         filename: r.filename,
