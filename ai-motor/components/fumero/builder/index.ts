@@ -5,6 +5,7 @@ export { BuilderSuggestionCards } from "./builder-suggestion-cards";
 export { BuilderTemplateGrid } from "./builder-template-grid";
 export { BuilderRecentProjects } from "./builder-recent-projects";
 export { BuilderStats } from "./builder-stats";
+export { BuilderFooterStats } from "./builder-footer-stats";
 export { BuilderPreviewEmpty } from "./builder-preview-empty";
 export { BuilderLoadingState } from "./builder-loading-state";
 export { BouwenEmptyHome } from "./bouwen-empty-home";

@@ -10,7 +10,11 @@ type HealthState = {
   checked_at?: string;
 };
 
-export function FumeroWorkspaceHealth() {
+export function FumeroWorkspaceHealth({
+  variant = "default",
+}: {
+  variant?: "default" | "instrument";
+}) {
   const [health, setHealth] = useState<HealthState | null>(null);
 
   useEffect(() => {
@@ -44,8 +48,22 @@ export function FumeroWorkspaceHealth() {
   }, []);
 
   if (!health) {
-    return <span className="text-xs text-[var(--fumero-text-subtle)]">…</span>;
+    return (
+      <span
+        className={cn(
+          variant === "instrument" && "builder-vi-label text-[10px]",
+          "text-xs text-[var(--fumero-text-subtle)]"
+        )}
+      >
+        …
+      </span>
+    );
   }
+
+  const displayLabel =
+    variant === "instrument" && health.ok
+      ? "Alle systemen live"
+      : health.label;
 
   const title = health.checked_at
     ? `${health.label} — bijgewerkt ${new Date(health.checked_at).toLocaleString("nl-NL")}`
@@ -53,15 +71,20 @@ export function FumeroWorkspaceHealth() {
       ? "Systeemstatus op basis van live checks"
       : "Workspace health check mislukt";
 
+  const toneClass = health.ok
+    ? "text-[var(--fumero-text-muted)]"
+    : health.level === "config_required"
+      ? "text-amber-700 dark:text-amber-400"
+      : "text-[var(--fumero-destructive)]";
+
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-xs font-medium",
-        health.ok
-          ? "text-[var(--fumero-text-muted)]"
-          : health.level === "config_required"
-            ? "text-amber-700 dark:text-amber-400"
-            : "text-[var(--fumero-destructive)]"
+        "inline-flex items-center gap-1.5 font-medium",
+        variant === "instrument"
+          ? "builder-vi-label text-[10px]"
+          : "text-xs",
+        toneClass
       )}
       title={title}
     >
@@ -69,14 +92,14 @@ export function FumeroWorkspaceHealth() {
         className={cn(
           "h-1.5 w-1.5 shrink-0 rounded-full",
           health.ok
-            ? "bg-[var(--fumero-accent)]"
+            ? "bg-[var(--fumero-text-muted)]"
             : health.level === "config_required"
               ? "bg-amber-500"
               : "bg-[var(--fumero-destructive)]"
         )}
         aria-hidden
       />
-      {health.label}
+      {displayLabel}
     </span>
   );
 }

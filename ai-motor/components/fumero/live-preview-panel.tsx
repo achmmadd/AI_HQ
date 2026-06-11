@@ -219,7 +219,7 @@ export function FumeroLivePreviewPanel({
           >
             {isGenerating ? (
               <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin text-[var(--fumero-accent)]" />
+                <Loader2 className="h-3 w-3 animate-spin text-[var(--fumero-text-muted)]" />
                 {subtitle}
               </span>
             ) : (
@@ -269,7 +269,8 @@ export function FumeroLivePreviewPanel({
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-lg bg-[var(--fumero-accent)] px-2.5 text-[11px] font-semibold text-[var(--fumero-accent-foreground)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
+                variant="secondary"
+                className="h-8 rounded-lg border-[var(--fumero-border)] px-2.5 text-[11px]"
                 onClick={() => {
                   focusPreviewForPlay();
                   window.open(src, "_blank", "noopener,noreferrer");
@@ -339,7 +340,7 @@ export function FumeroLivePreviewPanel({
           {interactive ? (
             <button
               type="button"
-              className="text-[12px] font-medium text-[var(--fumero-accent)] hover:underline"
+              className="text-[12px] font-medium text-[var(--fumero-text-muted)] underline-offset-2 hover:text-[var(--fumero-text)] hover:underline"
               onClick={focusPreviewForPlay}
             >
               Klik hier eerst voor toetsenbord
@@ -348,7 +349,7 @@ export function FumeroLivePreviewPanel({
           {preview.embedCode ? (
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--fumero-text)] hover:border-[var(--fumero-accent)]/40 hover:bg-[var(--fumero-surface-muted)]"
+              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--fumero-text)] hover:border-[var(--fumero-border-strong,var(--fumero-border))] hover:bg-[var(--fumero-surface-muted)]"
               onClick={() => {
                 void navigator.clipboard.writeText(preview.embedCode ?? "");
               }}

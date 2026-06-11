@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, ShoppingBag, Workflow, Clock } from "lucide-react";
+import { BookOpen, Clock, ShoppingBag, Workflow } from "lucide-react";
 import { useFumeroStudioKpis } from "@/hooks/useFumeroStudioKpis";
+import {
+  formatHoursSaved,
+  formatMonthlyCostEur,
+} from "@/lib/fumero/studio-kpis";
 import { cn } from "@/lib/utils";
+import { FumeroWorkspaceHealth } from "@/components/fumero/ops/fumero-workspace-health";
 
-function SidebarKpiItem({
+function SidebarKpiCell({
   href,
   label,
   value,
@@ -21,16 +26,14 @@ function SidebarKpiItem({
       href={href}
       title={label}
       className={cn(
-        "fumero-kpi-cell flex min-w-0 flex-1 flex-col gap-0.5 rounded-md px-1 py-1 transition-colors",
+        "fumero-kpi-cell flex min-w-0 flex-col gap-0.5 rounded-md px-1 py-1 transition-colors",
         "hover:bg-[var(--fumero-surface-muted)]"
       )}
     >
-      <span className="fumero-text-micro truncate text-[var(--fumero-text-subtle)]">
-        {label}
-      </span>
+      <span className="builder-vi-label truncate text-[10px]">{label}</span>
       <span
         className={cn(
-          "fumero-text-body-sm truncate font-semibold tabular-nums text-[var(--fumero-text)]",
+          "truncate font-mono text-[13px] font-semibold tabular-nums text-[var(--fumero-text)]",
           loading && "text-[var(--fumero-text-subtle)]"
         )}
       >
@@ -40,14 +43,14 @@ function SidebarKpiItem({
   );
 }
 
-/** Compact KPI grid in sidebar footer — replaces horizontal strip above chat. */
+/** Compact KPI grid in sidebar footer — Verdant Instrument mono labels. */
 export function FumeroSidebarKpiFooter() {
   const {
     loading,
-    libraryCount,
     activeAutomations,
     openOrdersCount,
-    briefingAgeLabel,
+    monthlyCostEur,
+    hoursSaved,
   } = useFumeroStudioKpis();
 
   return (
@@ -55,34 +58,41 @@ export function FumeroSidebarKpiFooter() {
       className="fumero-sidebar-kpi hidden border-t border-[var(--fumero-border)] px-3 py-3 md:block"
       aria-label="Studio overzicht"
     >
-      <div className="grid grid-cols-2 gap-x-2 gap-y-2">
-        <SidebarKpiItem
-          href="/fumero/bibliotheek"
-          label="Bibliotheek"
-          loading={loading}
-          value={libraryCount === null ? "—" : String(libraryCount)}
-        />
-        <SidebarKpiItem
-          href="/fumero/automations"
-          label="Automatisering"
-          loading={loading}
-          value={activeAutomations === null ? "—" : String(activeAutomations)}
-        />
-        <SidebarKpiItem
+      <div className="grid grid-cols-2 gap-x-2 gap-y-2.5">
+        <SidebarKpiCell
           href="/fumero/orders"
           label="Bestellingen"
           loading={loading}
           value={openOrdersCount === null ? "—" : String(openOrdersCount)}
         />
-        <SidebarKpiItem
-          href="/fumero/chat"
-          label="Dagoverzicht"
+        <SidebarKpiCell
+          href="/fumero/automations"
+          label="Automatiseringen"
           loading={loading}
-          value={briefingAgeLabel ?? "—"}
+          value={activeAutomations === null ? "—" : String(activeAutomations)}
         />
+        <SidebarKpiCell
+          href="/fumero/settings/billing"
+          label="Kosten/maand"
+          loading={loading}
+          value={formatMonthlyCostEur(monthlyCostEur)}
+        />
+        <SidebarKpiCell
+          href="/fumero"
+          label="Besparing/maand"
+          loading={loading}
+          value={formatHoursSaved(hoursSaved)}
+        />
+      </div>
+      <div className="mt-2.5 border-t border-[var(--fumero-border)] pt-2">
+        <FumeroSidebarSystemStatus />
       </div>
     </div>
   );
+}
+
+function FumeroSidebarSystemStatus() {
+  return <FumeroWorkspaceHealth variant="instrument" />;
 }
 
 /** @deprecated Use FumeroSidebarKpiFooter — kept for reference during migration. */

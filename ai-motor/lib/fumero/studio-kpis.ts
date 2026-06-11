@@ -5,7 +5,22 @@ export type FumeroStudioKpis = {
   activeAutomations: number | null;
   openOrdersCount: number | null;
   briefingAgeLabel: string | null;
+  monthlyCostEur: number | null;
+  hoursSaved: number | null;
 };
+
+export function formatMonthlyCostEur(eur: number | null): string {
+  if (eur === null) return "—";
+  if (eur < 0.01) return "€0";
+  return `€${eur.toFixed(2).replace(".", ",")}`;
+}
+
+export function formatHoursSaved(hours: number | null): string {
+  if (hours === null) return "—";
+  if (hours < 1) return "< 1 uur";
+  const rounded = Math.round(hours * 10) / 10;
+  return rounded === 1 ? "1 uur" : `${rounded} uur`;
+}
 
 export function formatBriefingAge(iso: string | null | undefined): string | null {
   if (!iso) return null;

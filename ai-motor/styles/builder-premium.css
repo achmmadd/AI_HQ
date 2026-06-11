@@ -200,8 +200,8 @@ html.dark[data-fumero-ops] [data-os-builder],
 }
 
 .builder-template-card:hover .builder-template-card__icon {
-  background: var(--builder-accent-muted);
-  color: var(--builder-accent);
+  background: var(--builder-hover);
+  color: var(--builder-text);
 }
 
 .builder-recent-card {
@@ -232,9 +232,9 @@ html.dark[data-fumero-ops] [data-os-builder],
 }
 
 .builder-recent-card__action:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--builder-accent) 30%, transparent);
-  background: var(--builder-accent-muted);
-  color: var(--builder-accent);
+  border-color: var(--builder-border-strong);
+  background: var(--builder-hover);
+  color: var(--builder-text);
 }
 
 .builder-recent-card__action:disabled {
@@ -255,7 +255,7 @@ html.dark[data-fumero-ops] [data-os-builder],
   font-size: clamp(1.1rem, 2.5vw, 1.5rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--builder-accent);
+  color: var(--builder-text);
 }
 
 .builder-stat-card__label {
@@ -293,8 +293,8 @@ html.dark[data-fumero-ops] [data-os-builder],
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: var(--builder-accent-muted);
-  color: var(--builder-accent);
+  background: var(--builder-hover);
+  color: var(--builder-text-secondary);
 }
 
 .builder-loading-compact {
@@ -353,8 +353,9 @@ html.dark[data-fumero-ops] [data-os-builder],
 }
 
 .builder-device-toggle__btn[data-active="true"] {
-  background: var(--builder-accent-muted);
-  color: var(--builder-accent);
+  background: var(--builder-hover);
+  color: var(--builder-text);
+  box-shadow: inset 0 0 0 1px var(--builder-border-strong);
 }
 
 .builder-preview-chrome {
@@ -406,8 +407,12 @@ html.dark[data-fumero-ops] [data-os-builder],
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 12px;
-  color: var(--builder-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--builder-text-subtle);
 }
 
 .builder-preview-empty__icon-wrap {
@@ -538,8 +543,8 @@ html.dark[data-fumero-ops] .builder-ambient-grid,
 }
 
 .builder-template-card:hover .builder-template-card__icon {
-  background: var(--fumero-accent-muted);
-  color: var(--builder-accent);
+  background: var(--builder-hover);
+  color: var(--builder-text);
 }
 
 /* ── Recent project cards (base) ── */
@@ -575,9 +580,9 @@ html.dark[data-fumero-ops] .builder-ambient-grid,
 }
 
 .builder-recent-card__action:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--fumero-accent) 30%, transparent);
-  background: var(--fumero-accent-muted);
-  color: var(--builder-accent);
+  border-color: var(--builder-border-strong);
+  background: var(--builder-hover);
+  color: var(--builder-text);
 }
 
 .builder-recent-card__action:disabled {
@@ -600,7 +605,7 @@ html.dark[data-fumero-ops] .builder-ambient-grid,
   font-size: clamp(1.1rem, 2.5vw, 1.5rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--builder-accent);
+  color: var(--builder-text);
 }
 
 .builder-stat-card__label {
@@ -640,8 +645,9 @@ html.dark[data-fumero-ops] .builder-ambient-grid,
 }
 
 .builder-device-toggle__btn[data-active="true"] {
-  background: var(--fumero-accent-muted);
-  color: var(--builder-accent);
+  background: var(--builder-hover);
+  color: var(--builder-text);
+  box-shadow: inset 0 0 0 1px var(--builder-border-strong);
 }
 
 /* ── Preview empty chrome ── */
@@ -717,8 +723,12 @@ html.dark[data-fumero-ops] .builder-preview-chrome,
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 12px;
-  color: var(--builder-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--builder-text-subtle);
 }
 
 /* ── Loading state ── */
@@ -815,6 +825,13 @@ html.dark[data-fumero-ops] .builder-template-card:hover,
 
 /* ── Recent projects ── */
 
+.builder-recent-card--grid {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0.875rem;
+}
+
 .builder-recent-card:hover {
   border-color: var(--builder-border-strong);
   box-shadow: var(--builder-shadow);
@@ -853,13 +870,7 @@ html.dark[data-fumero-ops] .builder-stat-card:hover,
 /* ── Preview empty ── */
 
 .builder-preview-empty__canvas {
-  background:
-    radial-gradient(
-      ellipse 60% 40% at 50% 30%,
-      color-mix(in srgb, var(--fumero-accent) 6%, transparent),
-      transparent
-    ),
-    var(--builder-card);
+  background: var(--builder-card-muted);
 }
 
 /* ── Bouwen empty home scroll ── */
@@ -909,8 +920,9 @@ html.dark[data-fumero-ops] .builder-stat-card:hover,
 }
 
 [data-os-builder] .builder-device-toggle button[data-active="true"] {
-  background: var(--fumero-accent-muted) !important;
-  color: var(--builder-accent) !important;
+  background: var(--builder-hover) !important;
+  color: var(--builder-text) !important;
+  box-shadow: inset 0 0 0 1px var(--builder-border-strong) !important;
 }
 
 /* ── Build timeline ── */
@@ -939,7 +951,7 @@ html.dark[data-fumero-ops] .builder-stat-card:hover,
 
 [data-os-builder] [role="separator"][aria-orientation="vertical"]:hover,
 [data-os-builder] [role="separator"][aria-orientation="vertical"]:active {
-  background: color-mix(in srgb, var(--fumero-accent) 25%, transparent);
+  background: var(--builder-border-strong);
 }
 
 /* ── Chat rail in bouwen mode ── */

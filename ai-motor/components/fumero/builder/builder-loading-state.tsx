@@ -31,7 +31,7 @@ export function BuilderLoadingState({
   if (compact) {
     return (
       <div className="builder-loading-compact">
-        <Loader2 className="builder-text-accent h-3.5 w-3.5 animate-spin" />
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--builder-text-secondary)]" />
         <AnimatePresence mode="wait">
           <motion.span
             key={displayMessage}
@@ -54,9 +54,8 @@ export function BuilderLoadingState({
         animate={reduceMotion ? undefined : { rotate: [0, 5, -5, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       >
-        <div className="builder-loading-glow" />
         <div className="builder-loading-icon-wrap">
-          <Sparkles className="builder-text-accent h-6 w-6" />
+          <Sparkles className="h-6 w-6 text-[var(--builder-text-secondary)]" />
         </div>
       </motion.div>
 

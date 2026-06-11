@@ -170,7 +170,9 @@ export const BUILDER_LOADING_MESSAGES = [
 ] as const;
 
 export const BUILDER_PREVIEW_FEATURES = [
-  "Desktop, tablet en mobiel",
+  "Desktop",
+  "Tablet",
+  "Mobiel",
   "Live preview",
-  "Direct itereren",
+  "Direct sturen",
 ] as const;

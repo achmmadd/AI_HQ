@@ -313,7 +313,7 @@ html.dark[data-fumero-ops] {
 [data-fumero-ops] .fumero-nav-pill[data-active="true"] {
   background: var(--fumero-accent-muted);
   color: var(--fumero-text);
-  border-left-color: var(--fumero-accent);
+  border-left-color: transparent;
 }
 
 [data-fumero-ops] .fumero-nav-pill {

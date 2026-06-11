@@ -11,6 +11,8 @@ import {
   BuilderRecentProjects,
   type BuilderRecentProject,
 } from "@/components/fumero/builder/builder-recent-projects";
+import { BuilderFooterStats } from "@/components/fumero/builder/builder-footer-stats";
+import { BUILDER_TEMPLATES } from "@/lib/fumero/builder-content";
 
 type BouwenEmptyHomeProps = {
   promptValue: string;
@@ -52,7 +54,7 @@ export function BouwenEmptyHome({
 
   return (
     <motion.div
-      className="bouwen-empty-home w-full max-w-xl px-4 pb-6 pt-2"
+      className="bouwen-empty-home w-full max-w-2xl px-4 pb-4 pt-2"
       initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -75,13 +77,18 @@ export function BouwenEmptyHome({
         />
         <button
           type="button"
-          className="flex w-full items-center justify-between rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-2 text-left text-[13px] font-medium text-[var(--fumero-text-muted)] transition-colors hover:bg-[var(--fumero-surface-muted)]"
+          className="flex w-full items-center justify-between rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3.5 py-2.5 text-left transition-colors hover:border-[var(--fumero-border-strong,var(--fumero-border))] hover:bg-[var(--fumero-surface-muted)]"
           aria-expanded={templatesOpen}
           onClick={() => setTemplatesOpen((o) => !o)}
         >
-          Sjablonen
+          <span className="text-[13px] font-medium text-[var(--fumero-text-muted)]">
+            Sjablonen:{" "}
+            <span className="font-mono tabular-nums text-[var(--fumero-text)]">
+              {BUILDER_TEMPLATES.length}
+            </span>
+          </span>
           <ChevronDown
-            className={`h-4 w-4 shrink-0 transition-transform ${templatesOpen ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 text-[var(--fumero-text-subtle)] transition-transform ${templatesOpen ? "rotate-180" : ""}`}
             aria-hidden
           />
         </button>
@@ -98,6 +105,7 @@ export function BouwenEmptyHome({
             disabled={disabled || loading}
           />
         ) : null}
+        <BuilderFooterStats />
       </div>
     </motion.div>
   );
