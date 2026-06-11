@@ -3273,7 +3273,7 @@ export function MotorsChatPanel({
                 !bouwenWorkspace &&
                 "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center py-10",
               bouwenEmptyHome &&
-                "bouwen-empty-home-scroll flex min-h-full w-full flex-col items-center overflow-y-auto py-4"
+                "bouwen-empty-home-scroll flex min-h-full w-full flex-col items-stretch overflow-y-auto px-3 py-4 md:items-start md:px-5"
             )}
           >
             {convLoadError ? (
@@ -3820,14 +3820,14 @@ export function MotorsChatPanel({
             om uit te voeren.
           </p>
         ) : null}
-        {planMode && fumeroCoderMode ? (
+        {planMode && fumeroCoderMode && !bouwenEmptyHome ? (
           <p className="motors-chat-column px-3 pb-1 text-center text-[11px] text-[var(--fumero-success-fg)]">
             Plan-modus — ik bouw pas na <strong>Maak</strong>, een sjabloon of
             expliciete tool-opdracht.
           </p>
         ) : null}
 
-        {fumeroCoderMode && fumeroOps && maxCompanion && !toolBusy ? (
+        {fumeroCoderMode && fumeroOps && maxCompanion && !toolBusy && !bouwenEmptyHome ? (
           <ol className="motors-chat-column mb-2 flex w-full max-w-3xl list-none flex-wrap justify-center gap-2 self-center px-4 text-center">
             {(fumeroModelTier === "flash" && !activeToolId
               ? [

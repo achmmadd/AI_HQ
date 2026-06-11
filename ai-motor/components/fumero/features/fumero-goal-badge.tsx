@@ -42,16 +42,17 @@ export function FumeroGoalBadge({
   }, [refresh]);
 
   const label = goals ? goalDisplayLabel(goals) || null : null;
+  const hasGoal = Boolean(label);
 
   return (
     <button
       type="button"
-      title={goals ?? "Doel instellen met /goal …"}
+      title={hasGoal ? label! : "Doel instellen met /goal …"}
       className={cn(
-        "inline-flex max-w-[min(100%,20rem)] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-        goals
+        "inline-flex max-w-[min(100%,14rem)] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+        hasGoal
           ? "border-[var(--fumero-success-border)] bg-[var(--fumero-success-bg)] text-[var(--fumero-success-fg)] hover:bg-[var(--fumero-accent-muted)]"
-          : "border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] hover:border-[var(--fumero-success-border)] hover:text-[var(--fumero-text-muted)]",
+          : "border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] hover:border-[var(--fumero-border-strong)] hover:text-[var(--fumero-text)]",
         className
       )}
       onClick={() => {
@@ -65,7 +66,7 @@ export function FumeroGoalBadge({
       }}
     >
       <Target className="h-3 w-3 shrink-0" />
-      <span className="truncate">{label ?? "Doel: /goal"}</span>
+      <span className="truncate">{hasGoal ? label : "Doel instellen"}</span>
     </button>
   );
 }

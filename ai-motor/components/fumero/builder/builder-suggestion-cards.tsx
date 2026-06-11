@@ -8,6 +8,8 @@ type BuilderSuggestionCardsProps = {
   disabled?: boolean;
 };
 
+const VISIBLE_SUGGESTIONS = BUILDER_SUGGESTIONS.slice(0, 4);
+
 export function BuilderSuggestionCards({
   onSelect,
   disabled = false,
@@ -15,9 +17,12 @@ export function BuilderSuggestionCards({
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="builder-suggestions">
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        {BUILDER_SUGGESTIONS.map((suggestion, i) => (
+    <section className="builder-suggestions" aria-label="Snel starten">
+      <p className="mb-2 text-[12px] font-medium text-[var(--fumero-text-muted)]">
+        Snel starten
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {VISIBLE_SUGGESTIONS.map((suggestion, i) => (
           <motion.button
             key={suggestion.label}
             type="button"

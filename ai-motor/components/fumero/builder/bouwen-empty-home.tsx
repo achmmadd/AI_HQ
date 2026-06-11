@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { BuilderHero } from "@/components/fumero/builder/builder-hero";
 import { BuilderPromptCard } from "@/components/fumero/builder/builder-prompt-card";
@@ -39,6 +40,7 @@ export function BouwenEmptyHome({
   listening = false,
 }: BouwenEmptyHomeProps) {
   const reduceMotion = useReducedMotion();
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   const filteredRecent = useMemo(
     () =>
@@ -50,12 +52,12 @@ export function BouwenEmptyHome({
 
   return (
     <motion.div
-      className="bouwen-empty-home w-full max-w-3xl px-2 pb-8"
+      className="bouwen-empty-home w-full max-w-xl px-4 pb-6 pt-2"
       initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-5">
         <BuilderHero />
         <BuilderPromptCard
           value={promptValue}
@@ -71,10 +73,24 @@ export function BouwenEmptyHome({
           onSelect={onSelectSuggestion}
           disabled={disabled || loading}
         />
-        <BuilderTemplateGrid
-          onSelect={onSelectSuggestion}
-          disabled={disabled || loading}
-        />
+        <button
+          type="button"
+          className="flex w-full items-center justify-between rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-2 text-left text-[13px] font-medium text-[var(--fumero-text-muted)] transition-colors hover:bg-[var(--fumero-surface-muted)]"
+          aria-expanded={templatesOpen}
+          onClick={() => setTemplatesOpen((o) => !o)}
+        >
+          Sjablonen
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform ${templatesOpen ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+        </button>
+        {templatesOpen ? (
+          <BuilderTemplateGrid
+            onSelect={onSelectSuggestion}
+            disabled={disabled || loading}
+          />
+        ) : null}
         {filteredRecent.length > 0 ? (
           <BuilderRecentProjects
             projects={filteredRecent}
