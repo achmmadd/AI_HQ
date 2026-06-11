@@ -3244,7 +3244,7 @@ export function MotorsChatPanel({
       <div
         className={cn(
           "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-          fumeroEmptyHome && !bouwenWorkspace && "justify-center"
+          fumeroEmptyHome && "justify-center"
         )}
       >
         {!bouwenWorkspace && (!sidebarOpen || (agentMode && agentReadiness.hint)) && (
@@ -3284,7 +3284,7 @@ export function MotorsChatPanel({
           onDrop={(e) => void onComposerDrop(e)}
           className={cn(
             "overflow-x-hidden overscroll-contain scrollbar-ios",
-            fumeroEmptyHome && !bouwenWorkspace
+            fumeroEmptyHome
               ? "flex-none overflow-visible"
               : "min-h-0 flex-1 overflow-y-auto"
           )}
@@ -3297,7 +3297,7 @@ export function MotorsChatPanel({
                 !bouwenWorkspace &&
                 "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center py-10",
               bouwenEmptyHome &&
-                "bouwen-empty-home-scroll flex min-h-full w-full flex-col items-center overflow-y-auto px-3 py-6 md:py-8"
+                "bouwen-empty-home-scroll builder-empty-home-shell flex min-h-[min(100%,32rem)] w-full flex-1 flex-col items-center justify-center overflow-y-auto px-3 py-8 md:py-10"
             )}
           >
             {convLoadError ? (

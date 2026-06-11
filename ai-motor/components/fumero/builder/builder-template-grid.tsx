@@ -7,13 +7,45 @@ import { BUILDER_TEMPLATES } from "@/lib/fumero/builder-content";
 type BuilderTemplateGridProps = {
   onSelect: (prompt: string) => void;
   disabled?: boolean;
+  compact?: boolean;
 };
 
 export function BuilderTemplateGrid({
   onSelect,
   disabled = false,
+  compact = false,
 }: BuilderTemplateGridProps) {
   const reduceMotion = useReducedMotion();
+
+  if (compact) {
+    return (
+      <section className="builder-templates builder-templates--compact">
+        <ul className="builder-template-compact-list">
+          {BUILDER_TEMPLATES.map((template, i) => (
+            <motion.li
+              key={template.id}
+              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.04 + i * 0.03, duration: 0.3 }}
+            >
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onSelect(template.prompt)}
+                className="builder-template-compact-row"
+              >
+                <span aria-hidden>{template.icon}</span>
+                <span className="builder-template-compact-row__title truncate">
+                  {template.title}
+                </span>
+                <ArrowRight className="h-3 w-3 shrink-0 opacity-40" aria-hidden />
+              </button>
+            </motion.li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
 
   return (
     <section className="builder-templates">

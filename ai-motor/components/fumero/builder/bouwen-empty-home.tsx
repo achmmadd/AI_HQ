@@ -13,6 +13,7 @@ import {
 } from "@/components/fumero/builder/builder-recent-projects";
 import { BuilderFooterStats } from "@/components/fumero/builder/builder-footer-stats";
 import { BUILDER_TEMPLATES } from "@/lib/fumero/builder-content";
+import { cn } from "@/lib/utils";
 
 const STAGGER_SPRING = { type: "spring" as const, stiffness: 300, damping: 30 };
 
@@ -30,6 +31,23 @@ const staggerItem = {
     opacity: 1,
     y: 0,
     transition: STAGGER_SPRING,
+  },
+};
+
+const secondaryContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.32 },
+  },
+};
+
+const secondaryItem = {
+  hidden: { opacity: 0, y: 6 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -62,27 +80,31 @@ export function BouwenEmptyHome({
 }: BouwenEmptyHomeProps) {
   const reduceMotion = useReducedMotion();
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [recentOpen, setRecentOpen] = useState(false);
   const [promptFocused, setPromptFocused] = useState(false);
 
   const filteredRecent = useMemo(
     () =>
       recentProjects
         .filter((p) => p.title.trim() !== "Nieuwe chat")
-        .slice(0, 4),
+        .slice(0, 2),
     [recentProjects],
   );
 
+  const secondaryDimmed = promptFocused && !reduceMotion;
+
   return (
     <motion.div
-      className="bouwen-empty-home w-full max-w-[720px] px-1 pb-6 pt-1"
+      className="builder-empty-hero bouwen-empty-home w-full max-w-[680px] px-1"
       initial={reduceMotion ? false : "hidden"}
       animate="show"
       variants={reduceMotion ? undefined : staggerContainer}
     >
-      <div className="flex flex-col gap-5">
+      <div className="builder-empty-hero__core flex w-full flex-col gap-4">
         <motion.div variants={reduceMotion ? undefined : staggerItem}>
           <BuilderHero />
         </motion.div>
+
         <motion.div variants={reduceMotion ? undefined : staggerItem}>
           <BuilderPromptCard
             value={promptValue}
@@ -96,46 +118,90 @@ export function BouwenEmptyHome({
             onFocusChange={setPromptFocused}
           />
         </motion.div>
+
         <motion.div
-          className="flex flex-col gap-5 transition-opacity duration-300"
-          style={{ opacity: promptFocused && !reduceMotion ? 0.72 : 1 }}
-          variants={reduceMotion ? undefined : staggerItem}
+          className={cn(
+            "builder-empty-secondary flex flex-col gap-3 transition-opacity duration-300",
+            secondaryDimmed && "builder-empty-secondary--dimmed",
+          )}
+          variants={reduceMotion ? undefined : secondaryContainer}
         >
-          <BuilderSuggestionCards
-            onSelect={onSelectSuggestion}
-            disabled={disabled || loading}
-          />
-          <button
-            type="button"
-            className="flex w-full items-center justify-between rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3.5 py-2.5 text-left transition-colors hover:border-[var(--fumero-border-strong,var(--fumero-border))] hover:bg-[var(--fumero-surface-muted)]"
-            aria-expanded={templatesOpen}
-            onClick={() => setTemplatesOpen((o) => !o)}
-          >
-            <span className="text-[13px] font-medium text-[var(--fumero-text-muted)]">
-              Sjablonen:{" "}
-              <span className="font-mono tabular-nums text-[var(--fumero-text)]">
-                {BUILDER_TEMPLATES.length}
-              </span>
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 text-[var(--fumero-text-subtle)] transition-transform ${templatesOpen ? "rotate-180" : ""}`}
-              aria-hidden
-            />
-          </button>
-          {templatesOpen ? (
-            <BuilderTemplateGrid
+          <motion.div variants={reduceMotion ? undefined : secondaryItem}>
+            <BuilderSuggestionCards
               onSelect={onSelectSuggestion}
               disabled={disabled || loading}
+              variant="chips"
             />
+          </motion.div>
+
+          <motion.div
+            className="builder-empty-links flex flex-wrap items-center gap-x-2 gap-y-1"
+            variants={reduceMotion ? undefined : secondaryItem}
+          >
+            <button
+              type="button"
+              className="builder-empty-link"
+              aria-expanded={templatesOpen}
+              onClick={() => setTemplatesOpen((o) => !o)}
+            >
+              Sjablonen ({BUILDER_TEMPLATES.length})
+              <ChevronDown
+                className={cn(
+                  "h-3 w-3 transition-transform",
+                  templatesOpen && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </button>
+
+            {filteredRecent.length > 0 ? (
+              <>
+                <span className="builder-empty-links__sep" aria-hidden>
+                  ·
+                </span>
+                <button
+                  type="button"
+                  className="builder-empty-link"
+                  aria-expanded={recentOpen}
+                  onClick={() => setRecentOpen((o) => !o)}
+                >
+                  Recente
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      recentOpen && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              </>
+            ) : null}
+          </motion.div>
+
+          {templatesOpen ? (
+            <motion.div variants={reduceMotion ? undefined : secondaryItem}>
+              <BuilderTemplateGrid
+                onSelect={onSelectSuggestion}
+                disabled={disabled || loading}
+                compact
+              />
+            </motion.div>
           ) : null}
-          {filteredRecent.length > 0 ? (
-            <BuilderRecentProjects
-              projects={filteredRecent}
-              onContinue={onContinueProject}
-              disabled={disabled || loading}
-            />
+
+          {recentOpen && filteredRecent.length > 0 ? (
+            <motion.div variants={reduceMotion ? undefined : secondaryItem}>
+              <BuilderRecentProjects
+                projects={filteredRecent}
+                onContinue={onContinueProject}
+                disabled={disabled || loading}
+                compact
+              />
+            </motion.div>
           ) : null}
-          <BuilderFooterStats />
+
+          <motion.div variants={reduceMotion ? undefined : secondaryItem}>
+            <BuilderFooterStats />
+          </motion.div>
         </motion.div>
       </div>
     </motion.div>

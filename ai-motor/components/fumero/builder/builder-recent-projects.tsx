@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, FolderOpen } from "lucide-react";
 import { formatRelativeDate } from "@/lib/fumero/projecten-shared";
+import { cn } from "@/lib/utils";
 
 export type BuilderRecentProject = {
   id: number;
@@ -15,6 +16,7 @@ type BuilderRecentProjectsProps = {
   projects: BuilderRecentProject[];
   onContinue: (id: number) => void;
   disabled?: boolean;
+  compact?: boolean;
 };
 
 const THUMBNAIL_GRADIENTS = [
@@ -28,10 +30,43 @@ export function BuilderRecentProjects({
   projects,
   onContinue,
   disabled = false,
+  compact = false,
 }: BuilderRecentProjectsProps) {
   const reduceMotion = useReducedMotion();
 
   if (projects.length === 0) return null;
+
+  if (compact) {
+    return (
+      <section className="builder-recent builder-recent--compact" aria-label="Recente projecten">
+        <ul className="builder-recent-compact-list">
+          {projects.map((project, i) => (
+            <motion.li
+              key={project.id}
+              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 + i * 0.04, duration: 0.3 }}
+            >
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onContinue(project.id)}
+                className="builder-recent-compact-row"
+              >
+                <span className="builder-recent-compact-row__title truncate">
+                  {project.title}
+                </span>
+                <span className="builder-recent-compact-row__meta shrink-0">
+                  {formatRelativeDate(project.updated_at)}
+                </span>
+                <ArrowRight className="h-3 w-3 shrink-0 opacity-50" aria-hidden />
+              </button>
+            </motion.li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
 
   return (
     <section className="builder-recent">
@@ -69,11 +104,12 @@ export function BuilderRecentProjects({
                   </p>
                   <p className="builder-vi-label mt-1 inline-flex flex-wrap items-center gap-1.5 text-[10px]">
                     <span
-                      className={
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
                         published
-                          ? "h-1.5 w-1.5 rounded-full bg-[var(--builder-text-secondary)]"
-                          : "h-1.5 w-1.5 rounded-full bg-[var(--builder-text-subtle)]"
-                      }
+                          ? "bg-[var(--builder-text-secondary)]"
+                          : "bg-[var(--builder-text-subtle)]",
+                      )}
                       aria-hidden
                     />
                     {published ? "Gepubliceerd" : "Concept"}
