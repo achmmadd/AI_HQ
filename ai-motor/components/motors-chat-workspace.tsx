@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MotorsChatPanel } from "@/components/motors-chat-panel";
 import { ArtifactPanel } from "@/components/artifact-panel";
 import { ProjectPreview } from "@/components/project-preview";
@@ -13,6 +13,13 @@ import { useArtifact } from "@/hooks/useArtifact";
 import { useProject } from "@/hooks/useProject";
 import { useCompanyStore, chatKlantForWorkspace } from "@/stores/useCompanyStore";
 import { useLayoutStore } from "@/stores/useLayoutStore";
+import {
+  BUILDER_CHAT_DEFAULT_PERCENT,
+  builderChatPercentFromKeyboard,
+  builderChatPercentFromPointer,
+  persistBuilderChatPercent,
+  readStoredBuilderChatPercent,
+} from "@/lib/fumero/builder-layout";
 import { stackDisplayName } from "@/lib/project-stack";
 import type {
   FumeroContentPreviewPayload,
@@ -88,6 +95,61 @@ export function MotorsChatWorkspace({
     }
   }, [sp, loadProject]);
 
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const [chatPercent, setChatPercent] = useState(BUILDER_CHAT_DEFAULT_PERCENT);
+
+  useEffect(() => {
+    if (!bouwenWorkspace) return;
+    const width =
+      splitContainerRef.current?.getBoundingClientRect().width ?? 0;
+    setChatPercent(readStoredBuilderChatPercent(window.localStorage, width));
+  }, [bouwenWorkspace]);
+
+  const applyChatPercentFromPointer = useCallback((clientX: number) => {
+    const rect = splitContainerRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    setChatPercent(builderChatPercentFromPointer(clientX, rect.left, rect.width));
+  }, []);
+
+  const handleSplitterPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    []
+  );
+
+  const handleSplitterPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+      applyChatPercentFromPointer(e.clientX);
+    },
+    [applyChatPercentFromPointer]
+  );
+
+  const handleSplitterPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      persistBuilderChatPercent(window.localStorage, chatPercent);
+    },
+    [chatPercent]
+  );
+
+  const handleSplitterKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const width =
+        splitContainerRef.current?.getBoundingClientRect().width ?? 0;
+      const next = builderChatPercentFromKeyboard(chatPercent, e.key, width);
+      if (next !== chatPercent) {
+        e.preventDefault();
+        setChatPercent(next);
+        persistBuilderChatPercent(window.localStorage, next);
+      }
+    },
+    [chatPercent]
+  );
+
   const hasPreview = Boolean(
     artifact || project || fumeroContentPreview || fumeroLivePreview
   );
@@ -112,19 +174,30 @@ export function MotorsChatWorkspace({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-1 flex-col overflow-hidden",
+        "chat-os-workspace flex h-full min-h-0 flex-1 flex-col overflow-hidden",
         className ?? "bg-background"
       )}
     >
       <div
+        ref={splitContainerRef}
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-row",
-          previewVisible &&
-            !fumeroCoderActive &&
-            "divide-x divide-border/60"
+          previewVisible && !fumeroCoderActive && "divide-x divide-[var(--os-border)]"
         )}
       >
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "flex min-h-0 min-w-0 flex-col",
+            bouwenWorkspace && previewVisible
+              ? "min-w-[280px] flex-none"
+              : "flex-1"
+          )}
+          style={
+            bouwenWorkspace && previewVisible
+              ? { width: `${chatPercent}%` }
+              : undefined
+          }
+        >
           <MotorsChatPanel
             layout="split"
             unifiedMode
@@ -174,6 +247,22 @@ export function MotorsChatWorkspace({
 
         {showPreviewRail && (
           <>
+            {bouwenWorkspace && previewVisible ? (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Chat- en previewbreedte aanpassen"
+                aria-valuenow={Math.round(chatPercent)}
+                tabIndex={0}
+                className="fumero-builder-splitter group relative z-[2] mx-0.5 w-2 shrink-0 cursor-col-resize touch-none outline-none"
+                onPointerDown={handleSplitterPointerDown}
+                onPointerMove={handleSplitterPointerMove}
+                onPointerUp={handleSplitterPointerUp}
+                onKeyDown={handleSplitterKeyDown}
+              >
+                <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-[#69C400]/45 group-focus-visible:bg-[#69C400]/60" />
+              </div>
+            ) : null}
             <PanelCollapseRail
               side="right"
               open={previewPanelOpen}
@@ -187,8 +276,12 @@ export function MotorsChatWorkspace({
             {previewVisible && (
               <div
                 className={cn(
-                  "fumero-coder-preview-rail flex min-h-0 w-[min(52%,32rem)] min-w-[300px] max-w-[55%] flex-1 flex-col",
-                  fumeroCoderActive && "w-[min(58%,36rem)] max-w-[60%]"
+                  "fumero-coder-preview-rail flex min-h-0 flex-1 flex-col",
+                  bouwenWorkspace
+                    ? "min-w-0"
+                    : fumeroCoderActive
+                      ? "w-[min(58%,36rem)] min-w-[300px] max-w-[60%]"
+                      : "w-[min(52%,32rem)] min-w-[300px] max-w-[55%]"
                 )}
               >
                 {artifact && (
@@ -239,7 +332,13 @@ export function MotorsChatWorkspace({
                         status: "ready",
                         building: false,
                       }}
-                      onClose={() => setFumeroCoderActive(false)}
+                      onClose={() => {
+                        if (bouwenWorkspace) {
+                          setPreviewPanelOpen(false);
+                        } else {
+                          setFumeroCoderActive(false);
+                        }
+                      }}
                     />
                   )}
                 {!artifact && !project && !fumeroLivePreview && fumeroContentPreview && (
@@ -269,6 +368,7 @@ export function MotorsChatWorkspace({
             )}
           </>
         )}
+
       </div>
     </div>
   );

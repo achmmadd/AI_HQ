@@ -1,19 +1,19 @@
 /**
- * Motor AI Design System — canonical tokens (Sprint 4.1)
+ * Motor AI Design System — canonical tokens
  * Single source of truth for colors, spacing, typography, motion.
- * Consumed by Tailwind (tailwind.config.ts) and component CSS.
+ * Light = :root, Dark = .dark on <html> (next-themes class strategy)
  */
 
 :root {
-  /* ── Touch & layout (mobile-first, opa-proof) ── */
-  --ds-touch-min: 2.75rem; /* 44px — WCAG / Apple HIG minimum */
-  --ds-touch-comfortable: 3rem; /* 48px */
-  --ds-page-gutter: 1rem; /* 16px mobile */
-  --ds-page-gutter-md: 1.5rem; /* 24px tablet+ */
+  /* ── Touch & layout ── */
+  --ds-touch-min: 2.75rem;
+  --ds-touch-comfortable: 3rem;
+  --ds-page-gutter: 1rem;
+  --ds-page-gutter-md: 1.5rem;
   --ds-section-gap: 1.5rem;
   --ds-stack-gap: 0.75rem;
 
-  /* ── Spacing scale (4px base) ── */
+  /* ── Spacing scale ── */
   --ds-space-1: 0.25rem;
   --ds-space-2: 0.5rem;
   --ds-space-3: 0.75rem;
@@ -24,7 +24,7 @@
   --ds-space-10: 2.5rem;
   --ds-space-12: 3rem;
 
-  /* ── Typography (mobile-first, NL-readable) ── */
+  /* ── Typography ── */
   --ds-font-sans: var(--font-geist), var(--font-poppins), -apple-system,
     BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --ds-text-display-size: 1.75rem;
@@ -63,18 +63,54 @@
   --ds-duration-slow: 300ms;
   --ds-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* ── Semantic colors (light default) ── */
-  --background: #f5f5f7;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --border: rgba(0, 0, 0, 0.08);
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --success: #34c759;
-  --warning: #ff9500;
-  --error: #ff3b30;
-  --text-primary: #1d1d1f;
-  --text-secondary: rgba(29, 29, 31, 0.55);
+  /* ── shadcn semantic tokens (light — premium off-white palette) ── */
+  --background: #f6f7f9;
+  --foreground: #1f2937;
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+  --primary: #69c400;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f5;
+  --secondary-foreground: #1f2937;
+  --muted: #f3f4f6;
+  --muted-foreground: #4b5563;
+  --accent: #69c400;
+  --accent-foreground: #ffffff;
+  --accent-hover: #5db000;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --input: #d1d5db;
+  --ring: rgba(105, 196, 0, 0.45);
+  --hover-overlay: rgba(15, 23, 42, 0.04);
+  --hover-overlay-strong: rgba(15, 23, 42, 0.06);
+  --success-fg: #2d6a00;
+  --success-bg: rgba(105, 196, 0, 0.12);
+  --success-border: rgba(105, 196, 0, 0.28);
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #dc2626;
+
+  /* ── Text hierarchy (light) ── */
+  --text-heading: #111827;
+  --text-body: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+
+  /* ── Elevation (light) ── */
+  --surface-inset: #eef1f5;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.07), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 8px rgba(15, 23, 42, 0.04);
+
+  /* ── Legacy aliases (keep existing components working) ── */
+  --surface: var(--card);
+  --surface-elevated: var(--card);
+  --text-primary: var(--text-body);
 
   /* ── Workspace brand tokens (defaults = Motor personal) ── */
   --ws-accent: #6366f1;
@@ -83,8 +119,16 @@
   --ws-black: #080808;
   --ws-white: #ffffff;
   --ws-font: var(--font-geist), "Geist", sans-serif;
-  --ws-name: "Motor AI";
+  --ws-name: "MotorsAI";
   --ws-yellow: #feb601;
+
+  /* MotorsAI marketing brand */
+  --motors-brand: #69c400;
+  --motors-brand-hover: #5db000;
+  --motors-brand-muted: rgba(105, 196, 0, 0.12);
+  --motors-surface: #080c14;
+
+  color-scheme: light;
 }
 
 @media (min-width: 768px) {
@@ -95,32 +139,49 @@
   }
 }
 
-/* Theme: dark shell (Motor default) */
 .dark {
   --background: #08080a;
-  --surface: #0f0f14;
-  --surface-elevated: #16161e;
-  --border: #1c1c26;
+  --foreground: #f5f5f7;
+  --card: #0f0f14;
+  --card-foreground: #f5f5f7;
+  --popover: #14141a;
+  --popover-foreground: #f5f5f7;
+  --primary: #30d158;
+  --primary-foreground: #08080a;
+  --secondary: #1a1a22;
+  --secondary-foreground: #f5f5f7;
+  --muted: #1a1a22;
+  --muted-foreground: #a1a1b0;
   --accent: var(--ws-accent);
+  --accent-foreground: #ffffff;
   --accent-hover: var(--ws-accent-hover);
+  --destructive: #ff453a;
+  --destructive-foreground: #ffffff;
+  --border: #2a2a36;
+  --border-strong: #3a3a48;
+  --input: #2e2e3a;
+  --ring: rgba(48, 209, 88, 0.45);
+  --hover-overlay: rgba(255, 255, 255, 0.05);
+  --hover-overlay-strong: rgba(255, 255, 255, 0.08);
+  --success-fg: #9ee045;
+  --success-bg: rgba(105, 196, 0, 0.14);
+  --success-border: rgba(105, 196, 0, 0.32);
   --success: #30d158;
   --warning: #ff9f0a;
   --error: #ff453a;
-  --text-primary: #e8e8f4;
-  --text-secondary: #8888a8;
-}
 
-/* Theme: explicit light (system override) */
-.light {
-  --background: #f5f5f7;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --border: rgba(0, 0, 0, 0.08);
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --success: #34c759;
-  --warning: #ff9500;
-  --error: #ff3b30;
-  --text-primary: #1d1d1f;
-  --text-secondary: rgba(29, 29, 31, 0.55);
+  --surface: var(--card);
+  --surface-elevated: #16161e;
+  --surface-inset: #111114;
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-heading: var(--foreground);
+  --text-body: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
 }

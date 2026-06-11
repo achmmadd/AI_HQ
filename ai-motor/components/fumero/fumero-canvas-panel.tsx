@@ -47,23 +47,23 @@ export function FumeroCanvasPanel({
   };
 
   return (
-    <div className="fumero-canvas-panel flex h-full min-h-0 flex-col bg-[#FAFAFA]">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#E5E5E5] bg-white px-3 py-2.5">
+    <div className="fumero-canvas-panel flex h-full min-h-0 flex-col bg-[var(--fumero-surface-muted)]">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-2.5">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#171717]">{title}</p>
-          <p className="text-[10px] text-[#737373]">
+          <p className="truncate text-sm font-semibold text-[var(--fumero-text)]">{title}</p>
+          <p className="text-[10px] text-[var(--fumero-text-muted)]">
             {isGenerating ? "Genereren…" : "Schrijven · bewerk of bekijk als document"}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <div className="flex rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] p-0.5 text-[10px] font-medium">
+          <div className="flex rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] p-0.5 text-[10px] font-medium">
             <button
               type="button"
               className={cn(
                 "rounded-md px-2 py-1 transition-colors",
                 viewMode === "preview"
-                  ? "bg-white text-[#171717] shadow-sm"
-                  : "text-[#737373] hover:text-[#171717]"
+                  ? "bg-[var(--fumero-surface)] text-[var(--fumero-text)] shadow-sm"
+                  : "text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
               )}
               onClick={() => setViewMode("preview")}
             >
@@ -74,8 +74,8 @@ export function FumeroCanvasPanel({
               className={cn(
                 "rounded-md px-2 py-1 transition-colors",
                 viewMode === "edit"
-                  ? "bg-white text-[#171717] shadow-sm"
-                  : "text-[#737373] hover:text-[#171717]"
+                  ? "bg-[var(--fumero-surface)] text-[var(--fumero-text)] shadow-sm"
+                  : "text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
               )}
               onClick={() => setViewMode("edit")}
             >
@@ -87,7 +87,7 @@ export function FumeroCanvasPanel({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 gap-1 rounded-lg px-2 text-xs text-[#525252] hover:bg-[#E5E5E5]"
+              className="h-8 gap-1 rounded-lg px-2 text-xs text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)]"
               asChild
             >
               <Link href="/fumero/bibliotheek">
@@ -100,7 +100,7 @@ export function FumeroCanvasPanel({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 gap-1 rounded-lg px-2 text-xs text-[#525252] hover:bg-[#E5E5E5]"
+              className="h-8 gap-1 rounded-lg px-2 text-xs text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)]"
               disabled={!draft.trim() || isGenerating}
               title="Keur goed in chat om op te slaan"
             >
@@ -112,7 +112,7 @@ export function FumeroCanvasPanel({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-8 w-8 rounded-lg text-[#525252] hover:bg-[#E5E5E5]"
+            className="h-8 w-8 rounded-lg text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)]"
             onClick={onClose}
             aria-label="Schrijven sluiten"
           >
@@ -124,8 +124,8 @@ export function FumeroCanvasPanel({
       <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
         {isGenerating ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-[#525252]">
-              <Loader2 className="h-4 w-4 animate-spin text-[#69C400]" />
+            <div className="flex items-center gap-2 text-sm text-[var(--fumero-text-muted)]">
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--fumero-accent)]" />
               Document genereren…
             </div>
             <FumeroSkeleton className="h-48 w-full rounded-xl" />
@@ -141,15 +141,15 @@ export function FumeroCanvasPanel({
               onContentChange?.(next);
             }}
             placeholder="Long-form tekst verschijnt hier…"
-            className="min-h-[min(70vh,560px)] w-full resize-y rounded-xl border border-[#E5E5E5] bg-white p-4 font-mono text-[13px] leading-relaxed text-[#171717] outline-none focus:border-[#69C400]/50 focus:ring-1 focus:ring-[#69C400]/20"
+            className="min-h-[min(70vh,560px)] w-full resize-y rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4 font-mono text-[13px] leading-relaxed text-[var(--fumero-text)] outline-none focus:border-[var(--fumero-accent)]/50 focus:ring-1 focus:ring-[var(--fumero-accent)]/20"
             spellCheck
           />
         ) : (
-          <article className="fumero-canvas-doc min-h-[min(70vh,560px)] rounded-xl border border-[#E5E5E5] bg-white px-5 py-4">
+          <article className="fumero-canvas-doc min-h-[min(70vh,560px)] rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-5 py-4">
             {draft.trim() ? (
               <MotorsChatMarkdown content={draft} variant="assistant" />
             ) : (
-              <p className="text-sm text-[#737373]">
+              <p className="text-sm text-[var(--fumero-text-muted)]">
                 Nog geen inhoud — start in chat of kies Schrijven in het + menu.
               </p>
             )}
@@ -157,14 +157,14 @@ export function FumeroCanvasPanel({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[#E5E5E5] bg-white px-3 py-2">
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-2">
         <Button
           type="button"
           size="sm"
           variant="secondary"
           className={cn(
-            "h-8 gap-1 rounded-lg border-[#E5E5E5] bg-[#FAFAFA] text-xs",
-            copied && "text-[#69C400]"
+            "h-8 gap-1 rounded-lg border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] text-xs",
+            copied && "text-[var(--fumero-accent)]"
           )}
           disabled={!draft.trim()}
           onClick={() => void copyText()}

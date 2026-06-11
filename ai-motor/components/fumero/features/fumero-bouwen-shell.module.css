@@ -1,0 +1,166 @@
+.shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+}
+
+.header {
+  z-index: 2;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--fumero-border);
+  background: color-mix(in srgb, var(--fumero-surface) 92%, transparent);
+  padding: 0.625rem 1rem;
+  backdrop-filter: blur(18px);
+}
+
+.builderSurface {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 0.75rem;
+}
+
+.builderSurface :global(aside) {
+  display: none;
+}
+
+.shell .builderSurface :global(.fumero-coder-split) {
+  border: 1px solid var(--fumero-border);
+  border-radius: 1.25rem;
+  background: var(--fumero-surface);
+  box-shadow: var(--fumero-shadow-md);
+  backdrop-filter: blur(16px);
+}
+
+.shell .builderSurface :global(.fumero-coder-split .motors-chat-column) {
+  background: transparent;
+}
+
+.shell .builderSurface :global(.fumero-coder-preview-rail) {
+  max-width: none;
+  overflow: hidden;
+  border: 1px solid var(--fumero-border);
+  border-radius: 1.25rem;
+  background: var(--fumero-surface-muted);
+  box-shadow: var(--fumero-shadow-sm);
+}
+
+.builderSurface :global(.fumero-live-preview) {
+  background: transparent;
+}
+
+.builderSurface :global(.fumero-live-preview-header) {
+  background: color-mix(in srgb, var(--fumero-surface) 92%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.builderSurface :global(.fumero-composer-gemini) {
+  background: var(--fumero-bg) !important;
+  border-top: 1px solid var(--fumero-border) !important;
+  box-shadow: var(--fumero-shadow-md);
+  z-index: 10;
+}
+
+.builderSurface :global(.fumero-composer-shell) {
+  border: 1px solid var(--fumero-border-strong, var(--fumero-border)) !important;
+  border-radius: 1rem;
+  background: var(--fumero-surface) !important;
+  box-shadow: var(--fumero-shadow-sm);
+}
+
+.builderSurface :global(.fumero-composer-shell:focus-within) {
+  border-color: color-mix(in srgb, var(--fumero-accent) 45%, transparent) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--fumero-accent) 12%, transparent),
+    var(--fumero-shadow-sm);
+}
+
+.builderSurface :global(.fumero-composer-shell textarea) {
+  color: var(--fumero-text-body, var(--fumero-text));
+  font-size: 15px;
+}
+
+.builderSurface :global(.fumero-composer-shell textarea::placeholder) {
+  color: var(--fumero-text-subtle);
+}
+
+.builderSurface :global(.fumero-coder-chat-rail),
+.builderSurface :global(.motors-chat-column) {
+  color: var(--fumero-text-body, var(--fumero-text));
+}
+
+/* Dark mode — richer depth for builder canvas */
+:global(html.dark[data-fumero-ops]) .header,
+:global([data-fumero-ops][data-theme="dark"]) .header {
+  background: color-mix(in srgb, var(--fumero-surface) 88%, transparent);
+  border-bottom-color: var(--fumero-border);
+}
+
+:global(html.dark[data-fumero-ops]) .shell .builderSurface :global(.fumero-coder-split),
+:global([data-fumero-ops][data-theme="dark"]) .shell .builderSurface :global(.fumero-coder-split) {
+  border-color: var(--fumero-border);
+  background: color-mix(in srgb, var(--fumero-surface) 92%, transparent);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.45),
+    0 0 0 1px var(--fumero-border-subtle);
+}
+
+:global(html.dark[data-fumero-ops]) .shell .builderSurface :global(.fumero-coder-preview-rail),
+:global([data-fumero-ops][data-theme="dark"]) .shell .builderSurface :global(.fumero-coder-preview-rail) {
+  border-color: var(--fumero-border);
+  background: color-mix(in srgb, var(--fumero-surface-muted) 85%, var(--fumero-bg));
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--fumero-border-subtle);
+}
+
+:global(html.dark[data-fumero-ops]) .builderSurface :global(.fumero-composer-gemini),
+:global([data-fumero-ops][data-theme="dark"]) .builderSurface :global(.fumero-composer-gemini) {
+  background: var(--fumero-bg) !important;
+  border-top-color: var(--fumero-border) !important;
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.55);
+}
+
+:global(html.dark[data-fumero-ops]) .builderSurface :global(.fumero-composer-shell),
+:global([data-fumero-ops][data-theme="dark"]) .builderSurface :global(.fumero-composer-shell) {
+  border-color: var(--os-composer-border, var(--fumero-border-strong, var(--fumero-border))) !important;
+  background: var(--os-composer-shell, var(--fumero-surface-elevated)) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    var(--os-composer-inset, inset 0 1px 0 rgba(255, 255, 255, 0.06));
+}
+
+:global(html.dark[data-fumero-ops]) .builderSurface :global(.fumero-composer-shell:focus-within),
+:global([data-fumero-ops][data-theme="dark"]) .builderSurface :global(.fumero-composer-shell:focus-within) {
+  border-color: color-mix(in srgb, var(--fumero-accent) 45%, transparent) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--fumero-accent) 10%, transparent),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+:global(html.dark[data-fumero-ops]) .builderSurface :global(.fumero-composer-shell textarea),
+:global([data-fumero-ops][data-theme="dark"]) .builderSurface :global(.fumero-composer-shell textarea) {
+  color: var(--fumero-text);
+}
+
+:global(html.dark[data-fumero-ops]) .builderSurface :global(.fumero-composer-shell textarea::placeholder),
+:global([data-fumero-ops][data-theme="dark"]) .builderSurface :global(.fumero-composer-shell textarea::placeholder) {
+  color: var(--fumero-text-muted);
+}
+
+@media (max-width: 900px) {
+  .builderSurface {
+    padding: 0.5rem;
+  }
+}

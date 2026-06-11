@@ -15,7 +15,7 @@ export function ArtifactPreview({ artifact }: { artifact: ArtifactState }) {
       title={artifact.title}
       srcDoc={srcDoc}
       sandbox="allow-scripts allow-same-origin allow-forms"
-      className="h-full w-full border-0 bg-white"
+      className="h-full w-full border-0 bg-background"
     />
   );
 }

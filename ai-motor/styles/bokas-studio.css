@@ -39,6 +39,23 @@ html.bokas-studio body {
   overflow: hidden;
 }
 
+html.dark.bokas-studio {
+  --bg: #0a0a0c;
+  --surface: #121214;
+  --surface2: #18181b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border2: rgba(255, 255, 255, 0.12);
+  --text: #f4f4f5;
+  --text2: #a1a1aa;
+  --text3: #71717a;
+  --green-lt: rgba(21, 128, 61, 0.15);
+  --blue-lt: rgba(29, 78, 216, 0.15);
+  --purple-lt: rgba(109, 40, 217, 0.15);
+  --amber-lt: rgba(180, 83, 9, 0.15);
+  --sh: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --sh-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
 html.bokas-studio .sb-ai-hint {
   border-color: rgba(14, 165, 233, 0.25);
 }

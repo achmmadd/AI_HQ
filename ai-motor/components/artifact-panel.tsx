@@ -121,7 +121,7 @@ export function ArtifactPanel({
             title={title}
             srcDoc={html}
             sandbox="allow-scripts allow-same-origin"
-            className="h-full w-full border-0 bg-white"
+            className="h-full w-full border-0 bg-background"
           />
         ) : (
           <pre className="h-full overflow-auto p-3 font-mono text-[11px] leading-relaxed text-text-secondary">

@@ -256,7 +256,7 @@ export function PhotoStudioPanel({
               {subtitle}{" "}
               <Link
                 href="/fumero/bibliotheek"
-                className="font-medium text-[#3d7a00] hover:underline"
+                className="font-medium text-[var(--fumero-accent)] hover:underline"
               >
                 Bekijk in Bibliotheek
               </Link>

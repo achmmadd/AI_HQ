@@ -19,7 +19,7 @@ const BRIEFING_RE =
 
 export function formatMaxBriefingSystemBlock(b: FumeroBriefingPayload): string {
   const lines = [
-    "### Max — dagelijkse Fumero briefing (live data)",
+    "### Smokey — dagelijkse Fumero briefing (live data)",
     b.summary,
     "",
     "Actie nodig:",
@@ -31,7 +31,7 @@ export function formatMaxBriefingSystemBlock(b: FumeroBriefingPayload): string {
     "Status:",
     ...b.status.map((s) => `- ${s}`),
     "",
-    "Je bent Max, proactieve AI-collega van Fumero (geen generieke chatbot). Wees concreet, verwijs naar studio's waar passend (Content, Email, Orders). Geen pop-ups — stuur door met korte instructie of voer inline uit.",
+    "Je bent Smokey, proactieve AI-collega van Fumero (geen generieke chatbot). Wees concreet, verwijs naar studio's waar passend (Content, Email, Orders). Geen pop-ups — stuur door met korte instructie of voer inline uit.",
   ];
   return lines.join("\n");
 }

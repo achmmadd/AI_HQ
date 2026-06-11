@@ -99,13 +99,13 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
   };
 
   return (
-    <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4 shadow-sm">
       <div className="mb-3">
-        <label className="mb-1 block text-xs font-medium text-[#737373]">
+        <label className="mb-1 block text-xs font-medium text-[var(--fumero-text-muted)]">
           Workspace preset
         </label>
         <select
-          className="h-9 w-full rounded-lg border border-[#E5E5E5] px-2 text-sm"
+          className="h-9 w-full rounded-lg border border-[var(--fumero-border)] px-2 text-sm"
           value={presetId}
           onChange={(e) => setPresetId(e.target.value)}
         >
@@ -123,8 +123,8 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
           onClick={() => setMode("text_to_image")}
           className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
             mode === "text_to_image"
-              ? "bg-[#69C400] text-white"
-              : "bg-[#F5F5F5] text-[#525252] hover:bg-[#EBEBEB]"
+              ? "bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)]"
+              : "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-bg)]"
           }`}
         >
           Tekst → beeld
@@ -134,8 +134,8 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
           onClick={() => setMode("image_to_image")}
           className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
             mode === "image_to_image"
-              ? "bg-[#69C400] text-white"
-              : "bg-[#F5F5F5] text-[#525252] hover:bg-[#EBEBEB]"
+              ? "bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)]"
+              : "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-bg)]"
           }`}
         >
           Beeld → beeld
@@ -169,16 +169,16 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
             Productfoto uploaden
           </Button>
           {imageUrl ? (
-            <p className="mt-2 text-xs text-[#737373]">Bron geladen — zelfde product, betere foto.</p>
+            <p className="mt-2 text-xs text-[var(--fumero-text-muted)]">Bron geladen — zelfde product, betere foto.</p>
           ) : null}
         </div>
       ) : null}
 
-      <label className="mb-1 block text-xs font-medium text-[#737373]">
+      <label className="mb-1 block text-xs font-medium text-[var(--fumero-text-muted)]">
         {mode === "text_to_image" ? "Prompt" : "Extra instructie (optioneel)"}
       </label>
       <Input
-        className="mb-4 border-[#E5E5E5]"
+        className="mb-4 border-[var(--fumero-border)]"
         placeholder={
           mode === "text_to_image"
             ? "Bijv. premium ginfles op marmeren ondergrond…"
@@ -196,7 +196,7 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
 
       <Button
         type="button"
-        className="w-full gap-2 bg-[#69C400] hover:bg-[#5ab300]"
+        className="w-full gap-2 bg-[var(--fumero-accent)] hover:bg-[var(--fumero-accent-hover)]"
         disabled={busy || (mode === "image_to_image" && !imageUrl)}
         onClick={() => void generate()}
       >
@@ -211,9 +211,9 @@ export function PhotoStudioGenerator({ klant, onGenerated }: Props) {
       </Button>
 
       {preview ? (
-        <div className="mt-4 overflow-hidden rounded-lg border border-[#E5E5E5]">
+        <div className="mt-4 overflow-hidden rounded-lg border border-[var(--fumero-border)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="Preview" className="max-h-80 w-full object-contain bg-[#FAFAFA]" />
+          <img src={preview} alt="Preview" className="max-h-80 w-full object-contain bg-[var(--fumero-surface-muted)]" />
         </div>
       ) : null}
     </div>

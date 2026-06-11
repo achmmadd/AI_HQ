@@ -62,11 +62,26 @@ export function enrichImageToImagePrompt(
   return `${base}\n\nUser context: ${userPrompt.trim()}`;
 }
 
+function directPromptParts(
+  userPrompt: string,
+  style_hint?: string
+): { system_prompt: string; prompt: string; fal_prompt: string } {
+  const trimmed = userPrompt.trim();
+  const style = style_hint?.trim();
+  const prompt = style ? `${trimmed}\n\nStyle: ${style}.` : trimmed;
+  return { system_prompt: "", prompt, fal_prompt: prompt };
+}
+
 export function buildTextToImagePromptParts(opts: {
   userPrompt: string;
   klant: CompanyId;
   style_hint?: string;
+  brandEnhancement?: boolean;
 }): { system_prompt: string; prompt: string; fal_prompt: string } {
+  if (!opts.brandEnhancement) {
+    return directPromptParts(opts.userPrompt, opts.style_hint);
+  }
+
   const type = contentTypeForKlant(opts.klant);
   const enriched = enrichTextToImagePrompt(opts.userPrompt, type);
   const style = opts.style_hint?.trim();
@@ -80,7 +95,12 @@ export function buildImageToImagePromptParts(opts: {
   userPrompt: string;
   klant: CompanyId;
   style_hint?: string;
+  brandEnhancement?: boolean;
 }): { system_prompt: string; prompt: string; fal_prompt: string } {
+  if (!opts.brandEnhancement) {
+    return directPromptParts(opts.userPrompt, opts.style_hint);
+  }
+
   const type = contentTypeForKlant(opts.klant);
   const enriched = enrichImageToImagePrompt(opts.userPrompt, type);
   const style = opts.style_hint?.trim();
@@ -95,6 +115,7 @@ export function buildTextToImageFalPrompt(opts: {
   userPrompt: string;
   klant: CompanyId;
   style_hint?: string;
+  brandEnhancement?: boolean;
 }): string {
   return buildTextToImagePromptParts(opts).fal_prompt;
 }
@@ -104,6 +125,7 @@ export function buildImageToImageFalPrompt(opts: {
   userPrompt: string;
   klant: CompanyId;
   style_hint?: string;
+  brandEnhancement?: boolean;
 }): string {
   return buildImageToImagePromptParts(opts).fal_prompt;
 }
@@ -261,13 +283,13 @@ function nb2BodyBase(opts: {
 }): Record<string, unknown> {
   const body: Record<string, unknown> = {
     prompt: opts.prompt,
-    system_prompt: opts.system_prompt,
     num_images: opts.num_images,
     aspect_ratio: opts.aspectRatio,
     resolution: opts.quality,
     output_format: "jpeg",
     limit_generations: true,
   };
+  if (opts.system_prompt) body.system_prompt = opts.system_prompt;
   if (opts.seed != null) body.seed = opts.seed;
   return body;
 }
@@ -282,6 +304,7 @@ async function generateNb2(opts: {
   count: number;
   style_hint?: string;
   seed?: number;
+  brandEnhancement?: boolean;
 }): Promise<FalBatchGenerateResult> {
   const isEdit = opts.imageUrls.length > 0;
   const parts = isEdit
@@ -289,11 +312,13 @@ async function generateNb2(opts: {
         userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
+        brandEnhancement: opts.brandEnhancement,
       })
     : buildTextToImagePromptParts({
         userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
+        brandEnhancement: opts.brandEnhancement,
       });
 
   logFalPrompt(isEdit ? "image_to_image" : "text_to_image", parts.fal_prompt);
@@ -351,6 +376,7 @@ async function generateSeedream(opts: {
   quality: ContentStudioQuality;
   count: number;
   style_hint?: string;
+  brandEnhancement?: boolean;
 }): Promise<FalBatchGenerateResult> {
   const isEdit = opts.imageUrls.length > 0;
   const parts = isEdit
@@ -358,11 +384,13 @@ async function generateSeedream(opts: {
         userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
+        brandEnhancement: opts.brandEnhancement,
       })
     : buildTextToImagePromptParts({
         userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
+        brandEnhancement: opts.brandEnhancement,
       });
 
   logFalPrompt(isEdit ? "image_to_image" : "text_to_image", parts.fal_prompt);
@@ -400,6 +428,7 @@ async function generateGptImage2(opts: {
   quality: ContentStudioQuality;
   count: number;
   style_hint?: string;
+  brandEnhancement?: boolean;
 }): Promise<FalBatchGenerateResult> {
   const isEdit = opts.imageUrls.length > 0;
   const parts = isEdit
@@ -407,11 +436,13 @@ async function generateGptImage2(opts: {
         userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
+        brandEnhancement: opts.brandEnhancement,
       })
     : buildTextToImagePromptParts({
         userPrompt: opts.userPrompt,
         klant: opts.klant,
         style_hint: opts.style_hint,
+        brandEnhancement: opts.brandEnhancement,
       });
 
   logFalPrompt(isEdit ? "image_to_image" : "text_to_image", parts.fal_prompt);
@@ -454,6 +485,7 @@ export async function generateWithModel(opts: {
   count?: number;
   style_hint?: string;
   seed?: number;
+  brandEnhancement?: boolean;
 }): Promise<FalBatchGenerateResult> {
   const user_prompt = opts.userPrompt.trim();
   const imageUrls = (opts.imageUrls ?? []).filter(Boolean);
@@ -473,6 +505,7 @@ export async function generateWithModel(opts: {
     count,
     style_hint: opts.style_hint,
     seed: opts.seed,
+    brandEnhancement: opts.brandEnhancement,
   };
 
   switch (opts.model) {
@@ -515,6 +548,7 @@ export async function generateWithFal(opts: {
     style_hint: opts.style_hint,
     seed: opts.seed,
     count: 1,
+    brandEnhancement: true,
   });
 
   if (!result.ok) return result;
@@ -529,22 +563,27 @@ export async function generateWithFal(opts: {
 }
 
 export function photoStudioPromptFixtures(): Record<string, string> {
+  const brand = { brandEnhancement: true as const };
   return {
     "1_txt2img_fumero_hhc_vape": buildTextToImageFalPrompt({
       userPrompt: "HHC vape premium",
       klant: "fumero",
+      ...brand,
     }),
     "2_txt2img_bokas_pancake": buildTextToImageFalPrompt({
       userPrompt: "Café pancake with berries",
       klant: "bokas",
+      ...brand,
     }),
     "3_img2img_fumero_vape_upload": buildImageToImageFalPrompt({
       userPrompt: "Verbeter deze productfoto.",
       klant: "fumero",
+      ...brand,
     }),
     "4_img2img_bokas_pancake_upload": buildImageToImageFalPrompt({
       userPrompt: "Zelfde gerecht, betere menu-foto.",
       klant: "bokas",
+      ...brand,
     }),
   };
 }

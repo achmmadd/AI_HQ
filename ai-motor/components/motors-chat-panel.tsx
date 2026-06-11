@@ -6,7 +6,6 @@ import {
   Copy,
   ChevronDown,
   ClipboardList,
-  Code2,
   BookMarked,
   Mic,
   Paperclip,
@@ -78,6 +77,7 @@ import {
   type FumeroChatStarterWire,
 } from "@/lib/fumero-quick-actions";
 import { FumeroChatStarterCards } from "@/components/fumero/ops/fumero-chat-starter-cards";
+import { BouwenEmptyHome } from "@/components/fumero/builder/bouwen-empty-home";
 import {
   formatMaxBriefingDetailMarkdown,
   resolveMaxChatAction,
@@ -150,8 +150,21 @@ import {
 import { fumeroStuckHintLabel } from "@/lib/fumero/fumero-live-steps";
 import { fumeroPrepStatusLabel } from "@/lib/fumero/fumero-prep-status";
 import {
+  isBouwenContinueIntent,
+  mergeBouwenClarifyPrompt,
+} from "@/lib/fumero/bouwen-chat-intents";
+import {
+  readPendingBouwenClarify,
+  writePendingBouwenClarify,
+} from "@/lib/fumero/bouwen-clarify-session";
+import {
+  formatClarifyAckMessage,
+  formatPreviewOpenedMessage,
+  resolveAssistantChatDisplayContent,
+  sanitizeUiStatusText,
+} from "@/lib/fumero/chat-build-guard";
+import {
   bouwenClarifyingQuestions,
-  buildMaxClarifyChatPrompt,
   dispatchFumeroGoalUpdated,
   formatBouwenClarifyAssistantMessage,
   parseMaxGoalCommand,
@@ -160,6 +173,7 @@ import { shouldScrapeUrlsForMaxChat } from "@/lib/fumero/scrape-url-chat";
 import { buildScrapeContextForToolBuild } from "@/lib/fumero/scrape-url-chat";
 import { applyDesignerHints } from "@/lib/connectors/specialists";
 import {
+  EMPTY_BOUWEN_BRIDGE,
   type FumeroBouwenBridge,
 } from "@/lib/fumero/bouwen-bridge";
 import { motorPublicOrigin } from "@/lib/fumero/public-url";
@@ -262,19 +276,19 @@ function MotorTypingDots({
       <span
         className={cn(
           "motors-typing-dot",
-          accent && "bg-[#69C400]/70"
+          accent && "bg-[color-mix(in_srgb,var(--fumero-accent)_70%,transparent)]"
         )}
       />
       <span
         className={cn(
           "motors-typing-dot",
-          accent && "bg-[#69C400]/70"
+          accent && "bg-[color-mix(in_srgb,var(--fumero-accent)_70%,transparent)]"
         )}
       />
       <span
         className={cn(
           "motors-typing-dot",
-          accent && "bg-[#69C400]/70"
+          accent && "bg-[color-mix(in_srgb,var(--fumero-accent)_70%,transparent)]"
         )}
       />
     </span>
@@ -342,19 +356,19 @@ function FumeroMaxActivityFeed({
 
   return (
     <div className="space-y-2">
-      <ul className="max-h-52 space-y-1 overflow-y-auto border-l-2 border-[#69C400]/35 pl-3">
+      <ul className="max-h-52 space-y-1 overflow-y-auto border-l-2 border-[color-mix(in_srgb,var(--fumero-accent)_35%,transparent)] pl-3">
         {completed.map((line, i) => (
           <li
             key={`done-${i}-${line}`}
-            className="flex items-start gap-2 text-[12px] leading-snug text-[#737373]"
+            className="flex items-start gap-2 text-[12px] leading-snug text-[var(--fumero-text-muted)]"
           >
-            <span className="mt-0.5 shrink-0 font-semibold text-[#69C400]">
+            <span className="mt-0.5 shrink-0 font-semibold text-[var(--fumero-accent)]">
               ✓
             </span>
             <span>{line}</span>
           </li>
         ))}
-        <li className="flex items-start gap-2 text-[13px] font-medium leading-snug text-[#171717]">
+        <li className="flex items-start gap-2 text-[13px] font-medium leading-snug text-[var(--fumero-text)]">
           <span className="mt-0.5 shrink-0">
             <MotorTypingDots accent />
           </span>
@@ -362,7 +376,7 @@ function FumeroMaxActivityFeed({
         </li>
       </ul>
       {stuckHint ? (
-        <p className="text-[11px] text-[#737373]" aria-live="polite">
+        <p className="text-[11px] text-[var(--fumero-text-muted)]" aria-live="polite">
           {stuckHint}
         </p>
       ) : null}
@@ -482,6 +496,7 @@ export function MotorsChatPanel({
   const [threadSearch, setThreadSearch] = useState("");
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [convLoadError, setConvLoadError] = useState<string | null>(null);
+  const [slowConvLoad, setSlowConvLoad] = useState(false);
   const [fumeroModelTier, setFumeroModelTier] =
     useState<FumeroComposerModelTier>(bouwenWorkspace ? "normaal" : "flash");
   const [connectorsOpen, setConnectorsOpen] = useState(false);
@@ -500,6 +515,10 @@ export function MotorsChatPanel({
   }, [initialComposerMode, setPreviewPanelOpen]);
 
   useEffect(() => {
+    if (bouwenWorkspace) setChatThreadsOpen(false);
+  }, [bouwenWorkspace, setChatThreadsOpen]);
+
+  useEffect(() => {
     onComposerModeChange?.(fumeroComposerMode);
     if (fumeroComposerMode === "coder") {
       setPreviewPanelOpen(true);
@@ -516,51 +535,68 @@ export function MotorsChatPanel({
     return rows;
   }, [company]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadConversations = useCallback(async () => {
+    setConvLoadError(null);
+    setSlowConvLoad(false);
     setActiveConversationId(undefined);
     setConversations([]);
-    setConvLoadError(null);
-    (async () => {
+
+    const data = await fetchJsonChecked<{ conversations?: ConversationRow[] }>(
+      `/api/conversations?klant=${encodeURIComponent(company)}`,
+      { credentials: "include" }
+    );
+    let rows = data.conversations ?? [];
+    if (rows.length === 0) {
+      const row = await fetchJsonChecked<ConversationRow>("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ klant: company }),
+      });
+      rows = [row];
+    }
+    setConversations(rows);
+    const cParam =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("c")
+        : null;
+    let pickId = rows[0]?.id;
+    if (cParam && /^\d+$/.test(cParam)) {
+      const cid = Number(cParam);
+      if (rows.some((r) => r.id === cid)) pickId = cid;
+    }
+    if (pickId !== undefined) setActiveConversationId(pickId);
+    return rows;
+  }, [company]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const slowTimer = window.setTimeout(() => {
+      if (!cancelled) setSlowConvLoad(true);
+    }, 8000);
+
+    void (async () => {
       try {
-      const data = await fetchJsonChecked<{ conversations?: ConversationRow[] }>(
-        `/api/conversations?klant=${encodeURIComponent(company)}`,
-        { credentials: "include" }
-      );
-      let rows = data.conversations ?? [];
-      if (rows.length === 0) {
-        const row = await fetchJsonChecked<ConversationRow>("/api/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ klant: company }),
-        });
-        rows = [row];
-      }
-      if (cancelled) return;
-      setConversations(rows);
-      const cParam =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("c")
-          : null;
-      let pickId = rows[0]?.id;
-      if (cParam && /^\d+$/.test(cParam)) {
-        const cid = Number(cParam);
-        if (rows.some((r) => r.id === cid)) pickId = cid;
-      }
-      if (pickId !== undefined) setActiveConversationId(pickId);
+        await loadConversations();
       } catch (e) {
-        setConvLoadError(
-          e instanceof Error
-            ? e.message
-            : "Gesprekken laden mislukt — vernieuw de pagina."
-        );
+        if (!cancelled) {
+          setConvLoadError(
+            e instanceof Error
+              ? e.message
+              : "Gesprekken laden mislukt — vernieuw de pagina."
+          );
+        }
+      } finally {
+        window.clearTimeout(slowTimer);
+        if (!cancelled) setSlowConvLoad(false);
       }
     })();
+
     return () => {
       cancelled = true;
+      window.clearTimeout(slowTimer);
     };
-  }, [company]);
+  }, [loadConversations]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1098,6 +1134,7 @@ export function MotorsChatPanel({
       const name = deriveToolName(seed || userText, templateId);
 
       setAwaitingToolTemplate(false);
+      writePendingBouwenClarify(null);
       setToolBusy(true);
       setCoderBuildPhase(CODER_BUILD_PHASES[0]);
       const instantPreview = templateId
@@ -1638,7 +1675,13 @@ export function MotorsChatPanel({
         hasActiveProject,
         projectStack,
       });
+    const saving =
+      toolBusy ||
+      fumeroSubmitting ||
+      streamStatus === "streaming" ||
+      streamStatus === "submitted";
     onBouwenBridgeUpdate({
+      ...EMPTY_BOUWEN_BRIDGE,
       activeToolId,
       activeAppSlug,
       canPublish: Boolean((activeToolId || activeAppSlug) && !toolBusy),
@@ -1656,15 +1699,33 @@ export function MotorsChatPanel({
         livePreviewRef.current?.embedCode ??
         activeToolCard?.embedCode ??
         null,
+      saveState: saving ? "saving" : historyLoaded ? "saved" : "unavailable",
+      publishBusy: toolBusy,
+      publishError: error,
+      newChat,
+      chatControlsDisabled: saving || activeConversationId === undefined,
+      conversations: conversations.map((c) => ({
+        id: c.id,
+        title: c.title,
+      })),
+      activeConversationId,
+      selectConversation: (id: number) => setActiveConversationId(id),
     });
   }, [
     activeToolId,
     activeAppSlug,
     activeToolCardMsgId,
+    activeConversationId,
+    conversations,
+    error,
+    fumeroSubmitting,
     hasActiveProject,
-    projectStack,
+    historyLoaded,
     messages,
+    newChat,
     onBouwenBridgeUpdate,
+    projectStack,
+    streamStatus,
     toolBusy,
   ]);
 
@@ -2015,21 +2076,6 @@ export function MotorsChatPanel({
         }
       };
 
-      const maybeBouwenClarifyBeforeBuild = async (
-        userPrompt: string
-      ): Promise<boolean> => {
-        const goals = await fetchFumeroGoals();
-        const questions = bouwenClarifyingQuestions(userPrompt, goals);
-        if (!questions?.length) return false;
-        appendAssistantMessage(formatBouwenClarifyAssistantMessage(questions));
-        scrollBottom(true);
-        await sendFumeroMaxReply(
-          buildMaxClarifyChatPrompt(userPrompt, questions, goals),
-          true
-        );
-        return true;
-      };
-
       const endFumeroActivity = () => {
         setFumeroSubmitting(false);
         resetFumeroPrep();
@@ -2045,9 +2091,74 @@ export function MotorsChatPanel({
         setFumeroPrepStatus(first);
       };
 
+      const maybeBouwenClarifyBeforeBuild = async (
+        userPrompt: string
+      ): Promise<boolean> => {
+        const goals = await fetchFumeroGoals();
+        const questions = bouwenClarifyingQuestions(userPrompt, goals);
+        if (!questions?.length) return false;
+        writePendingBouwenClarify({
+          seedPrompt: userPrompt,
+          clarifications: [],
+        });
+        appendAssistantMessage(formatBouwenClarifyAssistantMessage(questions));
+        scrollBottom(true);
+        endFumeroActivity();
+        return true;
+      };
+
+      const pendingClarify = readPendingBouwenClarify();
+      const awaitingClarify = Boolean(pendingClarify);
+      const hasPreview = Boolean(
+        livePreviewRef.current?.previewUrl || activeToolId || activeAppSlug
+      );
+      const toolActionOpts = {
+        hasActiveTool: activeToolId != null,
+        awaitingTemplate: awaitingToolTemplate,
+        awaitingClarify,
+        hasPreview,
+        coderMode: fumeroCoderMode,
+      };
+
+      const handlePendingClarifyOrPreview = async (): Promise<boolean> => {
+        const previewAction = resolveMaxToolChatAction(t, toolActionOpts);
+        if (previewAction?.type === "open_preview") {
+          showPromptInChat();
+          setPreviewPanelOpen(true);
+          appendAssistantMessage(formatPreviewOpenedMessage());
+          endFumeroActivity();
+          scrollBottom(true);
+          return true;
+        }
+        if (!pendingClarify) return false;
+        showPromptInChat();
+        if (isBouwenContinueIntent(t)) {
+          const merged = mergeBouwenClarifyPrompt(
+            pendingClarify.seedPrompt,
+            pendingClarify.clarifications,
+            t
+          );
+          writePendingBouwenClarify(null);
+          endFumeroActivity();
+          setPreviewPanelOpen(true);
+          await runToolBuild(merged);
+          return true;
+        }
+        writePendingBouwenClarify({
+          seedPrompt: pendingClarify.seedPrompt,
+          clarifications: [...pendingClarify.clarifications, t],
+        });
+        appendAssistantMessage(formatClarifyAckMessage());
+        endFumeroActivity();
+        scrollBottom(true);
+        return true;
+      };
+
       if (maxCompanion) {
         beginFumeroActivity();
       }
+
+      if (await handlePendingClarifyOrPreview()) return;
 
       if (isFumeroSiteCheckChatIntent(t)) {
         showPromptInChat();
@@ -2102,7 +2213,7 @@ export function MotorsChatPanel({
           const action = resolveMotorsChatAction({ prompt: t, hasActiveProject });
           if (action.type === "code-workspace") {
             showPromptInChat();
-            router.push(`/fumero/code?q=${encodeURIComponent(t)}`);
+            router.push(`/code?q=${encodeURIComponent(t)}`);
             scrollBottom(true);
             return;
           }
@@ -2124,11 +2235,7 @@ export function MotorsChatPanel({
           }
         }
 
-        const toolAction = resolveMaxToolChatAction(t, {
-          hasActiveTool: activeToolId != null,
-          awaitingTemplate: awaitingToolTemplate,
-          coderMode: true,
-        });
+        const toolAction = resolveMaxToolChatAction(t, toolActionOpts);
 
         if (planMode && !activeToolId && !activeAppSlug && toolAction) {
           const quickPick = resolveTemplateFromQuickReply(t);
@@ -2213,11 +2320,7 @@ export function MotorsChatPanel({
         }
       }
 
-      const toolAction = resolveMaxToolChatAction(t, {
-        hasActiveTool: activeToolId != null,
-        awaitingTemplate: awaitingToolTemplate,
-        coderMode: fumeroCoderMode,
-      });
+      const toolAction = resolveMaxToolChatAction(t, toolActionOpts);
       if (toolAction) {
         showPromptInChat();
         if (toolAction.type === "tool_intent_pick") {
@@ -2304,7 +2407,7 @@ export function MotorsChatPanel({
 
       if (action.type === "code-workspace") {
         showPromptInChat();
-        router.push(`/fumero/code?q=${encodeURIComponent(t)}`);
+        router.push(`/code?q=${encodeURIComponent(t)}`);
         scrollBottom(true);
         return;
       }
@@ -2543,10 +2646,6 @@ export function MotorsChatPanel({
       }
       if (action.kind === "ux_review") {
         void runUxReview();
-        return;
-      }
-      if (action.kind === "code_workspace") {
-        router.push("/fumero/code");
         return;
       }
     },
@@ -2828,10 +2927,19 @@ export function MotorsChatPanel({
 
   const fumeroOps = workspace === "fumero";
   const fumeroEmptyHome = fumeroOps && Boolean(maxCompanion) && showEmpty;
+  const bouwenEmptyHome = fumeroEmptyHome && bouwenWorkspace;
   const splitPreviewOpen =
     fumeroOps && fumeroCoderMode && layout === "split" && previewPanelOpen;
   const streamAgentLabel = fumeroOps ? "Max" : agentTheme.agentName;
   const coderBuildQuiet = fumeroCoderMode && toolBusy && !streamingId;
+  const assistantChatContent = useCallback(
+    (content: string, streaming?: boolean) =>
+      resolveAssistantChatDisplayContent(content, {
+        coderMode: fumeroCoderMode,
+        streaming,
+      }),
+    [fumeroCoderMode]
+  );
 
   const fumeroCoderOverflowItems = useMemo((): FumeroCoderOverflowItem[] | undefined => {
     if (!fumeroCoderMode) return undefined;
@@ -2869,13 +2977,6 @@ export function MotorsChatPanel({
         icon: ScanEye,
         disabled: !activeToolId || !!streamingId,
         onClick: () => void runUxReview(),
-      },
-      {
-        id: "code",
-        label: "Code workspace",
-        icon: Code2,
-        href: "/fumero/code",
-        onClick: () => {},
       },
       ...(bouwenWorkspace
         ? []
@@ -2932,10 +3033,10 @@ export function MotorsChatPanel({
     artifactErr ||
     error ||
     uploadNotice?.text ||
-    fumeroPrepStatus ||
-    (coderBuildQuiet ? null : buildStatus) ||
-    (streamingId && streamStatus ? streamStatus : null) ||
-    (toolBusy && !coderBuildQuiet ? (buildStatus ?? "Bezig…") : null);
+    sanitizeUiStatusText(fumeroPrepStatus) ||
+    (coderBuildQuiet ? null : sanitizeUiStatusText(buildStatus)) ||
+    (streamingId && streamStatus ? sanitizeUiStatusText(streamStatus) : null) ||
+    (toolBusy && !coderBuildQuiet ? sanitizeUiStatusText(buildStatus) ?? "Bezig…" : null);
   const statusIsError =
     Boolean(
       convLoadError ||
@@ -3009,17 +3110,24 @@ export function MotorsChatPanel({
     <div
       className={cn(
         "flex min-h-0 flex-1 bg-background",
-        splitPreviewOpen && "fumero-coder-split",
+        (splitPreviewOpen || (bouwenWorkspace && layout === "split")) &&
+          "fumero-coder-split",
         !embedded &&
           layout !== "split" &&
           "h-[min(calc(100dvh-10rem),56rem)] rounded-2xl border border-border/50 shadow-sm",
-        layout === "split" && "h-full min-h-0 overflow-hidden rounded-none border-0 shadow-none bg-[#FAFAFA]",
+        layout === "split" &&
+          !bouwenWorkspace &&
+          "h-full min-h-0 overflow-hidden rounded-none border-0 shadow-none bg-[var(--fumero-surface-muted)]",
+        bouwenWorkspace &&
+          layout === "split" &&
+          "h-full min-h-0 overflow-hidden bg-transparent",
         embedded && "h-full min-h-[280px] rounded-xl border border-border/50"
       )}
     >
       <aside
         className={cn(
           "flex min-h-0 shrink-0 flex-col border-r border-border/40 bg-surface/40 transition-[width] duration-200 ease-out",
+          bouwenWorkspace && "!hidden",
           sidebarOpen ? (embedded ? "w-52" : "w-60") : "w-0 overflow-hidden border-r-0"
         )}
       >
@@ -3112,10 +3220,10 @@ export function MotorsChatPanel({
       <div
         className={cn(
           "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-          fumeroEmptyHome && "justify-center"
+          fumeroEmptyHome && !bouwenWorkspace && "justify-center"
         )}
       >
-        {(!sidebarOpen || (agentMode && agentReadiness.hint)) && (
+        {!bouwenWorkspace && (!sidebarOpen || (agentMode && agentReadiness.hint)) && (
         <div className="flex shrink-0 items-center gap-2 px-3 py-2">
           {!sidebarOpen && (
             <button
@@ -3152,7 +3260,7 @@ export function MotorsChatPanel({
           onDrop={(e) => void onComposerDrop(e)}
           className={cn(
             "overflow-x-hidden overscroll-contain scrollbar-ios",
-            fumeroEmptyHome
+            fumeroEmptyHome && !bouwenWorkspace
               ? "flex-none overflow-visible"
               : "min-h-0 flex-1 overflow-y-auto"
           )}
@@ -3162,19 +3270,59 @@ export function MotorsChatPanel({
               "motors-chat-column space-y-6 px-4 py-6 md:py-8",
               splitPreviewOpen && "space-y-4 px-3 py-4 md:py-5",
               fumeroEmptyHome &&
-                "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center py-10"
+                !bouwenWorkspace &&
+                "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center py-10",
+              bouwenEmptyHome &&
+                "bouwen-empty-home-scroll flex min-h-full w-full flex-col items-center overflow-y-auto py-4"
             )}
           >
-            {(activeConversationId === undefined ||
-              (!historyLoaded && messages.length === 0)) && (
-              <p className="py-12 text-center text-[15px] text-text-secondary">
-                {activeConversationId === undefined
-                  ? "Conversaties laden…"
-                  : "Geschiedenis laden…"}
-              </p>
-            )}
+            {convLoadError ? (
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <p className="text-[15px] text-text-secondary">{convLoadError}</p>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border px-4 py-2 text-sm text-text-primary hover:bg-surface-elevated"
+                  onClick={() => void loadConversations()}
+                >
+                  Opnieuw proberen
+                </button>
+              </div>
+            ) : null}
+            {!convLoadError &&
+            (activeConversationId === undefined ||
+              (!historyLoaded && messages.length === 0)) ? (
+              <div className="flex flex-col items-center gap-2 py-12 text-center">
+                <p className="text-[15px] text-text-secondary">
+                  {activeConversationId === undefined
+                    ? "Conversaties laden…"
+                    : "Geschiedenis laden…"}
+                </p>
+                {slowConvLoad ? (
+                  <p className="text-[13px] text-text-secondary">
+                    Het duurt langer dan normaal — je kunt al typen in het veld
+                    hieronder.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
-            {showEmpty && (
+            {bouwenEmptyHome ? (
+              <BouwenEmptyHome
+                promptValue={text}
+                onPromptChange={setText}
+                onSubmit={(prompt) => void runSuggested(prompt)}
+                onUploadClick={() => fileRef.current?.click()}
+                onVoiceClick={startVoice}
+                onSelectSuggestion={(prompt) => void runSuggested(prompt)}
+                onContinueProject={(id) => setActiveConversationId(id)}
+                recentProjects={conversations}
+                disabled={!!streamingId || toolBusy || Boolean(fumeroPrepStatus)}
+                loading={Boolean(fumeroPrepStatus || fumeroSubmitting)}
+                listening={listening}
+              />
+            ) : null}
+
+            {showEmpty && !bouwenWorkspace ? (
               <div
                 className={cn(
                   "flex w-full flex-col items-center text-center font-ws",
@@ -3215,20 +3363,18 @@ export function MotorsChatPanel({
                     <FumeroChatStarterCards
                       disabled={!!streamingId}
                       onWire={handleStarterWire}
-                      excludeWires={bouwenWorkspace ? undefined : ["coder"]}
+                      excludeWires={["coder"]}
                     />
-                    {!bouwenWorkspace ? (
-                      <p className="mt-2 text-center text-[12px] text-[#737373]">
-                        Tool of widget bouwen?{" "}
-                        <button
-                          type="button"
-                          className="font-medium text-[#3d7a00] underline-offset-2 hover:underline"
-                          onClick={() => router.push("/fumero/bouwen")}
-                        >
-                          Ga naar Bouwen
-                        </button>
-                      </p>
-                    ) : null}
+                    <p className="mt-2 text-center text-[12px] text-[var(--fumero-text-muted)]">
+                      Tool of widget bouwen?{" "}
+                      <button
+                        type="button"
+                        className="font-medium text-[var(--fumero-success-fg)] underline-offset-2 hover:underline"
+                        onClick={() => router.push("/fumero/bouwen")}
+                      >
+                        Ga naar Bouwen
+                      </button>
+                    </p>
                   </>
                 ) : null}
                 {!fumeroEmptyHome ? (
@@ -3256,7 +3402,7 @@ export function MotorsChatPanel({
                   </div>
                 ) : null}
               </div>
-            )}
+            ) : null}
 
             {!fumeroEmptyHome &&
             messages.map((m, idx) => {
@@ -3368,7 +3514,7 @@ export function MotorsChatPanel({
                                 key={q.label}
                                 type="button"
                                 disabled={!!streamingId || toolBusy}
-                                className="ios-tap-highlight min-h-[40px] rounded-full border border-[#E5E5E5] bg-white px-3 py-1.5 text-[13px] text-[#171717] transition-colors hover:border-[#69C400]/50 disabled:opacity-50"
+                                className="ios-tap-highlight min-h-[40px] rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-1.5 text-[13px] text-[var(--fumero-text)] transition-colors hover:border-[color-mix(in_srgb,var(--fumero-accent)_50%,transparent)] disabled:opacity-50"
                                 onClick={() => void runSuggested(q.prompt)}
                               >
                                 {q.label}
@@ -3391,9 +3537,9 @@ export function MotorsChatPanel({
                         <div className="text-[15px] leading-relaxed text-text-primary">
                           {streamingId === m.id ? (
                             <>
-                              {m.content.trim() ? (
+                              {assistantChatContent(m.content, true).trim() ? (
                                 <MotorsChatMarkdown
-                                  content={m.content}
+                                  content={assistantChatContent(m.content, true)}
                                   variant="assistant"
                                 />
                               ) : (
@@ -3417,7 +3563,7 @@ export function MotorsChatPanel({
                                   />
                                 )
                               )}
-                              {m.content.trim() ? (
+                              {assistantChatContent(m.content, true).trim() ? (
                                 <MotorStreamPulse
                                   statusLabel={streamStatus}
                                   agentLabel={streamAgentLabel}
@@ -3432,7 +3578,7 @@ export function MotorsChatPanel({
                                 (m.toolCard || m.appCard)
                               ) ? (
                                 <MotorsChatMarkdown
-                                  content={m.content}
+                                  content={assistantChatContent(m.content)}
                                   variant="assistant"
                                 />
                               ) : null}
@@ -3443,7 +3589,7 @@ export function MotorsChatPanel({
                                       key={q.label}
                                       type="button"
                                       disabled={!!streamingId || toolBusy}
-                                      className="ios-tap-highlight min-h-[40px] rounded-full border border-[#E5E5E5] bg-white px-3 py-1.5 text-[13px] text-[#171717] transition-colors hover:border-[#69C400]/50 disabled:opacity-50"
+                                      className="ios-tap-highlight min-h-[40px] rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-1.5 text-[13px] text-[var(--fumero-text)] transition-colors hover:border-[color-mix(in_srgb,var(--fumero-accent)_50%,transparent)] disabled:opacity-50"
                                       onClick={() => void runSuggested(q.prompt)}
                                     >
                                       {q.label}
@@ -3482,15 +3628,15 @@ export function MotorsChatPanel({
                                   }}
                                 >
                                   <div className="min-w-0">
-                                    <p className="truncate text-[13px] font-medium text-[#171717]">
+                                    <p className="truncate text-[13px] font-medium text-[var(--fumero-text)]">
                                       {m.contentCard.title ?? "Schrijven-document"}
                                     </p>
-                                    <p className="line-clamp-2 text-[11px] text-[#737373]">
+                                    <p className="line-clamp-2 text-[11px] text-[var(--fumero-text-muted)]">
                                       {m.contentCard.contentSnippet ??
                                         "Long-form document — tik om te openen"}
                                     </p>
                                   </div>
-                                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(105,196,0,0.1)] px-2.5 py-1 text-[11px] font-medium text-[#3d7a00]">
+                                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--fumero-success-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--fumero-success-fg)]">
                                     <PanelRightOpen className="h-3.5 w-3.5" />
                                     Open
                                   </span>
@@ -3500,7 +3646,7 @@ export function MotorsChatPanel({
                               m.contentCard.mediaKind === "image" ? (
                                 <button
                                   type="button"
-                                  className="mt-3 block max-w-[240px] overflow-hidden rounded-xl border border-[#E5E5E5] bg-white text-left shadow-sm transition hover:border-[#69C400]/40"
+                                  className="mt-3 block max-w-[240px] overflow-hidden rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] text-left shadow-sm transition hover:border-[color-mix(in_srgb,var(--fumero-accent)_40%,transparent)]"
                                   onClick={() => {
                                     if (!m.contentCard) return;
                                     onFumeroContentPreview?.({
@@ -3525,7 +3671,7 @@ export function MotorsChatPanel({
                                     alt="Gegenereerde afbeelding"
                                     className="max-h-40 w-full object-cover"
                                   />
-                                  <p className="px-2 py-1.5 text-[11px] text-[#525252]">
+                                  <p className="px-2 py-1.5 text-[11px] text-[var(--fumero-text-muted)]">
                                     Tik voor preview-paneel
                                   </p>
                                 </button>
@@ -3607,7 +3753,7 @@ export function MotorsChatPanel({
                         "max-w-[85%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed shadow-sm",
                         fumeroOps
                           ? "fumero-user-bubble"
-                          : "bg-accent text-white"
+                          : "bg-accent text-[var(--fumero-accent-foreground)]"
                       )}
                     >
                       <MotorsChatMarkdown
@@ -3675,7 +3821,7 @@ export function MotorsChatPanel({
           </p>
         ) : null}
         {planMode && fumeroCoderMode ? (
-          <p className="motors-chat-column px-3 pb-1 text-center text-[11px] text-[#3d7a00]">
+          <p className="motors-chat-column px-3 pb-1 text-center text-[11px] text-[var(--fumero-success-fg)]">
             Plan-modus — ik bouw pas na <strong>Maak</strong>, een sjabloon of
             expliciete tool-opdracht.
           </p>
@@ -3697,9 +3843,9 @@ export function MotorsChatPanel({
             ).map((step) => (
               <li
                 key={step.n}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E5] bg-white px-3 py-1 text-[11px] font-medium text-[#525252]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-1 text-[11px] font-medium text-[var(--fumero-text-muted)]"
               >
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[rgba(105,196,0,0.15)] text-[10px] font-semibold text-[#3d7a00]">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--fumero-success-bg)] text-[10px] font-semibold text-[var(--fumero-success-fg)]">
                   {step.n}
                 </span>
                 {step.label}
@@ -3709,7 +3855,7 @@ export function MotorsChatPanel({
         ) : null}
 
         {visualEditMode && fumeroCoderMode ? (
-          <p className="motors-chat-column mb-1 text-center text-[11px] text-[#3d7a00]">
+          <p className="motors-chat-column mb-1 text-center text-[11px] text-[var(--fumero-success-fg)]">
             Klik in de preview of beschrijf hieronder wat je wilt wijzigen.
           </p>
         ) : null}
@@ -3721,13 +3867,14 @@ export function MotorsChatPanel({
           onDrop={(e) => void onComposerDrop(e)}
           className={cn(
             "motors-composer shrink-0 backdrop-blur-sm",
-            fumeroEmptyHome
+            bouwenEmptyHome && "hidden",
+            fumeroEmptyHome && !bouwenWorkspace
               ? "w-full max-w-3xl self-center border-0 bg-transparent px-4 pb-6 pt-2"
-              : "p-3",
+              : !bouwenEmptyHome && "p-3",
             !fumeroEmptyHome &&
               fumeroOps &&
               maxCompanion &&
-              "fumero-composer-gemini border-t border-[#E5E5E5]/80 bg-[#FAFAFA]/95",
+              "fumero-composer-gemini border-t border-[var(--fumero-border)]/80 bg-[var(--fumero-surface-muted)]/95",
             !fumeroEmptyHome && !fumeroOps && "border-t border-border/40 bg-background/80",
             !fumeroEmptyHome &&
               fumeroOps &&
@@ -3737,15 +3884,15 @@ export function MotorsChatPanel({
         >
           {fumeroOps && maxCompanion && (fumeroPrepStatus || streamingId) ? (
             <div
-              className="motors-chat-column mb-2 flex max-w-full items-center gap-2 px-1 text-[11px] text-[#525252]"
+              className="motors-chat-column mb-2 flex max-w-full items-center gap-2 px-1 text-[11px] text-[var(--fumero-text-muted)]"
               aria-live="polite"
             >
-              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[#69C400]" />
-              <span className="min-w-0 truncate font-medium text-[#3d7a00]">
+              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--fumero-accent)]" />
+              <span className="min-w-0 truncate font-medium text-[var(--fumero-success-fg)]">
                 {fumeroPrepStatus || streamStatus || "Max werkt…"}
               </span>
               {fumeroStuckHint ? (
-                <span className="hidden shrink-0 text-[#737373] sm:inline">
+                <span className="hidden shrink-0 text-[var(--fumero-text-muted)] sm:inline">
                   · {fumeroStuckHint}
                 </span>
               ) : null}
@@ -3755,7 +3902,7 @@ export function MotorsChatPanel({
               className={cn(
                 "motors-chat-column mb-2 flex items-center justify-center gap-1.5 text-[11px]",
                 fumeroOps
-                  ? "text-[#525252]"
+                  ? "text-[var(--fumero-text-muted)]"
                   : "text-text-secondary/80"
               )}
               aria-live="polite"
@@ -3777,11 +3924,11 @@ export function MotorsChatPanel({
                 "motors-chat-column fumero-composer-shell relative overflow-visible transition-colors",
                 composerDragOver && "fumero-composer-drag",
                 (streamingId || fumeroPrepStatus || fumeroSubmitting) &&
-                  "ring-1 ring-[#69C400]/20 fumero-composer-busy"
+                  "ring-1 ring-[var(--fumero-accent)]/20 fumero-composer-busy"
               )}
             >
               {composerDragOver ? (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-[rgba(105,196,0,0.06)] px-4 text-center text-[13px] font-medium text-[#3d7a00]">
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-[var(--fumero-accent-muted)] px-4 text-center text-[13px] font-medium text-[var(--fumero-success-fg)]">
                   Laat los — afbeelding, PDF of screenshot (max 25 MB)
                 </div>
               ) : null}
@@ -3795,14 +3942,10 @@ export function MotorsChatPanel({
                   bouwenWorkspace,
                 })}
                 rows={1}
-                className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 pb-1 pt-3 fumero-text-body text-[#171717] outline-none placeholder:text-[#737373]"
+                className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 pb-1 pt-3 fumero-text-body text-[var(--fumero-text)] outline-none placeholder:text-[var(--fumero-text-muted)]"
                 autoComplete="off"
-                disabled={
-                  activeConversationId === undefined ||
-                  artifactBusy ||
-                  toolBusy ||
-                  Boolean(fumeroPrepStatus)
-                }
+                disabled={artifactBusy || toolBusy || Boolean(fumeroPrepStatus)}
+                aria-busy={activeConversationId === undefined}
               />
               <FumeroComposerToolbar
                 variant="inline"
@@ -3856,8 +3999,8 @@ export function MotorsChatPanel({
                 <button
                   type="button"
                   className={cn(
-                    "ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-[#525252] transition-colors hover:bg-[#FAFAFA] hover:text-[#171717] disabled:opacity-40",
-                    listening && "text-[#69C400] ring-2 ring-[#69C400]/25"
+                    "ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-[var(--fumero-text-muted)] transition-colors hover:bg-[var(--fumero-surface-muted)] hover:text-[var(--fumero-text)] disabled:opacity-40",
+                    listening && "text-[var(--fumero-accent)] ring-2 ring-[var(--fumero-accent)]/25"
                   )}
                   title="Spraak"
                   disabled={!!streamingId || activeConversationId === undefined}
@@ -3884,7 +4027,7 @@ export function MotorsChatPanel({
                 ) : (
                   <button
                     type="submit"
-                    className="ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full bg-[#69C400] text-white hover:bg-[#5eb300] disabled:opacity-40"
+                    className="ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)] hover:bg-[var(--fumero-accent-hover)] disabled:opacity-40"
                     disabled={
                       !text.trim() ||
                       activeConversationId === undefined ||
@@ -3904,7 +4047,7 @@ export function MotorsChatPanel({
             <div
               className={cn(
                 "motors-composer motors-chat-column relative flex items-end gap-1 rounded-3xl border bg-surface/90 px-2 py-2 shadow-sm backdrop-blur-sm transition-colors",
-                streamingId && fumeroOps && "ring-1 ring-[#69C400]/25",
+                streamingId && fumeroOps && "ring-1 ring-[var(--fumero-accent)]/25",
                 composerDragOver
                   ? "border-accent ring-2 ring-accent/25"
                   : "border-border/55"
@@ -3986,7 +4129,7 @@ export function MotorsChatPanel({
                 className={cn(
                   "max-h-40 min-h-[44px] flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-snug outline-none",
                   fumeroOps
-                    ? "text-[#171717] caret-[#171717] placeholder:text-[#737373]"
+                    ? "text-[var(--fumero-text)] caret-[var(--fumero-text)] placeholder:text-[var(--fumero-text-muted)]"
                     : "text-text-primary caret-text-primary placeholder:text-text-secondary"
                 )}
                 autoComplete="off"
@@ -4007,8 +4150,8 @@ export function MotorsChatPanel({
                 <button
                   type="submit"
                   className={cn(
-                    "ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-white hover:opacity-90 disabled:opacity-40",
-                    fumeroOps ? "bg-[#69C400] hover:bg-[#5eb300]" : "bg-accent hover:bg-accent/90"
+                    "ios-tap-highlight flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-[var(--fumero-accent-foreground)] hover:opacity-90 disabled:opacity-40",
+                    fumeroOps ? "bg-[var(--fumero-accent)] hover:bg-[var(--fumero-accent-hover)]" : "bg-accent hover:bg-accent/90"
                   )}
                   disabled={
                     !text.trim() ||
@@ -4040,7 +4183,7 @@ export function MotorsChatPanel({
                             : "Verfijn hieronder · preview rechts · "}
                           <button
                             type="button"
-                            className="text-[#3d7a00] underline-offset-2 hover:underline"
+                            className="text-[var(--fumero-success-fg)] underline-offset-2 hover:underline"
                             onClick={() => togglePlanMode()}
                           >
                             {planMode ? "plan uit" : "plan aan"}
@@ -4048,7 +4191,7 @@ export function MotorsChatPanel({
                           {" · "}
                           <button
                             type="button"
-                            className="text-[#737373] hover:text-[#171717]"
+                            className="text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
                             aria-label="Tip sluiten"
                             onClick={() => setCoderPlanHintDismissed(true)}
                           >

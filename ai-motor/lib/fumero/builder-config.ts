@@ -26,8 +26,8 @@ export function getFumeroBuilderLabel(): string {
   if (process.env.MOTOR_BUILDER_USE_ANTHROPIC?.trim() === "1") return "Sonnet";
   const model = process.env.MOTOR_BUILDER_MODEL?.trim().toLowerCase() ?? "";
   if (model.includes("sonnet")) return "Sonnet";
-  if (model) return "Max";
-  return "Max";
+  if (model) return "Smokey";
+  return "Smokey";
 }
 
 /** Turn raw builder/API errors into actionable Dutch copy (no JSON dumps). */

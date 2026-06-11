@@ -79,9 +79,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const useFumeroShell = body.from === "fumero" || req.headers.get("referer")?.includes("/fumero/");
-    const basePath = useFumeroShell ? "/fumero/code" : "/code";
-    const url = `${basePath}?klant=${encodeURIComponent(klant)}&workspace=${encodeURIComponent(ws.id)}&file=${encodeURIComponent(rel)}`;
+    const url = `/code?klant=${encodeURIComponent(klant)}&workspace=${encodeURIComponent(ws.id)}&file=${encodeURIComponent(rel)}`;
 
     return NextResponse.json({
       ok: true,

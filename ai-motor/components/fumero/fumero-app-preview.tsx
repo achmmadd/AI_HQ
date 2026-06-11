@@ -25,11 +25,11 @@ class EmbedErrorBoundary extends Component<
   render(): ReactNode {
     if (this.state.failed) {
       return (
-        <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 bg-[#FAFAFA] p-8 text-center">
+        <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 bg-[var(--fumero-surface-muted)] p-8 text-center">
           <AlertTriangle className="h-8 w-8 text-amber-500" />
           <div>
-            <p className="text-sm font-medium text-[#171717]">Preview kon niet laden</p>
-            <p className="mt-1 max-w-sm text-xs text-[#737373]">
+            <p className="text-sm font-medium text-[var(--fumero-text)]">Preview kon niet laden</p>
+            <p className="mt-1 max-w-sm text-xs text-[var(--fumero-text-muted)]">
               De app-code bevat een fout of kon niet worden weergegeven. Bewerk de app in chat om
               het op te lossen.
             </p>
@@ -115,9 +115,9 @@ export function FumeroAppPreview({
       </header>
       <div className="min-h-0 flex-1">
         {!code?.trim() ? (
-          <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-2 bg-[#FAFAFA] p-8 text-center">
-            <p className="text-sm font-medium text-[#171717]">Geen app-code beschikbaar</p>
-            <p className="text-xs text-[#737373]">Genereer of verfijn de app via chat.</p>
+          <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-2 bg-[var(--fumero-surface-muted)] p-8 text-center">
+            <p className="text-sm font-medium text-[var(--fumero-text)]">Geen app-code beschikbaar</p>
+            <p className="text-xs text-[var(--fumero-text-muted)]">Genereer of verfijn de app via chat.</p>
           </div>
         ) : (
           <EmbedErrorBoundary naam={naam}>

@@ -34,7 +34,8 @@ function enrichImageToImagePrompt(userPrompt, type = "product") {
   return `${base}\n\nUser context: ${userPrompt}`;
 }
 
-function buildTxt(klant, userPrompt) {
+function buildTxt(klant, userPrompt, brandEnhancement = true) {
+  if (!brandEnhancement) return userPrompt.trim();
   const type = klant === "bokas" ? "food" : "product";
   const system =
     type === "food"
@@ -43,11 +44,16 @@ function buildTxt(klant, userPrompt) {
   return `${system}\n\n${enrichTextToImagePrompt(userPrompt, type)}`;
 }
 
-// Case 1
-const c1 = buildTxt("fumero", "HHC vape premium");
+// Case 1 — brand enrichment (legacy product flows)
+const c1 = buildTxt("fumero", "HHC vape premium", true);
 assert.ok(c1.includes("Je bent een professioneel product fotograaf"));
 assert.ok(c1.includes("HHC vape premium"));
 assert.ok(c1.includes(PRODUCT_BASE.slice(0, 40)));
+
+// Case 1b — direct prompt (worldclass general creation)
+const c1b = buildTxt("fumero", "een rode sportauto bij zonsondergang", false);
+assert.equal(c1b, "een rode sportauto bij zonsondergang");
+assert.ok(!c1b.includes("product fotograaf"));
 
 // Case 2
 const c2 = buildTxt("bokas", "Café pancake with berries");
@@ -65,8 +71,9 @@ const c4 = enrichImageToImagePrompt("Zelfde gerecht, betere menu-foto.", "food")
 assert.ok(c4.includes(IMG2IMG_FOOD.slice(0, 40)));
 assert.ok(c4.includes("User context: Zelfde gerecht, betere menu-foto."));
 
-console.log("photo-studio fal prompt tests: OK (4 cases)");
-console.log("\n--- Sample 1 (Fumero txt2img) ---\n", c1);
+console.log("photo-studio fal prompt tests: OK (5 cases)");
+console.log("\n--- Sample 1 (Fumero txt2img brand) ---\n", c1);
+console.log("\n--- Sample 1b (Fumero txt2img direct) ---\n", c1b);
 console.log("\n--- Sample 2 (Bokas txt2img) ---\n", c2);
 console.log("\n--- Sample 3 (Fumero img2img) ---\n", c3);
 console.log("\n--- Sample 4 (Bokas img2img) ---\n", c4);

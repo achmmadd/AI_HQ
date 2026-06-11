@@ -13,6 +13,10 @@ function applyBokasStudioTokens() {
   root.style.setProperty("--accent-lt", theme.accentLt);
   root.style.setProperty("--accent-ring", "rgba(14, 165, 233, 0.15)");
   root.style.setProperty("--sans", theme.font);
+  root.style.setProperty("--os-accent", theme.accent);
+  root.style.setProperty("--os-accent-hover", theme.accentHover);
+  root.style.setProperty("--os-accent-muted", "rgba(14, 165, 233, 0.12)");
+  root.style.setProperty("--os-accent-glow", "rgba(14, 165, 233, 0.25)");
 }
 
 export function BokasWorkspaceRoot({ children }: { children: React.ReactNode }) {
@@ -21,8 +25,8 @@ export function BokasWorkspaceRoot({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     setWorkspace("bokas");
     const root = document.documentElement;
-    root.classList.add("bokas-studio", "light");
-    root.classList.remove("dark", "fumero-studio");
+    root.classList.add("bokas-studio");
+    root.classList.remove("fumero-studio", "fumero-ops");
     applyWorkspaceToDocument("bokas");
     applyBokasStudioTokens();
     return () => {
@@ -30,5 +34,7 @@ export function BokasWorkspaceRoot({ children }: { children: React.ReactNode }) 
     };
   }, [setWorkspace]);
 
-  return <div className="min-h-screen">{children}</div>;
+  return (
+    <div className="min-h-screen bg-[var(--os-bg)] text-[var(--os-text)]">{children}</div>
+  );
 }

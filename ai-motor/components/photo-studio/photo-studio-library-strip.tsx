@@ -36,12 +36,12 @@ export function PhotoStudioLibraryStrip({ klant, refreshKey = 0 }: Props) {
 
   return (
     <section className="mt-8">
-      <h2 className="mb-3 text-sm font-semibold text-[#171717]">Bibliotheek</h2>
+      <h2 className="mb-3 text-sm font-semibold text-[var(--fumero-text)]">Bibliotheek</h2>
       <ul className="grid gap-2 sm:grid-cols-2">
         {items.slice(0, 6).map((item) => (
           <li
             key={item.id}
-            className="flex gap-3 rounded-lg border border-[#E5E5E5] bg-white p-2"
+            className="flex gap-3 rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-2"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -50,8 +50,8 @@ export function PhotoStudioLibraryStrip({ klant, refreshKey = 0 }: Props) {
               className="h-14 w-14 shrink-0 rounded object-cover"
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs text-[#525252]">{item.prompt}</p>
-              <p className="font-mono text-[10px] text-[#a3a3a3]">{item.tracking_id}</p>
+              <p className="truncate text-xs text-[var(--fumero-text-muted)]">{item.prompt}</p>
+              <p className="font-mono text-[10px] text-[var(--fumero-text-subtle)]">{item.tracking_id}</p>
             </div>
           </li>
         ))}

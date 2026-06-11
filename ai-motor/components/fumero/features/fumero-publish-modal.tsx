@@ -37,10 +37,10 @@ export function FumeroPublishModal({
   if (!payload) return null;
 
   const codeExportHref = payload.slug
-    ? `/fumero/code?import=fumero-tool&slug=${encodeURIComponent(payload.slug)}`
+    ? `/code?import=fumero-tool&slug=${encodeURIComponent(payload.slug)}`
     : payload.toolId
-      ? `/fumero/code?import=fumero-tool&tool=${payload.toolId}`
-      : "/fumero/code";
+      ? `/code?import=fumero-tool&tool=${payload.toolId}`
+      : "/code";
 
   const handleCopy = async (text: string, kind: "url" | "embed") => {
     try {
@@ -60,20 +60,20 @@ export function FumeroPublishModal({
       }}
     >
       <ModalContent
-        className="max-w-md border-[#E5E5E5] bg-white p-0"
+        className="max-w-md border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-0"
         onPointerDownOutside={onClose}
       >
-        <div className="border-b border-[rgba(105,196,0,0.25)] bg-[rgba(105,196,0,0.08)] px-4 py-3">
+        <div className="border-b border-[var(--fumero-success-border)] bg-[var(--fumero-accent-muted)] px-4 py-3">
           <ModalHeader className="pr-8">
             <div className="flex gap-2">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#69C400] text-white">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)]">
                 <Check className="h-5 w-5" strokeWidth={3} aria-hidden />
               </span>
               <div>
-                <ModalTitle className="text-base text-[#171717]">
+                <ModalTitle className="text-base text-[var(--fumero-text)]">
                   Online — {payload.name}
                 </ModalTitle>
-                <ModalDescription className="text-[#525252]">
+                <ModalDescription className="text-[var(--fumero-text-muted)]">
                   {payload.version != null
                     ? `Versie ${payload.version} staat live in de garage`
                     : "Je app staat live in de garage"}
@@ -86,7 +86,7 @@ export function FumeroPublishModal({
         <div className="space-y-4 px-4 py-4">
           {payload.liveUrl ? (
             <div>
-              <p className="mb-2 text-sm font-medium text-[#171717]">
+              <p className="mb-2 text-sm font-medium text-[var(--fumero-text)]">
                 Link naar je app
               </p>
               <div className="flex gap-2">
@@ -94,18 +94,18 @@ export function FumeroPublishModal({
                   readOnly
                   value={payload.liveUrl}
                   aria-label="Live link"
-                  className="min-h-[var(--ds-touch-min)] min-w-0 flex-1 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] px-3 font-mono text-xs text-[#171717]"
+                  className="min-h-[var(--ds-touch-min)] min-w-0 flex-1 rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] px-3 font-mono text-xs text-[var(--fumero-text)]"
                 />
                 <Button
                   type="button"
                   size="iconTouch"
                   variant="secondary"
-                  className="shrink-0 rounded-xl border-[#E5E5E5]"
+                  className="shrink-0 rounded-xl border-[var(--fumero-border)]"
                   aria-label="Link kopiëren"
                   onClick={() => void handleCopy(payload.liveUrl!, "url")}
                 >
                   {copied === "url" ? (
-                    <Check className="h-4 w-4 text-[#69C400]" aria-hidden />
+                    <Check className="h-4 w-4 text-[var(--fumero-accent)]" aria-hidden />
                   ) : (
                     <Copy className="h-4 w-4" aria-hidden />
                   )}
@@ -116,10 +116,10 @@ export function FumeroPublishModal({
 
           {payload.embedCode ? (
             <div>
-              <p className="mb-2 text-sm font-medium text-[#171717]">
+              <p className="mb-2 text-sm font-medium text-[var(--fumero-text)]">
                 Code voor op je website
               </p>
-              <div className="relative rounded-xl border border-[#E5E5E5] bg-[#171717]">
+              <div className="relative rounded-xl border border-[var(--fumero-border)] bg-[#171717]">
                 <pre className="max-h-28 overflow-x-auto p-3 pr-24 font-mono text-[11px] leading-relaxed text-[#e5e5e5]">
                   <code>{payload.embedCode}</code>
                 </pre>
@@ -136,7 +136,7 @@ export function FumeroPublishModal({
             </div>
           ) : null}
 
-          <p className="text-sm leading-relaxed text-[#737373]">
+          <p className="text-sm leading-relaxed text-[var(--fumero-text-muted)]">
             Bezoekers kunnen de app op hun telefoon toevoegen via &ldquo;Zet op
             beginscherm&rdquo; in de browser.
           </p>
@@ -145,7 +145,7 @@ export function FumeroPublishModal({
             <Button
               asChild
               size="touch"
-              className="rounded-xl bg-[#69C400] text-white hover:bg-[#5db000]"
+              className="rounded-xl bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)] hover:bg-[var(--fumero-accent-hover)]"
             >
               <Link href="/fumero/projecten" onClick={onClose}>
                 Naar projecten
@@ -156,7 +156,7 @@ export function FumeroPublishModal({
                 asChild
                 size="touch"
                 variant="secondary"
-                className="rounded-xl border-[#E5E5E5]"
+                className="rounded-xl border-[var(--fumero-border)]"
               >
                 <a
                   href={payload.liveUrl}
@@ -169,14 +169,14 @@ export function FumeroPublishModal({
               </Button>
             ) : null}
             <details className="relative w-full">
-              <summary className="min-h-[var(--ds-touch-min)] cursor-pointer text-sm font-medium text-[#3d7a00] underline-offset-2 hover:underline">
+              <summary className="min-h-[var(--ds-touch-min)] cursor-pointer text-sm font-medium text-[var(--fumero-success-fg)] underline-offset-2 hover:underline">
                 Meer opties
               </summary>
-              <div className="mt-2 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] p-2">
+              <div className="mt-2 rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] p-2">
                 <Link
                   href={codeExportHref}
                   className={cn(
-                    "flex min-h-[var(--ds-touch-min)] items-center rounded-lg px-3 text-sm text-[#171717] hover:bg-white"
+                    "flex min-h-[var(--ds-touch-min)] items-center rounded-lg px-3 text-sm text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
                   )}
                   onClick={onClose}
                 >

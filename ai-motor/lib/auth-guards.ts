@@ -48,3 +48,37 @@ export async function requireWorkspaceApi(
   }
   return { ok: true, sessionScope: session.scope };
 }
+
+/** Scopes die als tenant-operator apps mogen bouwen/beheren (klant volgt uit de sessie). */
+export function isScopedOperator(scope: WorkspaceScope): boolean {
+  return scope === "all" || scope === "fumero" || scope === "bokas";
+}
+
+/**
+ * Guard voor klant-scoped app-routes (Bouwen/full_app): elke fumero/bokas/all
+ * sessie mag erin; de effectieve `klant` wordt in de route uit `sessionScope`
+ * afgeleid, dus cross-tenant toegang blijft geblokkeerd. `personal` heeft geen
+ * tenant-workspace en krijgt 403.
+ */
+export async function requireScopedWorkspaceApi(
+  req: NextRequest
+): Promise<{ ok: true; sessionScope: WorkspaceScope } | { ok: false; response: NextResponse }> {
+  const token =
+    req.cookies.get(TOKEN_COOKIE)?.value ||
+    req.headers.get("x-motorsai-token")?.trim() ||
+    req.headers.get("authorization")?.trim().replace(/^bearer\s+/i, "");
+  const session = await readAuthSession(token || undefined);
+  if (!session) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+  if (!isScopedOperator(session.scope)) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Forbidden for workspace" }, { status: 403 }),
+    };
+  }
+  return { ok: true, sessionScope: session.scope };
+}

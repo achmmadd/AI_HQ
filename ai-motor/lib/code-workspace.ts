@@ -4,6 +4,7 @@ import os from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import type { CompanyId } from "@/lib/types";
+import { isInternalCodeProject } from "@/lib/fumero/internal-project";
 
 const execFileAsync = promisify(execFile);
 
@@ -111,7 +112,7 @@ export async function listWorkspaces(klant: CompanyId): Promise<CodeWorkspaceInf
     return [];
   }
   return entries
-    .filter((name) => validateProjectSlug(name))
+    .filter((name) => validateProjectSlug(name) && !isInternalCodeProject(name))
     .sort()
     .map((name) => ({
       id: name,

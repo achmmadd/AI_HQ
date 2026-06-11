@@ -14,8 +14,6 @@ type CompanyState = {
   workspace: WorkspaceId;
   setWorkspace: (ws: WorkspaceId) => void;
   setCompany: (c: CompanyId) => void;
-  theme: "dark" | "light";
-  toggleTheme: () => void;
 };
 
 function companyForWorkspace(ws: WorkspaceId, current: CompanyId): CompanyId {
@@ -39,15 +37,11 @@ export const useCompanyStore = create<CompanyState>()(
         applyWorkspaceToDocument(workspace);
         set({ company, workspace });
       },
-      theme: "dark",
-      toggleTheme: () =>
-        set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
     }),
     {
       name: "ai-motor-ui",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
-        theme: s.theme,
         company: s.company,
         workspace: s.workspace,
       }),

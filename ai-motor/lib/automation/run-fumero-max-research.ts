@@ -27,7 +27,7 @@ Recente posts: ${JSON.stringify(posts.map((p) => ({ p: p.platform, t: p.content.
         messages: [
           {
             role: "system",
-            content: "Je bent Max research agent voor Fumero. Alleen JSON.",
+            content: "Je bent Smokey research agent voor Fumero. Alleen JSON.",
           },
           { role: "user", content: prompt },
         ],
@@ -51,7 +51,7 @@ Recente posts: ${JSON.stringify(posts.map((p) => ({ p: p.platform, t: p.content.
       `INSERT INTO fumero_briefings (summary, actions_json, opportunities_json, status_json, context_json)
        VALUES (?, '[]', ?, '[]', ?)`
     ).run(
-      "Max nachtresearch",
+      "Smokey nachtresearch",
       JSON.stringify([raw.slice(0, 2000)]),
       JSON.stringify({ kind: "max_research", raw: raw.slice(0, 8000) })
     );
@@ -60,7 +60,7 @@ Recente posts: ${JSON.stringify(posts.map((p) => ({ p: p.platform, t: p.content.
   } catch (e) {
     return {
       ok: false,
-      detail: e instanceof Error ? e.message : "Max research mislukt",
+      detail: e instanceof Error ? e.message : "Smokey research mislukt",
     };
   }
 }

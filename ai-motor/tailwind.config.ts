@@ -26,10 +26,41 @@ const config: Config = {
       },
       colors: {
         background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
         surface: "var(--surface)",
         elevated: "var(--surface-elevated)",
         border: "var(--border)",
-        accent: "var(--accent)",
+        "border-strong": "var(--border-strong)",
+        input: "var(--input)",
+        ring: "var(--ring)",
         "accent-hover": "var(--accent-hover)",
         "ws-accent": "var(--ws-accent)",
         "ws-accent-hover": "var(--ws-accent-hover)",
@@ -40,6 +71,14 @@ const config: Config = {
         error: "var(--error)",
         "text-primary": "var(--text-primary)",
         "text-secondary": "var(--text-secondary)",
+        "text-heading": "var(--text-heading)",
+        "text-muted": "var(--text-muted)",
+      },
+      boxShadow: {
+        xs: "var(--shadow-xs)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
       },
       spacing: {
         touch: "var(--ds-touch-min)",

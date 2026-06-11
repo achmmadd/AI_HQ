@@ -55,7 +55,7 @@ export const CONNECTORS_REGISTRY: ConnectorDefinition[] = [
   {
     id: "fumero_briefing",
     name: "Briefing",
-    description: "Dagelijkse Max-briefing met acties en status",
+    description: "Dagelijkse Smokey-briefing met acties en status",
     iconKey: "clipboard-list",
     status: "active",
     scope: "fumero",

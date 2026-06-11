@@ -30,20 +30,20 @@ export function FumeroBuildTimeline({
     <div className="fumero-build-timeline-wrap">
       {showProgress && building ? (
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-medium text-[#525252]">Voortgang</span>
-          <span className="text-[11px] tabular-nums text-[#737373]">{progress}%</span>
+          <span className="text-[11px] font-medium text-[var(--fumero-text-muted)]">Voortgang</span>
+          <span className="text-[11px] tabular-nums text-[var(--fumero-text-subtle)]">{progress}%</span>
         </div>
       ) : null}
       {showProgress && building ? (
         <div
-          className="mb-2 h-1 overflow-hidden rounded-full bg-[#E5E5E5]"
+          className="mb-2 h-1 overflow-hidden rounded-full bg-[var(--fumero-surface-muted)]"
           role="progressbar"
-          aria-valuenow={progress}
+          aria-valuenow={progress ?? undefined}
           aria-valuemin={0}
           aria-valuemax={100}
         >
           <div
-            className="h-full rounded-full bg-[#69C400] transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-[var(--fumero-accent)] transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -64,24 +64,24 @@ export function FumeroBuildTimeline({
               key={phase}
               className={cn(
                 "flex items-center gap-2.5 text-[12px] leading-snug",
-                done && "text-[#3d7a00]",
-                current && "font-semibold text-[#171717]",
-                !done && !current && "text-[#a3a3a3]"
+                done && "text-[var(--fumero-success-fg)]",
+                current && "font-semibold text-[var(--fumero-text)]",
+                !done && !current && "text-[var(--fumero-text-subtle)]"
               )}
             >
               <span
                 className={cn(
                   "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                  done && "border-[#69C400] bg-[#69C400] text-white",
-                  current && "border-[#69C400] bg-white",
-                  !done && !current && "border-[#E5E5E5] bg-white"
+                  done && "border-[var(--fumero-accent)] bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)]",
+                  current && "border-[var(--fumero-accent)] bg-[var(--fumero-surface)]",
+                  !done && !current && "border-[var(--fumero-border)] bg-[var(--fumero-surface)]"
                 )}
                 aria-hidden
               >
                 {done ? (
                   <Check className="h-2.5 w-2.5" strokeWidth={3} />
                 ) : current ? (
-                  <Loader2 className="h-2.5 w-2.5 animate-spin text-[#69C400]" />
+                  <Loader2 className="h-2.5 w-2.5 animate-spin text-[var(--fumero-accent)]" />
                 ) : null}
               </span>
               <span>{phase}</span>

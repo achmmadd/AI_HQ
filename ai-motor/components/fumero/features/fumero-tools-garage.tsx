@@ -48,9 +48,9 @@ type GarageApp = {
 };
 
 const TYPE_BADGE: Record<GarageApp["type"], string> = {
-  widget: "bg-[#E5E5E5] text-[#525252]",
+  widget: "bg-[var(--fumero-border)] text-[var(--fumero-text-muted)]",
   internal: "bg-blue-50 text-blue-700",
-  customer: "bg-[rgba(105,196,0,0.12)] text-[#3d7a00]",
+  customer: "bg-[var(--fumero-success-bg)] text-[var(--fumero-success-fg)]",
 };
 
 const TYPE_LABEL: Record<GarageApp["type"], string> = {
@@ -84,11 +84,11 @@ function appPreviewUrl(app: GarageApp): string {
 
 function CardSkeleton() {
   return (
-    <div className="animate-pulse rounded-xl border border-[#E5E5E5] bg-white p-4">
-      <div className="mb-3 h-4 w-2/3 rounded bg-[#E5E5E5]" />
-      <div className="mb-4 h-3 w-1/3 rounded bg-[#E5E5E5]" />
-      <div className="mb-2 h-3 w-full rounded bg-[#FAFAFA]" />
-      <div className="h-8 w-full rounded-lg bg-[#FAFAFA]" />
+    <div className="animate-pulse rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4">
+      <div className="mb-3 h-4 w-2/3 rounded bg-[var(--fumero-border)]" />
+      <div className="mb-4 h-3 w-1/3 rounded bg-[var(--fumero-border)]" />
+      <div className="mb-2 h-3 w-full rounded bg-[var(--fumero-surface-muted)]" />
+      <div className="h-8 w-full rounded-lg bg-[var(--fumero-surface-muted)]" />
     </div>
   );
 }
@@ -169,20 +169,20 @@ export function FumeroToolsGarage({
       <FumeroPageHeader title={title} description={description} />
 
       {error ? (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="mb-4 rounded-lg border border-[var(--fumero-danger-border)] bg-[var(--fumero-danger-bg)] px-3 py-2 text-sm text-[var(--fumero-danger-fg)]">
           {error}
         </p>
       ) : null}
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-lg border border-[#E5E5E5] bg-white p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-0.5">
           <button
             type="button"
             onClick={() => setViewMode("cards")}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               viewMode === "cards"
-                ? "bg-[#FAFAFA] text-[#171717] shadow-sm"
-                : "text-[#737373] hover:text-[#171717]"
+                ? "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text)] shadow-sm"
+                : "text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
             }`}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
@@ -193,8 +193,8 @@ export function FumeroToolsGarage({
             onClick={() => setViewMode("table")}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               viewMode === "table"
-                ? "bg-[#FAFAFA] text-[#171717] shadow-sm"
-                : "text-[#737373] hover:text-[#171717]"
+                ? "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text)] shadow-sm"
+                : "text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
             }`}
           >
             <List className="h-3.5 w-3.5" />
@@ -203,7 +203,7 @@ export function FumeroToolsGarage({
         </div>
         <Button
           asChild
-          className="rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
+          className="rounded-lg bg-[var(--fumero-accent)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
         >
           <Link href="/fumero/bouwen">
             <Plus className="mr-1.5 h-4 w-4" />
@@ -215,9 +215,9 @@ export function FumeroToolsGarage({
       {/* Tools section */}
       <section className="mb-10">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[#171717]">Tools & widgets</h2>
+          <h2 className="text-sm font-semibold text-[var(--fumero-text)]">Tools & widgets</h2>
           {!loadingGarage && garageTools.length > 0 ? (
-            <span className="text-xs text-[#737373]">{garageTools.length} projecten</span>
+            <span className="text-xs text-[var(--fumero-text-muted)]">{garageTools.length} projecten</span>
           ) : null}
         </div>
 
@@ -229,19 +229,19 @@ export function FumeroToolsGarage({
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-[#E5E5E5] bg-white p-8 text-center text-sm text-[#737373]">
+            <div className="rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-8 text-center text-sm text-[var(--fumero-text-muted)]">
               Laden…
             </div>
           )
         ) : garageTools.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[#E5E5E5] bg-white px-6 py-12 text-center">
-            <p className="text-sm font-medium text-[#525252]">Nog geen tools gebouwd</p>
-            <p className="mt-1 text-xs text-[#737373]">
+          <div className="rounded-xl border border-dashed border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-12 text-center">
+            <p className="text-sm font-medium text-[var(--fumero-text-muted)]">Nog geen tools gebouwd</p>
+            <p className="mt-1 text-xs text-[var(--fumero-text-muted)]">
               Open chat en zeg bv. &quot;maak een chat widget&quot;.
             </p>
             <Button
               asChild
-              className="mt-4 rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
+              className="mt-4 rounded-lg bg-[var(--fumero-accent)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
             >
               <Link href="/fumero/bouwen">Start in Bouwen</Link>
             </Button>
@@ -261,19 +261,19 @@ export function FumeroToolsGarage({
                   <div className="flex flex-1 flex-col p-4">
                     <div className="mb-3 flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="truncate text-sm font-semibold text-[#171717]">
+                        <h3 className="truncate text-sm font-semibold text-[var(--fumero-text)]">
                           {tool.name}
                         </h3>
-                        <p className="mt-0.5 text-[11px] text-[#737373]">
+                        <p className="mt-0.5 text-[11px] text-[var(--fumero-text-muted)]">
                           {deployTypeLabel(tool.deploy_type)}
                         </p>
                       </div>
                       <FumeroStatusBadge status={status} />
                     </div>
-                    <dl className="mb-4 space-y-1 text-xs text-[#737373]">
+                    <dl className="mb-4 space-y-1 text-xs text-[var(--fumero-text-muted)]">
                       <div className="flex justify-between">
                         <dt>Versie</dt>
-                        <dd className="tabular-nums font-medium text-[#525252]">
+                        <dd className="tabular-nums font-medium text-[var(--fumero-text-muted)]">
                           {versionLabel(tool)}
                         </dd>
                       </div>
@@ -293,7 +293,7 @@ export function FumeroToolsGarage({
                         <Button
                           asChild
                           size="sm"
-                          className="h-8 flex-1 rounded-lg bg-[#69C400] text-xs shadow-none hover:bg-[#5db000]"
+                          className="h-8 flex-1 rounded-lg bg-[var(--fumero-accent)] text-xs shadow-none hover:bg-[var(--fumero-accent-hover)]"
                         >
                           <Link href={`/fumero/bouwen?tool=${tool.id}`}>
                             <MessageSquare className="mr-1 h-3 w-3" />
@@ -306,7 +306,7 @@ export function FumeroToolsGarage({
                           asChild
                           variant="secondary"
                           size="sm"
-                          className="h-8 rounded-lg border-[#E5E5E5] text-xs"
+                          className="h-8 rounded-lg border-[var(--fumero-border)] text-xs"
                         >
                           <a href={preview} target="_blank" rel="noreferrer">
                             <ExternalLink className="mr-1 h-3 w-3" />
@@ -317,13 +317,13 @@ export function FumeroToolsGarage({
                     </div>
                   </div>
                   {!tool.archived ? (
-                    <div className="flex border-t border-[#E5E5E5] px-2 py-1.5">
+                    <div className="flex border-t border-[var(--fumero-border)] px-2 py-1.5">
                       {(tool.embed_code || tool.internal_url) ? (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 rounded-md text-[11px] text-[#737373]"
+                          className="h-7 rounded-md text-[11px] text-[var(--fumero-text-muted)]"
                           onClick={() => {
                             void navigator.clipboard
                               .writeText(tool.embed_code || tool.internal_url || "")
@@ -341,7 +341,7 @@ export function FumeroToolsGarage({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="ml-auto h-7 rounded-md text-[11px] text-[#737373] hover:text-red-600"
+                        className="ml-auto h-7 rounded-md text-[11px] text-[var(--fumero-text-muted)] hover:text-[var(--fumero-destructive)]"
                         onClick={() => void archive(tool.id)}
                       >
                         <Archive className="mr-1 h-3 w-3" />
@@ -354,10 +354,10 @@ export function FumeroToolsGarage({
             })}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-[#E5E5E5] bg-white">
+          <div className="overflow-hidden rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] text-left text-xs font-medium text-[#737373]">
+                <tr className="border-b border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] text-left text-xs font-medium text-[var(--fumero-text-muted)]">
                   <th className="px-4 py-2">Naam</th>
                   <th className="px-4 py-2">Type</th>
                   <th className="px-4 py-2">Versie</th>
@@ -370,26 +370,26 @@ export function FumeroToolsGarage({
                 {garageTools.map((tool) => (
                   <tr
                     key={tool.id}
-                    className={`border-b border-[#E5E5E5] last:border-0 ${
+                    className={`border-b border-[var(--fumero-border)] last:border-0 ${
                       tool.archived ? "opacity-60" : ""
                     }`}
                   >
                     <td className="px-4 py-2 font-medium">{tool.name}</td>
-                    <td className="px-4 py-2 text-[#737373]">
+                    <td className="px-4 py-2 text-[var(--fumero-text-muted)]">
                       {deployTypeLabel(tool.deploy_type)}
                     </td>
-                    <td className="px-4 py-2 text-[#737373]">{versionLabel(tool)}</td>
+                    <td className="px-4 py-2 text-[var(--fumero-text-muted)]">{versionLabel(tool)}</td>
                     <td className="px-4 py-2">
                       <FumeroStatusBadge status={garageStatus(tool)} />
                     </td>
-                    <td className="px-4 py-2 tabular-nums text-[#737373]">
+                    <td className="px-4 py-2 tabular-nums text-[var(--fumero-text-muted)]">
                       {tool.stats_views} / {tool.stats_interactions}
                     </td>
                     <td className="px-4 py-2 text-right">
                       {!tool.archived ? (
                         <Link
                           href={`/fumero/bouwen?tool=${tool.id}`}
-                          className="text-xs text-[#69C400] hover:underline"
+                          className="text-xs text-[var(--fumero-accent)] hover:underline"
                         >
                           Bewerk
                         </Link>
@@ -408,12 +408,12 @@ export function FumeroToolsGarage({
       {/* Full-stack apps section */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[#171717]">Full-stack apps</h2>
+          <h2 className="text-sm font-semibold text-[var(--fumero-text)]">Full-stack apps</h2>
           <Button
             asChild
             size="sm"
             variant="secondary"
-            className="h-8 rounded-lg border-[#E5E5E5] text-xs"
+            className="h-8 rounded-lg border-[var(--fumero-border)] text-xs"
           >
             <Link href="/fumero/bouwen?q=maak%20een%20volledige%20app%20voor%20voorraad">
               Nieuwe app in Bouwen
@@ -430,9 +430,9 @@ export function FumeroToolsGarage({
             </div>
           ) : null
         ) : garageApps.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[#E5E5E5] bg-white px-6 py-10 text-center">
-            <p className="text-sm font-medium text-[#525252]">Nog geen full-stack apps</p>
-            <p className="mt-1 max-w-md mx-auto text-xs text-[#737373]">
+          <div className="rounded-xl border border-dashed border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-10 text-center">
+            <p className="text-sm font-medium text-[var(--fumero-text-muted)]">Nog geen full-stack apps</p>
+            <p className="mt-1 max-w-md mx-auto text-xs text-[var(--fumero-text-muted)]">
               Zeg in chat: &quot;maak een volledige app voor voorraad&quot; of &quot;bouw een
               klantenlijst app&quot;.
             </p>
@@ -442,12 +442,12 @@ export function FumeroToolsGarage({
             {garageApps.map((app) => (
               <article
                 key={app.id}
-                className="group flex flex-col rounded-xl border border-[#E5E5E5] bg-white transition-shadow hover:shadow-sm"
+                className="group flex flex-col rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] transition-shadow hover:shadow-sm"
               >
                 <div className="flex flex-1 flex-col p-4">
                   <div className="mb-3 flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="truncate text-sm font-semibold text-[#171717]">
+                      <h3 className="truncate text-sm font-semibold text-[var(--fumero-text)]">
                         {app.naam}
                       </h3>
                       <span
@@ -458,14 +458,14 @@ export function FumeroToolsGarage({
                     </div>
                     <FumeroStatusBadge status={app.status} />
                   </div>
-                  <dl className="mb-4 space-y-1 text-xs text-[#737373]">
+                  <dl className="mb-4 space-y-1 text-xs text-[var(--fumero-text-muted)]">
                     <div className="flex justify-between">
                       <dt>Versie</dt>
-                      <dd className="tabular-nums font-medium text-[#525252]">v{app.version}</dd>
+                      <dd className="tabular-nums font-medium text-[var(--fumero-text-muted)]">v{app.version}</dd>
                     </div>
                     <div className="flex justify-between">
                       <dt>Data rijen</dt>
-                      <dd className="tabular-nums font-medium text-[#525252]">
+                      <dd className="tabular-nums font-medium text-[var(--fumero-text-muted)]">
                         {app.row_count ?? 0}
                       </dd>
                     </div>
@@ -478,7 +478,7 @@ export function FumeroToolsGarage({
                     <Button
                       asChild
                       size="sm"
-                      className="h-8 flex-1 rounded-lg bg-[#69C400] text-xs shadow-none hover:bg-[#5db000]"
+                      className="h-8 flex-1 rounded-lg bg-[var(--fumero-accent)] text-xs shadow-none hover:bg-[var(--fumero-accent-hover)]"
                     >
                       <Link href={`/fumero/bouwen?app=${app.slug}`}>
                         <MessageSquare className="mr-1 h-3 w-3" />
@@ -489,7 +489,7 @@ export function FumeroToolsGarage({
                       asChild
                       variant="secondary"
                       size="sm"
-                      className="h-8 rounded-lg border-[#E5E5E5] text-xs"
+                      className="h-8 rounded-lg border-[var(--fumero-border)] text-xs"
                     >
                       <a href={appPreviewUrl(app)} target="_blank" rel="noreferrer">
                         <ExternalLink className="mr-1 h-3 w-3" />
@@ -500,7 +500,7 @@ export function FumeroToolsGarage({
                       type="button"
                       variant="secondary"
                       size="sm"
-                      className="h-8 rounded-lg border-[#E5E5E5] text-xs"
+                      className="h-8 rounded-lg border-[var(--fumero-border)] text-xs"
                       onClick={() => setViewingApp(app)}
                     >
                       <Database className="mr-1 h-3 w-3" />
@@ -512,10 +512,10 @@ export function FumeroToolsGarage({
             ))}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-[#E5E5E5] bg-white">
+          <div className="overflow-hidden rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] text-left text-xs font-medium text-[#737373]">
+                <tr className="border-b border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] text-left text-xs font-medium text-[var(--fumero-text-muted)]">
                   <th className="px-4 py-2">Naam</th>
                   <th className="px-4 py-2">Type</th>
                   <th className="px-4 py-2">Versie</th>
@@ -527,7 +527,7 @@ export function FumeroToolsGarage({
               </thead>
               <tbody>
                 {garageApps.map((app) => (
-                  <tr key={app.id} className="border-b border-[#E5E5E5] last:border-0">
+                  <tr key={app.id} className="border-b border-[var(--fumero-border)] last:border-0">
                     <td className="px-4 py-2 font-medium">{app.naam}</td>
                     <td className="px-4 py-2">
                       <span
@@ -536,27 +536,27 @@ export function FumeroToolsGarage({
                         {TYPE_LABEL[app.type]}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-[#737373]">v{app.version}</td>
+                    <td className="px-4 py-2 text-[var(--fumero-text-muted)]">v{app.version}</td>
                     <td className="px-4 py-2">
                       <FumeroStatusBadge status={app.status} />
                     </td>
-                    <td className="px-4 py-2 tabular-nums text-[#737373]">
+                    <td className="px-4 py-2 tabular-nums text-[var(--fumero-text-muted)]">
                       {app.row_count ?? 0} rijen
                     </td>
-                    <td className="px-4 py-2 text-xs text-[#737373]">
+                    <td className="px-4 py-2 text-xs text-[var(--fumero-text-muted)]">
                       {formatRelativeDate(app.updated_at)}
                     </td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex justify-end gap-2">
                         <Link
                           href={`/fumero/bouwen?app=${app.slug}`}
-                          className="text-xs text-[#69C400] hover:underline"
+                          className="text-xs text-[var(--fumero-accent)] hover:underline"
                         >
                           Bewerk
                         </Link>
                         <button
                           type="button"
-                          className="text-xs text-[#525252] hover:underline"
+                          className="text-xs text-[var(--fumero-text-muted)] hover:underline"
                           onClick={() => setViewingApp(app)}
                         >
                           Data
@@ -565,7 +565,7 @@ export function FumeroToolsGarage({
                           href={appPreviewUrl(app)}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-[#525252] hover:underline"
+                          className="text-xs text-[var(--fumero-text-muted)] hover:underline"
                         >
                           Preview
                         </a>

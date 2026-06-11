@@ -110,7 +110,7 @@ export function ContentStudioOutputGrid({
                     <button
                       key={template.id}
                       type="button"
-                      className="content-studio-tile rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] p-3 text-left transition-colors hover:border-[rgba(105,196,0,0.35)] hover:bg-[var(--fumero-surface)]"
+                      className="content-studio-tile rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] p-3 text-left transition-colors hover:border-[var(--fumero-success-border)] hover:bg-[var(--fumero-surface)]"
                       onClick={() =>
                         setLocalDraft(starterToDrawerDraft(template))
                       }
@@ -180,7 +180,7 @@ export function ContentStudioOutputGrid({
                 )}
                 <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                   <p
-                    className="mb-2 line-clamp-2 fumero-text-caption text-white/90"
+                    className="mb-2 line-clamp-2 fumero-text-caption text-[var(--fumero-inverse-text)]/90"
                     title={item.user_prompt}
                   >
                     {item.media_type === "video" ? "Video · " : ""}
@@ -195,7 +195,7 @@ export function ContentStudioOutputGrid({
                       download
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-8 items-center gap-1 rounded-md bg-white/15 px-2 fumero-text-caption text-white backdrop-blur-sm hover:bg-white/25"
+                      className="inline-flex h-8 items-center gap-1 rounded-md bg-[var(--fumero-surface)]/15 px-2 fumero-text-caption text-[var(--fumero-inverse-text)] backdrop-blur-sm hover:bg-[var(--fumero-surface)]/25"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download
@@ -203,7 +203,7 @@ export function ContentStudioOutputGrid({
                     {item.content_id ? (
                       <button
                         type="button"
-                        className="inline-flex h-8 items-center gap-1 rounded-md bg-white/15 px-2 fumero-text-caption text-white backdrop-blur-sm hover:bg-white/25"
+                        className="inline-flex h-8 items-center gap-1 rounded-md bg-[var(--fumero-surface)]/15 px-2 fumero-text-caption text-[var(--fumero-inverse-text)] backdrop-blur-sm hover:bg-[var(--fumero-surface)]/25"
                         onClick={() => void schedule(item)}
                       >
                         <Calendar className="h-3.5 w-3.5" />
@@ -212,7 +212,7 @@ export function ContentStudioOutputGrid({
                     ) : null}
                     <button
                       type="button"
-                      className="inline-flex h-8 items-center gap-1 rounded-md bg-white/15 px-2 fumero-text-caption text-white backdrop-blur-sm hover:bg-white/25"
+                      className="inline-flex h-8 items-center gap-1 rounded-md bg-[var(--fumero-surface)]/15 px-2 fumero-text-caption text-[var(--fumero-inverse-text)] backdrop-blur-sm hover:bg-[var(--fumero-surface)]/25"
                       onClick={() => void copyPrompt(item.user_prompt)}
                     >
                       <Copy className="h-3.5 w-3.5" />

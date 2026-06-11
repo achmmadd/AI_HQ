@@ -40,13 +40,8 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: "/fumero",
-        destination: "/fumero/chat",
-        permanent: false,
-      },
-      {
         source: "/fumero/workspace",
-        destination: "/fumero/chat",
+        destination: "/fumero",
         permanent: false,
       },
       {

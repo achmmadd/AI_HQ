@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { FumeroShell } from "@/components/fumero/fumero-shell";
 import { FumeroPageHeader } from "@/components/fumero/ops/fumero-page-header";
+import { FumeroAlert } from "@/components/fumero/ui/fumero-primitives";
 import { FumeroOrderStatusBadge } from "@/components/fumero/ops/fumero-order-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,13 @@ export default function FumeroOrdersPage() {
   const [query, setQuery] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState("");
+  const [syncMeta, setSyncMeta] = useState<{
+    state?: string;
+    configured?: boolean;
+    last_success_at?: string | null;
+    last_scraped_at?: string | null;
+    last_error?: string | null;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,11 +54,13 @@ export default function FumeroOrdersPage() {
       const data = (await res.json()) as {
         orders?: OrderRow[];
         stats?: typeof stats;
+        sync?: typeof syncMeta;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error || "Orders laden mislukt");
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       setStats(data.stats);
+      setSyncMeta(data.sync ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
@@ -101,35 +111,62 @@ export default function FumeroOrdersPage() {
   }, [orders, query]);
 
   return (
-    <FumeroShell page="Orders">
+    <FumeroShell page="Bestellingen">
       <div className="mx-auto max-w-5xl">
         <FumeroPageHeader
-          title="Orders"
-          description="Orders uit de database — sync via automation."
+          title="Bestellingen"
+          description="Overzicht van shoporders — synchroniseer om de laatste stand te zien."
         />
+
+        {syncMeta?.state === "config_missing" ? (
+          <FumeroAlert variant="warning" className="mb-4">
+            Shop-login is nog niet geconfigureerd (FUMERO_ADMIN_USER en
+            FUMERO_ADMIN_PASSWORD). Synchronisatie is uitgeschakeld tot dit is
+            ingesteld.{" "}
+            <Link href="/fumero/settings/context" className="font-medium underline">
+              Naar instellingen
+            </Link>
+          </FumeroAlert>
+        ) : null}
+        {syncMeta?.state === "sync_failed" && syncMeta.last_error ? (
+          <FumeroAlert variant="error" className="mb-4">
+            Laatste synchronisatie mislukt: {syncMeta.last_error}
+          </FumeroAlert>
+        ) : null}
+        {syncMeta?.state === "never_synced" ? (
+          <FumeroAlert variant="info" className="mb-4">
+            Er is nog nooit gesynchroniseerd. Start een sync om orders op te halen.
+          </FumeroAlert>
+        ) : null}
+        {syncMeta?.last_success_at ? (
+          <p className="mb-4 text-xs text-[var(--fumero-text-muted)]">
+            Laatst succesvol gesynchroniseerd:{" "}
+            {new Date(syncMeta.last_success_at).toLocaleString("nl-NL")}
+          </p>
+        ) : null}
 
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {[
             { label: "Totaal", value: stats?.count ?? orders.length },
             { label: "Vandaag", value: stats?.today_count ?? 0 },
             {
-              label: "Omzet (DB)",
+              label: "Omzet",
               value: asEuro(Number(stats?.total_cents ?? 0)),
             },
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-lg border border-[#E5E5E5] bg-white px-4 py-3"
+              className="rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-4 py-3"
             >
-              <p className="text-xs text-[#737373]">{s.label}</p>
-              <p className="mt-1 text-xl font-semibold text-[#171717]">{s.value}</p>
+              <p className="text-xs text-[var(--fumero-text-muted)]">{s.label}</p>
+              <p className="mt-1 text-xl font-semibold text-[var(--fumero-text)]">{s.value}</p>
             </div>
           ))}
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
           <Input
-            className="max-w-sm rounded-lg border-[#E5E5E5]"
+            className="max-w-sm rounded-lg border-[var(--fumero-border)]"
             placeholder="Zoek order of klant…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -138,11 +175,11 @@ export default function FumeroOrdersPage() {
             type="button"
             variant="secondary"
             size="sm"
-            className="rounded-lg border border-[#E5E5E5] bg-white"
+            className="rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)]"
             disabled={syncing}
             onClick={() => void syncOrders()}
           >
-            {syncing ? "Synchroniseren…" : "Sync orders"}
+            {syncing ? "Synchroniseren…" : "Synchroniseren"}
           </Button>
           <Button
             type="button"
@@ -156,20 +193,20 @@ export default function FumeroOrdersPage() {
         </div>
 
         {syncNote ? (
-          <p className="mb-4 text-sm text-[#525252]">{syncNote}</p>
+          <p className="mb-4 text-sm text-[var(--fumero-text-muted)]">{syncNote}</p>
         ) : null}
 
         {loading ? (
-          <p className="text-sm text-[#737373]">Orders laden…</p>
+          <p className="text-sm text-[var(--fumero-text-muted)]">Orders laden…</p>
         ) : error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {error}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-[#E5E5E5] bg-white">
+          <div className="overflow-hidden rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] text-left text-xs font-medium text-[#737373]">
+                <tr className="border-b border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] text-left text-xs font-medium text-[var(--fumero-text-muted)]">
                   <th className="px-4 py-2">#Order</th>
                   <th className="px-4 py-2">Klant</th>
                   <th className="px-4 py-2 text-right">Bedrag</th>
@@ -181,25 +218,31 @@ export default function FumeroOrdersPage() {
                 {visible.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center">
-                      <p className="text-sm font-medium text-[#525252]">Geen orders gevonden</p>
-                      <p className="mt-1 text-xs text-[#737373]">
+                      <p className="text-sm font-medium text-[var(--fumero-text-muted)]">Geen orders gevonden</p>
+                      <p className="mt-1 text-xs text-[var(--fumero-text-muted)]">
                         {query.trim()
                           ? "Pas je zoekopdracht aan of wis het filter."
-                          : "Synchroniseer orders via de knop hierboven of activeer de order-automation."}
+                          : syncMeta?.state === "empty"
+                            ? "Er zijn nog geen orders in de database — dat kan normaal zijn als er vandaag geen verkopen waren."
+                            : syncMeta?.state === "never_synced"
+                              ? "Start synchronisatie om orders van de shop op te halen."
+                              : syncMeta?.state === "config_missing"
+                                ? "Configureer eerst shop-login voordat synchronisatie werkt."
+                                : "Synchroniseer orders via de knop hierboven."}
                       </p>
                       {!query.trim() ? (
                         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                           <Button
                             type="button"
                             size="sm"
-                            className="rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
+                            className="rounded-lg bg-[var(--fumero-accent)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
                             disabled={syncing}
                             onClick={() => void syncOrders()}
                           >
-                            {syncing ? "Synchroniseren…" : "Sync orders"}
+                            {syncing ? "Synchroniseren…" : "Synchroniseren"}
                           </Button>
                           <Button asChild type="button" size="sm" variant="secondary" className="rounded-lg">
-                            <Link href="/fumero/automations">Naar automations</Link>
+                            <Link href="/fumero/automations">Naar automatisering</Link>
                           </Button>
                         </div>
                       ) : null}
@@ -207,11 +250,11 @@ export default function FumeroOrdersPage() {
                   </tr>
                 ) : (
                   visible.map((order) => (
-                    <tr key={order.id} className="border-b border-[#E5E5E5] last:border-0">
+                    <tr key={order.id} className="border-b border-[var(--fumero-border)] last:border-0">
                       <td className="px-4 py-2 font-medium tabular-nums">
                         #{order.external_id}
                       </td>
-                      <td className="px-4 py-2 text-[#525252]">
+                      <td className="px-4 py-2 text-[var(--fumero-text-muted)]">
                         {order.customer_hint ?? "—"}
                       </td>
                       <td className="px-4 py-2 text-right font-medium tabular-nums">
@@ -220,7 +263,7 @@ export default function FumeroOrdersPage() {
                       <td className="px-4 py-2">
                         <FumeroOrderStatusBadge rawSummary={order.raw_summary} />
                       </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-[#737373]">
+                      <td className="px-4 py-2 whitespace-nowrap text-[var(--fumero-text-muted)]">
                         {new Date(order.order_date).toLocaleString("nl-NL", {
                           day: "numeric",
                           month: "short",

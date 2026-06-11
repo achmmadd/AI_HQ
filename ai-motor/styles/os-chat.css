@@ -1,0 +1,311 @@
+/**
+ * MotorsAI OS — Chat experience (calm, focused)
+ */
+
+/* ── Workspace ── */
+.chat-os-workspace {
+  background: var(--os-bg);
+}
+
+[data-os-chat] .motors-chat-panel,
+[data-os-chat] .chat-os-panel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+[data-os-chat] .motors-chat-column {
+  background: transparent;
+}
+
+/* ── Command bar (minimal) ── */
+.chat-os-command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--os-border);
+  background: var(--os-bg-elevated);
+}
+
+.chat-os-command-bar__left {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-os-command-bar__actions {
+  display: flex;
+  shrink: 0;
+  align-items: center;
+}
+
+.chat-os-command-bar__btn {
+  display: inline-flex;
+  height: 32px;
+  width: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--os-radius-sm);
+  color: var(--os-text-muted);
+  transition: background var(--os-transition), color var(--os-transition);
+}
+
+.chat-os-command-bar__btn:hover,
+.chat-os-command-bar__btn--active {
+  background: var(--os-surface-hover);
+  color: var(--os-text);
+}
+
+.chat-os-command-bar__live-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  background: var(--os-accent);
+}
+
+/* ── Thread rail ── */
+[data-os-chat] .motors-chat-threads,
+[data-os-chat] .chat-os-thread-rail {
+  background: var(--os-bg-elevated) !important;
+  border-color: var(--os-border) !important;
+}
+
+.chat-os-thread-rail__head {
+  border-bottom: 1px solid var(--os-border);
+  padding-bottom: 8px;
+}
+
+.chat-os-new-chat-btn {
+  background: var(--os-accent-muted) !important;
+  border: 1px solid rgba(105, 196, 0, 0.2) !important;
+  font-weight: 600;
+}
+
+[data-os-chat] .chat-os-thread-search,
+[data-os-chat] .motors-chat-threads input[type="search"] {
+  background: var(--os-bg-subtle) !important;
+  border-color: var(--os-border) !important;
+  color: var(--os-text);
+  border-radius: var(--os-radius-md) !important;
+}
+
+[data-os-chat] .motors-chat-threads input[type="search"]::placeholder {
+  color: var(--os-text-subtle);
+}
+
+[data-os-chat] .motors-chat-threads input[type="search"]:focus {
+  border-color: rgba(105, 196, 0, 0.35) !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(105, 196, 0, 0.08);
+}
+
+[data-os-chat] .motors-chat-threads .fumero-thread-item,
+[data-os-chat] .chat-os-thread-item {
+  border-radius: var(--os-radius-md);
+  color: var(--os-text-muted);
+  transition: background var(--os-transition), color var(--os-transition);
+}
+
+[data-os-chat] .motors-chat-threads .fumero-thread-item:hover,
+[data-os-chat] .chat-os-thread-item:hover {
+  background: var(--os-surface-hover);
+  color: var(--os-text);
+}
+
+[data-os-chat] .motors-chat-threads .fumero-thread-item[data-active="true"],
+[data-os-chat] .chat-os-thread-item--active {
+  background: var(--os-accent-muted) !important;
+  color: var(--os-text) !important;
+  font-weight: 500;
+}
+
+[data-os-chat] .motors-chat-new-btn {
+  background: var(--os-accent-muted) !important;
+  color: var(--os-accent) !important;
+  border-radius: var(--os-radius-md);
+  font-weight: 600;
+}
+
+/* ── Messages ── */
+[data-os-chat] .chat-os-messages {
+  max-width: 48rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+[data-os-chat] .chat-os-message-user {
+  padding-left: 8%;
+}
+
+[data-os-chat] .motors-chat-bubble-user {
+  background: rgba(105, 196, 0, 0.12) !important;
+  border: 1px solid rgba(105, 196, 0, 0.18) !important;
+  color: var(--os-text) !important;
+  border-radius: var(--os-radius-lg) var(--os-radius-lg) 4px var(--os-radius-lg) !important;
+  max-width: min(85%, 32rem);
+}
+
+[data-os-chat] .motors-chat-bubble-assistant {
+  background: var(--os-bg-subtle) !important;
+  border: 1px solid var(--os-border) !important;
+  border-radius: 4px var(--os-radius-lg) var(--os-radius-lg) var(--os-radius-lg) !important;
+  padding: 0.75rem 1rem;
+}
+
+[data-os-chat] .motors-chat-bubble-assistant .chat-markdown {
+  color: var(--os-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+[data-os-chat] .motors-chat-agent-label {
+  color: var(--os-text-muted) !important;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* ── Empty home ── */
+[data-os-chat] .fumero-chat-empty-home,
+[data-os-chat] .chat-os-empty-home,
+[data-os-chat] .chat-os-empty-state {
+  background: transparent;
+}
+
+[data-os-chat] .chat-os-starter-card {
+  background: var(--os-bg-subtle);
+  border: 1px solid var(--os-border);
+  border-radius: var(--os-radius-md);
+  transition: border-color var(--os-transition), background var(--os-transition);
+}
+
+[data-os-chat] .chat-os-starter-card:hover {
+  border-color: rgba(105, 196, 0, 0.25);
+  background: var(--os-surface-hover);
+}
+
+[data-os-chat] .chat-os-starter-card__icon {
+  background: var(--os-accent-muted);
+  color: var(--os-accent);
+  border-radius: var(--os-radius-sm);
+}
+
+/* ── Composer (high visibility) ── */
+[data-os-chat] .chat-os-composer-dock {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  background: var(--os-composer-bg) !important;
+  border-top: 1px solid var(--os-composer-border) !important;
+  box-shadow: var(--os-composer-shadow);
+}
+
+[data-os-chat] .chat-os-composer-dock .motors-chat-column,
+[data-os-chat] .chat-os-composer-dock .fumero-composer-shell {
+  max-width: 48rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+[data-os-chat] .chat-os-composer-dock .fumero-composer-shell {
+  background: var(--os-composer-shell) !important;
+  border: 1px solid var(--os-composer-border) !important;
+  border-radius: var(--os-radius-xl) !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    var(--os-composer-inset);
+}
+
+.dark [data-os-chat] .chat-os-composer-dock .fumero-composer-shell {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    var(--os-composer-inset);
+}
+
+[data-os-chat] .chat-os-composer-dock .fumero-composer-shell:focus-within {
+  border-color: rgba(105, 196, 0, 0.55) !important;
+  box-shadow:
+    0 0 0 3px rgba(105, 196, 0, 0.14),
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    var(--os-composer-inset);
+}
+
+.dark [data-os-chat] .chat-os-composer-dock .fumero-composer-shell:focus-within {
+  box-shadow:
+    0 0 0 3px rgba(105, 196, 0, 0.14),
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    var(--os-composer-inset);
+}
+
+[data-os-chat] .chat-os-composer-dock .fumero-composer-shell textarea {
+  color: var(--os-text);
+  font-size: 15px;
+  min-height: 48px;
+}
+
+[data-os-chat] .chat-os-composer-dock .fumero-composer-shell textarea::placeholder {
+  color: var(--os-text-muted);
+}
+
+[data-os-chat] .chat-os-composer-wrap .motors-chat-composer,
+[data-os-chat] .motors-chat-composer {
+  background: transparent !important;
+  border-top: none !important;
+}
+
+/* Empty-state composer (centered) */
+[data-os-chat] .chat-os-composer-wrap:not(.chat-os-composer-dock) .fumero-composer-shell {
+  background: #1c1c22 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: var(--os-radius-xl) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Chips & replies ── */
+[data-os-chat] .motors-chat-suggestion-chip,
+[data-os-chat] .motors-chat-quick-reply {
+  background: var(--os-bg-subtle) !important;
+  border-color: var(--os-border) !important;
+  color: var(--os-text-muted) !important;
+}
+
+[data-os-chat] .motors-chat-suggestion-chip:hover,
+[data-os-chat] .motors-chat-quick-reply:hover {
+  border-color: rgba(105, 196, 0, 0.3) !important;
+  color: var(--os-text) !important;
+}
+
+/* ── Status ── */
+[data-os-chat] .motors-typing-dots .motors-typing-dot {
+  background: var(--os-accent) !important;
+}
+
+[data-os-chat] .motors-chat-stream-status {
+  color: var(--os-text-muted);
+}
+
+[data-os-chat] .motors-chat-prep-pill {
+  color: var(--os-accent);
+}
+
+[data-os-chat] .motors-chat-loading {
+  color: var(--os-text-muted);
+}
+
+[data-os-chat] .motors-chat-message-actions {
+  border-color: var(--os-border) !important;
+}
+
+[data-os-chat] .motors-chat-message-actions button {
+  color: var(--os-text-subtle);
+}
+
+[data-os-chat] .chat-os-main {
+  background: var(--os-bg);
+}

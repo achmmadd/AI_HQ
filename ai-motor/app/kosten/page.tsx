@@ -12,6 +12,9 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
+import { BarChart3 } from "lucide-react";
 
 type Period = "today" | "week" | "month";
 
@@ -35,11 +38,14 @@ const PERIOD_LABELS: Record<Period, string> = {
 export default function KostenPage() {
   const [data, setData] = useState<UsageData | null>(null);
   const [period, setPeriod] = useState<Period>("today");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetch(`/api/usage?period=${period}`)
       .then((r) => r.json())
-      .then(setData);
+      .then(setData)
+      .finally(() => setLoading(false));
   }, [period]);
 
   const totalCalls =
@@ -50,8 +56,7 @@ export default function KostenPage() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-text-secondary">
-            Usage logs — schatting op basis van ingelogde calls (
-            <code className="text-xs">POST /api/usage</code>)
+            Overzicht van AI-verbruik en geschatte kosten per periode.
           </p>
           <div className="flex gap-2">
             {(["today", "week", "month"] as const).map((p) => (
@@ -69,7 +74,9 @@ export default function KostenPage() {
           </div>
         </div>
 
-        {data && (
+        {loading && !data ? <PageLoading /> : null}
+
+        {!loading && data && (
           <>
             <Card>
               <CardContent className="p-6">
@@ -121,9 +128,12 @@ export default function KostenPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {data.totals.length === 0 ? (
-                  <p className="text-sm text-text-secondary">
-                    Nog geen data — laat workflows logs sturen naar /api/usage
-                  </p>
+                  <EmptyState
+                    icon={BarChart3}
+                    title="Nog geen verbruiksdata"
+                    description="Zodra agents en workflows actief zijn, verschijnen hier kosten per model en workspace."
+                    className="border-none bg-transparent py-6"
+                  />
                 ) : (
                   data.totals.map((t, i) => (
                     <div

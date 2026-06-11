@@ -1,17 +1,19 @@
-"use client";
-
 import { Suspense } from "react";
 import { FumeroShell } from "@/components/fumero/fumero-shell";
 import { CodeWorkspaceLayout } from "@/components/code-workspace/CodeWorkspaceLayout";
 
 export default function FumeroCodePage() {
   return (
-    <FumeroShell page="Code" flush breadcrumbs={[{ label: "Fumero Studio", href: "/fumero/chat" }]}>
+    <FumeroShell
+      page="Code"
+      flush
+      hideTopbar
+    >
       <Suspense
         fallback={
-          <p className="py-8 text-center fumero-text-body-sm text-[var(--fumero-text-muted)]">
+          <div className="flex flex-1 items-center justify-center fumero-text-body-sm text-[var(--fumero-text-muted)]">
             Code workspace laden…
-          </p>
+          </div>
         }
       >
         <CodeWorkspaceLayout defaultKlant="fumero" importFrom="fumero" />

@@ -1,20 +1,22 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Construction } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function WorkspaceStub({
   title,
-  description = "Deze module wordt binnenkort toegevoegd.",
+  description = "Deze module is in ontwikkeling. We werken aan een volledige release.",
+  action,
 }: {
   title: string;
   description?: string;
+  action?: { label: string; href: string };
 }) {
   return (
-    <Card className="max-w-lg border-border/60 bg-surface/80">
-      <CardHeader>
-        <CardTitle className="text-lg text-ws-accent">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-[15px] text-text-secondary">{description}</p>
-      </CardContent>
-    </Card>
+    <EmptyState
+      icon={Construction}
+      title={title}
+      description={description}
+      action={action}
+      className="max-w-lg"
+    />
   );
 }

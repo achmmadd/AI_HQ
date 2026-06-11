@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function FumeroNotFound() {
-  redirect("/fumero/chat");
+  redirect("/fumero");
 }

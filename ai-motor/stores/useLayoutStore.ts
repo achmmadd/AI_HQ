@@ -18,6 +18,10 @@ type LayoutState = {
   previewPanelOpen: boolean;
   togglePreviewPanel: () => void;
   setPreviewPanelOpen: (v: boolean) => void;
+  /** Context paneel in chat (agent, automations, docs) */
+  contextPanelOpen: boolean;
+  toggleContextPanel: () => void;
+  setContextPanelOpen: (v: boolean) => void;
   /** motor_pro = Turbo (browser/automation) */
   motorChatMode: "motor" | "motor_pro";
   setMotorChatMode: (m: "motor" | "motor_pro") => void;
@@ -51,6 +55,11 @@ export const useLayoutStore = create<LayoutState>()(
         set((s) => ({ previewPanelOpen: !s.previewPanelOpen })),
       setPreviewPanelOpen: (previewPanelOpen) => set({ previewPanelOpen }),
 
+      contextPanelOpen: true,
+      toggleContextPanel: () =>
+        set((s) => ({ contextPanelOpen: !s.contextPanelOpen })),
+      setContextPanelOpen: (contextPanelOpen) => set({ contextPanelOpen }),
+
       motorChatMode: "motor",
       setMotorChatMode: (motorChatMode) => set({ motorChatMode }),
 
@@ -66,6 +75,7 @@ export const useLayoutStore = create<LayoutState>()(
         fumeroSidebarCollapsed: s.fumeroSidebarCollapsed,
         chatThreadsOpen: s.chatThreadsOpen,
         previewPanelOpen: s.previewPanelOpen,
+        contextPanelOpen: s.contextPanelOpen,
         motorChatMode: s.motorChatMode,
         planMode: s.planMode,
       }),

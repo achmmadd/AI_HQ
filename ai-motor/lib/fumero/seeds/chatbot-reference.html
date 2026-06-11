@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fumero Chatbot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f5f5f5;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .cl-link {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    color: #69C400;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid #69C400;
+    border-radius: 8px;
+    background: #fff;
+    transition: background 0.15s, color 0.15s;
+  }
+  .cl-link:hover { background: #69C400; color: #fff; }
+
+  .demo-hint {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    max-width: 220px;
+    font-size: 0.8rem;
+    color: #525252;
+    background: #fff;
+    border: 1px solid #E5E5E5;
+    border-radius: 8px;
+    padding: 10px 14px;
+    line-height: 1.4;
+  }
+
+  #fumero-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 52px;
+    height: 52px;
+    background: #69C400;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(105,196,0,0.35);
+    transition: background 0.2s, transform 0.2s;
+    z-index: 9999;
+  }
+  #fumero-toggle:hover { background: #5db000; transform: scale(1.05); }
+  #fumero-toggle svg { width: 24px; height: 24px; fill: #fff; }
+
+  #fumero-widget {
+    position: fixed;
+    bottom: 88px;
+    right: 24px;
+    width: calc(100% - 48px);
+    max-width: 400px;
+    background: #fff;
+    border: 1px solid #E5E5E5;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 9998;
+    font-size: 14px;
+    max-height: calc(100vh - 120px);
+  }
+  #fumero-widget.open { display: flex; }
+
+  .fw-header {
+    background: #69C400;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .fw-header-left { display: flex; align-items: center; gap: 10px; }
+  .fw-avatar {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #fff; font-size: 14px;
+  }
+  .fw-header-info h3 { color: #fff; font-size: 14px; font-weight: 600; }
+  .fw-header-info span { color: rgba(255,255,255,0.8); font-size: 12px; }
+  .fw-close {
+    background: none; border: none; cursor: pointer;
+    color: rgba(255,255,255,0.8); font-size: 20px; line-height: 1;
+    padding: 4px;
+  }
+  .fw-close:hover { color: #fff; }
+
+  .fw-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 200px;
+    max-height: 340px;
+    background: #FAFAFA;
+  }
+  .fw-messages::-webkit-scrollbar { width: 4px; }
+  .fw-messages::-webkit-scrollbar-thumb { background: #E5E5E5; border-radius: 4px; }
+
+  .msg { display: flex; align-items: flex-end; gap: 8px; }
+  .msg.user { flex-direction: row-reverse; }
+  .bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    line-height: 1.5;
+    color: #171717;
+    background: #fff;
+    border: 1px solid #E5E5E5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user .bubble {
+    background: #69C400;
+    color: #fff;
+    border-color: #69C400;
+  }
+  .msg-avatar {
+    width: 28px; height: 28px;
+    background: #69C400;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+
+  .typing { display: flex; gap: 4px; padding: 2px 0; }
+  .typing span {
+    width: 7px; height: 7px;
+    background: #69C400;
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  .fw-quick {
+    padding: 8px 16px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .qr-btn {
+    background: #fff;
+    border: 1px solid #69C400;
+    color: #69C400;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+  }
+  .qr-btn:hover { background: #69C400; color: #fff; }
+
+  .fw-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid #E5E5E5;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .fw-input-row input {
+    flex: 1;
+    border: 1px solid #E5E5E5;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #171717;
+    outline: none;
+    transition: border-color 0.15s;
+    background: #FAFAFA;
+  }
+  .fw-input-row input:focus { border-color: #69C400; background: #fff; }
+  .fw-input-row input::placeholder { color: #A3A3A3; }
+  .fw-send {
+    width: 38px; height: 38px;
+    background: #69C400;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .fw-send:hover { background: #5db000; }
+  .fw-send svg { width: 16px; height: 16px; fill: #fff; }
+
+  .fw-footer {
+    text-align: center;
+    padding: 8px;
+    font-size: 11px;
+    color: #A3A3A3;
+    border-top: 1px solid #E5E5E5;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    #fumero-widget {
+      right: 12px;
+      bottom: 80px;
+      width: calc(100% - 24px);
+    }
+    #fumero-toggle { bottom: 16px; right: 16px; }
+    .demo-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<a class="cl-link" href="../champions-league/index.html">Champions League</a>
+<p class="demo-hint">Klik op de groene knop rechtsonder om de Fumero Assistent te openen.</p>
+
+<button id="fumero-toggle" aria-label="Open chat">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+</button>
+
+<div id="fumero-widget" role="dialog" aria-label="Fumero chat">
+  <div class="fw-header">
+    <div class="fw-header-left">
+      <div class="fw-avatar">F</div>
+      <div class="fw-header-info">
+        <h3>Fumero Assistent</h3>
+        <span>Klantenservice &amp; productinformatie</span>
+      </div>
+    </div>
+    <button class="fw-close" id="fumero-close" aria-label="Sluit chat">&times;</button>
+  </div>
+
+  <div class="fw-messages" id="fw-messages"></div>
+
+  <div class="fw-quick" id="fw-quick">
+    <button class="qr-btn" data-q="Wat is de levertijd?">Levertijd</button>
+    <button class="qr-btn" data-q="Hoe werkt retourneren?">Retourneren</button>
+    <button class="qr-btn" data-q="Wat is HHC?">Wat is HHC?</button>
+    <button class="qr-btn" data-q="Zijn jullie producten legaal?">Legaliteit</button>
+    <button class="qr-btn" data-q="Hoe kan ik betalen?">Betaling</button>
+    <button class="qr-btn" data-q="Hoe kan ik contact opnemen?">Contact</button>
+  </div>
+
+  <div class="fw-input-row">
+    <input type="text" id="fw-input" placeholder="Stel een vraag..." autocomplete="off" maxlength="300">
+    <button class="fw-send" id="fw-send" aria-label="Verstuur">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+
+  <div class="fw-footer">fumero.nl — uitsluitend 18 jaar en ouder</div>
+</div>
+
+<script>
+const KB = {
+  levertijd: {
+    keys: ['levertijd','levering','bezorging','wanneer','hoe lang','shipping','verzend','track'],
+    answer: 'Bestellingen op werkdagen vóór 17:00 uur worden de volgende werkdag verzonden. Gemiddelde levertijd in Nederland is één werkdag. Je ontvangt een track & trace zodra je pakket is aangemeld.'
+  },
+  retour: {
+    keys: ['retour','teruggeven','terugsturen','ruilen','omruilen','return'],
+    answer: 'Je kunt binnen 14 dagen na ontvangst annuleren. Ongeopende en onbeschadigde producten kun je retourneren. Geopende vapes, edibles en producten met verbroken verzegeling zijn vanwege hygiëne uitgesloten. Neem contact op via info@fumero.nl.'
+  },
+  hhc: {
+    keys: ['hhc','hexahydrocannabinol','wat is hhc','hhc uitleg'],
+    answer: 'HHC (hexahydrocannabinol) is een semi-synthetisch cannabinoïde dat lijkt op THC, met vaak een milder effect. Onze producten zijn uitsluitend bestemd voor personen van 18 jaar en ouder.'
+  },
+  thc: {
+    keys: ['thc','tetrahydrocannabinol','wat is thc'],
+    answer: 'THC (tetrahydrocannabinol) is het bekendste psychoactieve cannabinoïde. Fumero biedt producten aan met legale THC-concentraties conform de Nederlandse regelgeving. Onze producten zijn uitsluitend bestemd voor personen van 18 jaar en ouder.'
+  },
+  legaal: {
+    keys: ['legaal','wettelijk','wet','verboden','toegestaan','nederland','legale'],
+    answer: 'Alle Fumero-producten voldoen aan de geldende Nederlandse wetgeving. Onze producten zijn uitsluitend bestemd voor personen van 18 jaar en ouder.'
+  },
+  leeftijd: {
+    keys: ['leeftijd','18','minderjarig','18+','volwassen'],
+    answer: 'Fumero verkoopt uitsluitend aan personen van 18 jaar en ouder. Bij twijfel kan om een leeftijdsverificatie worden gevraagd.'
+  },
+  betalen: {
+    keys: ['betalen','betaling','ideal','creditcard','paypal','betaalmethode','betaalmethoden','crypto','bankoverschrijving','depay'],
+    answer: 'Je kunt bij Fumero betalen via bankoverschrijving of cryptocurrency (DePay). Na je bestelling ontvang je de betaalinstructies. Alle transacties verlopen via een beveiligde verbinding.'
+  },
+  contact: {
+    keys: ['contact','mail','email','bellen','telefoon','bereiken','klantenservice','support'],
+    answer: 'Je kunt ons bereiken via info@fumero.nl. We reageren doorgaans binnen één werkdag.'
+  },
+  showroom: {
+    keys: ['showroom','winkel','fysiek','locatie','adres','bezoeken'],
+    answer: 'Fumero heeft een showroom die je op afspraak kunt bezoeken. Neem contact op via info@fumero.nl voor meer informatie over locatie en openingstijden.'
+  },
+  producten: {
+    keys: ['product','producten','assortiment','wat verkopen','aanbod','shop','kopen','minimum','bestelling'],
+    answer: 'Fumero biedt een zorgvuldig geselecteerd assortiment van HHC- en THC-producten. Het minimum bestelbedrag is €49. Bekijk het volledige aanbod op fumero.nl/shop. Alle producten zijn van gecontroleerde kwaliteit.'
+  },
+  kortingscode: {
+    keys: ['korting','kortingscode','aanbieding','actie','coupon','deal'],
+    answer: 'Actuele aanbiedingen en kortingscodes vind je op fumero.nl of via onze nieuwsbrief. Schrijf je in voor de nieuwsbrief om op de hoogte te blijven.'
+  }
+};
+
+const FALLBACK = 'Daar heb ik geen direct antwoord op. Neem contact op via info@fumero.nl — we reageren doorgaans binnen één werkdag.';
+const GREETING = 'Hallo. Ik ben de Fumero Assistent. Waarmee kan ik je helpen? Kies een onderwerp hieronder of stel je vraag.';
+
+const messagesEl = document.getElementById('fw-messages');
+const inputEl = document.getElementById('fw-input');
+const widget = document.getElementById('fumero-widget');
+const toggle = document.getElementById('fumero-toggle');
+const closeBtn = document.getElementById('fumero-close');
+const quickEl = document.getElementById('fw-quick');
+const sendBtn = document.getElementById('fw-send');
+
+let greeted = false;
+let typingEl = null;
+let responding = false;
+
+function addMsg(text, role) {
+  const msg = document.createElement('div');
+  msg.className = 'msg ' + role;
+
+  if (role === 'bot') {
+    const avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.textContent = 'F';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    msg.appendChild(bubble);
+  }
+
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function showTyping() {
+  hideTyping();
+  typingEl = document.createElement('div');
+  typingEl.className = 'msg bot';
+  typingEl.id = 'typing-indicator';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = 'F';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  const typing = document.createElement('div');
+  typing.className = 'typing';
+  for (let i = 0; i < 3; i++) {
+    typing.appendChild(document.createElement('span'));
+  }
+  bubble.appendChild(typing);
+
+  typingEl.appendChild(avatar);
+  typingEl.appendChild(bubble);
+  messagesEl.appendChild(typingEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function hideTyping() {
+  if (typingEl) {
+    typingEl.remove();
+    typingEl = null;
+  }
+}
+
+function findAnswer(query) {
+  const q = query.toLowerCase().trim();
+  let best = null;
+  let bestScore = 0;
+
+  for (const entry of Object.values(KB)) {
+    for (const keyword of entry.keys) {
+      if (q.includes(keyword.toLowerCase())) {
+        const score = keyword.length;
+        if (score > bestScore) {
+          bestScore = score;
+          best = entry.answer;
+        }
+      }
+    }
+  }
+
+  return best || FALLBACK;
+}
+
+function respond(query) {
+  if (responding) return;
+  const text = query.trim();
+  if (!text) return;
+
+  responding = true;
+  addMsg(text, 'user');
+  inputEl.value = '';
+  showTyping();
+
+  const delay = 500 + Math.floor(Math.random() * 400);
+  setTimeout(function () {
+    hideTyping();
+    addMsg(findAnswer(text), 'bot');
+    responding = false;
+  }, delay);
+}
+
+function handleSend() {
+  respond(inputEl.value);
+}
+
+function openWidget() {
+  widget.classList.add('open');
+  toggle.setAttribute('aria-label', 'Sluit chat');
+  if (!greeted) {
+    greeted = true;
+    addMsg(GREETING, 'bot');
+  }
+  inputEl.focus();
+}
+
+function closeWidget() {
+  widget.classList.remove('open');
+  toggle.setAttribute('aria-label', 'Open chat');
+}
+
+toggle.addEventListener('click', function () {
+  if (widget.classList.contains('open')) {
+    closeWidget();
+  } else {
+    openWidget();
+  }
+});
+
+closeBtn.addEventListener('click', closeWidget);
+sendBtn.addEventListener('click', handleSend);
+
+inputEl.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleSend();
+  }
+});
+
+quickEl.addEventListener('click', function (e) {
+  const btn = e.target.closest('.qr-btn');
+  if (!btn) return;
+  const q = btn.dataset.q;
+  if (q) respond(q);
+});
+
+openWidget();
+</script>
+</body>
+</html>

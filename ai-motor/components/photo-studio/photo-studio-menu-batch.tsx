@@ -82,7 +82,7 @@ export function PhotoStudioMenuBatch({ klant, onDone }: Props) {
   };
 
   return (
-    <div className="rounded-xl border border-[#E5E5E5] bg-white p-4">
+    <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
         <UtensilsCrossed className="h-4 w-4 text-[#69C400]" />
         Menu-batch (Bokas)
@@ -108,13 +108,13 @@ export function PhotoStudioMenuBatch({ klant, onDone }: Props) {
         Gerechten uploaden ({urls.length})
       </Button>
       <Input
-        className="mb-2 border-[#E5E5E5]"
+        className="mb-2 border-[var(--fumero-border)]"
         placeholder="Vaste styling / belichting"
         value={styling}
         onChange={(e) => setStyling(e.target.value)}
       />
       <Input
-        className="mb-3 border-[#E5E5E5]"
+        className="mb-3 border-[var(--fumero-border)]"
         placeholder="Extra instructie (optioneel)"
         value={extra}
         onChange={(e) => setExtra(e.target.value)}

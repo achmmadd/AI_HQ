@@ -9,6 +9,31 @@ export function dispatchFumeroGoalUpdated(): void {
   window.dispatchEvent(new CustomEvent(FUMERO_GOAL_UPDATED_EVENT));
 }
 
+/**
+ * Doel-tekst kan uit geplakte site-content komen (visual edit / scrape) en
+ * rauwe HTML bevatten. Strip tags + entities zodat opslag en UI schoon blijven.
+ */
+export function sanitizeGoalText(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Eén nette UI-regel: HTML gestript + afgekapt met ellipsis. */
+export function goalDisplayLabel(goals: string, maxChars = 72): string {
+  const clean = sanitizeGoalText(goals).replace(/[<>]/g, "");
+  if (!clean) return "";
+  if (clean.length <= maxChars) return clean;
+  return `${clean.slice(0, maxChars).trimEnd()}…`;
+}
+
 export type ParsedGoalCommand =
   | { action: "show" }
   | { action: "set"; text: string }

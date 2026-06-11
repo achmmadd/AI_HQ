@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FumeroPhotoStudioRoute } from "@/components/fumero/worldclass-studio/fumero-photo-studio-route";
 
 export const metadata: Metadata = {
   title: "Studio",
@@ -11,5 +12,5 @@ export default function FumeroPhotoStudioLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <FumeroPhotoStudioRoute legacy={children} />;
 }

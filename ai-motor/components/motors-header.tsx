@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Moon, Sun } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
@@ -9,11 +9,12 @@ import { useCompanyStore, getWorkspaceTheme } from "@/stores/useCompanyStore";
 import type { WorkspaceId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { MOTORSAI_WORKSPACE_LABEL, WORKSPACE_LABELS } from "@/lib/brand";
 
 const workspaces: { id: WorkspaceId; label: string }[] = [
-  { id: "fumero", label: "Fumero Studio" },
-  { id: "bokas", label: "Bokas" },
-  { id: "personal", label: "Motor AI" },
+  { id: "fumero", label: WORKSPACE_LABELS.fumero },
+  { id: "bokas", label: WORKSPACE_LABELS.bokas },
+  { id: "personal", label: WORKSPACE_LABELS.personal },
 ];
 
 const PRIMARY_ROUTE_BY_WORKSPACE: Record<WorkspaceId, string> = {
@@ -38,7 +39,7 @@ function HeaderLogo({ workspace }: { workspace: WorkspaceId }) {
       className="font-semibold tracking-tight text-ws-accent"
       style={{ fontFamily: "var(--font-geist), Geist, sans-serif" }}
     >
-      MOTOR AI
+      {MOTORSAI_WORKSPACE_LABEL}
     </span>
   );
 }
@@ -48,8 +49,6 @@ export function MotorsHeader({ title }: { title: string }) {
   const pathname = usePathname();
   const workspace = useCompanyStore((s) => s.workspace);
   const setWorkspace = useCompanyStore((s) => s.setWorkspace);
-  const theme = useCompanyStore((s) => s.theme);
-  const toggleTheme = useCompanyStore((s) => s.toggleTheme);
   const wsTheme = getWorkspaceTheme(workspace);
   const { scope } = useAuthSession();
   const visibleWorkspaces = useMemo(() => {
@@ -70,7 +69,7 @@ export function MotorsHeader({ title }: { title: string }) {
   }, [pathname, router, setWorkspace, visibleWorkspaces, workspace]);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 min-h-[52px] items-center justify-between border-b border-border/60 bg-background/78 px-4 font-ws backdrop-blur-2xl supports-[backdrop-filter]:bg-background/55 md:px-8 pt-[max(0px,env(safe-area-inset-top))]">
+    <header className="sticky top-0 z-30 flex h-12 min-h-[48px] items-center justify-between border-b border-[var(--os-border)] bg-[var(--os-bg-elevated)]/80 px-4 font-ws backdrop-blur-2xl md:px-8 pt-[max(0px,env(safe-area-inset-top))]">
       <div className="flex min-w-0 items-center gap-3">
         <HeaderLogo workspace={workspace} />
         <span className="hidden text-border md:inline">·</span>
@@ -109,20 +108,7 @@ export function MotorsHeader({ title }: { title: string }) {
             </button>
           ))}
         </div>
-        <Button
-          variant="secondary"
-          size="icon"
-          type="button"
-          className="ios-tap-highlight h-11 w-11 rounded-2xl border-border/60 shadow-none active:opacity-90"
-          onClick={() => toggleTheme()}
-          aria-label="Thema"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-[18px] w-[18px]" aria-hidden />
-          ) : (
-            <Moon className="h-[18px] w-[18px]" aria-hidden />
-          )}
-        </Button>
+        <ThemeToggle compact className="ios-tap-highlight" />
       </div>
     </header>
   );

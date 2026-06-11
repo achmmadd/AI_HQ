@@ -177,7 +177,7 @@ export function BookkeepingReviewPanel({
                   <iframe
                     src={previewUrl}
                     title="Bon preview"
-                    className="h-full min-h-[320px] w-full rounded-xl border border-border bg-white"
+                    className="h-full min-h-[320px] w-full rounded-xl border border-border bg-background"
                   />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element

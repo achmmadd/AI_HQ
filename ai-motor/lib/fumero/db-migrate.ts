@@ -30,6 +30,21 @@ function runFumeroSchemaMigration(): void {
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
       );
+
+      CREATE TABLE IF NOT EXISTS command_center_task_states (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        klant TEXT NOT NULL DEFAULT 'fumero',
+        item_key TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'open'
+          CHECK (status IN ('open', 'in_behandeling', 'wacht_goedkeuring', 'afgerond', 'genegeerd')),
+        actor TEXT,
+        completed_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cc_task_states_klant
+        ON command_center_task_states(klant, updated_at DESC);
     `);
 
     const contentCols = db
@@ -47,7 +62,7 @@ function runFumeroSchemaMigration(): void {
     );
     ins.run(
       "fumero_max_briefing",
-      "Max ochtendbriefing",
+      "Smokey ochtendbriefing",
       "AI briefing voor Fumero Studio om 07:00.",
       "daily",
       "07:00",
@@ -56,8 +71,8 @@ function runFumeroSchemaMigration(): void {
     );
     ins.run(
       "fumero_max_research",
-      "Max nachtresearch",
-      "Nachtelijke research (SEO/social kansen) voor Max.",
+      "Smokey nachtresearch",
+      "Nachtelijke research (SEO/social kansen) voor Smokey.",
       "daily",
       "02:00",
       null,

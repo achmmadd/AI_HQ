@@ -70,7 +70,6 @@ export type FumeroComposerMenuAction =
   | { kind: "connectors" }
   | { kind: "ux_review" }
   | { kind: "templates" }
-  | { kind: "code_workspace" }
   | {
       kind: "canvas";
       contentType: "seo_article" | "product_text";
@@ -171,7 +170,7 @@ export const FUMERO_COMPOSER_MENU_SECTIONS: FumeroComposerMenuSection[] = [
       {
         id: "connectors",
         label: "Connectors",
-        description: "Orders, bibliotheek, briefing — live data voor Max",
+        description: "Orders, bibliotheek, briefing — live data voor Smokey",
         icon: Plug,
         action: { kind: "connectors" },
       },
@@ -195,13 +194,6 @@ export const FUMERO_COMPOSER_MENU_SECTIONS: FumeroComposerMenuSection[] = [
         icon: ScanEye,
         action: { kind: "ux_review" },
       },
-      {
-        id: "code_workspace",
-        label: "Code workspace",
-        description: "Bewerk tool-code in de volledige IDE",
-        icon: Code2,
-        action: { kind: "code_workspace" },
-      },
     ],
   },
 ];
@@ -218,7 +210,7 @@ export function fumeroComposerPlaceholder(
   mode: FumeroComposerMode,
   opts?: { modelTier?: FumeroComposerModelTier; bouwenWorkspace?: boolean }
 ): string {
-  if (mode === "default") return "Stel je vraag aan Max…";
+  if (mode === "default") return "Stel je vraag aan Smokey…";
   if (mode === "coder" && opts?.bouwenWorkspace) {
     return "Bv. chatbot voor klantvragen, of haal info van fumero.nl…";
   }

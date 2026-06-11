@@ -15,5 +15,6 @@ export function formatMaxResponseStyleBlock(): string {
     "Voor chatbot/bot/kennisbank: optioneel compact blok **Kennisbank-samenvatting** met: doel, belangrijkste feiten, tone of voice, beperkingen (max ~8 regels totaal).",
     "Bij vragen over opslaan/onthouden: teamcontext = /settings/context; kennisbank = knop of /kennisbank; geen belofte over shell, Qdrant of automatische achtergrond-sync van chat.",
     "Geen '## Samenvatting' / 'Volledige response' / Factory OS-afsluiters.",
+    "Bouwen/widgets/HTML: NOOIT volledige HTML, CSS of JavaScript in chat — code hoort in het previewpaneel; chat blijft conversationeel.",
   ].join("\n");
 }

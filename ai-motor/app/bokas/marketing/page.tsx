@@ -4,7 +4,11 @@ import { WorkspaceStub } from "@/components/workspace-stub";
 export default function BokasMarketingPage() {
   return (
     <BokasShell page="Marketing">
-      <WorkspaceStub title="Bokas Marketing" description="Marketing hub komt hier." />
+      <WorkspaceStub
+        title="Marketing"
+        description="Marketingautomatisering voor Bokas is in ontwikkeling."
+        action={{ label: "Naar Bokas chat", href: "/bokas/chat" }}
+      />
     </BokasShell>
   );
 }

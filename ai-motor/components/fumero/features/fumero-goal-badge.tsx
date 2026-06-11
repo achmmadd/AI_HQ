@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Target } from "lucide-react";
 import { dispatchFumeroCmd, FUMERO_CMD_EVENTS } from "@/lib/fumero/command-palette";
-import { FUMERO_GOAL_UPDATED_EVENT } from "@/lib/fumero/max-goal-shared";
+import {
+  FUMERO_GOAL_UPDATED_EVENT,
+  goalDisplayLabel,
+} from "@/lib/fumero/max-goal-shared";
 import { cn } from "@/lib/utils";
 
 export function FumeroGoalBadge({
@@ -38,10 +41,7 @@ export function FumeroGoalBadge({
     return () => window.removeEventListener(FUMERO_GOAL_UPDATED_EVENT, onUpdate);
   }, [refresh]);
 
-  const label = goals
-    ? goals.replace(/\s+/g, " ").slice(0, 72) +
-      (goals.length > 72 ? "…" : "")
-    : null;
+  const label = goals ? goalDisplayLabel(goals) || null : null;
 
   return (
     <button
@@ -50,8 +50,8 @@ export function FumeroGoalBadge({
       className={cn(
         "inline-flex max-w-[min(100%,20rem)] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
         goals
-          ? "border-[#69C400]/35 bg-[#69C400]/8 text-[#3d7a00] hover:bg-[#69C400]/12"
-          : "border-[#E5E5E5] bg-[#FAFAFA] text-[#737373] hover:border-[#69C400]/30 hover:text-[#525252]",
+          ? "border-[var(--fumero-success-border)] bg-[var(--fumero-success-bg)] text-[var(--fumero-success-fg)] hover:bg-[var(--fumero-accent-muted)]"
+          : "border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] hover:border-[var(--fumero-success-border)] hover:text-[var(--fumero-text-muted)]",
         className
       )}
       onClick={() => {

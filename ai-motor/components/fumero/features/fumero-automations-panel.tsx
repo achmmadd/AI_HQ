@@ -122,8 +122,8 @@ export function FumeroAutomationsPanel() {
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[#171717]">Automations</h1>
-          <p className="mt-1 text-sm text-[#737373]">
+          <h1 className="text-xl font-semibold tracking-tight text-[var(--fumero-text)]">Automations</h1>
+          <p className="mt-1 text-sm text-[var(--fumero-text-muted)]">
             Geplande taken voor orders, briefing, e-mail en rapportages — aan/uit en handmatig
             starten.
           </p>
@@ -140,7 +140,7 @@ export function FumeroAutomationsPanel() {
       </div>
 
       {error ? (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="mb-4 rounded-lg border border-[var(--fumero-danger-border)] bg-[var(--fumero-danger-bg)] px-3 py-2 text-sm text-[var(--fumero-danger-fg)]">
           {error}
         </p>
       ) : null}
@@ -150,15 +150,15 @@ export function FumeroAutomationsPanel() {
       ) : (
         <>
           {tasks.length > 0 ? (
-            <p className="mb-4 text-sm text-[#737373]">
+            <p className="mb-4 text-sm text-[var(--fumero-text-muted)]">
               {enabledCount} van {tasks.length} taken actief
             </p>
           ) : null}
 
           {tasks.length === 0 ? (
-            <div className="mb-8 rounded-xl border border-dashed border-[#E5E5E5] bg-white px-6 py-10 text-center">
-              <p className="text-sm font-medium text-[#525252]">Nog geen automations</p>
-              <p className="mt-1 text-xs text-[#737373]">
+            <div className="mb-8 rounded-xl border border-dashed border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-10 text-center">
+              <p className="text-sm font-medium text-[var(--fumero-text-muted)]">Nog geen automations</p>
+              <p className="mt-1 text-xs text-[var(--fumero-text-muted)]">
                 Geplande taken voor orders, briefing en e-mail verschijnen hier zodra ze
                 geconfigureerd zijn.
               </p>
@@ -168,15 +168,15 @@ export function FumeroAutomationsPanel() {
             {tasks.map((task) => (
               <li
                 key={task.id}
-                className="rounded-xl border border-[#E5E5E5] bg-white p-4"
+                className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-[#171717]">{task.title}</p>
+                    <p className="font-medium text-[var(--fumero-text)]">{task.title}</p>
                     {task.description ? (
-                      <p className="mt-1 text-sm text-[#737373]">{task.description}</p>
+                      <p className="mt-1 text-sm text-[var(--fumero-text-muted)]">{task.description}</p>
                     ) : null}
-                    <p className="mt-2 text-xs text-[#a3a3a3]">
+                    <p className="mt-2 text-xs text-[var(--fumero-text-subtle)]">
                       {scheduleLabel(task)}
                       {task.approval_required ? " · goedkeuring vereist" : ""}
                     </p>
@@ -187,14 +187,14 @@ export function FumeroAutomationsPanel() {
                       disabled={busyTask === task.id}
                       className={cn(
                         "relative h-7 w-12 rounded-full transition-colors",
-                        task.enabled ? "bg-[#69C400]" : "bg-[#E5E5E5]"
+                        task.enabled ? "bg-[var(--fumero-accent)]" : "bg-[var(--fumero-border)]"
                       )}
                       onClick={() => void toggleTask(task.id, !task.enabled)}
                       aria-label={task.enabled ? "Uitzetten" : "Aanzetten"}
                     >
                       <span
                         className={cn(
-                          "absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform",
+                          "absolute top-0.5 h-6 w-6 rounded-full bg-[var(--fumero-surface)] shadow transition-transform",
                           task.enabled ? "left-[22px]" : "left-0.5"
                         )}
                       />
@@ -223,34 +223,34 @@ export function FumeroAutomationsPanel() {
           </ul>
           )}
 
-          <h2 className="mb-3 text-sm font-semibold text-[#171717]">Recente runs</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--fumero-text)]">Recente runs</h2>
           {runs.length === 0 ? (
-            <div className="rounded-xl border border-[#E5E5E5] bg-white px-6 py-8 text-center">
-              <p className="text-sm text-[#737373]">Nog geen runs uitgevoerd.</p>
-              <p className="mt-1 text-xs text-[#a3a3a3]">
+            <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-8 text-center">
+              <p className="text-sm text-[var(--fumero-text-muted)]">Nog geen runs uitgevoerd.</p>
+              <p className="mt-1 text-xs text-[var(--fumero-text-subtle)]">
                 Schakel een taak in en klik op Nu runnen om te starten.
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-[#E5E5E5] rounded-xl border border-[#E5E5E5] bg-white">
+            <ul className="divide-y divide-[var(--fumero-border)] rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)]">
               {runs.slice(0, 15).map((run) => (
                 <li key={run.id} className="px-4 py-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium text-[#171717]">{run.task_title}</span>
+                    <span className="font-medium text-[var(--fumero-text)]">{run.task_title}</span>
                     <span
                       className={cn(
                         "rounded-md px-2 py-0.5 text-xs font-medium",
                         run.status === "success"
-                          ? "bg-[rgba(105,196,0,0.12)] text-[#3d7a00]"
+                          ? "bg-[var(--fumero-success-bg)] text-[var(--fumero-success-fg)]"
                           : run.status === "failed"
-                            ? "bg-red-50 text-red-700"
-                            : "bg-[#F5F5F5] text-[#737373]"
+                            ? "bg-[var(--fumero-danger-bg)] text-[var(--fumero-danger-fg)]"
+                            : "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)]"
                       )}
                     >
                       {run.status}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-[#a3a3a3]">
+                  <p className="mt-1 text-xs text-[var(--fumero-text-subtle)]">
                     {new Date(run.created_at).toLocaleString("nl-NL")}
                     {run.detail ? ` · ${run.detail.slice(0, 80)}` : ""}
                   </p>

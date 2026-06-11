@@ -109,7 +109,7 @@ export function PhotoStudioPostProcess({ klant }: Props) {
   };
 
   return (
-    <div className="mt-6 rounded-xl border border-[#E5E5E5] bg-white p-4">
+    <div className="mt-6 rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
         <SlidersHorizontal className="h-4 w-4" />
         Nabewerking (Sharp, geen AI)
@@ -118,7 +118,7 @@ export function PhotoStudioPostProcess({ klant }: Props) {
         <p className="mb-3 text-sm text-red-700">{loadError}</p>
       ) : null}
       <select
-        className="mb-3 h-9 w-full rounded-lg border border-[#E5E5E5] px-2 text-sm"
+        className="mb-3 h-9 w-full rounded-lg border border-[var(--fumero-border)] px-2 text-sm"
         value={genId}
         onChange={(e) => setGenId(e.target.value)}
       >
@@ -135,7 +135,7 @@ export function PhotoStudioPostProcess({ klant }: Props) {
           placeholder="Tekst overlay"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="border-[#E5E5E5]"
+          className="border-[var(--fumero-border)]"
         />
         <Button
           type="button"
@@ -152,7 +152,7 @@ export function PhotoStudioPostProcess({ klant }: Props) {
           placeholder="Logo URL (/api/upload/...)"
           value={logoUrl}
           onChange={(e) => setLogoUrl(e.target.value)}
-          className="border-[#E5E5E5]"
+          className="border-[var(--fumero-border)]"
         />
         <Button
           type="button"
@@ -169,7 +169,7 @@ export function PhotoStudioPostProcess({ klant }: Props) {
           placeholder="Achtergrond URL"
           value={bgUrl}
           onChange={(e) => setBgUrl(e.target.value)}
-          className="border-[#E5E5E5]"
+          className="border-[var(--fumero-border)]"
         />
         <Button
           type="button"
@@ -187,13 +187,13 @@ export function PhotoStudioPostProcess({ klant }: Props) {
             placeholder="Brightness %"
             value={brightness}
             onChange={(e) => setBrightness(e.target.value)}
-            className="border-[#E5E5E5]"
+            className="border-[var(--fumero-border)]"
           />
           <Input
             placeholder="Contrast %"
             value={contrast}
             onChange={(e) => setContrast(e.target.value)}
-            className="border-[#E5E5E5]"
+            className="border-[var(--fumero-border)]"
           />
         </div>
         <Button
@@ -216,7 +216,7 @@ export function PhotoStudioPostProcess({ klant }: Props) {
         </Button>
       </div>
 
-      {msg ? <p className="mt-3 text-xs text-[#525252]">{msg}</p> : null}
+      {msg ? <p className="mt-3 text-xs text-[var(--fumero-text-muted)]">{msg}</p> : null}
     </div>
   );
 }

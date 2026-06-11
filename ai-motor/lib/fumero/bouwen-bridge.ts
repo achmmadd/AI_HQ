@@ -1,6 +1,13 @@
 import type { FumeroLivePreviewPayload } from "@/lib/fumero/content-preview";
 import type { ProjectRuntime } from "@/lib/fumero/project-runtime";
 
+export type BouwenSaveState = "unavailable" | "saving" | "saved";
+
+export type BouwenChatConversation = {
+  id: number;
+  title: string;
+};
+
 /** State bridge tussen MotorsChatPanel en FumeroBouwenShell topbar. */
 export type FumeroBouwenBridge = {
   activeToolId: number | null;
@@ -14,6 +21,14 @@ export type FumeroBouwenBridge = {
   runUxReview: () => Promise<void>;
   toolSlug: string | null;
   embedCode: string | null;
+  saveState: BouwenSaveState;
+  publishBusy: boolean;
+  publishError: string | null;
+  newChat: () => Promise<void>;
+  chatControlsDisabled: boolean;
+  conversations: BouwenChatConversation[];
+  activeConversationId: number | undefined;
+  selectConversation: (id: number) => void;
 };
 
 export const EMPTY_BOUWEN_BRIDGE: FumeroBouwenBridge = {
@@ -28,4 +43,12 @@ export const EMPTY_BOUWEN_BRIDGE: FumeroBouwenBridge = {
   runUxReview: async () => {},
   toolSlug: null,
   embedCode: null,
+  saveState: "unavailable",
+  publishBusy: false,
+  publishError: null,
+  newChat: async () => {},
+  chatControlsDisabled: true,
+  conversations: [],
+  activeConversationId: undefined,
+  selectConversation: () => {},
 };

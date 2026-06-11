@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { OnboardingWorkspaceFlow } from "@/components/onboarding/onboarding-workspace-flow";
+import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { readAuthSession, TOKEN_COOKIE } from "@/lib/auth-session";
 
 export default async function OnboardingPage() {
@@ -10,9 +10,5 @@ export default async function OnboardingPage() {
     redirect("/login?from=/onboarding");
   }
 
-  return (
-    <div className="min-h-dvh bg-background">
-      <OnboardingWorkspaceFlow />
-    </div>
-  );
+  return <OnboardingWizard />;
 }

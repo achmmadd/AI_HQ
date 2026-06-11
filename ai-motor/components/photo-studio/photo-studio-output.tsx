@@ -56,10 +56,10 @@ export function PhotoStudioOutput({ klant, output, onScheduled }: Props) {
   };
 
   return (
-    <div className="mt-6 rounded-xl border border-[#E5E5E5] bg-white p-4 shadow-sm">
+    <div className="mt-6 rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-[#171717]">Formaten (Sharp)</h2>
-        <span className="font-mono text-xs text-[#a3a3a3]">{output.tracking_id}</span>
+        <h2 className="text-sm font-semibold text-[var(--fumero-text)]">Formaten (Sharp)</h2>
+        <span className="font-mono text-xs text-[var(--fumero-text-subtle)]">{output.tracking_id}</span>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -69,7 +69,7 @@ export function PhotoStudioOutput({ klant, output, onScheduled }: Props) {
             href={v.public_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group overflow-hidden rounded-lg border border-[#E5E5E5] bg-[#FAFAFA]"
+            className="group overflow-hidden rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -77,7 +77,7 @@ export function PhotoStudioOutput({ klant, output, onScheduled }: Props) {
               alt={labelFor(v.aspect)}
               className="aspect-square w-full object-cover transition group-hover:opacity-90"
             />
-            <div className="flex items-center justify-between gap-1 px-2 py-1.5 text-[10px] text-[#525252]">
+            <div className="flex items-center justify-between gap-1 px-2 py-1.5 text-[10px] text-[var(--fumero-text-muted)]">
               <span>{labelFor(v.aspect)}</span>
               <Download className="h-3 w-3 shrink-0 opacity-60" />
             </div>

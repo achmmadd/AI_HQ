@@ -4,10 +4,14 @@ import {
   type MotorUserContext,
 } from "@/lib/motor-user-context";
 
+import { sanitizeGoalText } from "@/lib/fumero/max-goal-shared";
+
 export {
   FUMERO_GOAL_UPDATED_EVENT,
   dispatchFumeroGoalUpdated,
   parseMaxGoalCommand,
+  sanitizeGoalText,
+  goalDisplayLabel,
   bouwenClarifyingQuestions,
   formatBouwenClarifyAssistantMessage,
   buildMaxClarifyChatPrompt,
@@ -52,8 +56,9 @@ export function applyGoalCommand(
 
   if (cmd.action === "add") {
     const prev = existing?.goals?.trim() ?? "";
+    const added = sanitizeGoalText(cmd.text);
     const next = formatGoalsList(
-      prev ? `${prev}\n- ${cmd.text}` : `- ${cmd.text}`
+      prev ? `${prev}\n- ${added}` : `- ${added}`
     ).slice(0, MAX_GOALS_CHARS);
     upsertMotorUserContext(klant, { goals: next });
     return {
@@ -62,7 +67,7 @@ export function applyGoalCommand(
     };
   }
 
-  const next = cmd.text.trim().slice(0, MAX_GOALS_CHARS);
+  const next = sanitizeGoalText(cmd.text).slice(0, MAX_GOALS_CHARS);
   upsertMotorUserContext(klant, { goals: next });
   return {
     goals: next,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { requireWorkspaceApi } from "@/lib/auth-guards";
+import { requireScopedWorkspaceApi } from "@/lib/auth-guards";
 import { ensureAppsSchema, listAppsForKlant, countAppDataRows } from "@/lib/apps/apps-db";
 
 export const runtime = "nodejs";
@@ -16,7 +16,7 @@ function cleanSlug(input: string): string {
 
 export async function GET(req: NextRequest) {
   // Fase 5: return apps from new apps table (klant-scoped) for garage + cards
-  const auth = await requireWorkspaceApi(req, "all");
+  const auth = await requireScopedWorkspaceApi(req);
   if (!auth.ok) return auth.response;
 
   ensureAppsSchema();

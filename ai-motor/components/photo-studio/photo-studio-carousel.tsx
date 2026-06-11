@@ -65,19 +65,19 @@ export function PhotoStudioCarousel({ klant, onDone }: Props) {
   };
 
   return (
-    <div className="rounded-xl border border-[#E5E5E5] bg-white p-4">
+    <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
         <Layers className="h-4 w-4 text-[#69C400]" />
         Carousel (5 slides)
       </h2>
       <Input
-        className="mb-2 border-[#E5E5E5]"
+        className="mb-2 border-[var(--fumero-border)]"
         placeholder="Basis product / campagne prompt"
         value={basePrompt}
         onChange={(e) => setBasePrompt(e.target.value)}
       />
       <Input
-        className="mb-3 border-[#E5E5E5]"
+        className="mb-3 border-[var(--fumero-border)]"
         placeholder="Vaste achtergrond / seed lock beschrijving"
         value={backgroundLock}
         onChange={(e) => setBackgroundLock(e.target.value)}
@@ -86,7 +86,7 @@ export function PhotoStudioCarousel({ klant, onDone }: Props) {
         {slides.map((s, i) => (
           <Input
             key={i}
-            className="border-[#E5E5E5] text-sm"
+            className="border-[var(--fumero-border)] text-sm"
             placeholder={`Slide ${i + 1} tekst`}
             value={s.headline}
             onChange={(e) => {

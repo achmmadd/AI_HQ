@@ -1,10 +1,10 @@
 /**
- * Max (Fumero UI) — accurate uitleg over teamcontext vs kennisbank vs live scrape.
+ * Smokey (Fumero UI) — accurate uitleg over teamcontext vs kennisbank vs live scrape.
  * Geen OpenClaw/Factory OS shell- of Qdrant-schrijfrechten in chat.
  */
 export function formatMaxKnowledgeGuidanceBlock(): string {
   return [
-    "### Max — teamcontext, kennisbank en geheugen (als de gebruiker vraagt)",
+    "### Smokey — teamcontext, kennisbank en geheugen (als de gebruiker vraagt)",
     "Geef onderstaande feiten in gewoon Nederlands. Verzin geen technische paden, geen shell/Qdrant-toegang, en geen \"Factory OS schrijft alles automatisch op de achtergrond\".",
     "",
     "**Teamcontext (permanent, elke sessie):** bewerk via /settings/context of /fumero/settings/context. Staat als Master Context in Postgres en wordt bij elke chat vóór kennisbank en geheugen geladen.",

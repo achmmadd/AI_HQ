@@ -13,6 +13,7 @@ import {
   Code2,
   Folder,
   Image,
+  Globe,
   LogOut,
   MessageSquare,
   Settings,
@@ -36,6 +37,7 @@ import { useCompanyStore, getWorkspaceTheme } from "@/stores/useCompanyStore";
 import { workspaceFromPathname } from "@/lib/workspace-themes";
 import type { WorkspaceId } from "@/lib/types";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { logoutClient } from "@/lib/auth-logout";
 
 type SidebarNavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -160,20 +162,6 @@ export function MotorsSidebar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleNavCollapsed]);
 
-  async function logout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      /* ignore */
-    }
-    try {
-      localStorage.removeItem("motorsai_token");
-    } catch {
-      /* ignore */
-    }
-    window.location.href = "/login";
-  }
-
   useEffect(() => {
     if (!allowedWorkspaces.includes(workspace)) {
       setWorkspace(activeWorkspace);
@@ -237,7 +225,7 @@ export function MotorsSidebar() {
                   collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
                   active
                     ? "bg-ws-accent-lt text-ws-accent"
-                    : "text-text-secondary active:bg-white/10"
+                    : "text-muted-foreground active:bg-muted/80"
                 )}
               >
                 <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" aria-hidden />
@@ -264,7 +252,7 @@ export function MotorsSidebar() {
             aria-label={collapsed ? "Menu uitklappen" : "Menu inklappen"}
             onClick={toggleNavCollapsed}
             className={cn(
-              "ios-tap-highlight flex min-h-[44px] w-full items-center rounded-2xl text-[15px] font-medium text-text-secondary active:bg-white/10 hover:bg-surface-elevated hover:text-text-primary",
+              "ios-tap-highlight flex min-h-[44px] w-full items-center rounded-2xl text-[15px] font-medium text-muted-foreground active:bg-muted/80 hover:bg-muted hover:text-foreground",
               collapsed ? "justify-center" : "gap-3 px-3"
             )}
           >
@@ -277,12 +265,24 @@ export function MotorsSidebar() {
               </>
             )}
           </button>
+          <Link
+            href="/website"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Marketing website bekijken"
+            className={cn(
+              "ios-tap-highlight flex min-h-[44px] w-full items-center rounded-2xl text-[15px] font-medium text-muted-foreground active:bg-muted/80 hover:bg-muted hover:text-foreground",
+              collapsed ? "justify-center" : "gap-3 px-3"
+            )}
+          >
+            <Globe className="h-[18px] w-[18px] shrink-0 opacity-80" aria-hidden />
+            {!collapsed && <span className="truncate">Website</span>}
+          </Link>
           <button
             type="button"
-            title="Uitloggen"
-            onClick={() => void logout()}
+            onClick={() => void logoutClient()}
             className={cn(
-              "ios-tap-highlight flex min-h-[44px] w-full items-center rounded-2xl text-left text-[15px] font-medium text-text-secondary active:bg-white/10 hover:bg-surface-elevated",
+              "ios-tap-highlight flex min-h-[44px] w-full items-center rounded-2xl text-left text-[15px] font-medium text-muted-foreground active:bg-muted/80 hover:bg-muted",
               collapsed ? "justify-center" : "gap-3 px-3"
             )}
           >

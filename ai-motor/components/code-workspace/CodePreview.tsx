@@ -30,7 +30,7 @@ export function CodePreview({
           Preview · {filePath}
         </span>
       </div>
-      <div className="min-h-0 flex-1 bg-white">
+      <div className="min-h-0 flex-1 bg-background">
         <LivePreview
           code={content}
           title={`Preview ${filePath}`}

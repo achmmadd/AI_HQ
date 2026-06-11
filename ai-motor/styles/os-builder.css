@@ -1,0 +1,64 @@
+/**
+ * MotorsAI OS 2026 — Builder canvas
+ */
+
+[data-os-builder] {
+  --os-builder-canvas-bg: var(--os-bg-subtle);
+}
+
+[data-os-builder] .builder-os-shell {
+  background: var(--os-bg);
+}
+
+[data-os-builder] .builder-os-header {
+  border-color: var(--os-border) !important;
+  background: color-mix(in srgb, var(--os-bg-elevated) 88%, transparent) !important;
+  backdrop-filter: blur(18px);
+}
+
+[data-os-builder] .builder-os-surface :global(.fumero-coder-split) {
+  border-color: var(--os-border) !important;
+  background: var(--os-surface-solid) !important;
+  box-shadow: var(--os-shadow-md);
+}
+
+[data-os-builder] .builder-os-surface :global(.fumero-coder-preview-rail) {
+  border-color: var(--os-border) !important;
+  background: var(--os-builder-canvas-bg) !important;
+}
+
+[data-os-builder] .builder-canvas-frame {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(105, 196, 0, 0.05), transparent 40%),
+    var(--os-builder-canvas-bg);
+}
+
+[data-os-builder] .builder-device-toggle button[data-active="true"] {
+  background: var(--os-accent-muted);
+  color: var(--os-accent);
+}
+
+[data-os-builder] .builder-device-phone {
+  border: 1px solid var(--os-border-strong);
+  border-radius: 28px;
+  box-shadow: var(--os-shadow-lg);
+  overflow: hidden;
+}
+
+[data-os-builder] .builder-device-phone__notch {
+  height: 24px;
+  background: var(--os-bg-elevated);
+  border-bottom: 1px solid var(--os-border);
+}
+
+[data-os-builder] .builder-canvas-empty {
+  background: radial-gradient(
+    ellipse 70% 50% at 50% 20%,
+    rgba(139, 195, 74, 0.08),
+    transparent 70%
+  );
+}
+
+[data-os-builder] .fumero-live-preview {
+  background: var(--fumero-bg) !important;
+}

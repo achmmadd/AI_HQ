@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { MotorsSidebar } from "@/components/motors-sidebar";
+import { PremiumSidebar } from "@/components/os/premium-sidebar";
 import { MotorsHeader } from "@/components/motors-header";
 import { cn } from "@/lib/utils";
 import {
@@ -36,14 +36,14 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "transition-[padding] duration-200 ease-out max-md:!pl-0",
+        "os-gradient-mesh transition-[padding] duration-200 ease-out max-md:!pl-0",
         flush
           ? "h-[100dvh] overflow-hidden max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
           : "min-h-screen min-h-[100dvh] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
       )}
       style={{ paddingLeft: navPad }}
     >
-      <MotorsSidebar />
+      <PremiumSidebar />
       <div
         className={cn(
           "flex flex-col",

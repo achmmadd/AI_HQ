@@ -53,24 +53,44 @@ export const FUMERO_TYPE_PILLS: Array<{ id: FumeroTypePillId; label: string }> =
   { id: "flow", label: "Flow" },
 ];
 
+/** Example prompts for Bouwen empty state and template chips. */
+export const BOUWEN_EXAMPLE_PROMPTS = [
+  {
+    label: "Chatbot",
+    prompt: "Maak een chatbot voor klantvragen op fumero.nl",
+  },
+  {
+    label: "Landingspagina",
+    prompt: "Bouw een landingspagina met hero, voordelen en contact-CTA",
+  },
+  {
+    label: "Bestelformulier",
+    prompt: "Maak een bestelformulier met productkeuze en opmerkingen",
+  },
+  {
+    label: "Productwidget",
+    prompt: "Compacte productwidget met prijs en bestelknop voor de shop",
+  },
+] as const;
+
 export const FUMERO_CHAT_SUGGESTIONS = [
+  {
+    label: "Chatbot bouwen",
+    prompt: "Maak een chatbot voor klantvragen op mijn website",
+  },
+  {
+    label: "Landingspagina",
+    prompt:
+      "Bouw een landingspagina voor mijn zaak: hero, voordelen en contact-CTA",
+  },
+  {
+    label: "Bestelformulier",
+    prompt:
+      "Maak een bestelformulier met naam, e-mail, productkeuze en opmerkingen",
+  },
   {
     label: "Waar is mijn order?",
     prompt: "Waar is mijn bestelling en wanneer wordt die bezorgd?",
-  },
-  {
-    label: "SEO-blog",
-    prompt:
-      "Schrijf een SEO-blogartikel voor fumero.nl over HHC vapes: H1, H2-koppen, meta en body.",
-  },
-  {
-    label: "Productfoto",
-    prompt:
-      "Genereer een premium productfoto: witte achtergrond, scherpe details, lifestyle sfeer.",
-  },
-  {
-    label: "Chat-widget",
-    prompt: "Bouw een chat widget voor productvragen op fumero.nl",
   },
 ] as const;
 
@@ -82,10 +102,10 @@ export const FUMERO_CHAT_STARTER_CARDS: Array<{
   description: string;
 }> = [
   {
-    id: "product_photo",
-    wire: "foto",
-    title: "Genereer een productfoto",
-    description: "Premium webshop-beeld met witte achtergrond",
+    id: "staff_tool",
+    wire: "coder",
+    title: "Bouw een chatbot of tool",
+    description: "Widget, formulier, landingspagina of mini-app voor je bedrijf",
   },
   {
     id: "open_orders",
@@ -100,10 +120,10 @@ export const FUMERO_CHAT_STARTER_CARDS: Array<{
     description: "Artikel met structuur, meta en body in Schrijven",
   },
   {
-    id: "staff_tool",
-    wire: "coder",
-    title: "Bouw een tool voor je personeel",
-    description: "Interne widget of mini-app voor het team",
+    id: "product_photo",
+    wire: "foto",
+    title: "Genereer een productfoto",
+    description: "Premium webshop-beeld — open Studio",
   },
 ];
 

@@ -7,9 +7,8 @@ import type {
 /**
  * Composes a user-facing prompt from the 5 Content Studio blocks.
  *
- * Note: `lib/photo-studio/fal.ts` adds server-side enrichment on top of this
- * string (product/food base, system context, optional style_hint). The UI and
- * library store only this composed user prompt — never the fal-enriched text.
+ * Note: `lib/photo-studio/fal.ts` may add optional server-side brand enrichment
+ * (product/food base, system context) when `brand_enhancement` is enabled.
  */
 export function composePromptFromBlocks(
   blocks: PromptBlocks,

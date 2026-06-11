@@ -20,6 +20,8 @@ import { useCompanyStore } from "@/stores/useCompanyStore";
 import { isOnboardingDone } from "@/lib/onboarding-storage";
 import { cn } from "@/lib/utils";
 import type { CompanyId } from "@/lib/types";
+import { PageLoading } from "@/components/ui/page-loading";
+import { MOTORSAI_WORKSPACE_LABEL } from "@/lib/brand";
 
 type StartPayload = {
   brain_ok: boolean;
@@ -67,6 +69,7 @@ export function HomeMotorStart() {
   const company = useCompanyStore((s) => s.company);
   const [data, setData] = useState<StartPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOnboardingDone()) {
@@ -76,14 +79,21 @@ export function HomeMotorStart() {
 
   const load = useCallback(async (klant: CompanyId) => {
     setLoading(true);
+    setLoadError(null);
     try {
       const r = await fetch(
         `/api/home/start?klant=${encodeURIComponent(klant)}`,
         { credentials: "include", cache: "no-store" }
       );
+      if (!r.ok) {
+        throw new Error(`Dashboard laden mislukt (${r.status})`);
+      }
       setData((await r.json()) as StartPayload);
-    } catch {
+    } catch (e) {
       setData(null);
+      setLoadError(
+        e instanceof Error ? e.message : "Dashboard laden mislukt — probeer opnieuw."
+      );
     } finally {
       setLoading(false);
     }
@@ -97,6 +107,27 @@ export function HomeMotorStart() {
     ? `/chat?c=${data.last_conversation.id}`
     : "/chat";
 
+  if (loading && !data && !loadError) {
+    return <PageLoading />;
+  }
+
+  if (loadError && !data) {
+    return (
+      <div className="flex flex-col items-center rounded-2xl border border-error/25 bg-error/5 px-6 py-14 text-center">
+        <p className="text-lg font-semibold text-text-primary">Dashboard niet beschikbaar</p>
+        <p className="mt-2 max-w-md text-sm text-text-secondary">{loadError}</p>
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-6 rounded-xl"
+          onClick={() => void load(company)}
+        >
+          Opnieuw proberen
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="ios-fade-up space-y-5">
       <div className="grid gap-3 sm:grid-cols-3">
@@ -105,7 +136,7 @@ export function HomeMotorStart() {
           className="rounded-2xl border border-[#69C400]/30 bg-[#69C400]/8 px-4 py-3 transition-colors hover:border-[#69C400]/50"
         >
           <p className="text-[13px] font-semibold text-text-primary">Fumero Studio</p>
-          <p className="mt-1 text-[12px] text-text-secondary">Max · shop & content</p>
+          <p className="mt-1 text-[12px] text-text-secondary">Smokey · shop & content</p>
         </Link>
         <Link
           href="/bokas"
@@ -118,8 +149,8 @@ export function HomeMotorStart() {
           href="/chat"
           className="rounded-2xl border border-indigo-500/30 bg-indigo-500/8 px-4 py-3 transition-colors hover:border-indigo-500/50"
         >
-          <p className="text-[13px] font-semibold text-text-primary">Motor Lab</p>
-          <p className="mt-1 text-[12px] text-text-secondary">OpenClaw · bouwen & code</p>
+          <p className="text-[13px] font-semibold text-text-primary">{MOTORSAI_WORKSPACE_LABEL} Lab</p>
+          <p className="mt-1 text-[12px] text-text-secondary">Agents, code & automatisering</p>
         </Link>
       </div>
 
@@ -127,7 +158,7 @@ export function HomeMotorStart() {
         <CardHeader className="pb-2">
           <CardTitle className="flex flex-wrap items-center gap-2 text-[18px] font-semibold tracking-tight">
             <Sparkles className="h-5 w-5 text-accent" />
-            Motor Start
+            {MOTORSAI_WORKSPACE_LABEL} Start
             <span className="text-[13px] font-normal text-text-secondary">
               — {company}
             </span>
@@ -225,7 +256,7 @@ export function HomeMotorStart() {
               Bedrijf & data
             </CardTitle>
             <p className="text-[12px] text-text-secondary">
-              Gmail, site, kennis — Motor wordt autonomer per koppeling
+              Gmail, site, kennis — agents worden autonomer per koppeling
             </p>
           </CardHeader>
           <CardContent className="space-y-2">

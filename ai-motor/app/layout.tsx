@@ -5,6 +5,7 @@ import "./globals.css";
 import "./workspace-theme.css";
 import "../styles/ios-overrides.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { THEME_INIT_SCRIPT } from "@/lib/theme-config";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -42,9 +43,28 @@ const geist = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "MotorsAI · Factory OS",
-  description: "Eigen stack voor apps, chat en kennisbank",
+  title: {
+    default: "MotorsAI · Enterprise AI-automatisering on-premise",
+    template: "%s · MotorsAI",
+  },
+  description:
+    "MotorsAI levert AI-agents voor sales, support, automatisering en kennisbeheer — volledig on-premise, AVG-proof en gehost in Nederland.",
+  keywords: [
+    "AI automatisering",
+    "on-premise AI",
+    "enterprise AI Nederland",
+    "AI agents MKB",
+    "AVG compliant AI",
+  ],
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    locale: "nl_NL",
+    siteName: "MotorsAI",
+    title: "MotorsAI · Enterprise AI-automatisering on-premise",
+    description:
+      "Automatiseer bedrijfsprocessen met AI op jouw eigen infrastructuur. Plan een demo.",
+  },
   appleWebApp: {
     capable: true,
     title: "MotorsAI",
@@ -70,9 +90,12 @@ export default function RootLayout({
   return (
     <html
       lang="nl"
-      className={`dark ${poppins.variable} ${geist.variable}`}
+      className={`${poppins.variable} ${geist.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="font-sans antialiased ios-body">
         <ThemeProvider>{children}</ThemeProvider>
       </body>

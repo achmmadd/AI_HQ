@@ -2,27 +2,33 @@
 
 import { FumeroShell } from "@/components/fumero/fumero-shell";
 import { FumeroPageHeader } from "@/components/fumero/ops/fumero-page-header";
+import {
+  FumeroCard,
+  FumeroPageContent,
+  FumeroSection,
+} from "@/components/fumero/ui/fumero-primitives";
+import { SettingsNav } from "@/components/settings/settings-nav";
 
 export default function FumeroPayPage() {
   return (
-    <FumeroShell page="Pay">
-      <div className="mx-auto max-w-lg">
+    <FumeroShell page="Betalingen">
+      <FumeroPageContent size="md">
+        <SettingsNav />
         <FumeroPageHeader
-          title="Pay"
-          description="Bank- en cryptobetalingen via Max."
+          title="Betalingen"
+          description="Branded checkout voor fumero.nl — iDEAL en optioneel crypto via Smokey."
         />
-        <div className="space-y-3 rounded-lg border border-[#E5E5E5] bg-white p-6 text-sm text-[#525252]">
-          <p>
-            Placeholder tot betalingen live gaan. Routes{" "}
-            <code className="text-xs">/api/fumero/pay/initiate</code> en status zijn
-            geïmplementeerd; zonder env-keys geeft initiate een duidelijke 503.
-          </p>
-          <ul className="list-inside list-disc space-y-1 text-xs text-[#737373]">
-            <li>Bank: FUMERO_PAY_IBAN, FUMERO_PAY_BENEFICIARY (optioneel BIC)</li>
-            <li>Crypto: FUMERO_PAY_CRYPTO_WALLET (optioneel network/asset)</li>
-          </ul>
-        </div>
-      </div>
+
+        <FumeroSection title="Status">
+          <FumeroCard>
+            <p className="fumero-text-body-sm text-[var(--fumero-text-muted)]">
+              Online betalingen worden voorbereid. Tot de livegang gebruik je de
+              bestaande checkout op fumero.nl. Zodra betalingen hier actief zijn,
+              zie je status en transacties op deze pagina.
+            </p>
+          </FumeroCard>
+        </FumeroSection>
+      </FumeroPageContent>
     </FumeroShell>
   );
 }

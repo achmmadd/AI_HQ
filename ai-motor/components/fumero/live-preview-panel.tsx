@@ -1,9 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Gamepad2, Loader2, Maximize2, Minimize2, RefreshCw, ScanEye, X } from "lucide-react";
+import {
+  ExternalLink,
+  Gamepad2,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  ScanEye,
+  X,
+} from "lucide-react";
+import {
+  BuilderDeviceToggle,
+  builderDeviceMaxWidth,
+  type BuilderDeviceFrame,
+} from "@/components/fumero/builder/builder-device-toggle";
 import { Button } from "@/components/ui/button";
+import { BuilderLoadingState } from "@/components/fumero/builder/builder-loading-state";
+import { BuilderPreviewEmpty } from "@/components/fumero/builder/builder-preview-empty";
 import { FumeroBuildTimeline } from "@/components/fumero/features/fumero-build-timeline";
+import { cn } from "@/lib/utils";
 import { cacheBustPreviewUrl } from "@/lib/fumero/builder-config";
 import {
   fumeroConceptVersionLabel,
@@ -23,7 +40,7 @@ function RuntimeBadgePill({ runtime }: { runtime?: ProjectRuntime }) {
   if (!runtime) return null;
   const label = runtimeBadgeLabel(runtime);
   return (
-    <span className="rounded-full border border-[#E5E5E5] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#525252]">
+    <span className="rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--fumero-text-muted)]">
       {label}
     </span>
   );
@@ -65,6 +82,7 @@ export function FumeroLivePreviewPanel({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [uxBusy, setUxBusy] = useState(false);
+  const [deviceFrame, setDeviceFrame] = useState<BuilderDeviceFrame>("desktop");
 
   const isGenerating =
     preview.status === "generating" || preview.building === true;
@@ -174,34 +192,34 @@ export function FumeroLivePreviewPanel({
     <div
       className={
         fullscreen
-          ? "fixed inset-0 z-[90] flex flex-col bg-[#FAFAFA]"
-          : "fumero-live-preview flex h-full min-h-0 flex-col bg-[#FAFAFA]"
+          ? "fixed inset-0 z-[90] flex flex-col bg-[var(--fumero-surface-muted)]"
+          : "fumero-live-preview flex h-full min-h-0 flex-col bg-[var(--fumero-surface-muted)]"
       }
     >
-      <div className="fumero-live-preview-header flex shrink-0 items-center justify-between gap-2 border-b border-[#E5E5E5]/80 px-4 py-2">
+      <div className="fumero-live-preview-header flex shrink-0 items-center justify-between gap-2 border-b border-[var(--fumero-border)]/80 px-4 py-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-[14px] font-semibold leading-tight text-[#171717]">
+            <p className="truncate text-[14px] font-semibold leading-tight text-[var(--fumero-text)]">
               {preview.title}
             </p>
             <RuntimeBadgePill runtime={preview.runtime} />
             {interactive ? (
-              <span className="rounded-full bg-[rgba(105,196,0,0.12)] px-2 py-0.5 text-[10px] font-semibold text-[#3d7a00]">
+              <span className="rounded-full bg-[var(--fumero-success-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fumero-success-fg)]">
                 Speelbaar
               </span>
             ) : isGenerating || isStaticPreviewPlaceholder(src) ? (
-              <span className="rounded-full bg-[#F5F5F5] px-2 py-0.5 text-[10px] font-medium text-[#737373]">
+              <span className="rounded-full bg-[var(--fumero-surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--fumero-text-muted)]">
                 Statisch
               </span>
             ) : null}
           </div>
           <p
-            className="mt-0.5 text-[12px] leading-tight text-[#737373]"
+            className="mt-0.5 text-[12px] leading-tight text-[var(--fumero-text-muted)]"
             aria-live={isGenerating ? "polite" : undefined}
           >
             {isGenerating ? (
               <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin text-[#69C400]" />
+                <Loader2 className="h-3 w-3 animate-spin text-[var(--fumero-accent)]" />
                 {subtitle}
               </span>
             ) : (
@@ -210,8 +228,13 @@ export function FumeroLivePreviewPanel({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <BuilderDeviceToggle
+            value={deviceFrame}
+            onChange={setDeviceFrame}
+            className="mr-1 hidden sm:flex"
+          />
           {visualEditMode && interactive ? (
-            <span className="rounded-full bg-[rgba(105,196,0,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#3d7a00]">
+            <span className="rounded-full bg-[var(--fumero-success-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--fumero-success-fg)]">
               Klik element
             </span>
           ) : null}
@@ -221,7 +244,7 @@ export function FumeroLivePreviewPanel({
               size="sm"
               variant="secondary"
               disabled={uxReviewDisabled || uxBusy || isGenerating}
-              className="h-8 rounded-lg border-[#E5E5E5] px-2.5 text-[11px]"
+              className="h-8 rounded-lg border-[var(--fumero-border)] px-2.5 text-[11px]"
               onClick={() => void handleUxReview()}
             >
               <ScanEye className="mr-1 h-3.5 w-3.5" />
@@ -233,7 +256,7 @@ export function FumeroLivePreviewPanel({
               type="button"
               size="icon"
               variant="ghost"
-              className="h-8 w-8 rounded-lg text-[#525252] hover:bg-[#E5E5E5]"
+              className="h-8 w-8 rounded-lg text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)]"
               onClick={onRefresh}
               aria-label="Preview vernieuwen"
               title="Vernieuwen"
@@ -246,7 +269,7 @@ export function FumeroLivePreviewPanel({
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-lg bg-[#69C400] px-2.5 text-[11px] font-semibold text-white shadow-none hover:bg-[#5db000]"
+                className="h-8 rounded-lg bg-[var(--fumero-accent)] px-2.5 text-[11px] font-semibold text-[var(--fumero-accent-foreground)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
                 onClick={() => {
                   focusPreviewForPlay();
                   window.open(src, "_blank", "noopener,noreferrer");
@@ -259,7 +282,7 @@ export function FumeroLivePreviewPanel({
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 rounded-lg text-[#525252] hover:bg-[#E5E5E5]"
+                className="h-8 w-8 rounded-lg text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)]"
                 onClick={() => setFullscreen((v) => !v)}
                 aria-label={fullscreen ? "Volledig scherm sluiten" : "Volledig scherm"}
                 title={fullscreen ? "Verkleinen" : "Volledig scherm"}
@@ -276,7 +299,7 @@ export function FumeroLivePreviewPanel({
               href={src}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[12px] text-[#525252] hover:bg-[#E5E5E5] hover:text-[#171717]"
+              className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[12px] text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)] hover:text-[var(--fumero-text)]"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Open
@@ -286,7 +309,7 @@ export function FumeroLivePreviewPanel({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-8 w-8 rounded-lg text-[#525252] hover:bg-[#E5E5E5]"
+            className="h-8 w-8 rounded-lg text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)]"
             onClick={() => {
               setFullscreen(false);
               onClose();
@@ -299,7 +322,7 @@ export function FumeroLivePreviewPanel({
       </div>
 
       {isGenerating ? (
-        <div className="shrink-0 border-b border-[#E5E5E5]/60 px-4 py-2">
+        <div className="shrink-0 border-b border-[var(--fumero-border)]/60 px-4 py-2">
           <FumeroBuildTimeline
             activePhase={preview.buildPhase}
             building={preview.building ?? true}
@@ -309,14 +332,14 @@ export function FumeroLivePreviewPanel({
       ) : null}
 
       {src ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#E5E5E5]/60 px-4 py-2">
-          <span className="text-[12px] text-[#525252]">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--fumero-border)]/60 px-4 py-2">
+          <span className="text-[12px] text-[var(--fumero-text-muted)]">
             {previewModeLabel(preview, interactive)}
           </span>
           {interactive ? (
             <button
               type="button"
-              className="text-[12px] font-medium text-[#69C400] hover:underline"
+              className="text-[12px] font-medium text-[var(--fumero-accent)] hover:underline"
               onClick={focusPreviewForPlay}
             >
               Klik hier eerst voor toetsenbord
@@ -325,7 +348,7 @@ export function FumeroLivePreviewPanel({
           {preview.embedCode ? (
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[#E5E5E5] bg-white px-2.5 py-1 text-[12px] font-medium text-[#171717] hover:border-[#69C400]/40 hover:bg-[#FAFAFA]"
+              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--fumero-text)] hover:border-[var(--fumero-accent)]/40 hover:bg-[var(--fumero-surface-muted)]"
               onClick={() => {
                 void navigator.clipboard.writeText(preview.embedCode ?? "");
               }}
@@ -336,27 +359,54 @@ export function FumeroLivePreviewPanel({
         </div>
       ) : null}
 
-      <div className="relative min-h-0 flex-1 bg-white">
-        {src ? (
-          <iframe
-            ref={iframeRef}
-            key={preview.previewEpoch ?? preview.previewUrl ?? "live"}
-            title={`Preview ${preview.title}`}
-            src={src}
-            sandbox={PLAYABLE_PREVIEW_SANDBOX}
-            className="pointer-events-auto h-full min-h-[320px] w-full border-0"
-            onLoad={interactive ? focusPreviewForPlay : undefined}
-          />
-        ) : (
-          <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center">
-            <p className="text-[14px] font-medium text-[#171717]">
-              Nog geen preview
-            </p>
-            <p className="max-w-xs text-[13px] leading-relaxed text-[#737373]">
-              Beschrijf je tool in chat of kies een sjabloon — de live preview
-              verschijnt hier.
-            </p>
+      <div className="builder-canvas-frame relative min-h-0 flex-1 bg-[var(--fumero-surface-muted)]">
+        {isGenerating && !src ? (
+          <BuilderLoadingState activeMessage={subtitle} />
+        ) : src ? (
+          <div
+            className={cn(
+              "flex h-full min-h-[320px] w-full items-start justify-center overflow-auto p-4",
+              deviceFrame !== "desktop" && "bg-[var(--fumero-bg)]",
+            )}
+          >
+            <div
+              className={cn(
+                "h-full min-h-[320px] w-full",
+                deviceFrame !== "desktop" &&
+                  "builder-device-phone mx-auto h-auto max-h-full w-full rounded-[28px] border border-[var(--fumero-border)] shadow-[var(--fumero-shadow-lg)]",
+              )}
+              style={
+                deviceFrame !== "desktop"
+                  ? { maxWidth: builderDeviceMaxWidth(deviceFrame) }
+                  : undefined
+              }
+            >
+              {deviceFrame === "mobile" ? (
+                <div className="h-6 border-b border-[var(--fumero-border)] bg-[var(--fumero-surface)]" aria-hidden />
+              ) : null}
+              <iframe
+                ref={iframeRef}
+                key={`${preview.previewEpoch ?? preview.previewUrl ?? "live"}-${deviceFrame}`}
+                title={`Preview ${preview.title}`}
+                src={src}
+                sandbox={PLAYABLE_PREVIEW_SANDBOX}
+                className={cn(
+                  "pointer-events-auto w-full border-0",
+                  deviceFrame === "mobile"
+                    ? "min-h-[640px] h-[calc(100%-24px)]"
+                    : deviceFrame === "tablet"
+                      ? "min-h-[520px] h-full"
+                      : "h-full min-h-[320px]",
+                )}
+                onLoad={interactive ? focusPreviewForPlay : undefined}
+              />
+            </div>
           </div>
+        ) : (
+          <BuilderPreviewEmpty
+            deviceFrame={deviceFrame}
+            onDeviceChange={setDeviceFrame}
+          />
         )}
       </div>
     </div>

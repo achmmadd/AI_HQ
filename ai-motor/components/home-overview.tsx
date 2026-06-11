@@ -1,7 +1,7 @@
 "use client";
 
-import { HomeMotorStart } from "@/components/home-motor-start";
+import { CommandCenter } from "@/components/os/command-center";
 
 export function HomeOverview() {
-  return <HomeMotorStart />;
+  return <CommandCenter workspace="personal" />;
 }

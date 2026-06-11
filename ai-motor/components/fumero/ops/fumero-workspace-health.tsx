@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 type HealthState = {
   ok: boolean;
   label: string;
+  level?: string;
+  checked_at?: string;
 };
 
 export function FumeroWorkspaceHealth() {
@@ -16,11 +18,18 @@ export function FumeroWorkspaceHealth() {
     const load = async () => {
       try {
         const res = await fetch("/api/fumero/health", { credentials: "include" });
-        const json = (await res.json()) as { ok?: boolean; label?: string };
+        const json = (await res.json()) as {
+          ok?: boolean;
+          label?: string;
+          level?: string;
+          checked_at?: string;
+        };
         if (cancelled) return;
         setHealth({
           ok: res.ok && json.ok === true,
-          label: json.label || (res.ok ? "Studio OK" : "Offline"),
+          label: json.label || (res.ok ? "Operationeel" : "Offline"),
+          level: json.level,
+          checked_at: json.checked_at,
         });
       } catch {
         if (!cancelled) setHealth({ ok: false, label: "Offline" });
@@ -35,21 +44,35 @@ export function FumeroWorkspaceHealth() {
   }, []);
 
   if (!health) {
-    return <span className="text-xs text-[#a3a3a3]">…</span>;
+    return <span className="text-xs text-[var(--fumero-text-subtle)]">…</span>;
   }
+
+  const title = health.checked_at
+    ? `${health.label} — bijgewerkt ${new Date(health.checked_at).toLocaleString("nl-NL")}`
+    : health.ok
+      ? "Systeemstatus op basis van live checks"
+      : "Workspace health check mislukt";
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 text-xs font-medium",
-        health.ok ? "text-[#525252]" : "text-red-600"
+        health.ok
+          ? "text-[var(--fumero-text-muted)]"
+          : health.level === "config_required"
+            ? "text-amber-700 dark:text-amber-400"
+            : "text-[var(--fumero-destructive)]"
       )}
-      title={health.ok ? "Database en Fumero API bereikbaar" : "Workspace health check mislukt"}
+      title={title}
     >
       <span
         className={cn(
           "h-1.5 w-1.5 shrink-0 rounded-full",
-          health.ok ? "bg-[#69C400]" : "bg-red-500"
+          health.ok
+            ? "bg-[var(--fumero-accent)]"
+            : health.level === "config_required"
+              ? "bg-amber-500"
+              : "bg-[var(--fumero-destructive)]"
         )}
         aria-hidden
       />

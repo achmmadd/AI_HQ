@@ -29,7 +29,9 @@ export const DEFAULT_STUDIO_SETTINGS: ContentStudioSettings = {
   quality: "2K",
   count: 1,
   auto_variants: true,
-  model: "nano-banana-2",
+  model: "gpt-image-2",
+  brand_enhancement: false,
+  speed_preset: "balans",
 };
 
 type RefImage = { url: string; preview: string };
@@ -182,6 +184,7 @@ export function ContentStudioPromptBar({
           quality: settings.quality,
           count: isVideo ? 1 : settings.count,
           auto_variants: isVideo ? false : settings.auto_variants,
+          brand_enhancement: settings.brand_enhancement === true,
         }),
       });
 
@@ -250,7 +253,7 @@ export function ContentStudioPromptBar({
 
             <div className="flex flex-wrap items-center gap-2">
               {isEdit ? (
-                <span className="content-studio-ref-indicator rounded-full bg-[rgba(105,196,0,0.12)] px-2.5 py-0.5 fumero-text-caption font-medium text-[var(--fumero-accent)]">
+                <span className="content-studio-ref-indicator rounded-full bg-[var(--fumero-success-bg)] px-2.5 py-0.5 fumero-text-caption font-medium text-[var(--fumero-accent)]">
                   {refs.length === 1
                     ? "1 referentie"
                     : `${refs.length} referenties`}
@@ -297,7 +300,7 @@ export function ContentStudioPromptBar({
               {refs.length < maxRefs ? (
                 <button
                   type="button"
-                  className="content-studio-ref-add inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--fumero-border)] px-2.5 py-1 fumero-text-body-sm text-[var(--fumero-text-muted)] transition-colors hover:border-[rgba(105,196,0,0.35)] hover:text-[var(--fumero-text)]"
+                  className="content-studio-ref-add inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--fumero-border)] px-2.5 py-1 fumero-text-body-sm text-[var(--fumero-text-muted)] transition-colors hover:border-[var(--fumero-success-border)] hover:text-[var(--fumero-text)]"
                   disabled={uploading || busy}
                   onClick={() => fileRef.current?.click()}
                 >
@@ -349,9 +352,9 @@ export function ContentStudioPromptBar({
 
             <button
               type="button"
-              className={`content-studio-generate-btn inline-flex h-9 items-center gap-2 rounded-lg px-4 fumero-text-body-sm font-semibold text-white transition-colors disabled:opacity-60 ${
+              className={`content-studio-generate-btn inline-flex h-9 items-center gap-2 rounded-lg px-4 fumero-text-body-sm font-semibold text-[var(--fumero-accent-foreground)] transition-colors disabled:opacity-60 ${
                 isEdit
-                  ? "bg-[#525252] hover:bg-[#404040]"
+                  ? "bg-[var(--fumero-text-muted)] hover:bg-[var(--fumero-text-subtle)]"
                   : "bg-[var(--fumero-accent)] hover:bg-[var(--fumero-accent-hover)]"
               }`}
               disabled={busy || uploading}
