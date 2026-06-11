@@ -39,7 +39,7 @@ const ModalContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2",
-        "gap-4 rounded-2xl border border-border bg-surface p-6 shadow-lg",
+        "gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-lg",
         "max-h-[calc(100dvh-2rem)] overflow-y-auto",
         "focus:outline-none",
         className
@@ -81,7 +81,7 @@ const ModalTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold text-text-primary", className)}
+    className={cn("text-lg font-semibold text-foreground", className)}
     {...props}
   />
 ));
@@ -93,7 +93,7 @@ const ModalDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-text-secondary", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));

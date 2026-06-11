@@ -6,6 +6,9 @@ export type FumeroToolTemplateId =
   | "review"
   | "loyalty"
   | "calculator"
+  | "form"
+  | "landing"
+  | "dashboard"
   | "staff_app"
   | "receipt_scanner"
   | "order_tracker"
@@ -29,6 +32,30 @@ export const FUMERO_TOOL_TEMPLATES: FumeroToolTemplate[] = [
     defaultDeployType: "widget",
     promptSeed:
       "Compacte chat-widget voor productvragen, professionele toon, Fumero branding subtiel.",
+  },
+  {
+    id: "landing",
+    title: "Landingspagina",
+    description: "Hero, voordelen en conversie-CTA",
+    defaultDeployType: "widget",
+    promptSeed:
+      "Single-page landingspagina: hero met headline, 3 voordelen, social proof, primaire CTA-knop, contact/footer. Responsive, premium B2B-stijl.",
+  },
+  {
+    id: "form",
+    title: "Formulier",
+    description: "Bestel-, contact- of intakeformulier",
+    defaultDeployType: "widget",
+    promptSeed:
+      "Werkend formulier met labels, validatie, duidelijke verzendknop en bedankmelding. Geen backend — toon succes-state in de pagina.",
+  },
+  {
+    id: "dashboard",
+    title: "Dashboard",
+    description: "KPI-tegels en overzichtstabel",
+    defaultDeployType: "internal",
+    promptSeed:
+      "Compact dashboard: 3-4 KPI-tegels bovenaan, filterbalk, sorteerbare tabel met voorbeelddata. Rustig premium design.",
   },
   {
     id: "quiz",

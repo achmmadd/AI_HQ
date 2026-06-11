@@ -23,7 +23,7 @@ export function LivePreview({
       title={title}
       srcDoc={srcDoc}
       sandbox={PLAYABLE_PREVIEW_SANDBOX}
-      className={className ?? "h-full min-h-[320px] w-full rounded-xl border border-border bg-white"}
+      className={className ?? "h-full min-h-[320px] w-full rounded-xl border border-border bg-background"}
     />
   );
 }

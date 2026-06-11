@@ -321,7 +321,7 @@ export async function tryOpenClawChatStream(opts: {
       if (fumeroFast && route.model) {
         const badge = modelBadgeForId(route.model);
         opts.onActivity?.(
-          badge ? `Max · ${badge} — verbonden` : "Max · model starten…"
+          badge ? `Smokey · ${badge} — verbonden` : "Smokey · model starten…"
         );
       }
       return await streamViaOpenRouter({
@@ -334,7 +334,7 @@ export async function tryOpenClawChatStream(opts: {
           if (fumeroFast && route.model) {
             const badge = modelBadgeForId(route.model);
             opts.onActivity?.(
-              badge ? `Max antwoordt · ${badge}…` : "Max antwoordt…"
+              badge ? `Smokey antwoordt · ${badge}…` : "Smokey antwoordt…"
             );
           }
           opts.onStreamStart?.(routing);

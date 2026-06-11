@@ -17,6 +17,20 @@ test("casual build: klantvragen op site", () => {
   );
 });
 
+test("casual build: landingspagina voor zaak", () => {
+  assert.equal(
+    looksLikeCasualBuildRequest("maak een landingspagina voor mijn kapsalon"),
+    true
+  );
+});
+
+test("casual build: bestelformulier", () => {
+  assert.equal(
+    looksLikeCasualBuildRequest("bouw een bestelformulier voor mijn shop"),
+    true
+  );
+});
+
 test("broad site check: check hele site", () => {
   assert.equal(looksLikeBroadSiteCheckRequest("check hele site"), true);
   assert.equal(

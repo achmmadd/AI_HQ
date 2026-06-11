@@ -7,7 +7,7 @@ import { FumeroMaxChatShell } from "@/components/fumero/max/fumero-max-chat-shel
 export default function FumeroChatPage() {
   return (
     <FumeroBriefingProvider>
-      <FumeroShell page="Max" flush showBriefing>
+      <FumeroShell page="Chat" flush hideTopbar immersive showBriefing>
         <FumeroMaxChatShell />
       </FumeroShell>
     </FumeroBriefingProvider>

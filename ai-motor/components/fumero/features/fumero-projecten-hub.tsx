@@ -6,7 +6,6 @@ import {
   ExternalLink,
   Hammer,
   MessageSquare,
-  Plus,
   Users,
 } from "lucide-react";
 import { FumeroPageHeader } from "@/components/fumero/ops/fumero-page-header";
@@ -33,10 +32,10 @@ type TabId = "website" | "widget" | "team";
 
 function CardSkeleton() {
   return (
-    <div className="animate-pulse rounded-xl border border-[#E5E5E5] bg-white p-4">
-      <div className="mb-3 h-4 w-2/3 rounded bg-[#E5E5E5]" />
-      <div className="mb-4 h-3 w-1/3 rounded bg-[#E5E5E5]" />
-      <div className="h-8 w-full rounded-lg bg-[#FAFAFA]" />
+    <div className="animate-pulse rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-4">
+      <div className="mb-3 h-4 w-2/3 rounded bg-[var(--fumero-border)]" />
+      <div className="mb-4 h-3 w-1/3 rounded bg-[var(--fumero-border)]" />
+      <div className="h-8 w-full rounded-lg bg-[var(--fumero-surface-muted)]" />
     </div>
   );
 }
@@ -49,12 +48,12 @@ function EmptyTabState({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-[#E5E5E5] bg-white px-6 py-14 text-center">
-      <p className="text-sm font-medium text-[#525252]">{title}</p>
-      <p className="mx-auto mt-1 max-w-md text-xs text-[#737373]">{description}</p>
+    <div className="rounded-xl border border-dashed border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-14 text-center">
+      <p className="text-sm font-medium text-[var(--fumero-text-muted)]">{title}</p>
+      <p className="mx-auto mt-1 max-w-md text-xs text-[var(--fumero-text-muted)]">{description}</p>
       <Button
         asChild
-        className="mt-4 rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
+        className="mt-4 rounded-lg bg-[var(--fumero-accent)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
       >
         <Link href="/fumero/bouwen">
           <Hammer className="mr-1.5 h-4 w-4" />
@@ -85,19 +84,19 @@ function ProjectCard({
       <div className="flex flex-1 flex-col p-4">
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-[#171717]">{title}</h3>
-            <p className="mt-0.5 text-[11px] text-[#737373]">{meta}</p>
+            <h3 className="truncate text-sm font-semibold text-[var(--fumero-text)]">{title}</h3>
+            <p className="mt-0.5 text-[11px] text-[var(--fumero-text-muted)]">{meta}</p>
           </div>
           <FumeroStatusBadge status={status} />
         </div>
-        <p className="mb-4 text-xs text-[#737373]">
+        <p className="mb-4 text-xs text-[var(--fumero-text-muted)]">
           Laatste edit · {formatRelativeDate(updatedAt)}
         </p>
         <div className="mt-auto flex flex-wrap gap-2">
           <Button
             asChild
             size="sm"
-            className="h-8 flex-1 rounded-lg bg-[#69C400] text-xs shadow-none hover:bg-[#5db000]"
+            className="h-8 flex-1 rounded-lg bg-[var(--fumero-accent)] text-xs shadow-none hover:bg-[var(--fumero-accent-hover)]"
           >
             <Link href={buildHref}>
               <MessageSquare className="mr-1 h-3 w-3" />
@@ -109,11 +108,11 @@ function ProjectCard({
               asChild
               variant="secondary"
               size="sm"
-              className="h-8 rounded-lg border-[#E5E5E5] text-xs"
+              className="h-8 rounded-lg border-[var(--fumero-border)] text-xs"
             >
               <a href={liveHref} target="_blank" rel="noreferrer">
                 <ExternalLink className="mr-1 h-3 w-3" />
-                Open live
+                Openen
               </a>
             </Button>
           ) : null}
@@ -193,13 +192,12 @@ export function FumeroProjectenHub() {
       />
 
       {error ? (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="mb-4 rounded-lg border border-[var(--fumero-danger-border)] bg-[var(--fumero-danger-bg)] px-3 py-2 text-sm text-[var(--fumero-danger-fg)]">
           {error}
         </p>
       ) : null}
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-lg border border-[#E5E5E5] bg-white p-0.5">
+      <div className="mb-6 flex flex-wrap items-center gap-1 rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-0.5 w-fit">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -207,24 +205,14 @@ export function FumeroProjectenHub() {
               onClick={() => setTab(t.id)}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 tab === t.id
-                  ? "bg-[#FAFAFA] text-[#171717] shadow-sm"
-                  : "text-[#737373] hover:text-[#171717]"
+                  ? "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text)] shadow-sm"
+                  : "text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
               }`}
             >
               {t.label}
             </button>
           ))}
         </div>
-        <Button
-          asChild
-          className="rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
-        >
-          <Link href="/fumero/bouwen">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Nieuw in Bouwen
-          </Link>
-        </Button>
-      </div>
 
       {tab === "website" ? (
         <section>
@@ -341,22 +329,21 @@ export function FumeroProjectenHub() {
               ))}
             </div>
           ) : teamTools.length === 0 && teamApps.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#E5E5E5] bg-white px-6 py-16 text-center">
-              <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FAFAFA] text-[#737373]">
+            <div className="rounded-xl border border-dashed border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-16 text-center">
+              <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)]">
                 <Users className="h-6 w-6" strokeWidth={1.5} />
               </span>
-              <p className="text-sm font-medium text-[#525252]">
-                Team-apps — binnenkort beschikbaar
+              <p className="text-sm font-medium text-[var(--fumero-text-muted)]">
+                Nog geen team-apps
               </p>
-              <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-[#737373]">
-                Hier komen straks interne personeelsapps en gedeelde tools met teamrechten.
-                Bouw nu al interne apps via Bouwen — ze verschijnen onder Website zolang
-                teambeheer nog niet live is.
+              <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-[var(--fumero-text-muted)]">
+                Interne apps voor je team verschijnen hier. Bouw ze nu al via Bouwen —
+                ze staan intussen onder Website.
               </p>
               <Button
                 asChild
                 variant="secondary"
-                className="mt-5 rounded-lg border-[#E5E5E5] text-xs"
+                className="mt-5 rounded-lg border-[var(--fumero-border)] text-xs"
               >
                 <Link href="/fumero/bouwen">Start in Bouwen</Link>
               </Button>

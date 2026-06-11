@@ -11,7 +11,7 @@ const fs = require("fs");
 
 const NODE_INTERPRETER =
   process.env.AI_MOTOR_NODE?.trim() ||
-  "/home/pietje/.cursor-server/bin/linux-x64/aac81804b986d739acab348ed96b8bea6e83cc50/node";
+  "/home/pietje/.nvm/versions/node/v22.22.2/bin/node";
 
 /** Laad .env.local keys in process.env voor PM2 (Next leest ook .env.local, dit is backup). */
 function loadEnvLocal() {

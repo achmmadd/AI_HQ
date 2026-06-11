@@ -14,11 +14,17 @@ import { formatMasterContextBlock } from "@/lib/master-context-format";
 import { getWorkspaceTheme } from "@/stores/useCompanyStore";
 import type { WorkspaceId } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { WORKSPACE_LABELS } from "@/lib/brand";
+import { InlineLoading } from "@/components/ui/page-loading";
+import {
+  assessTeamContextQuality,
+  FUMERO_CONTEXT_EXAMPLE,
+} from "@/lib/fumero/context-quality";
 
 const WORKSPACE_OPTIONS: { id: WorkspaceId; slug: string; label: string }[] = [
-  { id: "fumero", slug: "fumero", label: "Fumero Studio" },
-  { id: "bokas", slug: "bokas", label: "Bokas" },
-  { id: "personal", slug: "personal", label: "Motor AI" },
+  { id: "fumero", slug: "fumero", label: WORKSPACE_LABELS.fumero },
+  { id: "bokas", slug: "bokas", label: WORKSPACE_LABELS.bokas },
+  { id: "personal", slug: "personal", label: WORKSPACE_LABELS.personal },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -113,6 +119,7 @@ export function MasterContextEditor({
   }
 
   const previewBlock = formatMasterContextBlock(content);
+  const qualityIssues = assessTeamContextQuality(content);
   const theme = getWorkspaceTheme(selected);
 
   return (
@@ -145,24 +152,47 @@ export function MasterContextEditor({
         <CardHeader>
           <CardTitle className="text-lg">Teamcontext — {theme.name}</CardTitle>
           <CardDescription className="leading-relaxed">
-            Schrijf in gewone taal wat jullie team doet. De AI gebruikt dit als
-            vaste achtergrond in elke chat — vóór kennisbank en geheugen.
-            Dit is niet hetzelfde als de kennisbank: chatberichten en
-            site-checks worden hier niet automatisch opgeslagen. Voor
-            doorzoekbare documenten gebruik je{" "}
+            Beschrijf je bedrijf, doelgroep, tone-of-voice en belangrijke procedures.
+            Agents gebruiken deze context in elke chat — vóór kennisbank en geheugen.
+            Voor doorzoekbare documenten gebruik je de{" "}
             <a href="/kennisbank" className="underline">
-              /kennisbank
-            </a>{" "}
-            (bestand uploaden) of de knop &quot;Opslaan in kennisbank&quot;
-            onder een assistant-bericht. Vaste fumero.nl-pagina&apos;s worden
-            wekelijks apart geïndexeerd.
+              kennisbank
+            </a>
+            .
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {loading ? (
-            <p className="text-sm text-text-secondary">Laden…</p>
+            <InlineLoading />
           ) : (
             <>
+              {qualityIssues.length > 0 ? (
+                <ul className="space-y-1 rounded-xl border border-border bg-surface-elevated/40 p-3 text-sm" role="status">
+                  {qualityIssues.map((issue) => (
+                    <li
+                      key={issue.id}
+                      className={issue.severity === "warning" ? "text-amber-800 dark:text-amber-300" : "text-text-secondary"}
+                    >
+                      {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="touch"
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    if (content.trim() && !window.confirm("Voorbeeldcontext vervangt je huidige tekst in het veld. Doorgaan?")) return;
+                    setContent(FUMERO_CONTEXT_EXAMPLE);
+                    setSaved(false);
+                  }}
+                >
+                  Voorbeeld invullen
+                </Button>
+              </div>
               <label
                 className="block text-sm font-medium text-text-primary"
                 htmlFor="master-context"
@@ -215,7 +245,7 @@ export function MasterContextEditor({
                   onClick={() => setShowPreview((v) => !v)}
                 >
                   <Eye className="h-5 w-5" aria-hidden />
-                  {showPreview ? "Verberg preview" : "Toon chat-preview"}
+                  {showPreview ? "Verberg voorbeeld" : "Toon voorbeeld in chat"}
                 </Button>
               </div>
             </>
@@ -226,7 +256,7 @@ export function MasterContextEditor({
       {showPreview && !loading ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Preview in chat</CardTitle>
+            <CardTitle className="text-base">Voorbeeld in chat</CardTitle>
             <CardDescription>
               Zo ziet de AI deze tekst in het systeembericht (vóór kennisbank).
             </CardDescription>

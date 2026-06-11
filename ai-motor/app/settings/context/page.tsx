@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { SettingsNav } from "@/components/settings/settings-nav";
+import { SettingsPageHeader } from "@/components/settings/settings-page-header";
 import { MasterContextEditor } from "@/components/settings/master-context-editor";
 import { readAuthSession, TOKEN_COOKIE, type WorkspaceScope } from "@/lib/auth-session";
 
@@ -26,6 +27,10 @@ export default async function SettingsContextPage() {
     <AppShell title="Instellingen">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <SettingsNav />
+        <SettingsPageHeader
+          title="Teamcontext"
+          description="Geef agents achtergrond over je bedrijf, tone-of-voice en procedures. Deze context wordt gebruikt in chat en automatiseringen."
+        />
         <MasterContextEditor
           defaultWorkspace={workspaces[0]}
           allowedWorkspaces={workspaces}

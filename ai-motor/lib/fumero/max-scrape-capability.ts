@@ -24,7 +24,7 @@ export function formatMaxScrapeUrlCapabilityBlock(klant = "fumero"): string {
   return [
     formatMaxCasualUserLanguageBlock(),
     formatMaxLongTermGoalBlock(userCtx),
-    "### Max — live pagina's (automatisch, niet tonen aan gebruiker)",
+    "### Smokey — live pagina's (automatisch, niet tonen aan gebruiker)",
     `URL-reader: ${reader}. Geen aparte tool om in te schakelen in Factory OS.`,
     "Bij zinnen als 'haal info van fumero', 'onze FAQ', 'wat op de site staat' (ook zonder https) haalt het systeem pagina's al op vóór je antwoord of een build in Bouwen.",
     "Je ziet die inhoud tussen --- LIVE PAGINA --- en --- EINDE LIVE PAGINA --- — gebruik die data, verzin geen prijzen.",

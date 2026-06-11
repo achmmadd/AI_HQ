@@ -1,11 +1,10 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import {
-  applyFumeroThemeToDocument,
-  type FumeroThemePreference,
-  writeStoredFumeroThemePreference,
-} from "@/lib/fumero/theme";
+import type { FumeroThemePreference } from "@/lib/fumero/theme";
 
+/**
+ * Bridge for Fumero UI that still calls useFumeroThemeStore.
+ * Theme persistence lives in next-themes (motorsai-theme).
+ */
 type FumeroThemeState = {
   preference: FumeroThemePreference;
   resolved: "light" | "dark";
@@ -13,32 +12,29 @@ type FumeroThemeState = {
   cyclePreference: () => void;
 };
 
-export const useFumeroThemeStore = create<FumeroThemeState>()(
-  persist(
-    (set, get) => ({
-      preference: "light",
-      resolved: "light",
-      setPreference: (preference) => {
-        writeStoredFumeroThemePreference(preference);
-        const resolved = applyFumeroThemeToDocument(preference);
-        set({ preference, resolved });
-      },
-      cyclePreference: () => {
-        const order: FumeroThemePreference[] = ["light", "dark", "system"];
-        const idx = order.indexOf(get().preference);
-        const next = order[(idx + 1) % order.length]!;
-        get().setPreference(next);
-      },
-    }),
-    {
-      name: "fumero-theme",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ preference: s.preference }),
-      onRehydrateStorage: () => (state) => {
-        if (!state) return;
-        const resolved = applyFumeroThemeToDocument(state.preference);
-        state.resolved = resolved;
-      },
-    }
-  )
-);
+let externalSetTheme: ((theme: FumeroThemePreference) => void) | null = null;
+
+export function registerFumeroThemeBridge(
+  setTheme: (theme: FumeroThemePreference) => void
+) {
+  externalSetTheme = setTheme;
+}
+
+export function syncFumeroThemeStoreResolved(resolved: "light" | "dark") {
+  useFumeroThemeStore.setState({ resolved });
+}
+
+export const useFumeroThemeStore = create<FumeroThemeState>()((set, get) => ({
+  preference: "system",
+  resolved: "light",
+  setPreference: (preference) => {
+    externalSetTheme?.(preference);
+    set({ preference });
+  },
+  cyclePreference: () => {
+    const order: FumeroThemePreference[] = ["light", "dark", "system"];
+    const idx = order.indexOf(get().preference);
+    const next = order[(idx + 1) % order.length]!;
+    get().setPreference(next);
+  },
+}));

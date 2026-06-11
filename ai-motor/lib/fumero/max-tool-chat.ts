@@ -5,13 +5,17 @@ import {
   type FumeroToolTemplateId,
 } from "@/lib/fumero/tool-templates";
 import {
+  isBouwenContinueIntent,
+  isPreviewPanelOpenIntent,
+} from "@/lib/fumero/bouwen-chat-intents";
+import {
   isFumeroSiteCheckChatIntent,
   looksLikeCasualBuildRequest,
 } from "@/lib/fumero/casual-prompt";
 
 /** Keywords die tool-builder in chat starten (geen redirect). */
 const TOOL_INTENT_RE =
-  /\b(maak\s+(een\s+)?(widget|tool|rekenmachine|calculator|iets|wat)|bouw\s+(een\s+)?(tool|rekenmachine|calculator|widget|chatbot|website|iets|wat)|bouwen\s+(?:een\s+)?(?:chat\s*bot|chatbot|tool|widget)|build\s+(a\s+)?(tool|calculator|widget)|create\s+(a\s+)?(tool|calculator|widget)|keuzehulp|chatbot|chat\s*bot|popup|loyalty|quiz|leeftijdscheck|rekenmachine|calculator|embed\s*widget|website\s*widget|klantenservice|helpdesk|kennisbank|widgetje)\b/i;
+  /\b(maak\s+(een\s+)?(widget|tool|rekenmachine|calculator|formulier|form|landingspagina|landing\s*page|pagina|website|dashboard|chatbot|app|iets|wat)|bouw\s+(een\s+)?(tool|rekenmachine|calculator|widget|chatbot|website|formulier|form|landingspagina|dashboard|app|iets|wat)|bouwen\s+(?:een\s+)?(?:chat\s*bot|chatbot|tool|widget|formulier|pagina|website)|genereer\s+(een\s+)?(widget|tool|formulier|landingspagina|pagina|website|dashboard)|ontwerp\s+(een\s+)?(widget|tool|formulier|landingspagina|pagina|website)|build\s+(a\s+)?(tool|calculator|widget|form|landing|page|website)|create\s+(a\s+)?(tool|calculator|widget|form|landing|page|website)|keuzehulp|chatbot|chat\s*bot|popup|loyalty|quiz|leeftijdscheck|rekenmachine|calculator|embed\s*widget|website\s*widget|klantenservice|helpdesk|kennisbank|widgetje|bestelformulier|contactformulier|offerteformulier|intakeformulier|landingspagina|landing\s*page|one[-\s]?pager|startpagina|contactformulier|bestelformulier)\b/i;
 
 const BUILD_VERB_QUESTION_RE =
   /\b(kan|kun|zou)\s+(je|u)\s+.+\s+(maken|bouwen|zetten|toevoegen|fixen)\b/i;
@@ -77,14 +81,36 @@ export function isCoderQuestionOnly(
   return false;
 }
 
-/** Fase 2: detectie voor volledige data-gedreven apps (gaat naar nieuwe apps-tabel + /api/apps/[slug]/data). */
+const FULL_APP_SCOPE_RE =
+  /\b(portaal|portal|projectmanagement|projectbeheer|detailpagina|admin(?:[-\s]?overzicht)?|beheeromgeving|backoffice|meerdere\s+pagina['’]?s|multi[-\s]?page|crm|erp|klantenportaal|customer\s+portal|relatiebeheer|data\s*model|datamodel|rollen|roles?|login|inloggen|auth|database|crud|klanten?|clients?|projecten?|taken?|tasks?|bestellingen?|orders?)\b/i;
+
+const FULL_APP_DASHBOARD_RE =
+  /\b(dashboard|dashboards).{0,40}(admin|portaal|crm|beheren|klanten|projecten|login|crud|meerdere)\b/i;
+
+const FULL_APP_SYSTEM_RE =
+  /\b(beheren|beheer|bijhouden|registreren|opslaan|toevoegen|wijzigen|aanpassen|verwijderen|overzicht|lijsten?|statussen?|workflow|rechten|accounts?)\b/i;
+
+const SMALL_EMBEDDABLE_TOOL_RE =
+  /\b(rekenmachine|calculator|chat\s*widget|website\s*widget|embed\s*widget|widgetje|popup|quiz|keuzehulp|leeftijdscheck|game|spel|formulier|form|chatbot|chat\s*bot|landingspagina|landing\s*page|one[-\s]?pager|startpagina|contactformulier|bestelformulier|eenvoudig\s+dashboard|simpel\s+dashboard|kpi.{0,12}dashboard)\b/i;
+
+/**
+ * Scope-based routing: infer artifact size like a coding team would.
+ * Full business systems, portals, data/admin surfaces and multi-page products
+ * go to full_app even when the user never says "app" or "webapp".
+ */
 export function detectFullAppIntent(prompt: string): boolean {
-  const p = prompt.toLowerCase();
-  if (!/\b(app|applicatie|webapp)\b/.test(p)) return false;
-  // Data-centric signalen (voorrad, producten toevoegen/opslaan/lijsten etc.)
-  if (/\b(toevoegen|toevoeg|opslaan|bijhouden|registreren|overzicht|lijst|lijsten|zien|bekijken|wijzigen|aanpassen|verwijderen|crud|data|database|producten?|voorraad|inventaris|klanten?|bestellingen?|orders?|taken?|todo)\b/.test(p)) return true;
+  const p = prompt.trim();
+  if (!p) return false;
+  // Compacte single-purpose embeds blijven in de tool/widget-builder.
+  if (SMALL_EMBEDDABLE_TOOL_RE.test(p)) return false;
+  // Product-/domeinscope is sterker dan widgetwoorden: "chatbot met admin en database" is een full_app.
+  if (FULL_APP_SCOPE_RE.test(p)) return true;
+  if (FULL_APP_DASHBOARD_RE.test(p)) return true;
+  if (/\b(app|applicatie|webapp|software|systeem|platform)\b/i.test(p) && FULL_APP_SYSTEM_RE.test(p)) {
+    return true;
+  }
   // Expliciete "maak/bouw een app" formulering
-  if (/\b(maak|bouw)\s+(een\s+)?(volledige\s+)?(app|applicatie)\b/.test(p)) return true;
+  if (/\b(maak|bouw)\s+(een\s+)?(volledige\s+)?(app|applicatie|webapp|software|systeem|platform)\b/i.test(p)) return true;
   return false;
 }
 
@@ -97,14 +123,19 @@ export type FumeroToolQuickReply = {
 /** Snelle sjablonen wanneer Max tool-intent detecteert. */
 export const FUMERO_TOOL_QUICK_REPLIES: FumeroToolQuickReply[] = [
   {
-    label: "Chat widget",
-    prompt: "Chat widget voor productvragen op de website",
+    label: "Chatbot",
+    prompt: "Maak een chatbot voor klantvragen op mijn website",
     templateId: "chat",
   },
   {
-    label: "Rekenmachine",
-    prompt: "Maak een rekenmachine met groot display en donkere knoppen.",
-    templateId: "calculator",
+    label: "Landingspagina",
+    prompt: "Bouw een landingspagina met hero, voordelen en contact-CTA",
+    templateId: "landing",
+  },
+  {
+    label: "Formulier",
+    prompt: "Maak een bestelformulier met naam, e-mail en productkeuze",
+    templateId: "form",
   },
   {
     label: "Keuzehulp",
@@ -112,14 +143,9 @@ export const FUMERO_TOOL_QUICK_REPLIES: FumeroToolQuickReply[] = [
     templateId: "quiz",
   },
   {
-    label: "Leeftijdscheck",
-    prompt: "Leeftijdscheck 18+ gate, NL copy, geen persoonsgegevens opslaan",
-    templateId: "age",
-  },
-  {
-    label: "Loyalty",
-    prompt: "Loyalty dashboard: punten, tier en beloningen",
-    templateId: "loyalty",
+    label: "Dashboard",
+    prompt: "Eenvoudig dashboard met KPI-tegels en overzichtstabel",
+    templateId: "dashboard",
   },
   {
     label: "Eigen idee",
@@ -152,6 +178,11 @@ export function resolveTemplateFromUserText(
   if (/\b(rekenmachine|calculator|calc\b)\b/.test(lower)) return "calculator";
   if (/\b(chat\s*widget|chatbot|chat\s*bot|klantenservice|helpdesk|support|vragen\s*beantwoord)\b/.test(lower)) return "chat";
   if (/\b(faq|veelgestelde|kennisbank)\b/.test(lower)) return "chat";
+  if (/\b(landingspagina|landing\s*page|one[-\s]?pager|startpagina)\b/.test(lower)) return "landing";
+  if (/\b(bestel|contact|offerte|intake|aanmeld|reserver).{0,12}formulier\b/.test(lower)) return "form";
+  if (/\b(formulier|form)\b/.test(lower) && !/\b(inlog|login|auth)\b/.test(lower)) return "form";
+  if (/\b(eenvoudig|simpel|kpi).{0,16}dashboard\b/.test(lower)) return "dashboard";
+  if (/\bdashboard\b/.test(lower) && !/\b(portaal|crm|admin|login|klanten\s*beheren)\b/.test(lower)) return "dashboard";
   if (/\bkeuzehulp|quiz\b/.test(lower)) return "quiz";
   if (/\bleeftijd|18\+\b/.test(lower)) return "age";
   if (/\bloyalty|punten|beloningen\b/.test(lower)) return "loyalty";
@@ -163,7 +194,7 @@ export function resolveTemplateFromUserText(
 export function toolIntentAssistantIntro(): string {
   return (
     "Vertel gewoon wat je wilt — geen perfecte prompt nodig.\n\n" +
-    "Kies een sjabloon of typ bv. *chatbot voor klantvragen* of *info van fumero.nl*. " +
+    "Kies een sjabloon of typ bv. *chatbot voor klantvragen*, *landingspagina voor mijn zaak* of *bestelformulier*. " +
     "Preview rechts · daarna **Pas aan** of **Online zetten**."
   );
 }
@@ -225,13 +256,19 @@ export type MaxToolChatAction =
   | { type: "tool_intent_pick" }
   | { type: "tool_build" }
   | { type: "tool_iterate" }
-  | { type: "tool_publish" };
+  | { type: "tool_publish" }
+  | { type: "open_preview" };
+
+export { isBouwenContinueIntent, isPreviewPanelOpenIntent };
 
 export function resolveMaxToolChatAction(
   prompt: string,
   opts: {
     hasActiveTool: boolean;
     awaitingTemplate?: boolean;
+    /** Na bouw-verduidelijking: korte bevestigingen → bouwen, niet template picker. */
+    awaitingClarify?: boolean;
+    hasPreview?: boolean;
     /** Coder mode: never fall through to generic chat — unclear → template picker. */
     coderMode?: boolean;
   }
@@ -239,8 +276,22 @@ export function resolveMaxToolChatAction(
   const t = prompt.trim();
   if (!t) return null;
 
+  if (isPreviewPanelOpenIntent(t) && opts.hasPreview) {
+    return { type: "open_preview" };
+  }
+
+  if (opts.awaitingClarify) {
+    if (isBouwenContinueIntent(t)) {
+      return { type: "tool_build" };
+    }
+    return null;
+  }
+
   if (opts.coderMode) {
     if (isFumeroSiteCheckChatIntent(t)) {
+      return null;
+    }
+    if (isBouwenContinueIntent(t)) {
       return null;
     }
     if (isCoderQuestionOnly(t, { awaitingTemplate: opts.awaitingTemplate })) {
@@ -269,7 +320,10 @@ export function resolveMaxToolChatAction(
     ) {
       return { type: "tool_build" };
     }
-    if (quick?.templateId === "custom" || t.length < 10) {
+    if (
+      quick?.templateId === "custom" ||
+      (t.length < 10 && !isBouwenContinueIntent(t))
+    ) {
       return { type: "tool_intent_pick" };
     }
     return { type: "tool_build" };

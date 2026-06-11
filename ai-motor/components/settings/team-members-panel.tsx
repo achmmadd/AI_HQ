@@ -18,15 +18,16 @@ import {
   TableRow,
 } from "@/design-system/components";
 import { ROLE_LABELS } from "@/components/settings/master-context-editor";
+import { WORKSPACE_LABELS } from "@/lib/brand";
 import { getWorkspaceTheme } from "@/stores/useCompanyStore";
 import type { WorkspaceId } from "@/lib/types";
 import type { MembershipRole } from "@/lib/auth-session";
 import { cn } from "@/lib/utils";
 
 const WORKSPACE_OPTIONS: { id: WorkspaceId; slug: string; label: string }[] = [
-  { id: "fumero", slug: "fumero", label: "Fumero Studio" },
-  { id: "bokas", slug: "bokas", label: "Bokas" },
-  { id: "personal", slug: "personal", label: "Motor AI" },
+  { id: "fumero", slug: "fumero", label: WORKSPACE_LABELS.fumero },
+  { id: "bokas", slug: "bokas", label: WORKSPACE_LABELS.bokas },
+  { id: "personal", slug: "personal", label: WORKSPACE_LABELS.personal },
 ];
 
 type Member = {
@@ -244,8 +245,7 @@ export function TeamMembersPanel({
                           colSpan={canManage ? 3 : 2}
                           className="text-text-secondary"
                         >
-                          Nog geen leden in Postgres — voeg een uitnodiging toe
-                          of migreer auth_users.
+                          Nog geen teamleden. Nodig een collega uit om samen te werken.
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -339,11 +339,11 @@ export function TeamMembersPanel({
               {canManage ? (
                 <form onSubmit={(e) => void handleInvite(e)} className="space-y-4">
                   <h3 className="text-sm font-medium text-text-primary">
-                    Uitnodigen (placeholder)
+                    Teamlid uitnodigen
                   </h3>
                   <p className="text-sm text-text-secondary">
-                    E-mail wordt nog niet automatisch verstuurd. Na uitnodigen
-                    kopieer je de link en stuur je die zelf (WhatsApp/e-mail).
+                    Genereer een uitnodigingslink en stuur die naar je collega per
+                    e-mail of WhatsApp.
                   </p>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                     <div className="flex-1 space-y-1">

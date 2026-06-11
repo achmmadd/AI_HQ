@@ -29,7 +29,12 @@ function falKey(): string | undefined {
   );
 }
 
-function buildVideoPrompt(userPrompt: string, klant: CompanyId): string {
+function buildVideoPrompt(
+  userPrompt: string,
+  klant: CompanyId,
+  brandEnhancement?: boolean
+): string {
+  if (!brandEnhancement) return userPrompt.trim();
   const type = contentTypeForKlant(klant);
   const motion = VIDEO_MOTION[type];
   return `${userPrompt.trim()}\n\n${motion}`;
@@ -90,14 +95,15 @@ async function callFalVideo(opts: {
   }
 }
 
-/** MiniMax Video 01 — image-to-video or text-to-video for product/food clips. */
+/** MiniMax Video 01 — image-to-video or text-to-video. */
 export async function generateVideoWithFal(opts: {
   userPrompt: string;
   klant: CompanyId;
   imageUrl?: string;
+  brandEnhancement?: boolean;
 }): Promise<FalVideoGenerateResult> {
   const user_prompt = opts.userPrompt.trim();
-  const fal_prompt = buildVideoPrompt(user_prompt, opts.klant);
+  const fal_prompt = buildVideoPrompt(user_prompt, opts.klant, opts.brandEnhancement);
   const imageUrl = opts.imageUrl?.trim();
 
   const endpoint = imageUrl ? MINIMAX_I2V : MINIMAX_T2V;

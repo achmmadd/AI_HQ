@@ -385,6 +385,19 @@ export function initDb(): void {
   );
 
   CREATE INDEX IF NOT EXISTS idx_vendor_snapshot_vendor ON vendor_catalog_snapshot(vendor_key);
+
+  CREATE TABLE IF NOT EXISTS demo_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    company TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    team_size TEXT NOT NULL,
+    message TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_demo_requests_created ON demo_requests(created_at);
   `);
 }
 

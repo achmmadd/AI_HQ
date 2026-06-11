@@ -180,7 +180,7 @@ export function ProjectPreview({
             title={title}
             srcDoc={previewHtml}
             sandbox={PLAYABLE_PREVIEW_SANDBOX}
-            className="pointer-events-auto h-full w-full border-0 bg-white"
+            className="pointer-events-auto h-full w-full border-0 bg-background"
           />
         </div>
       ) : (

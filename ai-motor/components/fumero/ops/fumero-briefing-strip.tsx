@@ -28,25 +28,25 @@ export function FumeroBriefingStrip({
 
   return (
     <>
-      <div className="shrink-0 border-b border-[#E5E5E5] bg-white/80 px-4 py-1 sm:px-6">
+      <div className="shrink-0 border-b border-[var(--fumero-border)] bg-[var(--fumero-surface)]/80 px-4 py-1 sm:px-6">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="shrink-0 text-[11px] font-medium text-[#a3a3a3]">
+          <p className="shrink-0 text-[11px] font-medium text-[var(--fumero-text-subtle)]">
             Briefing · <span className="tabular-nums">{timeLabel}</span>
           </p>
-          <p className="min-w-0 flex-1 truncate text-xs text-[#525252]">
+          <p className="min-w-0 flex-1 truncate text-xs text-[var(--fumero-text-muted)]">
             {loading
               ? "laden…"
               : data?.summary ?? "Geen briefing"}
           </p>
           <div className="flex shrink-0 items-center gap-2">
             {actionCount > 0 ? (
-              <span className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-[#171717] px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-white">
+              <span className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-[var(--fumero-inverse-bg)] px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-[var(--fumero-inverse-text)]">
                 {actionCount}
               </span>
             ) : null}
             <button
               type="button"
-              className="text-[11px] font-medium text-[#69C400] hover:text-[#5db000]"
+              className="text-[11px] font-medium text-[var(--fumero-accent)] hover:text-[var(--fumero-accent-hover)]"
               onClick={() => setPanelOpen(true)}
             >
               Details

@@ -97,10 +97,10 @@ export function FumeroChatKpiStrip() {
 
   return (
     <div
-      className="fumero-kpi-strip shrink-0 border-b border-[#E5E5E5] bg-white px-4 py-2"
+      className="fumero-kpi-strip shrink-0 border-b border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-4 py-2"
       aria-label="Studio overzicht"
     >
-      <div className="mx-auto flex max-w-3xl divide-x divide-[#E5E5E5]">
+      <div className="mx-auto flex max-w-3xl divide-x divide-[var(--fumero-border)]">
         {(
           [
             {

@@ -15,7 +15,7 @@ test("failedResponseToError herkent Cloudflare 524 HTML", () => {
     "<!DOCTYPE html><title>524: A timeout occurred</title>",
     524
   );
-  expect(e.message).toContain("524");
+  assert.match(e.message, /524/);
 });
 
 test("failedResponseToError valt terug op plain text", () => {

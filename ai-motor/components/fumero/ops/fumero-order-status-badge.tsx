@@ -6,9 +6,12 @@ import {
 } from "@/lib/fumero/order-status";
 
 const STYLES: Record<FumeroOrderStatus, string> = {
-  nieuw: "bg-neutral-100 text-neutral-600 border-neutral-200",
-  verwerking: "bg-blue-50 text-blue-700 border-blue-200",
-  verzonden: "bg-[rgba(105,196,0,0.1)] text-[#3d7a00] border-[rgba(105,196,0,0.25)]",
+  nieuw:
+    "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] border-[var(--fumero-border)]",
+  verwerking:
+    "bg-[var(--fumero-info-bg)] text-[var(--fumero-info-fg)] border-[var(--fumero-info-border)]",
+  verzonden:
+    "bg-[var(--fumero-success-bg)] text-[var(--fumero-success-fg)] border-[var(--fumero-success-border)]",
 };
 
 export function FumeroOrderStatusBadge({

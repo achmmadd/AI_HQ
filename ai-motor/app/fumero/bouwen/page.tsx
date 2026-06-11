@@ -2,14 +2,14 @@
 
 import { FumeroShell } from "@/components/fumero/fumero-shell";
 import { FumeroBriefingProvider } from "@/components/fumero/max/fumero-briefing-provider";
-import { FumeroBouwenShell } from "@/components/fumero/features/fumero-bouwen-shell";
+import { BuilderOsShell } from "@/components/os/builder-os-shell";
 
-/** Bouwen — Lovable split workspace (chat + preview). */
+/** Bouwen — AI builder workspace (chat + live preview). */
 export default function FumeroBouwenPage() {
   return (
     <FumeroBriefingProvider>
-      <FumeroShell page="Bouwen" flush>
-        <FumeroBouwenShell />
+      <FumeroShell page="Bouwen" flush hideTopbar immersive={false}>
+        <BuilderOsShell />
       </FumeroShell>
     </FumeroBriefingProvider>
   );

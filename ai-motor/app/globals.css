@@ -1,5 +1,6 @@
 @import "../design-system/tokens.css";
 @import "../design-system/workspaces.css";
+@import "../design-system/os-tokens.css";
 
 @tailwind base;
 @tailwind components;
@@ -15,6 +16,85 @@
   }
 
   body {
-    @apply bg-background text-text-primary min-h-screen;
+    @apply bg-background text-foreground min-h-screen;
+  }
+
+  /* Heading hierarchy */
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--text-heading, var(--foreground));
+  }
+
+  /* Accessible focus rings */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Form controls — theme-aware, clearly interactive */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    background-color: var(--card);
+    border-color: var(--input);
+    color: var(--foreground);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-muted, var(--muted-foreground));
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):hover,
+  textarea:hover,
+  select:hover {
+    border-color: var(--border-strong, var(--border));
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--ring);
+    outline: none;
+  }
+
+  /* Premium interactive surfaces */
+  .ds-surface-card {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--card-foreground);
+    box-shadow: var(--shadow-xs);
+    border-radius: var(--ds-radius-lg);
+  }
+
+  .ds-surface-card:hover {
+    border-color: var(--border-strong, var(--border));
+  }
+
+  /* Success badge utility */
+  .ds-badge-success {
+    background: var(--success-bg);
+    color: var(--success-fg);
+    border: 1px solid var(--success-border);
+  }
+
+  /* Fumero success badge (scoped) */
+  [data-fumero-ops] .fumero-badge-success {
+    background: var(--fumero-success-bg);
+    color: var(--fumero-success-fg);
+    border: 1px solid var(--fumero-success-border);
   }
 }

@@ -114,7 +114,7 @@ async function generateWithLlm(contextBlock: string): Promise<{
   opportunities: string[];
   status: string[];
 }> {
-  const system = `Je bent Max, AI-assistent voor Fumero (fumero.nl). Schrijf een ochtendbriefing in het Nederlands.
+  const system = `Je bent Smokey, AI-assistent voor Fumero (fumero.nl). Schrijf een ochtendbriefing in het Nederlands.
 Antwoord ALLEEN met geldig JSON (geen markdown):
 {"summary":"...","actions":["...","...","..."],"opportunities":["...","..."],"status":["...","..."]}
 Acties = concreet vandaag. Kansen = groei/SEO/social. Status = feiten uit data.`;
@@ -249,7 +249,7 @@ export async function buildFumeroBriefing(opts?: {
   const generated_at = new Date().toISOString();
   const payload: FumeroBriefingPayload = {
     generated_at,
-    agent: "Max",
+    agent: "Smokey",
     summary,
     actions,
     opportunities,
@@ -310,7 +310,7 @@ export function getLatestFumeroBriefing(): FumeroBriefingPayload | null {
 
   return {
     generated_at: row.created_at,
-    agent: "Max",
+    agent: "Smokey",
     summary: row.summary,
     actions: JSON.parse(row.actions_json || "[]") as string[],
     opportunities: JSON.parse(row.opportunities_json || "[]") as string[],

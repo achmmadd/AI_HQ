@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fumero B2B Shop — referentie</title>
+<style>
+  *, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #FAFAFA;
+    color: #171717;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .app-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 20px;
+    background: #fff;
+    border-bottom: 1px solid #E5E5E5;
+  }
+  .app-nav a {
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #525252;
+    transition: background 0.15s, color 0.15s;
+  }
+  .app-nav a:hover { background: #F5F5F5; color: #171717; }
+  .app-nav a.active {
+    background: rgba(105, 196, 0, 0.12);
+    color: #3d7a00;
+    font-weight: 600;
+  }
+  .brand {
+    font-weight: 700;
+    color: #69C400;
+    margin-right: 12px;
+    font-size: 15px;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 20px 48px; }
+  h1 { font-size: 1.5rem; margin-bottom: 8px; }
+  .lead { color: #525252; margin-bottom: 20px; max-width: 52ch; }
+  .card {
+    background: #fff;
+    border: 1px solid #E5E5E5;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #69C400;
+    color: #fff;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #5db000; }
+  .btn-secondary {
+    background: #fff;
+    color: #171717;
+    border: 1px solid #E5E5E5;
+  }
+  .btn-secondary:hover { border-color: #69C400; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .product-card { padding: 16px; }
+  .product-card h3 { font-size: 1rem; margin-bottom: 4px; }
+  .product-card p { font-size: 13px; color: #525252; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #E5E5E5; }
+  th { font-weight: 600; color: #525252; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .notice {
+    background: rgba(105, 196, 0, 0.08);
+    border: 1px solid rgba(105, 196, 0, 0.25);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .error { color: #b91c1c; font-size: 13px; margin-top: 8px; }
+  .empty { color: #737373; font-size: 14px; padding: 24px 0; text-align: center; }
+  .age-gate {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .age-gate.hidden { display: none; }
+  .age-box {
+    background: #fff; border-radius: 12px; padding: 28px; max-width: 400px;
+    text-align: center; margin: 16px;
+  }
+  .age-box h2 { margin-bottom: 8px; }
+  .age-box p { color: #525252; font-size: 14px; margin-bottom: 16px; }
+  .age-actions { display: flex; gap: 10px; justify-content: center; }
+  footer { text-align: center; padding: 24px; font-size: 12px; color: #737373; }
+</style>
+</head>
+<body>
+<div id="age-gate" class="age-gate hidden" role="dialog" aria-label="Leeftijdscheck">
+  <div class="age-box">
+    <h2>18 jaar en ouder</h2>
+    <p>Deze B2B-shop is alleen voor zakelijke klanten van 18 jaar en ouder. Bevestig je leeftijd om verder te gaan.</p>
+    <div class="age-actions">
+      <button type="button" class="btn" id="age-yes">Ja, ik ben 18 jaar en ouder</button>
+      <button type="button" class="btn btn-secondary" id="age-no">Nee</button>
+    </div>
+  </div>
+</div>
+
+<nav class="app-nav" role="navigation" aria-label="Hoofdnavigatie">
+  <span class="brand">Fumero B2B</span>
+  <a href="#/" data-route="home">Home</a>
+  <a href="#/shop" data-route="shop">Shop</a>
+  <a href="#/checkout" data-route="checkout">Checkout</a>
+  <a href="#/dashboard" data-route="dashboard">Dashboard</a>
+</nav>
+
+<main>
+  <section id="page-home" class="page active" data-page="home">
+    <h1>Welkom bij Fumero B2B</h1>
+    <p class="lead">Bestel eenvoudig voor je bedrijf. Betaal via bankoverschrijving of crypto (DePay). Minimale orderwaarde €49. Bestel op werkdagen voor 17:00 uur voor levering de volgende werkdag.</p>
+    <div class="notice">Je bent ingelogd als zakelijke klant. Navigeer naar Shop om producten te bekijken.</div>
+    <button type="button" class="btn" id="go-shop">Naar de shop</button>
+  </section>
+
+  <section id="page-shop" class="page" data-page="shop">
+    <h1>Shop</h1>
+    <p class="lead">Bekijk ons assortiment en voeg producten toe aan je winkelwagen.</p>
+    <div id="shop-loading" class="empty">Producten laden…</div>
+    <div id="shop-grid" class="grid" hidden></div>
+    <p id="shop-error" class="error" hidden></p>
+  </section>
+
+  <section id="page-checkout" class="page" data-page="checkout">
+    <h1>Checkout</h1>
+    <p class="lead">Rond je bestelling af. Betaling via bankoverschrijving of crypto — geen iDEAL.</p>
+    <div class="card">
+      <h2 style="font-size:1rem;margin-bottom:12px;">Winkelwagen</h2>
+      <div id="cart-empty" class="empty">Je winkelwagen is leeg.</div>
+      <ul id="cart-list" hidden></ul>
+      <p id="cart-total" style="margin-top:12px;font-weight:600;" hidden></p>
+      <button type="button" class="btn" id="place-order" style="margin-top:16px;" disabled>Bestelling plaatsen (stub)</button>
+    </div>
+    <p id="checkout-msg" class="notice" hidden></p>
+  </section>
+
+  <section id="page-dashboard" class="page" data-page="dashboard">
+    <h1>Dashboard</h1>
+    <p class="lead">Overzicht van je bestellingen en voorraad.</p>
+    <div class="card">
+      <h2 style="font-size:1rem;margin-bottom:12px;">Bestellingen</h2>
+      <div id="orders-loading" class="empty">Bestellingen laden…</div>
+      <table id="orders-table" hidden>
+        <thead><tr><th>ID</th><th>Status</th><th>Totaal</th></tr></thead>
+        <tbody id="orders-body"></tbody>
+      </table>
+      <p id="orders-error" class="error" hidden></p>
+    </div>
+  </section>
+</main>
+
+<footer>Fumero B2B referentie — data via Motor app API</footer>
+
+<script>
+(function () {
+  var API = "/api/apps/demo-b2b-shop/data";
+  var cart = [];
+  var products = [];
+
+  var pages = ["home", "shop", "checkout", "dashboard"];
+  var navLinks = document.querySelectorAll(".app-nav a[data-route]");
+
+  function showPage(id) {
+    pages.forEach(function (p) {
+      var el = document.querySelector('[data-page="' + p + '"]');
+      if (el) el.classList.toggle("active", p === id);
+    });
+    navLinks.forEach(function (a) {
+      var route = a.getAttribute("data-route");
+      a.classList.toggle("active", route === id);
+      if (route === id) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    if (id === "shop") loadProducts();
+    if (id === "dashboard") loadOrders();
+    if (id === "checkout") renderCart();
+  }
+
+  function routeFromHash() {
+    var h = (location.hash || "#/").replace(/^#\/?/, "") || "home";
+    if (pages.indexOf(h) === -1) h = "home";
+    showPage(h);
+  }
+
+  window.addEventListener("hashchange", routeFromHash);
+
+  navLinks.forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      var route = a.getAttribute("data-route");
+      location.hash = "#/" + route;
+    });
+  });
+
+  document.getElementById("go-shop").addEventListener("click", function () {
+    location.hash = "#/shop";
+  });
+
+  function apiGet(table) {
+    return fetch(API + "?table_name=" + encodeURIComponent(table), {
+      credentials: "include"
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Laden mislukt");
+      return r.json();
+    });
+  }
+
+  function apiPost(table, row) {
+    return fetch(API, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ table_name: table, row: row })
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Opslaan mislukt");
+      return r.json();
+    });
+  }
+
+  function loadProducts() {
+    var loading = document.getElementById("shop-loading");
+    var grid = document.getElementById("shop-grid");
+    var errEl = document.getElementById("shop-error");
+    loading.hidden = false;
+    grid.hidden = true;
+    errEl.hidden = true;
+    apiGet("products").then(function (data) {
+      products = data.rows || [];
+      loading.hidden = true;
+      grid.hidden = false;
+      grid.textContent = "";
+      if (products.length === 0) {
+        var empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "Geen producten gevonden. Voeg producten toe via het dashboard.";
+        grid.appendChild(empty);
+        return;
+      }
+      products.forEach(function (p) {
+        var card = document.createElement("div");
+        card.className = "card product-card";
+        var title = document.createElement("h3");
+        title.textContent = p.naam || p.name || "Product";
+        var desc = document.createElement("p");
+        desc.textContent = "SKU: " + (p.sku || "—");
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn";
+        btn.textContent = "In winkelwagen";
+        btn.addEventListener("click", function () {
+          cart.push({ id: p.__id, naam: title.textContent, prijs: p.prijs || 49 });
+          renderCart();
+        });
+        card.appendChild(title);
+        card.appendChild(desc);
+        card.appendChild(btn);
+        grid.appendChild(card);
+      });
+    }).catch(function () {
+      loading.hidden = true;
+      errEl.hidden = false;
+      errEl.textContent = "Producten laden mislukt. Controleer je verbinding.";
+    });
+  }
+
+  function renderCart() {
+    var list = document.getElementById("cart-list");
+    var empty = document.getElementById("cart-empty");
+    var totalEl = document.getElementById("cart-total");
+    var btn = document.getElementById("place-order");
+    list.textContent = "";
+    if (cart.length === 0) {
+      empty.hidden = false;
+      list.hidden = true;
+      totalEl.hidden = true;
+      btn.disabled = true;
+      return;
+    }
+    empty.hidden = true;
+    list.hidden = false;
+    var total = 0;
+    cart.forEach(function (item, i) {
+      var li = document.createElement("li");
+      li.textContent = item.naam + " — €" + (item.prijs || 0);
+      total += item.prijs || 0;
+      list.appendChild(li);
+    });
+    totalEl.hidden = false;
+    totalEl.textContent = "Totaal: €" + total.toFixed(2) + (total < 49 ? " (min. €49)" : "");
+    btn.disabled = total < 49;
+  }
+
+  document.getElementById("place-order").addEventListener("click", function () {
+    var total = cart.reduce(function (s, i) { return s + (i.prijs || 0); }, 0);
+    if (total < 49) return;
+    apiPost("orders", { status: "nieuw", totaal: total, items: cart.length }).then(function () {
+      var msg = document.getElementById("checkout-msg");
+      msg.hidden = false;
+      msg.textContent = "Bestelling geplaatst (stub). Je ontvangt betaalinstructies per e-mail.";
+      cart = [];
+      renderCart();
+    }).catch(function () {
+      var msg = document.getElementById("checkout-msg");
+      msg.hidden = false;
+      msg.textContent = "Bestelling mislukt. Probeer het opnieuw.";
+    });
+  });
+
+  function loadOrders() {
+    var loading = document.getElementById("orders-loading");
+    var table = document.getElementById("orders-table");
+    var body = document.getElementById("orders-body");
+    var errEl = document.getElementById("orders-error");
+    loading.hidden = false;
+    table.hidden = true;
+    errEl.hidden = true;
+    apiGet("orders").then(function (data) {
+      var rows = data.rows || [];
+      loading.hidden = true;
+      if (rows.length === 0) {
+        loading.hidden = false;
+        loading.textContent = "Nog geen bestellingen.";
+        return;
+      }
+      table.hidden = false;
+      body.textContent = "";
+      rows.forEach(function (r) {
+        var tr = document.createElement("tr");
+        var c1 = document.createElement("td");
+        c1.textContent = String(r.__id || "—");
+        var c2 = document.createElement("td");
+        c2.textContent = r.status || "nieuw";
+        var c3 = document.createElement("td");
+        c3.textContent = "€" + (r.totaal != null ? r.totaal : "—");
+        tr.appendChild(c1);
+        tr.appendChild(c2);
+        tr.appendChild(c3);
+        body.appendChild(tr);
+      });
+    }).catch(function () {
+      loading.hidden = true;
+      errEl.hidden = false;
+      errEl.textContent = "Bestellingen laden mislukt.";
+    });
+  }
+
+  var ageGate = document.getElementById("age-gate");
+  if (!sessionStorage.getItem("fumero_age_ok")) {
+    ageGate.classList.remove("hidden");
+  }
+  document.getElementById("age-yes").addEventListener("click", function () {
+    sessionStorage.setItem("fumero_age_ok", "1");
+    ageGate.classList.add("hidden");
+  });
+  document.getElementById("age-no").addEventListener("click", function () {
+    document.body.textContent = "Je moet 18 jaar en ouder zijn om deze shop te bezoeken.";
+  });
+
+  routeFromHash();
+})();
+</script>
+</body>
+</html>

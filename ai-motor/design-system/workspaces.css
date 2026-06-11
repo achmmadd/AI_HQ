@@ -14,12 +14,8 @@
   --ws-name: "Fumero Studio";
   --accent: var(--ws-accent);
   --accent-hover: var(--ws-accent-hover);
-  --background: #fafafa;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --border: #e5e5e5;
-  --text-primary: #171717;
-  --text-secondary: #737373;
+  /* Semantic surface/text tokens come from tokens.css (:root / .dark).
+     Fumero ops pages override via [data-fumero-ops] in fumero-ops.css. */
 }
 
 [data-workspace="personal"] {
@@ -27,7 +23,7 @@
   --ws-accent-hover: #4f46e5;
   --ws-accent-lt: rgba(99, 102, 241, 0.08);
   --ws-font: var(--font-geist), "Geist", sans-serif;
-  --ws-name: "Motor AI";
+  --ws-name: "MotorsAI";
   --accent: var(--ws-accent);
   --accent-hover: var(--ws-accent-hover);
 }

@@ -303,7 +303,7 @@ export async function POST(req: NextRequest) {
           const badge = modelBadgeForId(modelId);
           push({
             type: "activity",
-            label: badge ? `Max · ${badge}` : "Max bereidt antwoord…",
+            label: badge ? `Smokey · ${badge}` : "Smokey bereidt antwoord…",
           });
           push({
             type: "routing",
@@ -415,7 +415,7 @@ export async function POST(req: NextRequest) {
             push({
               type: "activity",
               label: fumeroFast
-                ? "Max · systeemprompt laden…"
+                ? "Smokey · systeemprompt laden…"
                 : "Motor bereidt antwoord…",
             });
           },

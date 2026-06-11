@@ -9,7 +9,7 @@ export default function FumeroPhotoStudioPage() {
     <FumeroShell
       page="Studio"
       flush
-      breadcrumbs={[{ label: "Fumero Studio", href: "/fumero/chat" }]}
+      hideTopbar
     >
       <Suspense
         fallback={

@@ -25,8 +25,12 @@ function getSessionToken(request: NextRequest): string | undefined {
 const PUBLIC_PATHS = new Set([
   "/",
   "/login",
+  "/demo",
+  "/website",
+  "/privacy",
   "/api/auth/login",
   "/api/auth/verify",
+  "/api/demo",
   "/api/health",
 ]);
 

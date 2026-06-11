@@ -81,7 +81,7 @@ export function FumeroTopbar({
             <Button
               asChild
               size="sm"
-              className="fumero-text-body-sm h-9 rounded-lg bg-[var(--fumero-accent)] font-semibold text-white shadow-none hover:bg-[var(--fumero-accent-hover)]"
+              className="fumero-text-body-sm h-9 rounded-lg bg-[var(--fumero-accent)] font-semibold text-[var(--fumero-accent-foreground)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
             >
               <Link href={actionHref}>{actionLabel}</Link>
             </Button>
@@ -94,7 +94,7 @@ export function FumeroTopbar({
   );
 
   return (
-    <header className="shrink-0 border-b border-[var(--fumero-border)] bg-[var(--fumero-surface)]">
+    <header className="fumero-shell-topbar shrink-0">
       {showBriefing ? (
         <FumeroTopbarBriefingRoot>{headerInner}</FumeroTopbarBriefingRoot>
       ) : (

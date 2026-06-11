@@ -26,23 +26,93 @@ export type AppDetail = {
   internal_url?: string | null;
 };
 
-export async function createFullApp(prompt: string): Promise<{ app_id?: number; slug: string; naam: string }> {
-  const res = await fetch("/api/apps/generate", {
+export type GenerationProgressUpdate = {
+  phase?: string | null;
+  message?: string | null;
+  status?: string;
+};
+
+export type CreateFullAppOptions = {
+  onProgress?: (update: GenerationProgressUpdate) => void;
+  pollIntervalMs?: number;
+  maxWaitMs?: number;
+};
+
+type GenerationJobPollResponse = {
+  ok?: boolean;
+  jobId?: string;
+  status?: "pending" | "running" | "done" | "error";
+  phase?: string | null;
+  progress_message?: string | null;
+  slug?: string | null;
+  result?: Record<string, unknown> | null;
+  error?: string;
+};
+
+async function pollGenerationJob(
+  jobId: string,
+  opts?: CreateFullAppOptions
+): Promise<{ app_id?: number; slug: string; naam: string }> {
+  const pollInterval = opts?.pollIntervalMs ?? 2_000;
+  const maxWait = opts?.maxWaitMs ?? 580_000;
+  const started = Date.now();
+
+  while (Date.now() - started < maxWait) {
+    const res = await fetch(
+      `/api/apps/generate/status?jobId=${encodeURIComponent(jobId)}`,
+      { credentials: "include" }
+    );
+    const json = (await res.json()) as GenerationJobPollResponse;
+    if (!res.ok) {
+      throw new Error(formatFumeroBuilderError(json.error || "Status ophalen mislukt"));
+    }
+
+    opts?.onProgress?.({
+      phase: json.phase,
+      message: json.progress_message,
+      status: json.status,
+    });
+
+    if (json.status === "done") {
+      const result = json.result ?? {};
+      const slug = String(json.slug || result.slug || "").trim();
+      const naam = String(result.naam || "App").trim();
+      const app_id =
+        typeof result.app_id === "number" ? result.app_id : undefined;
+      if (!slug) throw new Error("Job klaar maar geen slug teruggekregen");
+      return { app_id, slug, naam };
+    }
+
+    if (json.status === "error") {
+      throw new Error(formatFumeroBuilderError(json.error || "App genereren mislukt"));
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+  }
+
+  throw new Error("App-generatie duurde te lang — probeer opnieuw");
+}
+
+async function startAsyncGeneration(body: Record<string, unknown>): Promise<string> {
+  const res = await fetch("/api/apps/generate/start", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify(body),
   });
-  const json = (await res.json()) as FullAppCreateResponse & { error?: string };
-  if (!res.ok || json.error) {
-    throw new Error(formatFumeroBuilderError(json.error || "Full-app genereren mislukt"));
+  const json = (await res.json()) as { ok?: boolean; jobId?: string; error?: string };
+  if (res.status !== 202 || !json.jobId) {
+    throw new Error(formatFumeroBuilderError(json.error || "Async generatie starten mislukt"));
   }
-  if (!json.slug) throw new Error("Geen slug teruggekregen van server");
-  return {
-    app_id: json.app_id,
-    slug: json.slug,
-    naam: json.naam || "App",
-  };
+  return json.jobId;
+}
+
+export async function createFullApp(
+  prompt: string,
+  opts?: CreateFullAppOptions
+): Promise<{ app_id?: number; slug: string; naam: string }> {
+  const jobId = await startAsyncGeneration({ prompt });
+  return pollGenerationJob(jobId, opts);
 }
 
 /** Fase 5: fetch app detail (for chat card + bewerk flow). */
@@ -70,21 +140,18 @@ export async function fetchAppDetail(slug: string): Promise<AppDetail> {
   };
 }
 
-/** Fase 5: refine/pas aan existing full app (uses /generate with slug for context load + data preserve). */
+/** Fase 5: refine/pas aan existing full app (async job + data preserve). */
 export async function iterateFullApp(
   slug: string,
-  instruction: string
+  instruction: string,
+  opts?: CreateFullAppOptions
 ): Promise<{ slug: string; preview_url?: string }> {
-  const res = await fetch("/api/apps/generate", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: instruction, slug, action: "refine" }),
+  const jobId = await startAsyncGeneration({
+    prompt: instruction,
+    slug,
+    action: "refine",
   });
-  const json = (await res.json()) as FullAppCreateResponse & { error?: string };
-  if (!res.ok || json.error) {
-    throw new Error(formatFumeroBuilderError(json.error || "App verfijnen mislukt"));
-  }
+  await pollGenerationJob(jobId, opts);
   const detail = await fetchAppDetail(slug);
   return { slug, preview_url: detail.preview_url };
 }

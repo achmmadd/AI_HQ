@@ -3,10 +3,10 @@
  */
 
 const CASUAL_BUILD_RE = [
-  /\b(wil|wilde)\s+(een\s+)?(iets|wat|tool|widget|bot|chat|hulp)\b/i,
-  /\b(kan|kun|zou)\s+(je|u)\s+.+\s+(maken|bouwen|zetten|toevoegen|fixen)\b/i,
-  /\b(help|help me)\s+(met\s+)?(een\s+)?(tool|widget|chat|bot|iets)\b/i,
-  /\b(iets|wat)\s+(voor|op)\s+(de\s+)?(site|website|shop|webshop)\b/i,
+  /\b(wil|wilde)\s+(een\s+)?(iets|wat|tool|widget|bot|chat|hulp|app|pagina|formulier)\b/i,
+  /\b(kan|kun|zou)\s+(je|u)\s+.+\s+(maken|bouwen|zetten|toevoegen|fixen|ontwerpen)\b/i,
+  /\b(help|help me)\s+(met\s+)?(een\s+)?(tool|widget|chat|bot|app|formulier|pagina|iets)\b/i,
+  /\b(iets|wat)\s+(voor|op)\s+(de\s+)?(site|website|shop|webshop|bedrijf|zaak)\b/i,
   /\b(klanten|bezoekers|mensen).{0,40}(vragen|hulp|chat|antwoord)/i,
   /\b(vragen|faq|klantenservice|support).{0,40}(site|website|widget|bot|chat)/i,
   /\b(kennisbank|info).{0,40}(site|bot|chat|widget|klanten)/i,
@@ -14,7 +14,13 @@ const CASUAL_BUILD_RE = [
   /\b(laat|laten)\s+(klanten|bezoekers)\b/i,
   /\bbouw\s+(iets|wat|een)\b/i,
   /\bmaak\s+(iets|wat|een)\b/i,
-  /\b(voor|op)\s+(de\s+)?(site|website|webshop)\b/i,
+  /\b(voor|op)\s+(de\s+)?(site|website|webshop|bedrijf|zaak)\b/i,
+  /\b(landingspagina|landing\s*page|startpagina|one[-\s]?pager)\b/i,
+  /\b(bestel|contact|offerte|intake|aanmeld|reserver).{0,12}formulier\b/i,
+  /\b(formulier|form)\s+(voor|met|waar)\b/i,
+  /\b(chatbot|chat\s*bot|keuzehulp|dashboard|widget|tool|app)\s+(voor|met|op)\b/i,
+  /\b(voor|mijn|onze)\s+(bedrijf|zaak|shop|salon|kapsalon|restaurant|winkel|webshop)\b/i,
+  /\b(maak|bouw|genereer|ontwerp).{0,30}(chatbot|landingspagina|formulier|dashboard|website|widget|tool|app)\b/i,
 ];
 
 const CASUAL_SCRAPE_RE =

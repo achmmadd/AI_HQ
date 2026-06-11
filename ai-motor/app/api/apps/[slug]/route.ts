@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
-import { requireWorkspaceApi } from "@/lib/auth-guards";
+import { requireScopedWorkspaceApi } from "@/lib/auth-guards";
 import { ensureAppsSchema, getAppBySlug } from "@/lib/apps/apps-db";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ export async function GET(
   context: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await context.params;
-  const auth = await requireWorkspaceApi(req, "all");
+  const auth = await requireScopedWorkspaceApi(req);
   if (!auth.ok) return auth.response;
 
   ensureAppsSchema();
@@ -46,7 +46,7 @@ export async function PATCH(
   context: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await context.params;
-  const auth = await requireWorkspaceApi(req, "all");
+  const auth = await requireScopedWorkspaceApi(req);
   if (!auth.ok) return auth.response;
 
   const body = (await req.json().catch(() => ({}))) as { action?: string };

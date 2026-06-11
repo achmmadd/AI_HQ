@@ -17,60 +17,38 @@ import {
   type FumeroBouwenBridge,
 } from "@/lib/fumero/bouwen-bridge";
 import { runtimeBadgeLabel } from "@/lib/fumero/project-runtime";
-import {
-  FUMERO_TOOL_TEMPLATES,
-  getTemplate,
-} from "@/lib/fumero/tool-templates";
+import { getTemplate } from "@/lib/fumero/tool-templates";
 import {
   readEnabledConnectors,
   writeEnabledConnectors,
 } from "@/lib/connectors/session";
 import { FumeroGoalBadge } from "@/components/fumero/features/fumero-goal-badge";
-import { cn } from "@/lib/utils";
-
-function BouwenTemplateChips({
-  disabled,
-  onPick,
-}: {
-  disabled?: boolean;
-  onPick: (prompt: string) => void;
-}) {
-  const featured = FUMERO_TOOL_TEMPLATES.slice(0, 6);
-  return (
-    <div className="flex flex-wrap justify-center gap-2 px-4 pb-2">
-      {featured.map((tpl) => (
-        <button
-          key={tpl.id}
-          type="button"
-          disabled={disabled}
-          className={cn(
-            "rounded-full border border-[#E5E5E5] bg-white px-3 py-1.5 text-[12px] font-medium text-[#525252]",
-            "transition-colors hover:border-[#69C400]/40 hover:text-[#171717] disabled:opacity-50"
-          )}
-          onClick={() => onPick(`Bouw ${tpl.title.toLowerCase()}: ${tpl.promptSeed}`)}
-        >
-          {tpl.title}
-        </button>
-      ))}
-    </div>
-  );
-}
+import styles from "./fumero-bouwen-shell.module.css";
 
 function BouwenShellInner() {
   const sp = useSearchParams();
   const sendPromptRef = useRef<(prompt: string) => void>(() => {});
-  const { data, openingMessage, quickActions, registerSendPrompt, sendFromBriefing } =
+  const { data, openingMessage, quickActions, registerSendPrompt } =
     useFumeroBriefing();
   const [bridge, setBridge] = useState<FumeroBouwenBridge>(EMPTY_BOUWEN_BRIDGE);
   const [geavanceerdOpen, setGeavanceerdOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishPayload, setPublishPayload] =
     useState<FumeroPublishModalPayload | null>(null);
-  const [templateSeed, setTemplateSeed] = useState<string | null>(null);
+
+  const queryPrompt = sp.get("q");
+  const templateId = sp.get("template");
+  const templateSeed = useMemo(() => {
+    if (!templateId) return null;
+    const template = getTemplate(templateId);
+    return template
+      ? `Bouw ${template.title.toLowerCase()}: ${template.promptSeed}`
+      : null;
+  }, [templateId]);
 
   useEffect(() => {
     const defaults = readEnabledConnectors().filter(
-      (id) => id !== "fumero_orders" && id !== "fumero_briefing"
+      (id) => id !== "fumero_orders" && id !== "fumero_briefing",
     );
     writeEnabledConnectors(defaults);
   }, []);
@@ -81,22 +59,7 @@ function BouwenShellInner() {
     });
   }, [registerSendPrompt]);
 
-  useEffect(() => {
-    const tpl = sp.get("template");
-    if (tpl) {
-      const t = getTemplate(tpl);
-      if (t) setTemplateSeed(`Bouw ${t.title.toLowerCase()}: ${t.promptSeed}`);
-    }
-  }, [sp]);
-
-  const initialPrompt = sp.get("q") || templateSeed;
-
-  const handleTemplatePick = useCallback(
-    (prompt: string) => {
-      sendFromBriefing(prompt);
-    },
-    [sendFromBriefing]
-  );
+  const initialPrompt = queryPrompt || templateSeed;
 
   const registerSend = useCallback((fn: (prompt: string) => void) => {
     sendPromptRef.current = fn;
@@ -109,7 +72,7 @@ function BouwenShellInner() {
       quickActions,
       registerSend,
     }),
-    [data, openingMessage, quickActions, registerSend]
+    [data, openingMessage, quickActions, registerSend],
   );
 
   const handlePublishSuccess = useCallback((payload: FumeroPublishModalPayload) => {
@@ -137,23 +100,21 @@ function BouwenShellInner() {
   }, []);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--fumero-bg)]">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5E5E5] bg-white px-4 py-2.5">
+    <div className={styles.shell}>
+      <header className={styles.header}>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-[15px] font-semibold text-[#171717]">Bouwen</h1>
+            <h1 className="text-[15px] font-semibold text-[var(--fumero-text)]">
+              Bouwen
+            </h1>
             {bridge.runtime ? (
-              <span className="rounded-full border border-[#E5E5E5] bg-[#FAFAFA] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#525252]">
+              <span className="rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--fumero-text-muted)]">
                 {runtimeBadgeLabel(bridge.runtime)}
               </span>
             ) : null}
           </div>
-          <p className="text-[11px] text-[#737373]">
-            {bridge.runtime === "full_app"
-              ? "Data-gedreven app — preview rechts · online zetten wanneer klaar"
-              : bridge.runtime === "react"
-                ? "Website / multi-file — preview rechts · online zetten wanneer klaar"
-                : "Beschrijf je tool — preview rechts · online zetten wanneer klaar"}
+          <p className="text-[11px] text-[var(--fumero-text-muted)]">
+            Beschrijf je idee — preview rechts · online zetten wanneer klaar
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -162,7 +123,7 @@ function BouwenShellInner() {
             type="button"
             variant="secondary"
             size="sm"
-            className="h-8 rounded-lg border-[#E5E5E5] text-xs"
+            className="h-8 rounded-lg border-[var(--fumero-border)] text-xs"
             onClick={() => setGeavanceerdOpen(true)}
           >
             <Settings2 className="mr-1 h-3.5 w-3.5" />
@@ -171,7 +132,7 @@ function BouwenShellInner() {
           <Button
             type="button"
             size="sm"
-            className="h-8 rounded-lg bg-[#69C400] text-xs shadow-none hover:bg-[#5db000]"
+            className="h-8 rounded-lg bg-[var(--fumero-accent)] text-xs shadow-none hover:bg-[var(--fumero-accent-hover)]"
             disabled={!bridge.canPublish || bridge.toolBusy}
             onClick={() => void bridge.publish()}
           >
@@ -181,13 +142,9 @@ function BouwenShellInner() {
         </div>
       </header>
 
-      {!bridge.activeToolId && !bridge.toolBusy ? (
-        <BouwenTemplateChips disabled={bridge.toolBusy} onPick={handleTemplatePick} />
-      ) : null}
-
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className={styles.builderSurface}>
         <MotorsChatWorkspace
-          className="bg-[var(--fumero-bg)]"
+          className="bg-transparent"
           initialComposerMode="coder"
           bouwenWorkspace
           initialPrompt={initialPrompt}

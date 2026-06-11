@@ -1,0 +1,153 @@
+/**
+ * MotorsAI OS 2026 — Premium AI Operating System tokens
+ * Light defaults on :root; dark overrides on .dark
+ */
+
+:root {
+  /* Canvas & surfaces — tiered off-white (Linear / Stripe style) */
+  --os-bg: #f6f7f9;
+  --os-bg-elevated: #f8fafc;
+  --os-bg-subtle: #eef1f5;
+  --os-surface: #ffffff;
+  --os-surface-solid: #ffffff;
+  --os-surface-hover: #f3f4f6;
+  --os-border: #e2e8f0;
+  --os-border-strong: #d1d5db;
+
+  /* Text hierarchy */
+  --os-text: #111827;
+  --os-text-body: #1f2937;
+  --os-text-muted: #4b5563;
+  --os-text-subtle: #6b7280;
+
+  /* Brand accent */
+  --os-accent: #69c400;
+  --os-accent-hover: #5db000;
+  --os-accent-foreground: #0c0c0e;
+  --os-accent-muted: rgba(105, 196, 0, 0.1);
+  --os-accent-glow: rgba(105, 196, 0, 0.18);
+
+  --os-blue: #2563eb;
+  --os-violet: #7c3aed;
+  --os-amber: #d97706;
+  --os-red: #dc2626;
+  --os-success: #16a34a;
+
+  --os-sidebar-w: 260px;
+  --os-sidebar-collapsed: 64px;
+  --os-radius-sm: 8px;
+  --os-radius-md: 12px;
+  --os-radius-lg: 16px;
+  --os-radius-xl: 20px;
+
+  --os-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --os-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.07), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --os-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 8px rgba(15, 23, 42, 0.04);
+  --os-shadow-glow: 0 0 32px var(--os-accent-glow);
+  --os-blur: 20px;
+
+  --os-font-display: var(--font-geist), system-ui, sans-serif;
+  --os-transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --os-hover-overlay: rgba(15, 23, 42, 0.04);
+  --os-hover-overlay-strong: rgba(15, 23, 42, 0.06);
+
+  /* Chat composer dock */
+  --os-composer-bg: #ffffff;
+  --os-composer-shell: #f3f4f6;
+  --os-composer-border: #e2e8f0;
+  --os-composer-shadow: 0 -8px 32px rgba(15, 23, 42, 0.06);
+  --os-composer-inset: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.dark {
+  --os-bg: #060608;
+  --os-bg-elevated: #0c0c0f;
+  --os-bg-subtle: #111114;
+  --os-surface: rgba(18, 18, 22, 0.72);
+  --os-surface-solid: #121216;
+  --os-surface-hover: rgba(28, 28, 34, 0.85);
+  --os-border: rgba(255, 255, 255, 0.08);
+  --os-border-strong: rgba(255, 255, 255, 0.14);
+  --os-text: #f4f4f5;
+  --os-text-body: #f4f4f5;
+  --os-text-muted: #a1a1aa;
+  --os-text-subtle: #8b8b8f;
+  --os-accent-hover: #7ad610;
+  --os-accent-muted: rgba(105, 196, 0, 0.12);
+  --os-accent-glow: rgba(105, 196, 0, 0.25);
+  --os-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --os-shadow-md: 0 4px 24px rgba(0, 0, 0, 0.45);
+  --os-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.55);
+  --os-hover-overlay: rgba(255, 255, 255, 0.04);
+  --os-hover-overlay-strong: rgba(255, 255, 255, 0.06);
+  --os-composer-bg: #121216;
+  --os-composer-shell: #26262e;
+  --os-composer-border: rgba(255, 255, 255, 0.2);
+  --os-composer-shadow: 0 -20px 60px rgba(0, 0, 0, 0.65);
+  --os-composer-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --background: var(--os-bg);
+  --foreground: var(--os-text);
+  --card: var(--os-surface-solid);
+  --card-foreground: var(--os-text);
+  --border: var(--os-border);
+  --muted: var(--os-bg-subtle);
+  --muted-foreground: var(--os-text-muted);
+  --primary: var(--os-accent);
+  --accent: var(--os-accent);
+}
+
+/* Glass card utility */
+.os-glass {
+  background: var(--os-surface);
+  backdrop-filter: blur(var(--os-blur));
+  -webkit-backdrop-filter: blur(var(--os-blur));
+  border: 1px solid var(--os-border);
+  box-shadow: var(--os-shadow-sm);
+}
+
+.os-glass-hover:hover {
+  background: var(--os-surface-hover);
+  border-color: var(--os-border-strong);
+  box-shadow: var(--os-shadow-md);
+  transition: all var(--os-transition);
+}
+
+.os-gradient-mesh {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(105, 196, 0, 0.06), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(59, 130, 246, 0.04), transparent 50%),
+    var(--os-bg);
+}
+
+.os-text-gradient {
+  background: linear-gradient(135deg, var(--os-text) 0%, var(--os-text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.os-pulse-dot {
+  animation: os-pulse 2s ease-in-out infinite;
+}
+
+@keyframes os-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.92); }
+}
+
+@keyframes os-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.os-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--os-bg-subtle) 0%,
+    var(--os-hover-overlay-strong) 50%,
+    var(--os-bg-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: os-shimmer 1.8s ease-in-out infinite;
+}

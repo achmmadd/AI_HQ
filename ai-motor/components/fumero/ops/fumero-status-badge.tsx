@@ -9,14 +9,21 @@ export type FumeroContentStatus =
   | string;
 
 const STYLES: Record<string, string> = {
-  draft: "bg-neutral-100 text-neutral-600 border-neutral-200",
-  concept: "bg-neutral-100 text-neutral-600 border-neutral-200",
-  scheduled: "bg-blue-50 text-blue-700 border-blue-200",
-  approved: "bg-neutral-100 text-neutral-700 border-neutral-200",
-  published: "bg-[rgba(105,196,0,0.1)] text-[#3d7a00] border-[rgba(105,196,0,0.25)]",
-  live: "bg-[rgba(105,196,0,0.1)] text-[#3d7a00] border-[rgba(105,196,0,0.25)]",
-  archived: "bg-red-50/80 text-red-600/90 border-red-200/80",
-  failed: "bg-red-50 text-red-700 border-red-200",
+  draft:
+    "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] border-[var(--fumero-border)]",
+  concept:
+    "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] border-[var(--fumero-border)]",
+  scheduled:
+    "bg-[var(--fumero-info-bg)] text-[var(--fumero-info-fg)] border-[var(--fumero-info-border)]",
+  approved:
+    "bg-[var(--fumero-surface-muted)] text-[var(--fumero-text-muted)] border-[var(--fumero-border)]",
+  published:
+    "bg-[var(--fumero-success-bg)] text-[var(--fumero-success-fg)] border-[var(--fumero-success-border)]",
+  live: "bg-[var(--fumero-success-bg)] text-[var(--fumero-success-fg)] border-[var(--fumero-success-border)]",
+  archived:
+    "bg-[var(--fumero-danger-bg)] text-[var(--fumero-danger-fg)] border-[var(--fumero-danger-border)]",
+  failed:
+    "bg-[var(--fumero-danger-bg)] text-[var(--fumero-danger-fg)] border-[var(--fumero-danger-border)]",
 };
 
 function label(status: string): string {

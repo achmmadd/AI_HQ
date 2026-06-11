@@ -82,8 +82,40 @@ function starter(
   return { id, title, category, platform, blocks, aspect_ratio, quality, tags };
 }
 
-/** 8 Fumero starter templates — phase 1 seed (klant=fumero). */
+/** 8 Fumero starter templates — mix of general + product/campaign. */
 export const FUMERO_STARTER_TEMPLATES: StarterTemplate[] = [
+  starter(
+    "fumero-creative-free",
+    "Vrije creatie",
+    "Lifestyle",
+    "Website",
+    {
+      subject: "abstract geometric art, bold colors",
+      lighting: "studio even flat lighting",
+      style: "bold graphic high contrast",
+      composition: "centered hero shot",
+      mood: "energetic youthful",
+    },
+    "1:1",
+    "2K",
+    ["#creative", "#general"]
+  ),
+  starter(
+    "fumero-portrait",
+    "Portret",
+    "Social",
+    "Instagram",
+    {
+      subject: "professional headshot, neutral background",
+      lighting: "studio soft key light",
+      style: "clean editorial",
+      composition: "centered hero shot",
+      mood: "calm trustworthy",
+    },
+    "3:4",
+    "2K",
+    ["#portrait", "#social"]
+  ),
   starter(
     "fumero-product-hero",
     "Product Hero",

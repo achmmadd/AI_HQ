@@ -28,6 +28,11 @@ export type CoworkTab =
   | "bridge"
   | "audit";
 
+/** Dagelijks/on-demand digest voor Fumero Command Center. */
+export async function notifyFumeroCommandCenterDigest(text: string): Promise<void> {
+  await sendTelegramMessage(text);
+}
+
 /** Telegram-melding met deeplink naar /cowork?tab=… */
 export async function notifyCoworkEvent(opts: {
   title: string;

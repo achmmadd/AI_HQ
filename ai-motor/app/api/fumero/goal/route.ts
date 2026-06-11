@@ -3,7 +3,11 @@ import {
   getMotorUserContext,
   upsertMotorUserContext,
 } from "@/lib/motor-user-context";
-import { applyGoalCommand, parseMaxGoalCommand } from "@/lib/fumero/max-goal";
+import {
+  applyGoalCommand,
+  parseMaxGoalCommand,
+  sanitizeGoalText,
+} from "@/lib/fumero/max-goal";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -37,7 +41,9 @@ export async function PATCH(req: Request) {
     if (body.goals !== undefined) {
       upsertMotorUserContext(klant, {
         goals:
-          body.goals === null ? null : String(body.goals).slice(0, 1500),
+          body.goals === null
+            ? null
+            : sanitizeGoalText(String(body.goals)).slice(0, 1500),
       });
       const ctx = getMotorUserContext(klant);
       return NextResponse.json({ goals: ctx?.goals ?? null });

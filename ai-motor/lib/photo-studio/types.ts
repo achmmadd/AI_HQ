@@ -41,12 +41,26 @@ export function normalizeQualityForModel(
   return quality;
 }
 
+export type CreationSpeedPreset = "snel" | "balans" | "beste";
+
+export const CREATION_SPEED_PRESETS: Record<
+  CreationSpeedPreset,
+  { label: string; model: ContentStudioModelId; quality: ContentStudioQuality }
+> = {
+  snel: { label: "Snel", model: "nano-banana-2", quality: "2K" },
+  balans: { label: "Balans", model: "gpt-image-2", quality: "2K" },
+  beste: { label: "Beste", model: "gpt-image-2", quality: "4K" },
+};
+
 export type ContentStudioSettings = {
   aspect_ratio: ContentStudioAspectRatio;
   quality: ContentStudioQuality;
   count: number;
   auto_variants: boolean;
   model: ContentStudioModelId;
+  /** Optional product/food studio enrichment — off by default for general creation. */
+  brand_enhancement?: boolean;
+  speed_preset?: CreationSpeedPreset;
 };
 
 export type PhotoStudioAspect =

@@ -3,10 +3,11 @@ import { WorkspaceStub } from "@/components/workspace-stub";
 
 export default function TodoPage() {
   return (
-    <AppShell title="Todo">
+    <AppShell title="Taken">
       <WorkspaceStub
-        title="Todo"
-        description="Takenlijst voor Persoonlijk Lab komt hier."
+        title="Taken"
+        description="Takenbeheer voor MotorsAI Lab is in ontwikkeling. Gebruik ondertussen chat om acties te plannen."
+        action={{ label: "Naar chat", href: "/chat" }}
       />
     </AppShell>
   );

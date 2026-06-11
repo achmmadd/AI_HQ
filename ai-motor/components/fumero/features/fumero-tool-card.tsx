@@ -61,14 +61,14 @@ function ToolCardMoreMenu({
   return (
     <div
       ref={ref}
-      className="fumero-tool-card-menu absolute right-0 top-full z-20 mt-1 min-w-[168px] overflow-hidden rounded-lg border border-[#E5E5E5] bg-white py-1 shadow-md"
+      className="fumero-tool-card-menu absolute right-0 top-full z-20 mt-1 min-w-[168px] overflow-hidden rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] py-1 shadow-md"
       role="menu"
     >
       {onPreview ? (
         <button
           type="button"
           role="menuitem"
-          className="ios-tap-highlight flex w-full items-center px-3 py-2 text-left text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
+          className="ios-tap-highlight flex w-full items-center px-3 py-2 text-left text-[12px] text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
           onClick={() => {
             onPreview();
             onClose();
@@ -81,7 +81,7 @@ function ToolCardMoreMenu({
         <button
           type="button"
           role="menuitem"
-          className="ios-tap-highlight flex w-full items-center px-3 py-2 text-left text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
+          className="ios-tap-highlight flex w-full items-center px-3 py-2 text-left text-[12px] text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
           onClick={() => {
             onRefine();
             onClose();
@@ -94,7 +94,7 @@ function ToolCardMoreMenu({
         <button
           type="button"
           role="menuitem"
-          className="ios-tap-highlight flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
+          className="ios-tap-highlight flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
           onClick={() => {
             onCopyEmbed?.();
             onClose();
@@ -107,7 +107,7 @@ function ToolCardMoreMenu({
       <Link
         href="/fumero/projecten"
         role="menuitem"
-        className="ios-tap-highlight flex w-full items-center px-3 py-2 text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
+        className="ios-tap-highlight flex w-full items-center px-3 py-2 text-[12px] text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
         onClick={onClose}
       >
         Open in Projecten
@@ -116,7 +116,7 @@ function ToolCardMoreMenu({
         <Link
           href={codeWorkspaceHref}
           role="menuitem"
-          className="ios-tap-highlight flex w-full items-center px-3 py-2 text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
+          className="ios-tap-highlight flex w-full items-center px-3 py-2 text-[12px] text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
           onClick={onClose}
         >
           Open in Code workspace
@@ -125,7 +125,7 @@ function ToolCardMoreMenu({
       <button
         type="button"
         role="menuitem"
-        className="ios-tap-highlight flex w-full items-center px-3 py-2 text-left text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
+        className="ios-tap-highlight flex w-full items-center px-3 py-2 text-left text-[12px] text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
         onClick={() => {
           onToggleDetails();
           onClose();
@@ -139,7 +139,7 @@ function ToolCardMoreMenu({
           target="_blank"
           rel="noopener noreferrer"
           role="menuitem"
-          className="ios-tap-highlight flex w-full items-center gap-2 px-3 py-2 text-[12px] text-[#171717] hover:bg-[#FAFAFA]"
+          className="ios-tap-highlight flex w-full items-center gap-2 px-3 py-2 text-[12px] text-[var(--fumero-text)] hover:bg-[var(--fumero-hover-overlay)]"
           onClick={onClose}
         >
           <ExternalLink className="h-3 w-3 shrink-0" />
@@ -196,9 +196,9 @@ export function FumeroToolCard({
   const toolSlug = card.slug;
   const codeWorkspaceHref =
     card.toolId && toolSlug
-      ? `/fumero/code?import=fumero-tool&slug=${encodeURIComponent(toolSlug)}`
+      ? `/code?import=fumero-tool&slug=${encodeURIComponent(toolSlug)}`
       : card.toolId
-        ? `/fumero/code?import=fumero-tool&tool=${card.toolId}`
+        ? `/code?import=fumero-tool&tool=${card.toolId}`
         : null;
   const isAppCard = !card.toolId || !!toolSlug;
   const tablesCount = extras.tables;
@@ -264,13 +264,13 @@ export function FumeroToolCard({
 
   if (splitPreviewOpen) {
     return (
-      <div className="fumero-tool-card-compact mt-2 overflow-visible rounded-lg border border-[#E5E5E5]/80 bg-white">
+      <div className="fumero-tool-card-compact mt-2 overflow-visible rounded-lg border border-[var(--fumero-border)]/80 bg-[var(--fumero-surface)]">
         {deploySuccess ? (
-          <div className="fumero-deploy-success flex flex-wrap items-center gap-2 border-b border-[rgba(105,196,0,0.25)] bg-[rgba(105,196,0,0.08)] px-3 py-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#69C400] text-white">
+          <div className="fumero-deploy-success flex flex-wrap items-center gap-2 border-b border-[var(--fumero-success-border)] bg-[var(--fumero-accent-muted)] px-3 py-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)]">
               <Check className="h-3 w-3" strokeWidth={3} />
             </span>
-            <p className="text-[13px] font-medium leading-none text-[#3d7a00]">
+            <p className="text-[13px] font-medium leading-none text-[var(--fumero-success-fg)]">
               Live in garage
               {card.version != null ? ` — v${card.version}` : ""}
             </p>
@@ -280,14 +280,14 @@ export function FumeroToolCard({
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-[14px] font-semibold leading-tight text-[#171717]">
+              <p className="truncate text-[14px] font-semibold leading-tight text-[var(--fumero-text)]">
                 {card.name}
               </p>
-              <span className="shrink-0 rounded-full bg-[rgba(105,196,0,0.12)] px-2 py-0.5 text-[11px] font-medium leading-none text-[#3d7a00]">
+              <span className="shrink-0 rounded-full bg-[var(--fumero-success-bg)] px-2 py-0.5 text-[11px] font-medium leading-none text-[var(--fumero-success-fg)]">
                 {versionLabel}
               </span>
             </div>
-            <p className="mt-1 text-[12px] leading-none text-[#737373]">
+            <p className="mt-1 text-[12px] leading-none text-[var(--fumero-text-muted)]">
               {deployTypeLabel(card.deployType)}
             </p>
           </div>
@@ -299,8 +299,8 @@ export function FumeroToolCard({
               className={cn(
                 "h-8 rounded-lg px-3 text-[12px] font-medium shadow-none",
                 card.status === "published" && !busy
-                  ? "bg-[#69C400] text-white hover:bg-[#5db000]"
-                  : "bg-[#69C400] text-white hover:bg-[#5db000]"
+                  ? "bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)] hover:bg-[var(--fumero-accent-hover)]"
+                  : "bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)] hover:bg-[var(--fumero-accent-hover)]"
               )}
               onClick={() => void onDeploy()}
             >
@@ -315,7 +315,7 @@ export function FumeroToolCard({
             </Button>
             <button
               type="button"
-              className="ios-tap-highlight inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E5E5] bg-white text-[#525252] hover:bg-[#FAFAFA]"
+              className="ios-tap-highlight inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-hover-overlay)]"
               aria-label="Meer opties"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -341,19 +341,19 @@ export function FumeroToolCard({
         </div>
 
         {detailsOpen ? (
-          <div className="space-y-2 border-t border-[#E5E5E5]/80 px-3 py-2">
+          <div className="space-y-2 border-t border-[var(--fumero-border)]/80 px-3 py-2">
             <div className="flex flex-wrap gap-1.5 text-[11px]">
               {tablesCount != null ? (
-                <span className="rounded bg-[#F0F0F0] px-1.5 py-0.5 text-[#525252]">
+                <span className="rounded bg-[var(--fumero-chip-bg)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">
                   {tablesCount} tabellen
                 </span>
               ) : (
-                <span className="rounded bg-[#F0F0F0] px-1.5 py-0.5 text-[#525252]">
+                <span className="rounded bg-[var(--fumero-chip-bg)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">
                   Data opslag
                 </span>
               )}
               {hasPwa && (
-                <span className="rounded bg-[#F0F0F0] px-1.5 py-0.5 text-[#525252]">
+                <span className="rounded bg-[var(--fumero-chip-bg)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">
                   PWA
                 </span>
               )}
@@ -368,14 +368,14 @@ export function FumeroToolCard({
                 </span>
               )}
               {badge && isWorking ? (
-                <span className="rounded bg-[#F0F0F0] px-1.5 py-0.5 text-[#737373]">
+                <span className="rounded bg-[var(--fumero-chip-bg)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">
                   {badge}
                 </span>
               ) : null}
               {card.status === "published" &&
               card.statsViews != null &&
               card.statsViews > 0 ? (
-                <span className="rounded bg-[#F0F0F0] px-1.5 py-0.5 text-[#525252]">
+                <span className="rounded bg-[var(--fumero-chip-bg)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">
                   {card.statsViews} weergaven
                 </span>
               ) : null}
@@ -388,7 +388,7 @@ export function FumeroToolCard({
               />
             ) : null}
             {embed && embedOpen ? (
-              <div className="relative rounded-lg border border-[#E5E5E5] bg-[#171717]">
+              <div className="relative rounded-lg border border-[var(--fumero-border)] bg-[#171717]">
                 <pre className="max-h-24 overflow-x-auto p-2 pr-14 font-mono text-[10px] leading-relaxed text-[#e5e5e5]">
                   <code>{embed}</code>
                 </pre>
@@ -405,7 +405,7 @@ export function FumeroToolCard({
             ) : embed ? (
               <button
                 type="button"
-                className="text-[12px] font-medium text-[#3d7a00] underline-offset-2 hover:underline"
+                className="text-[12px] font-medium text-[var(--fumero-success-fg)] underline-offset-2 hover:underline"
                 onClick={() => setEmbedOpen(true)}
               >
                 Embed tonen
@@ -415,18 +415,18 @@ export function FumeroToolCard({
         ) : null}
 
         {summary && !isWorking ? (
-          <p className="border-t border-[#E5E5E5]/60 px-3 py-2 text-[13px] leading-snug text-[#525252]">
+          <p className="border-t border-[var(--fumero-border)]/60 px-3 py-2 text-[13px] leading-snug text-[var(--fumero-text-muted)]">
             {summary}
           </p>
         ) : null}
 
         {splitPreviewOpen && hasPreview && !isWorking ? (
-          <div className="flex flex-wrap gap-2 border-t border-[#E5E5E5]/60 px-3 py-2">
+          <div className="flex flex-wrap gap-2 border-t border-[var(--fumero-border)]/60 px-3 py-2">
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="h-8 rounded-lg border-[#E5E5E5] text-[12px] text-[#171717]"
+              className="h-8 rounded-lg border-[var(--fumero-border)] text-[12px] text-[var(--fumero-text)]"
               onClick={() => onFocusPreview?.()}
             >
               Test in preview
@@ -435,7 +435,7 @@ export function FumeroToolCard({
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-lg bg-[#171717] text-[12px] text-white hover:bg-black"
+                className="h-8 rounded-lg bg-[var(--fumero-inverse-bg)] text-[12px] text-[var(--fumero-inverse-text)] hover:bg-black"
                 onClick={() => void handleCopy(embed)}
               >
                 Embed op site
@@ -448,20 +448,20 @@ export function FumeroToolCard({
   }
 
   return (
-    <div className="mt-3 overflow-hidden rounded-lg border border-[#E5E5E5] bg-white">
+    <div className="mt-3 overflow-hidden rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)]">
       {deploySuccess ? (
-        <div className="fumero-deploy-success flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(105,196,0,0.25)] bg-[rgba(105,196,0,0.08)] px-3 py-2">
+        <div className="fumero-deploy-success flex flex-wrap items-center justify-between gap-2 border-b border-[var(--fumero-success-border)] bg-[var(--fumero-accent-muted)] px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#69C400] text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)]">
               <Check className="h-3 w-3" strokeWidth={3} />
             </span>
-            <p className="text-sm font-medium text-[#3d7a00]">
+            <p className="text-sm font-medium text-[var(--fumero-success-fg)]">
               ✓ Live in garage
               {card.version != null ? ` — v${card.version}` : ""}
             </p>
             <Link
               href="/fumero/projecten"
-              className="text-xs font-medium text-[#3d7a00] underline-offset-2 hover:underline"
+              className="text-xs font-medium text-[var(--fumero-success-fg)] underline-offset-2 hover:underline"
             >
               Open in Projecten →
             </Link>
@@ -471,7 +471,7 @@ export function FumeroToolCard({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-7 rounded-md border border-[rgba(105,196,0,0.35)] bg-white px-2 text-xs text-[#3d7a00] hover:bg-[rgba(105,196,0,0.06)]"
+              className="h-7 rounded-md border border-[var(--fumero-success-border)] bg-[var(--fumero-surface)] px-2 text-xs text-[var(--fumero-success-fg)] hover:bg-[var(--fumero-accent-muted)]"
               onClick={() => void handleCopy(liveUrl)}
             >
               {copied ? (
@@ -492,25 +492,25 @@ export function FumeroToolCard({
 
       <div
         className={cn(
-          "flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E5E5] bg-[#FAFAFA] px-3 py-2 transition-colors",
-          deploySuccess && "bg-white"
+          "flex flex-wrap items-center justify-between gap-2 border-b border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] px-3 py-2 transition-colors",
+          deploySuccess && "bg-[var(--fumero-surface)]"
         )}
       >
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-[#171717]">{card.name}</p>
+            <p className="text-sm font-semibold text-[var(--fumero-text)]">{card.name}</p>
             {card.version != null && card.status !== "published" ? (
-              <span className="rounded-full bg-[rgba(105,196,0,0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3d7a00]">
+              <span className="rounded-full bg-[var(--fumero-success-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--fumero-success-fg)]">
                 v{card.version}
               </span>
             ) : null}
             {badge && (isWorking || card.status !== "published") ? (
-              <span className="rounded border border-[#E5E5E5] bg-white px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#737373]">
+              <span className="rounded border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--fumero-text-muted)]">
                 {badge}
               </span>
             ) : null}
           </div>
-          <p className="text-[11px] text-[#737373]">
+          <p className="text-[11px] text-[var(--fumero-text-muted)]">
             {deployTypeLabel(card.deployType)}
             {card.status === "published" ? " · live" : ` · ${versionLabel}`}
           </p>
@@ -519,7 +519,7 @@ export function FumeroToolCard({
           {previewSrc ? (
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-xs text-[#525252] hover:text-[#171717]"
+              className="inline-flex items-center gap-1 text-xs text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
               onClick={() => onFocusPreview?.()}
             >
               <ExternalLink className="h-3.5 w-3.5" />
@@ -533,8 +533,8 @@ export function FumeroToolCard({
             className={cn(
               "h-8 rounded-lg shadow-none transition-colors",
               card.status === "published" && !busy
-                ? "bg-[#69C400] text-white hover:bg-[#5db000]"
-                : "bg-[#171717] text-white hover:bg-black"
+                ? "bg-[var(--fumero-accent)] text-[var(--fumero-accent-foreground)] hover:bg-[var(--fumero-accent-hover)]"
+                : "bg-[var(--fumero-inverse-bg)] text-[var(--fumero-inverse-text)] hover:bg-black"
             )}
             onClick={() => void onDeploy()}
           >
@@ -558,14 +558,14 @@ export function FumeroToolCard({
         </div>
       </div>
 
-      <div className="relative min-h-[120px] bg-[#FAFAFA]">
+      <div className="relative min-h-[120px] bg-[var(--fumero-surface-muted)]">
         {previewSrc ? (
           <iframe
             key={card.previewEpoch ?? card.previewUrl ?? "preview"}
             title={`Preview ${card.name}`}
             src={previewSrc}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            className="pointer-events-auto h-[140px] w-full border-0 bg-white"
+            className="pointer-events-auto h-[140px] w-full border-0 bg-[var(--fumero-surface)]"
           />
         ) : isWorking ? (
           <div className="flex h-[120px] flex-col gap-2 p-3">
@@ -573,36 +573,36 @@ export function FumeroToolCard({
             <FumeroSkeleton className="h-16 w-full rounded-lg" />
           </div>
         ) : (
-          <div className="flex h-[120px] items-center justify-center text-sm text-[#737373]">
+          <div className="flex h-[120px] items-center justify-center text-sm text-[var(--fumero-text-muted)]">
             Preview wordt gegenereerd…
           </div>
         )}
         {overlayText ? (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/80 backdrop-blur-[2px]">
-            <Loader2 className="h-5 w-5 animate-spin text-[#525252]" aria-hidden />
-            <span className="text-sm font-medium text-[#525252]">{overlayText}</span>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--fumero-surface)]/80 backdrop-blur-[2px]">
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--fumero-text-muted)]" aria-hidden />
+            <span className="text-sm font-medium text-[var(--fumero-text-muted)]">{overlayText}</span>
           </div>
         ) : null}
       </div>
 
-      <div className="border-t border-[#E5E5E5] bg-[#FAFAFA] px-3 py-2 flex flex-wrap gap-1.5 text-[10px]">
+      <div className="border-t border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] px-3 py-2 flex flex-wrap gap-1.5 text-[10px]">
         {tablesCount != null ? (
-          <span className="rounded bg-[#E5E5E5] px-1.5 py-0.5 text-[#525252]">{tablesCount} tabellen</span>
+          <span className="rounded bg-[var(--fumero-border)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">{tablesCount} tabellen</span>
         ) : (
-          <span className="rounded bg-[#E5E5E5] px-1.5 py-0.5 text-[#525252]">Data opslag</span>
+          <span className="rounded bg-[var(--fumero-border)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">Data opslag</span>
         )}
-        {hasPwa && <span className="rounded bg-[#E5E5E5] px-1.5 py-0.5 text-[#525252]">PWA</span>}
+        {hasPwa && <span className="rounded bg-[var(--fumero-border)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">PWA</span>}
         {authRequired && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">Login vereist</span>}
         {card.deployType === "customer" && <span className="rounded bg-green-100 px-1.5 py-0.5 text-green-700">Publiek embed</span>}
-        {card.deployType === "widget" && !isAppCard && <span className="rounded bg-[#E5E5E5] px-1.5 py-0.5 text-[#525252]">Widget</span>}
-        <span className="rounded bg-[#E5E5E5] px-1.5 py-0.5 text-[#525252]">{versionLabel}</span>
+        {card.deployType === "widget" && !isAppCard && <span className="rounded bg-[var(--fumero-border)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">Widget</span>}
+        <span className="rounded bg-[var(--fumero-border)] px-1.5 py-0.5 text-[var(--fumero-text-muted)]">{versionLabel}</span>
       </div>
 
-      <div className="border-t border-[#E5E5E5] p-3 space-y-2">
-        <label className="block text-xs font-medium text-[#525252]">Pas aan</label>
+      <div className="border-t border-[var(--fumero-border)] p-3 space-y-2">
+        <label className="block text-xs font-medium text-[var(--fumero-text-muted)]">Pas aan</label>
         <div className="flex gap-2">
           <Input
-            className="h-9 flex-1 rounded-lg border-[#E5E5E5] text-sm"
+            className="h-9 flex-1 rounded-lg border-[var(--fumero-border)] text-sm"
             value={refine}
             onChange={(e) => setRefine(e.target.value)}
             placeholder="bv. maak de knop groen, voeg een vraag toe"
@@ -618,7 +618,7 @@ export function FumeroToolCard({
           />
           <Button
             type="button"
-            className="h-9 min-w-[88px] rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]"
+            className="h-9 min-w-[88px] rounded-lg bg-[var(--fumero-accent)] shadow-none hover:bg-[var(--fumero-accent-hover)]"
             disabled={isWorking || !refine.trim()}
             onClick={() => {
               const t = refine.trim();
@@ -639,16 +639,16 @@ export function FumeroToolCard({
       </div>
 
       {embed ? (
-        <div className="border-t border-[#E5E5E5] p-3">
+        <div className="border-t border-[var(--fumero-border)] p-3">
           <button
             type="button"
-            className="mb-1.5 text-xs font-medium text-[#3d7a00] underline-offset-2 hover:underline"
+            className="mb-1.5 text-xs font-medium text-[var(--fumero-success-fg)] underline-offset-2 hover:underline"
             onClick={() => setEmbedOpen((v) => !v)}
           >
             {embedOpen ? "Embed verbergen" : "Embed kopiëren"}
           </button>
           {embedOpen ? (
-            <div className="relative rounded-lg border border-[#E5E5E5] bg-[#171717]">
+            <div className="relative rounded-lg border border-[var(--fumero-border)] bg-[#171717]">
               <pre className="max-h-28 overflow-x-auto p-3 pr-16 font-mono text-[11px] leading-relaxed text-[#e5e5e5]">
                 <code>{embed}</code>
               </pre>
@@ -677,7 +677,7 @@ export function FumeroToolCard({
       ) : null}
 
       {summary ? (
-        <p className="border-t border-[#E5E5E5]/60 px-3 py-2 text-[13px] leading-snug text-[#525252]">
+        <p className="border-t border-[var(--fumero-border)]/60 px-3 py-2 text-[13px] leading-snug text-[var(--fumero-text-muted)]">
           {summary}
         </p>
       ) : null}

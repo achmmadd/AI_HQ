@@ -6,11 +6,7 @@ import { FumeroProjectenHub } from "@/components/fumero/features/fumero-projecte
 /** Projecten hub — Website | Widget | Team */
 export default function FumeroProjectenPage() {
   return (
-    <FumeroShell
-      page="Projecten"
-      actionLabel="Nieuw bouwen"
-      actionHref="/fumero/bouwen"
-    >
+    <FumeroShell page="Projecten">
       <FumeroProjectenHub />
     </FumeroShell>
   );

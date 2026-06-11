@@ -1,25 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
-import { ensureFumeroSchemaAsync } from "@/lib/fumero/db-migrate";
+import { buildFumeroSystemStatus } from "@/lib/fumero/system-status";
 
 export const runtime = "nodejs";
 
-/** Lightweight workspace health for topbar (not /api/chat). */
+/** Workspace health for topbar and Command Center — real dependency checks. */
 export async function GET(req: NextRequest) {
   const auth = await requireWorkspaceApi(req, "fumero");
   if (!auth.ok) return auth.response;
 
   try {
-    await ensureFumeroSchemaAsync();
+    const status = await buildFumeroSystemStatus();
     return NextResponse.json({
-      ok: true,
-      label: "Studio OK",
-      checked_at: new Date().toISOString(),
+      ok: status.ok,
+      label: status.label,
+      level: status.level,
+      checked_at: status.checked_at,
+      checks: status.checks,
+      automation_success_pct: status.automation_success_pct,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
-      { ok: false, label: "Sync issue", error: message },
+      {
+        ok: false,
+        label: "Storing",
+        level: "down",
+        error: message,
+        checked_at: new Date().toISOString(),
+      },
       { status: 503 }
     );
   }

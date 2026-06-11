@@ -22,6 +22,10 @@ import {
   Code2,
   BarChart3,
   ClipboardList,
+  Home,
+  Settings,
+  CreditCard,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -71,6 +75,14 @@ export function FumeroCommandPalette() {
   const actions: CmdAction[] = useMemo(
     () => [
       {
+        id: "nav-hub",
+        group: "Navigatie",
+        label: "Command Center",
+        keywords: "overzicht hub dashboard home",
+        icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
+        run: () => router.push("/fumero"),
+      },
+      {
         id: "nav-chat",
         group: "Navigatie",
         label: "Ga naar Max (chat)",
@@ -100,6 +112,14 @@ export function FumeroCommandPalette() {
         keywords: "coder bouwen build tool",
         icon: <Hammer className="h-4 w-4" strokeWidth={1.5} />,
         run: () => router.push("/fumero/bouwen"),
+      },
+      {
+        id: "nav-code",
+        group: "Navigatie",
+        label: "Code",
+        keywords: "editor monaco developer workspace",
+        icon: <Code2 className="h-4 w-4" strokeWidth={1.5} />,
+        run: () => router.push("/fumero/code"),
       },
       {
         id: "nav-library",
@@ -232,6 +252,29 @@ export function FumeroCommandPalette() {
         run: () => toggleSidebar(),
       },
       {
+        id: "settings-context",
+        group: "Instellingen",
+        label: "Teamcontext",
+        icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
+        run: () => router.push("/fumero/settings/context"),
+      },
+      {
+        id: "settings-billing",
+        group: "Instellingen",
+        label: "Gebruik & budget",
+        keywords: "billing usage kosten",
+        icon: <Receipt className="h-4 w-4" strokeWidth={1.5} />,
+        run: () => router.push("/fumero/settings/billing"),
+      },
+      {
+        id: "settings-pay",
+        group: "Instellingen",
+        label: "Betalingen",
+        keywords: "betaling payment ideal crypto pay fumero",
+        icon: <CreditCard className="h-4 w-4" strokeWidth={1.5} />,
+        run: () => router.push("/fumero/pay"),
+      },
+      {
         id: "settings-speed",
         group: "Instellingen",
         label: "Snelheid antwoord wisselen",
@@ -275,11 +318,11 @@ export function FumeroCommandPalette() {
     <>
       {open ? (
         <div
-          className="fixed inset-0 z-[10000] flex items-start justify-center bg-black/40 px-4 pt-[min(20vh,120px)]"
+          className="fixed inset-0 z-[10000] flex items-start justify-center bg-black/25 backdrop-blur-sm px-4 pt-[min(20vh,120px)]"
           onClick={close}
         >
           <div
-            className="fumero-cmdk w-full max-w-lg"
+            className="fumero-cmdk fumero-glass-surface w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <Command label="Fumero command palette" shouldFilter>

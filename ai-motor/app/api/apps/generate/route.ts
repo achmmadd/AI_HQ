@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireWorkspaceApi } from "@/lib/auth-guards";
+import { requireScopedWorkspaceApi } from "@/lib/auth-guards";
 import { ensureAppsSchema } from "@/lib/apps/apps-db";
 import { generateFullApp, refineFullApp } from "@/lib/apps/apps-service";
 import { formatFumeroBuilderError } from "@/lib/fumero/builder-config";
@@ -7,7 +7,7 @@ import { formatFumeroBuilderError } from "@/lib/fumero/builder-config";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireWorkspaceApi(req, "all");
+  const auth = await requireScopedWorkspaceApi(req);
   if (!auth.ok) return auth.response;
 
   ensureAppsSchema();

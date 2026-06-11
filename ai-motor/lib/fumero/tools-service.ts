@@ -1,5 +1,9 @@
 import db from "@/lib/db/database";
 import { generateArtifactHtml } from "@/lib/artifact-generate";
+import {
+  formatValidationRetryHint,
+  validateGeneratedHtml,
+} from "@/lib/fumero/build-validation";
 import { formatFumeroBuilderError } from "@/lib/fumero/builder-config";
 import { getTemplate, buildTemplatePreviewHtml, type FumeroDeployType } from "@/lib/fumero/tool-templates";
 import { loadFumeroBuilderDesignContext } from "@/lib/fumero/design-builder-context";
@@ -74,6 +78,30 @@ function templateBuildHint(templateId?: string): string {
       "Styling: achtergrond #141414, display #1e1e1e, groen #69C400 op = en highlights, Geist font, ruime whitespace (24px padding)."
     );
   }
+  if (templateId === "landing") {
+    return (
+      "VERPLICHT: complete landingspagina in één HTML-bestand — hero, voordelen, CTA, footer. " +
+      "Geen multi-page routing; wel scroll-secties. Mobiel-first, premium B2B."
+    );
+  }
+  if (templateId === "form") {
+    return (
+      "VERPLICHT: werkend formulier-UI met input-validatie in vanilla JS, duidelijke labels, " +
+      "verzendknop en inline bedankmelding na submit (geen echte backend)."
+    );
+  }
+  if (templateId === "dashboard") {
+    return (
+      "VERPLICHT: dashboard met KPI-tegels en data-tabel; gebruik realistische voorbeelddata. " +
+      "Geen login-flow tenzij expliciet gevraagd — focus op overzicht en leesbaarheid."
+    );
+  }
+  if (templateId === "chat" || templateId === "kb_chat") {
+    return (
+      "VERPLICHT: embeddable chat-widget max ~480px breed, toggle-knop rechtsonder, chatpaneel met quick-reply knoppen, " +
+      "typing-indicator, kennisbank-antwoorden via textContent (geen innerHTML op user input). Fumero-groen #69C400 op primaire knoppen."
+    );
+  }
   return "";
 }
 
@@ -87,7 +115,13 @@ function buildPrompt(deployType: FumeroDeployType, userPrompt: string, templateI
         ? "Publieke klantpagina (bv. loyalty, bestelstatus) — geen interne data tonen."
         : templateId === "calculator"
           ? "Standalone rekenmachine-widget (max ~360px breed, geen e-commerce flows)."
-          : "Compacte embeddable website-widget voor fumero.nl (past in een smalle kolom, max ~480px breed).";
+          : templateId === "landing"
+            ? "Single-page landingspagina (volledige breedte, scroll-secties, conversie-gericht)."
+            : templateId === "form"
+              ? "Embedbaar formulier (bestel, contact of intake) — compact en mobielvriendelijk."
+              : templateId === "dashboard"
+                ? "Intern dashboard-overzicht (KPI's + tabel, geen volledig portaal)."
+                : "Compacte embeddable website-widget voor fumero.nl (past in een smalle kolom, max ~480px breed).";
   const extra = templateBuildHint(templateId);
   return `${typeHint} ${extra} ${tpl?.promptSeed ?? ""} ${userPrompt}\n\n${design}`.trim();
 }
@@ -117,23 +151,46 @@ export async function generateToolHtml(
   const gameHint = /\b(flappy|game|spel|snake|pong|tetris|arcade|canvas)\b/i.test(prompt)
     ? FUMERO_GAME_HINT
     : "";
-  const built = await generateArtifactHtml(
-    `Bouw één compleet, zelfstandig HTML-document (inline CSS, responsive). ${FUMERO_BRAND_HINT}${FUMERO_INTERACTIVE_HINT}${gameHint} ${full}${iterationContext}`,
-    "fumero",
-    "tools",
-    2,
-    { preferStrongBuilder: true }
-  );
-  if (!built.html) {
-    const seed = seedHtmlForTemplate(templateId, "Tool", prompt, deployType);
-    if (seed) return { html: seed };
-    return { error: formatFumeroBuilderError(built.error || "Genereren mislukt") };
+  const baseQuery = `Bouw één compleet, zelfstandig HTML-document (inline CSS, responsive). ${FUMERO_BRAND_HINT}${FUMERO_INTERACTIVE_HINT}${gameHint} ${full}${iterationContext}`;
+  const maxAttempts = 3;
+  let lastValidationErrors: string[] = [];
+  let lastBuilderError = "";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const retryHint =
+      attempt > 1 && lastValidationErrors.length
+        ? `\n\n${formatValidationRetryHint(lastValidationErrors)}`
+        : "";
+    const built = await generateArtifactHtml(
+      `${baseQuery}${retryHint}`,
+      "fumero",
+      "tools",
+      1,
+      { preferStrongBuilder: true }
+    );
+    if (!built.html) {
+      lastBuilderError = built.error || "Genereren mislukt";
+      continue;
+    }
+    const validation = validateGeneratedHtml(built.html, templateId, {
+      isGame: /\b(flappy|game|spel|snake|pong|tetris|arcade)\b/i.test(prompt),
+    });
+    if (validation.valid) {
+      if (!/<script[\s>]/i.test(built.html)) {
+        const seed = seedHtmlForTemplate(templateId, "Tool", prompt, deployType);
+        if (seed) return { html: seed };
+      }
+      return { html: built.html };
+    }
+    lastValidationErrors = validation.errors;
+    lastBuilderError = validation.errors.join("; ");
   }
-  if (!/<script[\s>]/i.test(built.html)) {
-    const seed = seedHtmlForTemplate(templateId, "Tool", prompt, deployType);
-    if (seed) return { html: seed };
-  }
-  return { html: built.html };
+
+  const seed = seedHtmlForTemplate(templateId, "Tool", prompt, deployType);
+  if (seed) return { html: seed };
+  return {
+    error: formatFumeroBuilderError(lastBuilderError || "Genereren mislukt"),
+  };
 }
 
 export function listGarageTools(): GarageToolDto[] {

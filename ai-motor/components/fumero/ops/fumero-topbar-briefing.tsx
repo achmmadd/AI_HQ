@@ -95,7 +95,7 @@ export function FumeroTopbarBriefingControls() {
         {timeLabel}
       </span>
       {actionCount > 0 ? (
-        <span className="fumero-text-caption inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-[var(--fumero-text)] px-1.5 py-0.5 tabular-nums text-white">
+        <span className="fumero-text-caption inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-[var(--fumero-inverse-bg)] px-1.5 py-0.5 tabular-nums text-[var(--fumero-inverse-text)]">
           {actionCount}
         </span>
       ) : null}

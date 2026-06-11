@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
     /** @deprecated */
     mode?: string;
     workspace_preset?: string;
+    brand_enhancement?: boolean;
+    start_image_url?: string;
+    end_image_url?: string;
   };
 
   const auth = await requirePhotoStudioKlant(req, body.klant);
@@ -88,11 +91,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const styleHint =
+    typeof body.style_hint === "string" ? body.style_hint.trim() : "";
+  const workspacePreset =
+    typeof body.workspace_preset === "string" ? body.workspace_preset.trim() : "";
+  const brandEnhancement =
+    body.brand_enhancement === true ||
+    Boolean(styleHint) ||
+    Boolean(workspacePreset);
+
   const modelRaw =
-    typeof body.model === "string" ? body.model : "nano-banana-2";
+    typeof body.model === "string"
+      ? body.model
+      : workspacePreset || styleHint
+        ? "nano-banana-2"
+        : "gpt-image-2";
   const model = MODELS.has(modelRaw as ContentStudioModelId)
     ? (modelRaw as ContentStudioModelId)
-    : "nano-banana-2";
+    : "gpt-image-2";
 
   const maxRefs = MAX_REF_IMAGES[model];
   if (imageUrls.length > maxRefs) {
@@ -130,7 +146,11 @@ export async function POST(req: NextRequest) {
   ensurePhotoStudioSchema();
 
   if (mediaType === "video") {
-    let videoImageUrl = imageUrls[0];
+    const startFrameUrl =
+      typeof body.start_image_url === "string"
+        ? body.start_image_url.trim()
+        : "";
+    let videoImageUrl = imageUrls[0] || startFrameUrl;
     if (videoImageUrl) {
       const resolved = await resolveImageUrlsForFal([videoImageUrl]);
       if (!resolved.ok) {
@@ -142,6 +162,7 @@ export async function POST(req: NextRequest) {
       userPrompt: effectivePrompt,
       klant: auth.klant,
       imageUrl: videoImageUrl,
+      brandEnhancement,
     });
     if (!videoResult.ok) {
       return NextResponse.json({ error: videoResult.error }, { status: 502 });
@@ -206,9 +227,9 @@ export async function POST(req: NextRequest) {
     aspectRatio,
     quality,
     count,
-    style_hint:
-      typeof body.style_hint === "string" ? body.style_hint : undefined,
+    style_hint: styleHint || undefined,
     seed,
+    brandEnhancement,
   });
 
   if (!result.ok) {

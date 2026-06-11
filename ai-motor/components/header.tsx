@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useCompanyStore } from "@/stores/useCompanyStore";
 import type { CompanyId } from "@/lib/types";
@@ -14,8 +14,6 @@ const companies: { id: CompanyId; label: string }[] = [
 export function Header({ title }: { title: string }) {
   const company = useCompanyStore((s) => s.company);
   const setCompany = useCompanyStore((s) => s.setCompany);
-  const theme = useCompanyStore((s) => s.theme);
-  const toggleTheme = useCompanyStore((s) => s.toggleTheme);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/80 px-8 backdrop-blur-xl">
@@ -38,19 +36,7 @@ export function Header({ title }: { title: string }) {
             </button>
           ))}
         </div>
-        <Button
-          variant="secondary"
-          size="icon"
-          type="button"
-          onClick={toggleTheme}
-          aria-label="Thema wisselen"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </Button>
+        <ThemeToggle compact />
       </div>
     </header>
   );

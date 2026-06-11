@@ -42,7 +42,7 @@ function Section({
             <li key={item}>
               <button
                 type="button"
-                className="w-full rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-2 text-left text-sm text-[var(--fumero-text)] transition-colors hover:border-[rgba(105,196,0,0.35)] hover:bg-[var(--fumero-surface-muted)]"
+                className="w-full rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-3 py-2 text-left text-sm text-[var(--fumero-text)] transition-colors hover:border-[var(--fumero-success-border)] hover:bg-[var(--fumero-surface-muted)]"
                 onClick={() => onSelect(item)}
               >
                 {item}
@@ -118,13 +118,13 @@ export function MaxBriefingDetailPanel({
             </p>
             <Section
               title="Actie nodig"
-              dotClass="bg-red-500"
+              dotClass="bg-[var(--fumero-destructive)]"
               items={briefing.actions}
               onSelect={onActionSelect}
             />
             <Section
               title="Kansen"
-              dotClass="bg-[#69C400]"
+              dotClass="bg-[var(--fumero-accent)]"
               items={briefing.opportunities}
               onSelect={onActionSelect}
             />

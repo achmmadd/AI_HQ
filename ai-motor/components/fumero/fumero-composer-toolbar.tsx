@@ -104,7 +104,7 @@ function ComposerPopover({
         zIndex: 9999,
       }}
       className={cn(
-        "fumero-composer-popover pointer-events-auto overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white py-2 shadow-xl",
+        "fumero-composer-popover pointer-events-auto overflow-hidden rounded-2xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] py-2 shadow-xl",
         className
       )}
       onMouseDown={(e) => e.stopPropagation()}
@@ -250,9 +250,9 @@ export function FumeroComposerToolbar({
         {FUMERO_COMPOSER_MENU_SECTIONS.map((section, si) => (
           <div key={section.id}>
             {si > 0 ? (
-              <div className="mx-3 my-1.5 border-t border-[#E5E5E5]" />
+              <div className="mx-3 my-1.5 border-t border-[var(--fumero-border)]" />
             ) : null}
-            <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#a3a3a3]">
+            <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--fumero-text-subtle)]">
               {section.label}
             </p>
             {section.items.map((item) => {
@@ -266,23 +266,23 @@ export function FumeroComposerToolbar({
                   role="menuitem"
                   disabled={item.disabled || disabled}
                   className={cn(
-                    "flex w-full items-start gap-3 px-3 py-2 text-left transition-colors hover:bg-[#FAFAFA] focus-visible:bg-[#FAFAFA] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45",
-                    isActive && "bg-[rgba(105,196,0,0.06)]"
+                    "flex w-full items-start gap-3 px-3 py-2 text-left transition-colors hover:bg-[var(--fumero-hover-overlay)] focus-visible:bg-[var(--fumero-hover-overlay)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45",
+                    isActive && "bg-[var(--fumero-accent-muted)]"
                   )}
                   onClick={() => handleMenuPick(item)}
                 >
                   <Icon
                     className={cn(
                       "mt-0.5 h-4 w-4 shrink-0",
-                      item.disabled ? "text-[#a3a3a3]" : "text-[#69C400]"
+                      item.disabled ? "text-[var(--fumero-text-subtle)]" : "text-[var(--fumero-accent)]"
                     )}
                     strokeWidth={1.75}
                   />
                   <span>
-                    <span className="block text-[13px] font-medium text-[#171717]">
+                    <span className="block text-[13px] font-medium text-[var(--fumero-text)]">
                       {item.label}
                     </span>
-                    <span className="block text-[11px] leading-snug text-[#737373]">
+                    <span className="block text-[11px] leading-snug text-[var(--fumero-text-muted)]">
                       {item.description}
                     </span>
                   </span>
@@ -311,20 +311,20 @@ export function FumeroComposerToolbar({
             role="option"
             aria-selected={tier.id === modelTier}
             className={cn(
-              "flex w-full flex-col items-start px-3 py-2.5 text-left transition-colors hover:bg-[#FAFAFA] focus-visible:bg-[#FAFAFA] focus-visible:outline-none",
-              tier.id === modelTier && "bg-[rgba(105,196,0,0.06)]"
+              "flex w-full flex-col items-start px-3 py-2.5 text-left transition-colors hover:bg-[var(--fumero-hover-overlay)] focus-visible:bg-[var(--fumero-hover-overlay)] focus-visible:outline-none",
+              tier.id === modelTier && "bg-[var(--fumero-accent-muted)]"
             )}
             onClick={() => pickTier(tier.id)}
           >
             <span
               className={cn(
                 "text-[13px] font-medium",
-                tier.id === modelTier ? "text-[#69C400]" : "text-[#171717]"
+                tier.id === modelTier ? "text-[var(--fumero-accent)]" : "text-[var(--fumero-text)]"
               )}
             >
               {tier.label}
             </span>
-            <span className="text-[11px] text-[#737373]">{tier.description}</span>
+            <span className="text-[11px] text-[var(--fumero-text-muted)]">{tier.description}</span>
           </button>
         ))}
       </ComposerPopover>
@@ -396,8 +396,8 @@ export function FumeroComposerToolbar({
             setOverflowOpen(false);
           }}
           className={cn(
-            "fumero-composer-plus ios-tap-highlight inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E5E5] bg-white text-[#525252] transition-colors hover:border-[#69C400]/40 hover:bg-[#FAFAFA] hover:text-[#171717] disabled:opacity-40",
-            menuOpen && "border-[#69C400]/50 bg-[rgba(105,196,0,0.06)] text-[#69C400]"
+            "fumero-composer-plus ios-tap-highlight inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] text-[var(--fumero-text-muted)] transition-colors hover:border-[var(--fumero-accent)]/40 hover:bg-[var(--fumero-hover-overlay)] hover:text-[var(--fumero-text)] disabled:opacity-40",
+            menuOpen && "border-[var(--fumero-accent)]/50 bg-[var(--fumero-accent-muted)] text-[var(--fumero-accent)]"
           )}
         >
           <Plus className="h-4 w-4" />
@@ -412,7 +412,7 @@ export function FumeroComposerToolbar({
           onClick={handleModePillClick}
           className={cn(
             "fumero-mode-pill ios-tap-highlight inline-flex items-center gap-1 rounded-full border px-2.5 py-1 fumero-text-caption font-medium transition-all duration-150 disabled:opacity-40",
-            "border-[#69C400]/50 bg-[rgba(105,196,0,0.1)] text-[#3d7a00] hover:border-[#69C400]/65 hover:bg-[rgba(105,196,0,0.14)]"
+            "border-[var(--fumero-accent)]/50 bg-[var(--fumero-accent-muted)] text-[var(--fumero-success-fg)] hover:border-[var(--fumero-accent)]/65 hover:bg-[var(--fumero-accent-muted)]"
           )}
           aria-pressed
           title={`${activeModeMeta.label} — klik om uit te schakelen`}
@@ -438,7 +438,7 @@ export function FumeroComposerToolbar({
               setModelOpen(false);
             }}
             className={cn(
-              "ios-tap-highlight inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--fumero-border)] bg-white text-[var(--fumero-text-muted)] transition-colors hover:border-[var(--fumero-accent)]/40 hover:text-[var(--fumero-text)] disabled:opacity-40",
+              "ios-tap-highlight inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] text-[var(--fumero-text-muted)] transition-colors hover:border-[var(--fumero-accent)]/40 hover:text-[var(--fumero-text)] disabled:opacity-40",
               overflowOpen && "border-[var(--fumero-accent)]/50 bg-[var(--fumero-accent-muted)]"
             )}
           >
@@ -465,8 +465,8 @@ export function FumeroComposerToolbar({
           setMenuOpen(false);
         }}
         className={cn(
-          "fumero-model-pill ios-tap-highlight inline-flex max-w-[10rem] items-center gap-1 rounded-full border border-[var(--fumero-border)] bg-white px-2.5 py-1 fumero-text-caption font-medium text-[var(--fumero-text-muted)] transition-colors hover:border-[var(--fumero-accent)]/40 hover:text-[var(--fumero-text)] disabled:opacity-40",
-          modelOpen && "border-[#69C400]/50 text-[#69C400]"
+          "fumero-model-pill ios-tap-highlight inline-flex max-w-[10rem] items-center gap-1 rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-2.5 py-1 fumero-text-caption font-medium text-[var(--fumero-text-muted)] transition-colors hover:border-[var(--fumero-accent)]/40 hover:text-[var(--fumero-text)] disabled:opacity-40",
+          modelOpen && "border-[var(--fumero-accent)]/50 text-[var(--fumero-accent)]"
         )}
       >
         <span className="truncate">{activeTier.shortLabel}</span>

@@ -1,0 +1,276 @@
+/**
+ * Fumero Worldclass Studio — light glass creative workspace.
+ * Scoped to .fumero-studio-worldclass
+ */
+
+.fumero-studio-worldclass {
+  --wc-bg: #f5f5f7;
+  --wc-surface: #ffffff;
+  --wc-surface-glass: rgba(255, 255, 255, 0.72);
+  --wc-surface-muted: #f0f0f2;
+  --wc-border: rgba(0, 0, 0, 0.08);
+  --wc-border-strong: rgba(0, 0, 0, 0.12);
+  --wc-text: #1d1d1f;
+  --wc-text-muted: #6e6e73;
+  --wc-text-subtle: #aeaeb2;
+  --wc-accent: #69c400;
+  --wc-accent-hover: #5db000;
+  --wc-accent-muted: rgba(105, 196, 0, 0.1);
+  --wc-radius: 12px;
+  --wc-radius-sm: 8px;
+  --wc-radius-lg: 16px;
+  --wc-nav-w: 70px;
+  --wc-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  --wc-shadow-float: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --wc-blur: 20px;
+  --wc-transition: 180ms cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  background: var(--wc-bg);
+  color: var(--wc-text);
+  font-family: var(--font-geist, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+.fumero-studio-worldclass .wc-glass {
+  background: var(--wc-surface-glass);
+  backdrop-filter: blur(var(--wc-blur));
+  -webkit-backdrop-filter: blur(var(--wc-blur));
+  border: 1px solid var(--wc-border);
+  box-shadow: var(--wc-shadow-glass);
+}
+
+.fumero-studio-worldclass .wc-nav-rail {
+  width: var(--wc-nav-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  background: var(--wc-surface);
+  border-right: 1px solid var(--wc-border);
+}
+
+.fumero-studio-worldclass .wc-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--wc-radius-sm);
+  color: var(--wc-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  transition: background var(--wc-transition), color var(--wc-transition);
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.fumero-studio-worldclass .wc-nav-item:hover {
+  background: var(--wc-surface-muted);
+  color: var(--wc-text);
+}
+
+.fumero-studio-worldclass .wc-nav-item--active {
+  background: var(--wc-accent-muted);
+  color: var(--wc-accent);
+}
+
+.fumero-studio-worldclass .wc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fumero-studio-worldclass .wc-topbar {
+  position: relative;
+  z-index: 20;
+  margin: 12px 16px 0;
+  padding: 8px 12px;
+  border-radius: var(--wc-radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.fumero-studio-worldclass .wc-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 12px 16px 16px;
+  gap: 0;
+}
+
+.fumero-studio-worldclass .wc-maker-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--wc-surface);
+  border: 1px solid var(--wc-border);
+  border-radius: var(--wc-radius-lg) 0 0 var(--wc-radius-lg);
+  overflow: hidden;
+}
+
+.fumero-studio-worldclass .wc-resize-handle {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  touch-action: none;
+}
+
+.fumero-studio-worldclass .wc-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 8px 2px;
+  border-radius: 3px;
+  background: var(--wc-border);
+  transition: background var(--wc-transition);
+}
+
+.fumero-studio-worldclass .wc-resize-handle:hover::after,
+.fumero-studio-worldclass .wc-resize-handle:focus-visible::after {
+  background: var(--wc-accent);
+}
+
+.fumero-studio-worldclass .wc-results {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--wc-surface);
+  border: 1px solid var(--wc-border);
+  border-left: none;
+  border-radius: 0 var(--wc-radius-lg) var(--wc-radius-lg) 0;
+  overflow: hidden;
+}
+
+.fumero-studio-worldclass .wc-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background var(--wc-transition), transform var(--wc-transition);
+}
+
+.fumero-studio-worldclass .wc-btn-primary:hover:not(:disabled) {
+  background: var(--wc-accent-hover);
+}
+
+.fumero-studio-worldclass .wc-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fumero-studio-worldclass .wc-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--wc-text-muted);
+}
+
+.fumero-studio-worldclass .wc-step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wc-border-strong);
+}
+
+.fumero-studio-worldclass .wc-step-dot--active {
+  background: var(--wc-accent);
+}
+
+.fumero-studio-worldclass .wc-mobile-tabs {
+  display: none;
+  border-bottom: 1px solid var(--wc-border);
+  background: var(--wc-surface);
+}
+
+.fumero-studio-worldclass .wc-mobile-tab {
+  flex: 1;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wc-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.fumero-studio-worldclass .wc-mobile-tab--active {
+  color: var(--wc-text);
+  border-bottom-color: var(--wc-accent);
+}
+
+@media (max-width: 768px) {
+  .fumero-studio-worldclass .wc-nav-rail {
+    display: none;
+  }
+
+  .fumero-studio-worldclass .wc-mobile-tabs {
+    display: flex;
+  }
+
+  .fumero-studio-worldclass .wc-workspace {
+    flex-direction: column;
+    padding: 8px 12px 12px;
+  }
+
+  .fumero-studio-worldclass .wc-maker-panel,
+  .fumero-studio-worldclass .wc-results {
+    border-radius: var(--wc-radius);
+    border: 1px solid var(--wc-border);
+  }
+
+  .fumero-studio-worldclass .wc-resize-handle {
+    display: none;
+  }
+
+  .fumero-studio-worldclass .wc-panel-hidden {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fumero-studio-worldclass * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html.dark .fumero-studio-worldclass {
+  --wc-bg: #0c0c0e;
+  --wc-surface: #141416;
+  --wc-surface-glass: rgba(20, 20, 22, 0.82);
+  --wc-surface-muted: #1a1a1d;
+  --wc-border: rgba(255, 255, 255, 0.08);
+  --wc-border-strong: rgba(255, 255, 255, 0.12);
+  --wc-text: #ededef;
+  --wc-text-muted: #8b8b8f;
+  --wc-text-subtle: #5c5c61;
+  --wc-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --wc-shadow-float: 0 4px 24px rgba(0, 0, 0, 0.4);
+}

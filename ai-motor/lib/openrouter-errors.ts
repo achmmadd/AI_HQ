@@ -28,7 +28,7 @@ export function formatOpenRouterUserError(raw: string): string {
   if (!msg) return OPENROUTER_RATE_LIMIT_USER_MESSAGE;
   if (
     /OpenRouter\s+(HTTP\s+)?429/i.test(msg) ||
-    isOpenRouterRateLimited(429, msg)
+    isOpenRouterRateLimited(0, msg)
   ) {
     return OPENROUTER_RATE_LIMIT_USER_MESSAGE;
   }

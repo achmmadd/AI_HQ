@@ -36,9 +36,25 @@ function cleanCaption(content: string): string {
   return content.replace(/!\[[^\]]*\]\([^)]*\)\s*/g, "").trim();
 }
 
+/** Strip internal agent metadata from user-visible library titles. */
+function stripLibraryMetadata(text: string): string {
+  return text
+    .replace(/^\*\*Klant:\*\*[^·\n]+·\s*/gi, "")
+    .replace(/^\*\*Agent:\*\*[^·\n]+·\s*/gi, "")
+    .replace(/^#+\s*/gm, "")
+    .replace(/\*\*/g, "")
+    .replace(/^Factory OS Response\s*/i, "")
+    .trim();
+}
+
 function postDisplayName(post: Post): string {
-  if (post.titel?.trim()) return post.titel.trim();
-  const line = cleanCaption(post.content).split("\n")[0]?.trim() || "Zonder titel";
+  if (post.titel?.trim()) {
+    const title = stripLibraryMetadata(post.titel.trim());
+    if (title) return title.length > 48 ? `${title.slice(0, 48)}…` : title;
+  }
+  const line =
+    stripLibraryMetadata(cleanCaption(post.content).split("\n")[0]?.trim() || "") ||
+    "Zonder titel";
   return line.length > 48 ? `${line.slice(0, 48)}…` : line;
 }
 
@@ -129,31 +145,25 @@ export function FumeroBibliotheek() {
         actionLabel="Nieuw in Studio"
         actionHref="/fumero/photo-studio"
       />
-      <p className="-mt-4 mb-4 text-[12px] text-[#737373]">
-        Studio is voor maken · Bibliotheek is je archief.{" "}
-        <Link href="/fumero/photo-studio" className="font-medium text-[#3d7a00] hover:underline">
-          Open Studio
-        </Link>
-      </p>
 
       {error ? (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="mb-4 rounded-lg border border-[var(--fumero-danger-border)] bg-[var(--fumero-danger-bg)] px-3 py-2 text-sm text-[var(--fumero-danger-fg)]">
           {error}
         </p>
       ) : null}
 
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[#a3a3a3]" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--fumero-text-subtle)]" />
           <Input
-            className="h-9 rounded-lg border-[#E5E5E5] pl-9"
+            className="h-9 rounded-lg border-[var(--fumero-border)] pl-9"
             placeholder="Zoeken…"
             value={libraryQuery}
             onChange={(e) => setLibraryQuery(e.target.value)}
           />
         </div>
         <select
-          className="h-9 rounded-lg border border-[#E5E5E5] bg-white px-2 text-sm"
+          className="h-9 rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-2 text-sm"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
@@ -166,26 +176,26 @@ export function FumeroBibliotheek() {
       </div>
 
       {loading ? (
-        <p className="py-12 text-center text-sm text-[#737373]">Bibliotheek laden…</p>
+        <p className="py-12 text-center text-sm text-[var(--fumero-text-muted)]">Bibliotheek laden…</p>
       ) : filtered.length === 0 && posts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#E5E5E5] bg-white px-6 py-12 text-center">
-          <p className="text-sm font-medium text-[#525252]">Nog geen content in de bibliotheek</p>
-          <p className="mt-1 text-xs text-[#737373]">
+        <div className="rounded-xl border border-dashed border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-12 text-center">
+          <p className="text-sm font-medium text-[var(--fumero-text-muted)]">Nog geen content in de bibliotheek</p>
+          <p className="mt-1 text-xs text-[var(--fumero-text-muted)]">
             Genereer productfoto&apos;s, teksten of scripts in Studio — ze verschijnen hier
             automatisch.
           </p>
-          <Button asChild className="mt-4 rounded-lg bg-[#69C400] shadow-none hover:bg-[#5db000]">
+          <Button asChild className="mt-4 rounded-lg bg-[var(--fumero-accent)] shadow-none hover:bg-[var(--fumero-accent-hover)]">
             <Link href="/fumero/photo-studio">Nieuw in Studio</Link>
           </Button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[#E5E5E5] bg-white px-6 py-10 text-center">
-          <p className="text-sm text-[#737373]">Geen resultaten voor deze filters.</p>
+        <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-6 py-10 text-center">
+          <p className="text-sm text-[var(--fumero-text-muted)]">Geen resultaten voor deze filters.</p>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="mt-2 rounded-lg text-[#525252]"
+            className="mt-2 rounded-lg text-[var(--fumero-text-muted)]"
             onClick={() => {
               setLibraryQuery("");
               setStatusFilter("all");
@@ -199,21 +209,21 @@ export function FumeroBibliotheek() {
           {filtered.map((post) => (
             <article
               key={post.id}
-              className="group relative overflow-hidden rounded-xl border border-[#E5E5E5] bg-white transition-shadow hover:shadow-md"
+              className="group relative overflow-hidden rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] transition-shadow hover:shadow-md"
             >
               {post.media_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={post.media_url}
                   alt=""
-                  className="h-40 w-full border-b border-[#E5E5E5] bg-[#FAFAFA] object-cover"
+                  className="h-40 w-full border-b border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] object-cover"
                 />
               ) : (
-                <div className="flex h-40 items-center justify-center border-b border-[#E5E5E5] bg-[#FAFAFA] px-4 text-center">
+                <div className="flex h-40 items-center justify-center border-b border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] px-4 text-center">
                   {isScriptType(post.type) ? (
-                    <Video className="h-7 w-7 text-[#a3a3a3]" strokeWidth={1.5} />
+                    <Video className="h-7 w-7 text-[var(--fumero-text-subtle)]" strokeWidth={1.5} />
                   ) : (
-                    <p className="line-clamp-4 text-xs leading-relaxed text-[#737373]">
+                    <p className="line-clamp-4 text-xs leading-relaxed text-[var(--fumero-text-muted)]">
                       {cleanCaption(post.content)}
                     </p>
                   )}
@@ -223,7 +233,7 @@ export function FumeroBibliotheek() {
                 <button
                   type="button"
                   title="Download"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E5E5] bg-white text-[#525252] shadow-sm hover:bg-[#FAFAFA]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] text-[var(--fumero-text-muted)] shadow-sm hover:bg-[var(--fumero-surface-muted)]"
                   onClick={() => downloadAsset(post)}
                 >
                   <Download className="h-4 w-4" />
@@ -232,7 +242,7 @@ export function FumeroBibliotheek() {
                   <button
                     type="button"
                     title="Inplannen (lokaal)"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E5E5] bg-white text-[#525252] shadow-sm hover:bg-[#FAFAFA]"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--fumero-border)] bg-[var(--fumero-surface)] text-[var(--fumero-text-muted)] shadow-sm hover:bg-[var(--fumero-surface-muted)]"
                     onClick={() => void schedulePost(post.id)}
                   >
                     <Calendar className="h-4 w-4" />
@@ -240,17 +250,17 @@ export function FumeroBibliotheek() {
                 ) : null}
               </div>
               <div className="space-y-2 p-3">
-                <p className="truncate text-sm font-medium text-[#171717]">
+                <p className="truncate text-sm font-medium text-[var(--fumero-text)]">
                   {postDisplayName(post)}
                 </p>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-md border border-[#E5E5E5] bg-[#FAFAFA] px-1.5 py-0.5 text-[10px] font-medium text-[#525252]">
+                  <span className="rounded-md border border-[var(--fumero-border)] bg-[var(--fumero-surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--fumero-text-muted)]">
                     {typeLabel(post.type)}
                   </span>
                   <FumeroStatusBadge status={post.status} />
                 </div>
                 {post.status === "scheduled" && post.scheduled_at ? (
-                  <p className="text-[11px] text-[#3d7a00]">
+                  <p className="text-[11px] text-[var(--fumero-success-fg)]">
                     Gepland ·{" "}
                     {new Date(post.scheduled_at).toLocaleString("nl-NL", {
                       day: "numeric",
@@ -260,7 +270,7 @@ export function FumeroBibliotheek() {
                     })}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-[#a3a3a3]">
+                  <p className="text-[11px] text-[var(--fumero-text-subtle)]">
                     {new Date(post.created_at).toLocaleDateString("nl-NL", {
                       day: "numeric",
                       month: "short",

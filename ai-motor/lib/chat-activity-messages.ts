@@ -14,8 +14,8 @@ export function isFumeroKlant(klant: string): boolean {
   return klant.trim().toLowerCase() === "fumero";
 }
 
-export function chatAgentName(klant: string): "Max" | "Motor" {
-  return isFumeroKlant(klant) ? "Max" : "Motor";
+export function chatAgentName(klant: string): "Smokey" | "Motor" {
+  return isFumeroKlant(klant) ? "Smokey" : "Motor";
 }
 
 export function chatThinkingLabel(
