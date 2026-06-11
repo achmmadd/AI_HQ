@@ -32,6 +32,7 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/verify",
   "/api/demo",
   "/api/health",
+  "/api/fumero/builder-config",
 ]);
 
 /** Route handlers enforce MOTORS_INTERNAL_TOKEN or session; skip edge session gate. */

@@ -67,6 +67,26 @@ function htmlResponseHint(text: string, status: number): string {
   );
 }
 
+/** GET/POST JSON — null bij netwerk/HTML/non-JSON/fout (geen throw, geen res.json()). */
+export async function fetchJsonOptional<T>(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<T | null> {
+  try {
+    const res = await fetch(input, init);
+    const text = await res.text();
+    if (!res.ok) return null;
+    const ct = res.headers.get("content-type") ?? "";
+    if (ct && !ct.includes("application/json") && !ct.includes("+json")) {
+      if (/^\s*</.test(text) || text.includes("<!DOCTYPE")) return null;
+    }
+    const data = parseMaybeJson(text);
+    return data === null ? null : (data as T);
+  } catch {
+    return null;
+  }
+}
+
 /** GET/POST JSON naar eigen API — nette fout bij timeout/JSON/non-JSON. */
 export async function fetchJsonChecked<T>(
   input: RequestInfo | URL,

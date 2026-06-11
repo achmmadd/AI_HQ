@@ -13,10 +13,13 @@ import {
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Palette,
+  Megaphone,
   Settings,
   ShoppingBag,
   Workflow,
 } from "lucide-react";
+import { fetchJsonOptional } from "@/lib/fetch-json-client";
 import { cn } from "@/lib/utils";
 import { useLayoutStore } from "@/stores/useLayoutStore";
 import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
@@ -50,6 +53,12 @@ function isActive(pathname: string, href: string): boolean {
   if (href === "/fumero/code") {
     return pathname === "/fumero/code" || pathname.startsWith("/fumero/code/");
   }
+  if (href === "/fumero/brand-kit") {
+    return pathname === "/fumero/brand-kit" || pathname.startsWith("/fumero/brand-kit/");
+  }
+  if (href === "/fumero/campaign-studio") {
+    return pathname === "/fumero/campaign-studio" || pathname.startsWith("/fumero/campaign-studio/");
+  }
   if (href === "/fumero/settings/context") {
     return pathname.startsWith("/fumero/settings");
   }
@@ -68,15 +77,19 @@ export function FumeroSidebar() {
 
     const loadCounts = async () => {
       try {
-        const [contentRes, ordersRes] = await Promise.all([
-          fetch("/api/content?klant=fumero", { credentials: "include" }),
-          fetch("/api/fumero/orders?limit=100", { credentials: "include" }),
+        const [content, orders] = await Promise.all([
+          fetchJsonOptional<{ posts?: unknown[] }>(
+            "/api/content?klant=fumero",
+            { credentials: "include" }
+          ),
+          fetchJsonOptional<{ orders?: unknown[] }>(
+            "/api/fumero/orders?limit=100",
+            { credentials: "include" }
+          ),
         ]);
-        const content = (await contentRes.json()) as { posts?: unknown[] };
-        const orders = (await ordersRes.json()) as { orders?: unknown[] };
         if (cancelled) return;
-        setLibraryCount(Array.isArray(content.posts) ? content.posts.length : 0);
-        setOrderCount(Array.isArray(orders.orders) ? orders.orders.length : 0);
+        setLibraryCount(Array.isArray(content?.posts) ? content.posts.length : 0);
+        setOrderCount(Array.isArray(orders?.orders) ? orders.orders.length : 0);
       } catch {
         if (!cancelled) {
           setLibraryCount(null);
@@ -117,6 +130,8 @@ export function FumeroSidebar() {
         label: "Studio",
         items: [
           { href: "/fumero/photo-studio", label: "Studio", icon: Camera },
+          { href: "/fumero/brand-kit", label: "Brand Kit", icon: Palette },
+          { href: "/fumero/campaign-studio", label: "Campaigns", icon: Megaphone },
           { href: "/fumero/bouwen", label: "Bouwen", icon: Hammer },
           { href: "/fumero/code", label: "Code", icon: Code2 },
           { href: "/fumero/automations", label: "Automatisering", icon: Workflow },
@@ -172,7 +187,7 @@ export function FumeroSidebar() {
               collapsed && "md:flex"
             )}
           >
-            <FumeroLogoLockup compact variant="mascot" className="!p-0" />
+            <FumeroLogoLockup compact variant="mascot" motion="idle" className="!p-0" />
           </div>
         </Link>
       </div>

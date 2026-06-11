@@ -7,6 +7,7 @@ import {
   FUMERO_GOAL_UPDATED_EVENT,
   goalDisplayLabel,
 } from "@/lib/fumero/max-goal-shared";
+import { fetchJsonOptional } from "@/lib/fetch-json-client";
 import { cn } from "@/lib/utils";
 
 export function FumeroGoalBadge({
@@ -21,17 +22,11 @@ export function FumeroGoalBadge({
   const [goals, setGoals] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    try {
-      const res = await fetch(
-        `/api/fumero/goal?klant=${encodeURIComponent(klant)}`,
-        { credentials: "include" }
-      );
-      if (!res.ok) return;
-      const json = (await res.json()) as { goals?: string | null };
-      setGoals(json.goals?.trim() || null);
-    } catch {
-      /* ignore */
-    }
+    const json = await fetchJsonOptional<{ goals?: string | null }>(
+      `/api/fumero/goal?klant=${encodeURIComponent(klant)}`,
+      { credentials: "include" }
+    );
+    setGoals(json?.goals?.trim() || null);
   }, [klant]);
 
   useEffect(() => {

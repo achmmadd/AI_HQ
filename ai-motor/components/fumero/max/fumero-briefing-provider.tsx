@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { fetchJsonOptional } from "@/lib/fetch-json-client";
 import type { FumeroBriefingPayload } from "@/lib/fumero/briefing";
 import {
   formatMaxOpeningMessage,
@@ -51,9 +52,10 @@ export function FumeroBriefingProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/fumero/briefing", { credentials: "include" });
-      const json = (await res.json()) as FumeroBriefingPayload & { error?: string };
-      if (!res.ok) throw new Error(json.error || "Briefing laden mislukt");
+      const json = await fetchJsonOptional<
+        FumeroBriefingPayload & { error?: string }
+      >("/api/fumero/briefing", { credentials: "include" });
+      if (!json) throw new Error("Briefing laden mislukt");
       setData(json);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Briefing laden mislukt");

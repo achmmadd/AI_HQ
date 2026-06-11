@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { failedResponseToError } from "./fetch-json-client";
+import { failedResponseToError, fetchJsonOptional } from "./fetch-json-client";
 
 test("failedResponseToError leest JSON error+detail", () => {
   const e = failedResponseToError(
@@ -21,4 +21,19 @@ test("failedResponseToError herkent Cloudflare 524 HTML", () => {
 test("failedResponseToError valt terug op plain text", () => {
   const e = failedResponseToError("niet-json", 502);
   assert.equal(e.message, "niet-json");
+});
+
+test("fetchJsonOptional geeft null bij HTML body", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response("<!DOCTYPE html><html></html>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  try {
+    const data = await fetchJsonOptional<{ ok?: boolean }>("/api/test");
+    assert.equal(data, null);
+  } finally {
+    globalThis.fetch = original;
+  }
 });

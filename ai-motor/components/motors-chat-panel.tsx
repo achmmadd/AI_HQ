@@ -31,7 +31,7 @@ import { useCompanyStore, chatKlantForWorkspace, getWorkspaceTheme } from "@/sto
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { MotorsChatMarkdown } from "@/components/motors-chat-markdown";
 import { MessageFeedback } from "@/components/message-feedback";
-import { fetchJsonChecked } from "@/lib/fetch-json-client";
+import { fetchJsonChecked, fetchJsonOptional } from "@/lib/fetch-json-client";
 import { cn } from "@/lib/utils";
 import { groupConversationsByDate, groupFumeroChatThreads, deriveConversationTitleFromMessage, type ConversationListItem } from "@/lib/conversation-grouping";
 import { isBuildLikePrompt } from "@/lib/build-intent-ext";
@@ -767,12 +767,11 @@ export function MotorsChatPanel({
 
   useEffect(() => {
     if (workspace !== "fumero" || !maxCompanion) return;
-    void fetch("/api/fumero/builder-config", { credentials: "include" })
-      .then((r) => r.json())
-      .then((j: { label?: string }) => {
-        if (j.label) setFumeroBuilderLabel(j.label);
-      })
-      .catch(() => {});
+    void fetchJsonOptional<{ label?: string }>("/api/fumero/builder-config", {
+      credentials: "include",
+    }).then((j) => {
+      if (j?.label) setFumeroBuilderLabel(j.label);
+    });
   }, [workspace, maxCompanion]);
 
   const filteredConversations = useMemo(() => {
