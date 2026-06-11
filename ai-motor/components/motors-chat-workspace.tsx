@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MotorsChatPanel } from "@/components/motors-chat-panel";
 import { ArtifactPanel } from "@/components/artifact-panel";
 import { ProjectPreview } from "@/components/project-preview";
@@ -30,6 +31,18 @@ import type { FumeroBriefingPayload } from "@/lib/fumero/briefing";
 import type { FumeroBouwenBridge } from "@/lib/fumero/bouwen-bridge";
 import type { FumeroComposerMode } from "@/lib/fumero/composer-actions";
 import type { FumeroPublishModalPayload } from "@/components/fumero/features/fumero-publish-modal";
+
+const BUILDER_SPRING = { type: "spring" as const, stiffness: 300, damping: 30 };
+const PREVIEW_ENTER = {
+  opacity: 0,
+  x: 48,
+  scale: 0.98,
+};
+const PREVIEW_VISIBLE = {
+  opacity: 1,
+  x: 0,
+  scale: 1,
+};
 
 export type MaxCompanionConfig = {
   briefing: FumeroBriefingPayload | null;
@@ -97,6 +110,16 @@ export function MotorsChatWorkspace({
 
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const [chatPercent, setChatPercent] = useState(BUILDER_CHAT_DEFAULT_PERCENT);
+  const [bouwenBuildActive, setBouwenBuildActive] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  const handleBouwenBridgeUpdate = useCallback(
+    (bridge: FumeroBouwenBridge) => {
+      setBouwenBuildActive(bridge.buildActive);
+      onBouwenBridgeUpdate?.(bridge);
+    },
+    [onBouwenBridgeUpdate],
+  );
 
   useEffect(() => {
     if (!bouwenWorkspace) return;
@@ -153,17 +176,26 @@ export function MotorsChatWorkspace({
   const hasPreview = Boolean(
     artifact || project || fumeroContentPreview || fumeroLivePreview
   );
-  const coderPreviewRail = fumeroCoderActive && !artifact && !project;
-  const showPreviewRail = hasPreview || coderPreviewRail;
+  const coderPreviewRail =
+    fumeroCoderActive && !artifact && !project && !bouwenWorkspace;
+  const showPreviewRail =
+    hasPreview || coderPreviewRail || (bouwenWorkspace && bouwenBuildActive);
   const previewVisible = showPreviewRail && previewPanelOpen;
+  const bouwenHeroMode = bouwenWorkspace && !showPreviewRail;
   const busy = artifactLoading || projectLoading;
   const stackLabel = project?.spec.stack
     ? stackDisplayName(project.spec.stack)
     : null;
 
   useEffect(() => {
+    if (bouwenWorkspace) {
+      if (hasPreview || bouwenBuildActive) {
+        setPreviewPanelOpen(true);
+      }
+      return;
+    }
     if (hasPreview || fumeroCoderActive) setPreviewPanelOpen(true);
-  }, [hasPreview, fumeroCoderActive, setPreviewPanelOpen]);
+  }, [bouwenBuildActive, bouwenWorkspace, hasPreview, fumeroCoderActive, setPreviewPanelOpen]);
 
   const bumpLivePreviewEpoch = () => {
     setFumeroLivePreview((prev) =>
@@ -175,6 +207,7 @@ export function MotorsChatWorkspace({
     <div
       className={cn(
         "chat-os-workspace flex h-full min-h-0 flex-1 flex-col overflow-hidden",
+        bouwenHeroMode && "bouwen-workspace-hero",
         className ?? "bg-background"
       )}
     >
@@ -182,18 +215,24 @@ export function MotorsChatWorkspace({
         ref={splitContainerRef}
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-row",
-          previewVisible && !fumeroCoderActive && "divide-x divide-[var(--os-border)]"
+          previewVisible && !fumeroCoderActive && "divide-x divide-[var(--os-border)]",
+          bouwenHeroMode && "bouwen-workspace-hero__row",
+          bouwenWorkspace && previewVisible && "bouwen-workspace-split",
         )}
       >
-        <div
+        <motion.div
+          layout={!reduceMotion}
+          transition={reduceMotion ? { duration: 0 } : BUILDER_SPRING}
           className={cn(
             "flex min-h-0 min-w-0 flex-col",
-            bouwenWorkspace && previewVisible
-              ? "min-w-[280px] flex-none"
-              : "flex-1"
+            bouwenHeroMode
+              ? "bouwen-chat-hero mx-auto w-full max-w-[720px] flex-1"
+              : bouwenWorkspace && previewVisible
+                ? "min-w-[280px] flex-none"
+                : "flex-1",
           )}
           style={
-            bouwenWorkspace && previewVisible
+            bouwenWorkspace && previewVisible && !bouwenHeroMode
               ? { width: `${chatPercent}%` }
               : undefined
           }
@@ -229,7 +268,7 @@ export function MotorsChatWorkspace({
             onRegisterUxReview={(fn) => {
               uxReviewRef.current = fn;
             }}
-            onBouwenBridgeUpdate={onBouwenBridgeUpdate}
+            onBouwenBridgeUpdate={handleBouwenBridgeUpdate}
             onPublishSuccess={onPublishSuccess}
             onProjectPrompt={async (prompt, conversationId) => {
               if (project) {
@@ -243,47 +282,62 @@ export function MotorsChatWorkspace({
             artifactBusy={busy}
             externalStatusError={projectError}
           />
-        </div>
+        </motion.div>
 
-        {showPreviewRail && (
-          <>
-            {bouwenWorkspace && previewVisible ? (
-              <div
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Chat- en previewbreedte aanpassen"
-                aria-valuenow={Math.round(chatPercent)}
-                tabIndex={0}
-                className="fumero-builder-splitter group relative z-[2] mx-0.5 w-2 shrink-0 cursor-col-resize touch-none outline-none"
-                onPointerDown={handleSplitterPointerDown}
-                onPointerMove={handleSplitterPointerMove}
-                onPointerUp={handleSplitterPointerUp}
-                onKeyDown={handleSplitterKeyDown}
-              >
-                <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-[#69C400]/45 group-focus-visible:bg-[#69C400]/60" />
-              </div>
-            ) : null}
-            <PanelCollapseRail
-              side="right"
-              open={previewPanelOpen}
-              onToggle={() => setPreviewPanelOpen(!previewPanelOpen)}
-              title={
-                previewPanelOpen
-                  ? "Preview inklappen"
-                  : "Preview uitklappen"
-              }
-            />
-            {previewVisible && (
-              <div
-                className={cn(
-                  "fumero-coder-preview-rail flex min-h-0 flex-1 flex-col",
-                  bouwenWorkspace
-                    ? "min-w-0"
-                    : fumeroCoderActive
-                      ? "w-[min(58%,36rem)] min-w-[300px] max-w-[60%]"
-                      : "w-[min(52%,32rem)] min-w-[300px] max-w-[55%]"
-                )}
-              >
+        <AnimatePresence mode="popLayout">
+          {showPreviewRail ? (
+            <>
+              {bouwenWorkspace && previewVisible ? (
+                <motion.div
+                  key="bouwen-splitter"
+                  layout={!reduceMotion}
+                  initial={reduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={reduceMotion ? undefined : { opacity: 0 }}
+                  transition={reduceMotion ? { duration: 0 } : { duration: 0.2 }}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Chat- en previewbreedte aanpassen"
+                  aria-valuenow={Math.round(chatPercent)}
+                  tabIndex={0}
+                  className="fumero-builder-splitter group relative z-[2] mx-0.5 hidden w-2 shrink-0 cursor-col-resize touch-none outline-none md:block"
+                  onPointerDown={handleSplitterPointerDown}
+                  onPointerMove={handleSplitterPointerMove}
+                  onPointerUp={handleSplitterPointerUp}
+                  onKeyDown={handleSplitterKeyDown}
+                >
+                  <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-[#69C400]/45 group-focus-visible:bg-[#69C400]/60" />
+                </motion.div>
+              ) : null}
+              {!bouwenWorkspace ? (
+                <PanelCollapseRail
+                  side="right"
+                  open={previewPanelOpen}
+                  onToggle={() => setPreviewPanelOpen(!previewPanelOpen)}
+                  title={
+                    previewPanelOpen
+                      ? "Preview inklappen"
+                      : "Preview uitklappen"
+                  }
+                />
+              ) : null}
+              {previewVisible ? (
+                <motion.div
+                  key="bouwen-preview-rail"
+                  layout={!reduceMotion}
+                  initial={reduceMotion ? false : PREVIEW_ENTER}
+                  animate={PREVIEW_VISIBLE}
+                  exit={reduceMotion ? undefined : PREVIEW_ENTER}
+                  transition={reduceMotion ? { duration: 0 } : BUILDER_SPRING}
+                  className={cn(
+                    "fumero-coder-preview-rail flex min-h-0 flex-col",
+                    bouwenWorkspace
+                      ? "bouwen-preview-rail min-w-0 flex-1 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-[42%] max-md:z-20 max-md:rounded-t-2xl max-md:border-t max-md:border-[var(--fumero-border)] max-md:shadow-[0_-24px_80px_rgba(0,0,0,0.55)]"
+                      : fumeroCoderActive
+                        ? "w-[min(58%,36rem)] min-w-[300px] max-w-[60%]"
+                        : "w-[min(52%,32rem)] min-w-[300px] max-w-[55%]",
+                  )}
+                >
                 {artifact && (
                   <ArtifactPanel
                     html={artifact.html}
@@ -333,11 +387,7 @@ export function MotorsChatWorkspace({
                         building: false,
                       }}
                       onClose={() => {
-                        if (bouwenWorkspace) {
-                          setPreviewPanelOpen(false);
-                        } else {
-                          setFumeroCoderActive(false);
-                        }
+                        setFumeroCoderActive(false);
                       }}
                     />
                   )}
@@ -364,10 +414,11 @@ export function MotorsChatWorkspace({
                     />
                   )
                 )}
-              </div>
-            )}
-          </>
-        )}
+                </motion.div>
+              ) : null}
+            </>
+          ) : null}
+        </AnimatePresence>
 
       </div>
     </div>

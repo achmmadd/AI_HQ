@@ -10,6 +10,8 @@ export type BouwenChatConversation = {
 
 /** State bridge tussen MotorsChatPanel en FumeroBouwenShell topbar. */
 export type FumeroBouwenBridge = {
+  /** True zodra er gebouwd wordt of preview-inhoud bestaat — split-paneel tonen. */
+  buildActive: boolean;
   activeToolId: number | null;
   activeAppSlug: string | null;
   canPublish: boolean;
@@ -32,6 +34,7 @@ export type FumeroBouwenBridge = {
 };
 
 export const EMPTY_BOUWEN_BRIDGE: FumeroBouwenBridge = {
+  buildActive: false,
   activeToolId: null,
   activeAppSlug: null,
   canPublish: false,

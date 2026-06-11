@@ -85,6 +85,7 @@ function BouwenShellInner() {
       if (
         prev.activeToolId === next.activeToolId &&
         prev.activeAppSlug === next.activeAppSlug &&
+        prev.buildActive === next.buildActive &&
         prev.canPublish === next.canPublish &&
         prev.canUxReview === next.canUxReview &&
         prev.toolBusy === next.toolBusy &&
@@ -114,7 +115,9 @@ function BouwenShellInner() {
             ) : null}
           </div>
           <p className="text-[11px] text-[var(--fumero-text-muted)]">
-            Beschrijf je idee — preview rechts · online zetten wanneer klaar
+            {bridge.buildActive
+              ? "Beschrijf je idee — preview rechts · online zetten wanneer klaar"
+              : "Beschrijf je idee — focus op je prompt, preview volgt na Bouw nu"}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">

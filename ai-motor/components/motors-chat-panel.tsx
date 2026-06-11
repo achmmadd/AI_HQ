@@ -508,22 +508,28 @@ export function MotorsChatPanel({
   useEffect(() => {
     if (initialComposerMode) {
       setFumeroComposerMode(initialComposerMode);
-      if (initialComposerMode === "coder") {
+      if (initialComposerMode === "coder" && !bouwenWorkspace) {
         setPreviewPanelOpen(true);
       }
     }
-  }, [initialComposerMode, setPreviewPanelOpen]);
+  }, [initialComposerMode, bouwenWorkspace, setPreviewPanelOpen]);
 
   useEffect(() => {
     if (bouwenWorkspace) setChatThreadsOpen(false);
   }, [bouwenWorkspace, setChatThreadsOpen]);
 
   useEffect(() => {
+    if (bouwenWorkspace) {
+      setPreviewPanelOpen(false);
+    }
+  }, [bouwenWorkspace, setPreviewPanelOpen]);
+
+  useEffect(() => {
     onComposerModeChange?.(fumeroComposerMode);
-    if (fumeroComposerMode === "coder") {
+    if (fumeroComposerMode === "coder" && !bouwenWorkspace) {
       setPreviewPanelOpen(true);
     }
-  }, [fumeroComposerMode, onComposerModeChange, setPreviewPanelOpen]);
+  }, [fumeroComposerMode, bouwenWorkspace, onComposerModeChange, setPreviewPanelOpen]);
 
   const refreshConversations = useCallback(async () => {
     const data = await fetchJsonChecked<{ conversations?: ConversationRow[] }>(
@@ -1680,8 +1686,22 @@ export function MotorsChatPanel({
       fumeroSubmitting ||
       streamStatus === "streaming" ||
       streamStatus === "submitted";
+    const buildActive =
+      messages.length > 0 ||
+      toolBusy ||
+      fumeroSubmitting ||
+      streamStatus === "streaming" ||
+      streamStatus === "submitted" ||
+      Boolean(livePreviewRef.current) ||
+      Boolean(activeToolId) ||
+      Boolean(activeAppSlug) ||
+      hasActiveProject ||
+      Boolean(initialToolId) ||
+      Boolean(initialAppSlug) ||
+      Boolean(initialPrompt?.trim());
     onBouwenBridgeUpdate({
       ...EMPTY_BOUWEN_BRIDGE,
+      buildActive,
       activeToolId,
       activeAppSlug,
       canPublish: Boolean((activeToolId || activeAppSlug) && !toolBusy),
@@ -1721,6 +1741,9 @@ export function MotorsChatPanel({
     fumeroSubmitting,
     hasActiveProject,
     historyLoaded,
+    initialAppSlug,
+    initialPrompt,
+    initialToolId,
     messages,
     newChat,
     onBouwenBridgeUpdate,
@@ -2928,6 +2951,8 @@ export function MotorsChatPanel({
   const fumeroOps = workspace === "fumero";
   const fumeroEmptyHome = fumeroOps && Boolean(maxCompanion) && showEmpty;
   const bouwenEmptyHome = fumeroEmptyHome && bouwenWorkspace;
+  const bouwenSplitActive =
+    bouwenWorkspace && !bouwenEmptyHome && layout === "split" && previewPanelOpen;
   const splitPreviewOpen =
     fumeroOps && fumeroCoderMode && layout === "split" && previewPanelOpen;
   const streamAgentLabel = fumeroOps ? "Max" : agentTheme.agentName;
@@ -3110,8 +3135,7 @@ export function MotorsChatPanel({
     <div
       className={cn(
         "flex min-h-0 flex-1 bg-background",
-        (splitPreviewOpen || (bouwenWorkspace && layout === "split")) &&
-          "fumero-coder-split",
+        (splitPreviewOpen || bouwenSplitActive) && "fumero-coder-split",
         !embedded &&
           layout !== "split" &&
           "h-[min(calc(100dvh-10rem),56rem)] rounded-2xl border border-border/50 shadow-sm",
@@ -3273,7 +3297,7 @@ export function MotorsChatPanel({
                 !bouwenWorkspace &&
                 "fumero-chat-empty-home flex flex-1 flex-col items-center justify-center py-10",
               bouwenEmptyHome &&
-                "bouwen-empty-home-scroll flex min-h-full w-full flex-col items-stretch overflow-y-auto px-3 py-4 md:items-start md:px-5"
+                "bouwen-empty-home-scroll flex min-h-full w-full flex-col items-center overflow-y-auto px-3 py-6 md:py-8"
             )}
           >
             {convLoadError ? (

@@ -16,7 +16,7 @@ export function BuilderHero() {
         Wat wil je bouwen?
       </h2>
       <p className="builder-hero__subtitle mt-1.5 max-w-md text-[14px] leading-relaxed text-[var(--fumero-text-muted)]">
-        Beschrijf je idee — de preview verschijnt rechts.
+        Beschrijf je idee — preview verschijnt zodra je begint met bouwen.
       </p>
     </motion.header>
   );

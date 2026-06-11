@@ -18,6 +18,7 @@ type BuilderPromptCardProps = {
   disabled?: boolean;
   loading?: boolean;
   listening?: boolean;
+  onFocusChange?: (focused: boolean) => void;
 };
 
 export function BuilderPromptCard({
@@ -29,6 +30,7 @@ export function BuilderPromptCard({
   disabled = false,
   loading = false,
   listening = false,
+  onFocusChange,
 }: BuilderPromptCardProps) {
   const reduceMotion = useReducedMotion();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -63,8 +65,14 @@ export function BuilderPromptCard({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={() => {
+            setFocused(true);
+            onFocusChange?.(true);
+          }}
+          onBlur={() => {
+            setFocused(false);
+            onFocusChange?.(false);
+          }}
           placeholder={BUILDER_PROMPT_PLACEHOLDER}
           rows={4}
           disabled={disabled || loading}

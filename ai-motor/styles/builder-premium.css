@@ -978,3 +978,35 @@ html.dark[data-fumero-ops] [data-os-builder] .fumero-coder-preview-rail,
     0 20px 60px rgba(0, 0, 0, 0.4),
     0 0 0 1px var(--fumero-border-subtle);
 }
+
+/* ── Chat-first hero (empty bouwen home) ── */
+
+.bouwen-workspace-hero {
+  justify-content: center;
+}
+
+.bouwen-workspace-hero__row {
+  justify-content: center;
+}
+
+.bouwen-chat-hero {
+  align-self: center;
+}
+
+.bouwen-workspace-split {
+  align-items: stretch;
+}
+
+.bouwen-preview-rail {
+  will-change: transform, opacity;
+}
+
+@media (max-width: 767px) {
+  .bouwen-workspace-hero__row {
+    flex-direction: column;
+  }
+
+  .bouwen-chat-hero {
+    max-width: none;
+  }
+}
