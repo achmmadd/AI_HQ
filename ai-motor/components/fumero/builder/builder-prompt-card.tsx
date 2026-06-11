@@ -57,8 +57,6 @@ export function BuilderPromptCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
     >
-      <div className="builder-prompt-card__glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
       <div className="builder-prompt-card__inner">
         <textarea
           ref={textareaRef}

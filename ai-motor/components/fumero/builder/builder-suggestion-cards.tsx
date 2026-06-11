@@ -18,9 +18,7 @@ export function BuilderSuggestionCards({
 
   return (
     <section className="builder-suggestions" aria-label="Snel starten">
-      <p className="mb-2 text-[12px] font-medium text-[var(--fumero-text-muted)]">
-        Snel starten
-      </p>
+      <p className="builder-vi-label mb-2">Snel starten</p>
       <div className="grid grid-cols-2 gap-2">
         {VISIBLE_SUGGESTIONS.map((suggestion, i) => (
           <motion.button
@@ -32,10 +30,9 @@ export function BuilderSuggestionCards({
             initial={reduceMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 + i * 0.04, duration: 0.4 }}
-            whileHover={reduceMotion ? undefined : { y: -4, scale: 1.02 }}
-            whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+            whileHover={reduceMotion ? undefined : { y: -1 }}
+            whileTap={reduceMotion ? undefined : { scale: 0.99 }}
           >
-            <div className="builder-suggestion-card__glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             <span className="text-lg" aria-hidden>
               {suggestion.emoji}
             </span>

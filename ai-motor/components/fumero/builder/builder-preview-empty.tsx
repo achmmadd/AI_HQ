@@ -49,17 +49,8 @@ export function BuilderPreviewEmpty({
             )}
           >
             <div className="builder-preview-empty__illustration relative">
-              <motion.div
-                className="builder-preview-empty__glow"
-                animate={
-                  reduceMotion
-                    ? undefined
-                    : { opacity: [0.3, 0.6, 0.3], scale: [0.9, 1.1, 0.9] }
-                }
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              />
               <div className="builder-preview-empty__icon-wrap">
-                <Monitor className="builder-text-accent h-9 w-9" strokeWidth={1.5} />
+                <Monitor className="h-9 w-9 text-[var(--builder-text-secondary)]" strokeWidth={1.5} />
               </div>
             </div>
 
@@ -75,7 +66,7 @@ export function BuilderPreviewEmpty({
             <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
               {BUILDER_PREVIEW_FEATURES.map((feature) => (
                 <li key={feature} className="builder-preview-empty__feature">
-                  <Check className="builder-text-accent h-3 w-3" strokeWidth={3} />
+                  <Check className="h-3 w-3 text-[var(--builder-text-subtle)]" strokeWidth={3} />
                   {feature}
                 </li>
               ))}

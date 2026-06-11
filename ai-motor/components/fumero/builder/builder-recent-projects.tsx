@@ -34,7 +34,7 @@ export function BuilderRecentProjects({
 
   return (
     <section className="builder-recent">
-      <h3 className="builder-section-title mb-4">Recente projecten</h3>
+      <h3 className="builder-vi-label mb-4">Recente projecten</h3>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {projects.map((project, i) => (

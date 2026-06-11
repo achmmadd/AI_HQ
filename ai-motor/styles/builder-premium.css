@@ -4,24 +4,30 @@
  */
 
 [data-os-builder] {
-  --builder-bg: var(--fumero-bg);
-  --builder-card: var(--fumero-surface);
-  --builder-card-muted: var(--fumero-surface-muted);
+  /* Verdant Instrument — deep surfaces, accent as voltage only */
+  --vi-bg: #0a0a0b;
+  --vi-surface-1: #111113;
+  --vi-surface-2: #18181b;
+  --vi-border: rgba(255, 255, 255, 0.06);
+  --vi-border-raised: rgba(255, 255, 255, 0.09);
+  --builder-bg: var(--vi-bg);
+  --builder-card: var(--vi-surface-1);
+  --builder-card-muted: var(--vi-surface-2);
   --builder-accent: var(--fumero-accent);
   --builder-accent-hover: var(--fumero-accent-hover);
-  --builder-accent-muted: var(--fumero-accent-muted);
-  --builder-text: var(--fumero-text);
-  --builder-text-body: var(--fumero-text-body, var(--fumero-text));
-  --builder-text-secondary: var(--fumero-text-muted);
-  --builder-text-subtle: var(--fumero-text-subtle);
-  --builder-border: var(--fumero-border);
-  --builder-border-strong: var(--fumero-border-strong, var(--fumero-border));
-  --builder-glow: var(--fumero-accent-muted);
-  --builder-hover: var(--fumero-hover-overlay, rgba(15, 23, 42, 0.04));
-  --builder-shadow: var(--fumero-shadow-md);
-  --builder-shadow-lg: var(--fumero-shadow-lg);
-  --builder-cta-fg: #ffffff;
-  --builder-canvas: var(--fumero-surface-muted);
+  --builder-accent-muted: rgba(105, 196, 0, 0.1);
+  --builder-text: #fafafa;
+  --builder-text-body: rgba(250, 250, 250, 0.92);
+  --builder-text-secondary: rgba(250, 250, 250, 0.55);
+  --builder-text-subtle: rgba(250, 250, 250, 0.38);
+  --builder-border: var(--vi-border);
+  --builder-border-strong: var(--vi-border-raised);
+  --builder-glow: transparent;
+  --builder-hover: rgba(255, 255, 255, 0.04);
+  --builder-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --builder-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --builder-cta-fg: #0a0a0b;
+  --builder-canvas: var(--vi-surface-2);
 }
 
 html.dark[data-fumero-ops] [data-os-builder],
@@ -65,9 +71,9 @@ html.dark[data-fumero-ops] [data-os-builder],
 }
 
 .builder-icon-btn--active {
-  background: var(--builder-accent-muted);
-  color: var(--builder-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--builder-accent) 25%, transparent);
+  background: var(--builder-hover);
+  color: var(--builder-text);
+  box-shadow: inset 0 0 0 1px var(--builder-border-strong);
 }
 
 .builder-cta-btn {
@@ -81,8 +87,8 @@ html.dark[data-fumero-ops] [data-os-builder],
   font-size: 14px;
   font-weight: 600;
   color: var(--builder-cta-fg);
-  box-shadow: 0 4px 20px color-mix(in srgb, var(--builder-accent) 35%, transparent);
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: none;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .builder-cta-btn:hover:not(:disabled) {
@@ -101,10 +107,8 @@ html.dark[data-fumero-ops] [data-os-builder],
 }
 
 .builder-prompt-card--focused {
-  border-color: color-mix(in srgb, var(--builder-accent) 40%, transparent);
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--builder-accent) 10%, transparent),
-    var(--builder-shadow);
+  border-color: var(--builder-border-strong);
+  box-shadow: var(--builder-shadow);
 }
 
 .builder-prompt-card__inner {
@@ -266,9 +270,12 @@ html.dark[data-fumero-ops] [data-os-builder],
 }
 
 .builder-section-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--builder-text);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--builder-text-subtle);
 }
 
 .builder-hero__subtitle {
@@ -417,11 +424,20 @@ html.dark[data-fumero-ops] [data-os-builder],
 }
 
 .builder-preview-empty__glow {
-  position: absolute;
-  inset: -2rem;
-  border-radius: 9999px;
-  background: var(--builder-accent-muted);
-  filter: blur(32px);
+  display: none;
+}
+
+.builder-ambient-glow,
+.builder-ambient-glow--center,
+.builder-ambient-glow--left,
+.builder-ambient-glow--right {
+  display: none !important;
+}
+
+.builder-prompt-card__glow,
+.builder-suggestion-card__glow,
+.builder-loading-glow {
+  display: none !important;
 }
 
 /* ── Ambient background ── */
@@ -466,10 +482,21 @@ html.dark[data-fumero-ops] .builder-ambient-grid,
 /* ── Shared builder typography & surfaces ── */
 
 .builder-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--builder-text);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--builder-text-subtle);
+}
+
+.builder-vi-label {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--builder-text-subtle);
 }
 
 .builder-text-secondary {
@@ -655,11 +682,7 @@ html.dark[data-fumero-ops] .builder-preview-chrome,
 }
 
 .builder-preview-empty__glow {
-  position: absolute;
-  inset: -2rem;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--fumero-accent) 10%, transparent);
-  filter: blur(2rem);
+  display: none !important;
 }
 
 .builder-preview-empty__icon-wrap {
@@ -670,9 +693,9 @@ html.dark[data-fumero-ops] .builder-preview-chrome,
   align-items: center;
   justify-content: center;
   border-radius: 1rem;
-  border: 1px solid var(--builder-border);
-  background: var(--builder-card);
-  box-shadow: var(--fumero-shadow-md);
+  border: 1px solid var(--builder-border-strong);
+  background: var(--builder-card-muted);
+  box-shadow: var(--builder-shadow-lg);
 }
 
 .builder-preview-empty__title {
@@ -749,22 +772,20 @@ html.dark[data-fumero-ops] .builder-preview-chrome,
 }
 
 .builder-suggestion-card:hover {
-  border-color: color-mix(in srgb, var(--fumero-accent) 20%, transparent);
-  box-shadow: var(--fumero-shadow-md);
+  border-color: var(--builder-border-strong);
+  box-shadow: var(--builder-shadow);
 }
 
 html.dark[data-fumero-ops] .builder-suggestion-card:hover,
 [data-fumero-ops][data-theme="dark"] .builder-suggestion-card:hover {
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    0 0 0 1px color-mix(in srgb, var(--fumero-accent) 8%, transparent);
+  box-shadow: var(--builder-shadow-lg);
 }
 
 /* ── Template cards ── */
 
 .builder-template-card:hover {
-  border-color: color-mix(in srgb, var(--fumero-accent) 15%, transparent);
-  box-shadow: var(--fumero-shadow-lg);
+  border-color: var(--builder-border-strong);
+  box-shadow: var(--builder-shadow-lg);
 }
 
 html.dark[data-fumero-ops] .builder-template-card:hover,
@@ -795,8 +816,8 @@ html.dark[data-fumero-ops] .builder-template-card:hover,
 /* ── Recent projects ── */
 
 .builder-recent-card:hover {
-  border-color: color-mix(in srgb, var(--fumero-accent) 12%, transparent);
-  box-shadow: var(--fumero-shadow-md);
+  border-color: var(--builder-border-strong);
+  box-shadow: var(--builder-shadow);
 }
 
 html.dark[data-fumero-ops] .builder-recent-card:hover,
@@ -807,13 +828,13 @@ html.dark[data-fumero-ops] .builder-recent-card:hover,
 /* ── Stats ── */
 
 .builder-stat-card:hover {
-  border-color: color-mix(in srgb, var(--fumero-accent) 15%, transparent);
-  box-shadow: var(--fumero-shadow-md);
+  border-color: var(--builder-border-strong);
+  box-shadow: var(--builder-shadow);
 }
 
 html.dark[data-fumero-ops] .builder-stat-card:hover,
 [data-fumero-ops][data-theme="dark"] .builder-stat-card:hover {
-  box-shadow: 0 4px 24px color-mix(in srgb, var(--fumero-accent) 8%, transparent);
+  box-shadow: var(--builder-shadow-lg);
 }
 
 /* ── Skeleton shimmer ── */
