@@ -39,6 +39,14 @@ export function formatFumeroBuilderError(raw: string): string {
   if (msg.startsWith("{") || msg.startsWith("[")) {
     return "Genereren mislukt. Controleer je verbinding en probeer opnieuw.";
   }
+  if (
+    /Unexpected token\s*['"]?<\s*['"]?/i.test(msg) ||
+    /<!DOCTYPE/i.test(msg) ||
+    /webpagina i\.p\.v\. JSON/i.test(msg) ||
+    /524|502 Bad Gateway|504 Gateway/i.test(msg)
+  ) {
+    return "Server time-out tijdens genereren. De bouw loopt op de achtergrond — vernieuw niet te snel; bij herhaald falen, probeer een kortere prompt.";
+  }
   if (/timeout|timed out|aborted|abort/i.test(msg)) {
     return "Genereren duurde te lang. Probeer het opnieuw of maak een kleinere aanpassing.";
   }

@@ -1,3 +1,4 @@
+import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import { formatFumeroBuilderError } from "@/lib/fumero/builder-config";
 
 export type FullAppCreateResponse = {
@@ -58,14 +59,10 @@ async function pollGenerationJob(
   const started = Date.now();
 
   while (Date.now() - started < maxWait) {
-    const res = await fetch(
+    const json = await fetchJsonChecked<GenerationJobPollResponse>(
       `/api/apps/generate/status?jobId=${encodeURIComponent(jobId)}`,
       { credentials: "include" }
     );
-    const json = (await res.json()) as GenerationJobPollResponse;
-    if (!res.ok) {
-      throw new Error(formatFumeroBuilderError(json.error || "Status ophalen mislukt"));
-    }
 
     opts?.onProgress?.({
       phase: json.phase,
@@ -94,14 +91,16 @@ async function pollGenerationJob(
 }
 
 async function startAsyncGeneration(body: Record<string, unknown>): Promise<string> {
-  const res = await fetch("/api/apps/generate/start", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const json = (await res.json()) as { ok?: boolean; jobId?: string; error?: string };
-  if (res.status !== 202 || !json.jobId) {
+  const json = await fetchJsonChecked<{ ok?: boolean; jobId?: string; error?: string }>(
+    "/api/apps/generate/start",
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!json.jobId) {
     throw new Error(formatFumeroBuilderError(json.error || "Async generatie starten mislukt"));
   }
   return json.jobId;
@@ -117,9 +116,11 @@ export async function createFullApp(
 
 /** Fase 5: fetch app detail (for chat card + bewerk flow). */
 export async function fetchAppDetail(slug: string): Promise<AppDetail> {
-  const res = await fetch(`/api/apps/${encodeURIComponent(slug)}`, { credentials: "include" });
-  const json = (await res.json()) as { app?: any; error?: string };
-  if (!res.ok || !json.app) throw new Error(json.error || "App laden mislukt");
+  const json = await fetchJsonChecked<{ app?: any; error?: string }>(
+    `/api/apps/${encodeURIComponent(slug)}`,
+    { credentials: "include" }
+  );
+  if (!json.app) throw new Error(json.error || "App laden mislukt");
   const a = json.app;
   const base = `/apps/${a.slug}`;
   const embedBase = `/embed/fumero/app/${a.slug}`;
@@ -158,14 +159,16 @@ export async function iterateFullApp(
 
 /** Fase 5: publish app (sets status=published, returns detail with urls). */
 export async function publishFullApp(slug: string): Promise<AppDetail> {
-  const res = await fetch(`/api/apps/${encodeURIComponent(slug)}`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "publish" }),
-  });
-  const json = (await res.json()) as { error?: string; app?: any };
-  if (!res.ok || json.error) throw new Error(json.error || "Publiceren mislukt");
+  const json = await fetchJsonChecked<{ error?: string; app?: any }>(
+    `/api/apps/${encodeURIComponent(slug)}`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "publish" }),
+    }
+  );
+  if (json.error) throw new Error(json.error || "Publiceren mislukt");
   // re-fetch for full urls
   return fetchAppDetail(slug);
 }

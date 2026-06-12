@@ -1183,12 +1183,19 @@ export function MotorsChatPanel({
       setActiveToolCardMsgId(cardMsgId);
 
       try {
-        const { tool_id } = await createFumeroTool({
-          name,
-          prompt: merged,
-          deploy_type: deployType,
-          template_id: templateId,
-        });
+        const { tool_id } = await createFumeroTool(
+          {
+            name,
+            prompt: merged,
+            deploy_type: deployType,
+            template_id: templateId,
+          },
+          {
+            onProgress: (update) => {
+              if (update.message) setCoderBuildPhase(update.message);
+            },
+          }
+        );
         const detail = await fetchToolDetail(tool_id);
         setActiveToolId(tool_id);
         setActiveToolPrompt(detail.concept?.prompt ?? merged);
@@ -1340,7 +1347,11 @@ export function MotorsChatPanel({
         });
       }
       try {
-        await iterateFumeroTool(activeToolId, withDesign);
+        await iterateFumeroTool(activeToolId, withDesign, {
+          onProgress: (update) => {
+            if (update.message) setCoderBuildPhase(update.message);
+          },
+        });
         const detail = await fetchToolDetail(activeToolId);
         setActiveToolPrompt(detail.concept?.prompt ?? withDesign);
         const card = detailToToolCard(detail, "concept", previewEpoch);
