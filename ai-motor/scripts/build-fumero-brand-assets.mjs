@@ -48,10 +48,111 @@ async function stripDarkBackground(input) {
   });
 }
 
+/**
+ * Ghost mascot PNGs often have a hollow body (transparent interior).
+ * On dark UI that reads as black — fill enclosed holes with solid white.
+ */
+function fillInteriorTransparentHoles(data, width, height) {
+  const n = width * height;
+  const external = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  let head = 0;
+  let tail = 0;
+
+  const isTransparent = (idx) => data[idx * 4 + 3] < 20;
+  const push = (x, y) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const i = y * width + x;
+    if (external[i] || !isTransparent(i)) return;
+    external[i] = 1;
+    queue[tail++] = i;
+  };
+
+  for (let x = 0; x < width; x++) {
+    push(x, 0);
+    push(x, height - 1);
+  }
+  for (let y = 0; y < height; y++) {
+    push(0, y);
+    push(width - 1, y);
+  }
+
+  while (head < tail) {
+    const i = queue[head++];
+    const x = i % width;
+    const y = (i / width) | 0;
+    push(x - 1, y);
+    push(x + 1, y);
+    push(x, y - 1);
+    push(x, y + 1);
+  }
+
+  for (let i = 0; i < n; i++) {
+    if (!isTransparent(i) || external[i]) continue;
+    const p = i * 4;
+    data[p] = 255;
+    data[p + 1] = 255;
+    data[p + 2] = 255;
+    data[p + 3] = 255;
+  }
+}
+
+/** Pixels near the outer silhouette keep outline strokes; interior becomes solid white. */
+function isNearTransparentEdge(data, width, height, idx, radius = 3) {
+  const x = idx % width;
+  const y = (idx / width) | 0;
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) return true;
+      if (data[(ny * width + nx) * 4 + 3] < 20) return true;
+    }
+  }
+  return false;
+}
+
+function isGreenAccentPixel(data, p) {
+  return data[p + 3] > 128 && data[p + 1] > 85 && data[p] < 170 && data[p + 2] < 130;
+}
+
+function whitenGhostInterior(data, width, height) {
+  const n = width * height;
+  for (let i = 0; i < n; i++) {
+    const p = i * 4;
+    if (data[p + 3] < 128) continue;
+    if (isGreenAccentPixel(data, p)) continue;
+    if (isNearTransparentEdge(data, width, height, i)) continue;
+    const max = Math.max(data[p], data[p + 1], data[p + 2]);
+    if (max > 245) continue;
+    data[p] = 255;
+    data[p + 1] = 255;
+    data[p + 2] = 255;
+  }
+}
+
+async function normalizeLogoPixels(input) {
+  const { data, info } = await input
+    .clone()
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  fillInteriorTransparentHoles(data, info.width, info.height);
+  whitenGhostInterior(data, info.width, info.height);
+  return sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  });
+}
+
+async function fillLogoInteriorHoles(input) {
+  return normalizeLogoPixels(input);
+}
+
 async function loadTrimmedLogo() {
   const meta = await sharp(LOGO_SRC).metadata();
   const base = meta.hasAlpha ? sharp(LOGO_SRC) : await stripDarkBackground(sharp(LOGO_SRC));
-  return base.trim({ threshold: 12 }).png();
+  const trimmed = base.trim({ threshold: 12 }).png();
+  return fillLogoInteriorHoles(trimmed);
 }
 
 async function writeLogoAssets(logo) {

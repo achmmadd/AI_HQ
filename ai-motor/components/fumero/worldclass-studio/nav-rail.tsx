@@ -2,20 +2,13 @@
 import Link from "next/link";
 import {
   Bell,
-  BookOpen,
-  FolderKanban,
   HelpCircle,
   Image,
   LayoutGrid,
   Palette,
   User,
 } from "lucide-react";
-export type StudioView =
-  | "make"
-  | "canvas"
-  | "creaties"
-  | "projecten"
-  | "bibliotheek";
+export type StudioView = "make" | "canvas" | "creaties";
 type Props = {
   activeView: StudioView;
   onViewChange: (view: StudioView) => void;
@@ -29,18 +22,6 @@ const PRIMARY: Array<{
   { id: "make", label: "Maken", icon: Image },
   { id: "canvas", label: "Canvas", icon: Palette },
   { id: "creaties", label: "Creaties", icon: LayoutGrid },
-  {
-    id: "projecten",
-    label: "Projecten",
-    icon: FolderKanban,
-    href: "/fumero/projecten",
-  },
-  {
-    id: "bibliotheek",
-    label: "Bibliotheek",
-    icon: BookOpen,
-    href: "/fumero/bibliotheek",
-  },
 ];
 export function NavRail({ activeView, onViewChange }: Props) {
   return (
