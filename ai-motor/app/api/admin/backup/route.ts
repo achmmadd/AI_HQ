@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, statSync } from "fs";
 import path from "path";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,10 @@ function backupStamp(): string {
     .replace("T", "_");
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const auth = await requireAdminApi(req);
+  if (!auth.ok) return auth.response;
+
   try {
     mkdirSync(BACKUP_DIR, { recursive: true });
     const backupPath = path.join(BACKUP_DIR, `motor-ai-${backupStamp()}.db`);

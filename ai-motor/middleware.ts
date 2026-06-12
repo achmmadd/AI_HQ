@@ -54,7 +54,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/api/inngest" || pathname.startsWith("/api/inngest/")) {
     return true;
   }
-  if (pathname === "/api/upload") return true;
+  // Upload requires session — enforced in route handler too.
   // Publieke previews van gebouwde apps (deelbare URL; data is al “published” als live).
   if (pathname.startsWith("/apps/") && pathname.length > "/apps/".length) {
     return true;

@@ -4,6 +4,7 @@ import { writeFile } from "fs/promises";
 import path from "path";
 import db from "@/lib/db/database";
 import { extractDocumentText } from "@/lib/extract-document-text";
+import { requireApiAuthSession } from "@/lib/require-api-auth";
 import {
   CHAT_UPLOAD_MAX_BYTES,
   CHAT_UPLOAD_MAX_MESSAGE_EXCERPT,
@@ -34,6 +35,9 @@ function excerptForMessage(text: string): {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireApiAuthSession(req);
+    if (auth instanceof NextResponse) return auth;
+
     const formData = await req.formData();
     const file = formData.get("file");
     const klantRaw = formData.get("klant");

@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export const runtime = "nodejs";
 
@@ -7,7 +8,10 @@ export const runtime = "nodejs";
  * Alleen whitelist: `pm2 restart ai-motor --update-env`.
  * Geen parameters, geen andere commando's.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const auth = await requireAdminApi(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const child = spawn(
       "pm2",

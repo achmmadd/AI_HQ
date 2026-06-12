@@ -58,8 +58,11 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  // Backward compatibility: allow old shared password login when no email account is provided.
-  if (password === getAuthPassword()) {
+  // Legacy shared-password login — disabled in production unless explicitly enabled.
+  const allowLegacy =
+    process.env.NODE_ENV !== "production" ||
+    process.env.MOTORSAI_ALLOW_LEGACY_LOGIN === "1";
+  if (allowLegacy && password === getAuthPassword()) {
     const session = await enrichAuthSession({
       userId: null,
       email: "legacy@motorsai.local",

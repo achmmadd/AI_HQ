@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getCodeExecutorStatus } from "@/lib/code-executor";
 import { isOpenRouterDirectConfigured } from "@/lib/openrouter-gateway";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export const runtime = "nodejs";
 
@@ -46,7 +47,10 @@ function deployReadiness(): { ready: boolean; missing: string[] } {
 }
 
 /** Platform readiness: OpenRouter, code executor, deploy tokens. */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdminApi(req);
+  if (!auth.ok) return auth.response;
+
   const [openrouter, executor] = await Promise.all([
     probeOpenRouter(),
     getCodeExecutorStatus(),

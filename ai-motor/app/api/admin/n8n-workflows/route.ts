@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchN8nWorkflowSummaries, getN8nApiKey } from "@/lib/n8n-workflows-api";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdminApi(req);
+  if (!auth.ok) return auth.response;
+
   if (!getN8nApiKey()) {
     return NextResponse.json(
       {

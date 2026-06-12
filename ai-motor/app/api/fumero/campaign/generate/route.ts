@@ -76,6 +76,16 @@ export async function POST(req: NextRequest) {
     if (!kit) {
       return NextResponse.json({ error: "Brand Kit niet gevonden." }, { status: 404 });
     }
+    if (kit.status !== "confirmed") {
+      return NextResponse.json(
+        {
+          error:
+            "Alleen bevestigde Brand Kits kunnen een campaign pack genereren. Bevestig je kit eerst in stap 1.",
+          kit_status: kit.status,
+        },
+        { status: 400 }
+      );
+    }
 
     const config = getCampaignStudioConfig();
     const { skipMedia, autoSkipped } = resolveCampaignSkipMedia(body.skip_media);

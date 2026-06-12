@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, statSync } from "fs";
 import path from "path";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export const runtime = "nodejs";
 
@@ -53,7 +54,10 @@ function latestBackup(): { path: string; created_at: string; size_mb: number } |
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdminApi(req);
+  if (!auth.ok) return auth.response;
+
   const dbStat = existsSync(DB_PATH) ? statSync(DB_PATH) : null;
   return NextResponse.json({
     db_path: DB_PATH,

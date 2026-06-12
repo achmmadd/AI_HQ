@@ -6,6 +6,7 @@ import { fetchBookkeepingHealth } from "@/lib/bookkeeping-bot";
 import { getN8nApiKey } from "@/lib/n8n-workflows-api";
 import { getCodeExecutorStatus } from "@/lib/code-executor";
 import { isOpenRouterDirectConfigured } from "@/lib/openrouter-gateway";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export const runtime = "nodejs";
 
@@ -105,6 +106,9 @@ function pm2PidHint(): {
  * `?extended=1`: extra bookkeeping, odoo, pm2 log-tail (dev panel).
  */
 export async function GET(req: NextRequest) {
+  const auth = await requireAdminApi(req);
+  if (!auth.ok) return auth.response;
+
   const started = Date.now();
   const deps = await runDependencyChecks();
   const checksMs = Date.now() - started;

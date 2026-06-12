@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export const runtime = "nodejs";
 
@@ -99,7 +100,10 @@ const KEYS = [
   "NANGO_HOST",
 ];
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdminApi(req);
+  if (!auth.ok) return auth.response;
+
   const keys = Object.fromEntries(
     KEYS.map((key) => [key, Boolean(process.env[key]?.trim())])
   );

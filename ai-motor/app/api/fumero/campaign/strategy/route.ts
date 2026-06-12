@@ -78,6 +78,16 @@ export async function POST(req: NextRequest) {
     if (!kit) {
       return NextResponse.json({ error: "Brand Kit niet gevonden." }, { status: 404 });
     }
+    if (kit.status !== "confirmed") {
+      return NextResponse.json(
+        {
+          error:
+            "Alleen bevestigde Brand Kits kunnen een strategie genereren. Bevestig je kit eerst.",
+          kit_status: kit.status,
+        },
+        { status: 400 }
+      );
+    }
 
     const strategy = await generateStrategyWithFallback(kit, goal);
     if (!strategy.concepts.length) {

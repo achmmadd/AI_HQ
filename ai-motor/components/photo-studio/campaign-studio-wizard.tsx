@@ -36,6 +36,7 @@ import type {
 } from "@/lib/photo-studio/campaign/types";
 import { CAMPAIGN_GOALS } from "@/lib/photo-studio/campaign/types";
 import { QualityBadges, QualitySummaryBadge } from "@/components/photo-studio/quality-badges";
+import { CampaignProgressStepper } from "@/components/photo-studio/campaign-progress-stepper";
 import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import type { CampaignStudioConfig } from "@/lib/photo-studio/campaign/studio-config";
 import { cn } from "@/lib/utils";
@@ -72,13 +73,17 @@ function is524Error(message: string): boolean {
 
 async function pollCampaignJob(
   jobId: string,
-  onProgress: (job: CampaignJobPollResponse) => void
+  onProgress: (job: CampaignJobPollResponse) => void,
+  signal?: AbortSignal
 ): Promise<CampaignJobPollResponse> {
   const started = Date.now();
   while (Date.now() - started < MAX_POLL_MS) {
+    if (signal?.aborted) {
+      throw new DOMException("Polling geannuleerd", "AbortError");
+    }
     const job = await fetchJsonChecked<CampaignJobPollResponse>(
       `/api/fumero/campaign/jobs/${encodeURIComponent(jobId)}`,
-      { credentials: "include" }
+      { credentials: "include", signal }
     );
     onProgress(job);
 
@@ -88,7 +93,17 @@ async function pollCampaignJob(
       throw new Error(job.error || "Campaign pack genereren mislukt.");
     }
 
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(resolve, POLL_INTERVAL_MS);
+      signal?.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(t);
+          reject(new DOMException("Polling geannuleerd", "AbortError"));
+        },
+        { once: true }
+      );
+    });
   }
   throw new Error(
     "Server time-out (Cloudflare 524). Het antwoord duurde te lang — probeer opnieuw of kies “Alleen strategy + copy”."
@@ -100,6 +115,7 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
   const searchParams = useSearchParams();
   const hydrated = useRef(false);
   const skipPersist = useRef(true);
+  const pollAbortRef = useRef<AbortController | null>(null);
 
   const [step, setStep] = useState<WizardStep>("brand");
   const [kits, setKits] = useState<BrandKitRow[]>([]);
@@ -116,6 +132,12 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
   const [jobPhase, setJobPhase] = useState<string | null>(null);
   const [partialWarning, setPartialWarning] = useState<string | null>(null);
   const [canRetry, setCanRetry] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      pollAbortRef.current?.abort();
+    };
+  }, []);
 
   const confirmedKits = kits.filter((k) => k.status === "confirmed");
   const selectedKit = confirmedKits.find((k) => k.id === selectedKitId) ?? null;
@@ -236,9 +258,12 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
     setError(null);
     setPartialWarning(null);
     setCanRetry(false);
-    setJobProgress(null);
-    setJobPhase(null);
     setStep("generate");
+    setJobPhase("strategy");
+    setJobProgress("Campaign pack starten…");
+    pollAbortRef.current?.abort();
+    const pollAc = new AbortController();
+    pollAbortRef.current = pollAc;
     try {
       const startRes = await fetch("/api/fumero/campaign/generate", {
         method: "POST",
@@ -287,10 +312,14 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
         const jobId = startData.job_id ?? startData.jobId;
         if (!jobId) throw new Error("Async job starten mislukt — geen job_id.");
 
-        const finished = await pollCampaignJob(jobId, (job) => {
-          setJobPhase(job.phase ?? null);
-          setJobProgress(job.progress_message ?? null);
-        });
+        const finished = await pollCampaignJob(
+          jobId,
+          (job) => {
+            setJobPhase(job.phase ?? null);
+            setJobProgress(job.progress_message ?? null);
+          },
+          pollAc.signal
+        );
 
         if (finished.config) setStudioConfig(finished.config);
         const resultPack = finished.pack ?? null;
@@ -351,7 +380,7 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
   });
 
   return (
-    <div className={cn("mx-auto max-w-4xl space-y-6 p-4 pb-24 md:p-8 md:pb-8", className)}>
+    <div className={cn("mx-auto max-w-4xl space-y-6 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-8", className)}>
       <header className="space-y-2">
         <div className="flex items-center gap-2">
           <Megaphone className="h-5 w-5 text-[var(--fumero-accent)]" />
@@ -525,16 +554,11 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
       ) : null}
 
       {step === "generate" ? (
-        <section className="flex flex-col items-center gap-4 py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-[var(--fumero-accent)]" />
-          <p className="fumero-text-body-sm text-[var(--fumero-text-muted)]">
-            {jobProgress ?? "Campaign pack wordt gebouwd…"}
-          </p>
-          {jobPhase ? (
-            <p className="fumero-text-caption uppercase tracking-wide text-[var(--fumero-text-muted)]">
-              Fase: {jobPhase}
-            </p>
-          ) : null}
+        <section className="flex flex-col items-center gap-6 py-12">
+          <CampaignProgressStepper
+            phase={jobPhase}
+            message={jobProgress ?? "Campaign pack wordt gebouwd…"}
+          />
           {!skipMedia && studioConfig?.fal_configured ? (
             <p className="max-w-md text-center fumero-text-caption text-[var(--fumero-text-muted)]">
               Static creatives en video worden op de achtergrond gegenereerd — dit kan enkele minuten duren.
@@ -651,7 +675,7 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
         </section>
       ) : null}
 
-      <footer className="sticky bottom-0 z-10 flex items-center justify-between border-t border-[var(--fumero-border)] bg-[var(--fumero-bg)]/95 py-4 backdrop-blur-sm">
+      <footer className="sticky bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-10 flex items-center justify-between border-t border-[var(--fumero-border)] bg-[var(--fumero-bg)]/95 py-4 backdrop-blur-sm md:bottom-0 md:pb-4">
         <button
           type="button"
           onClick={prevStep}
