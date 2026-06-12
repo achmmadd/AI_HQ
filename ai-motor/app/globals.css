@@ -1,6 +1,7 @@
 @import "../design-system/tokens.css";
 @import "../design-system/workspaces.css";
 @import "../design-system/os-tokens.css";
+@import "../styles/fumero-mascot.css";
 
 @tailwind base;
 @tailwind components;

@@ -23,23 +23,24 @@ export async function resizeMasterToVariants(
   const normalized = await sharp(masterBuffer).jpeg({ quality: 92 }).toBuffer();
   await writeFile(masterPath, normalized);
 
-  const variants: SavedVariant[] = [];
-  for (const spec of PHOTO_STUDIO_ASPECTS) {
-    const outName = `${trackingId}_${spec.aspect}.jpg`;
-    const outPath = path.join(dir, outName);
-    const resized = await sharp(normalized)
-      .resize(spec.width, spec.height, { fit: "cover", position: "centre" })
-      .jpeg({ quality: 90 })
-      .toBuffer();
-    await writeFile(outPath, resized);
-    variants.push({
-      aspect: spec.aspect,
-      width: spec.width,
-      height: spec.height,
-      file_path: outPath,
-      public_url: photoStudioPublicUrl(outName),
-    });
-  }
+  const variants = await Promise.all(
+    PHOTO_STUDIO_ASPECTS.map(async (spec) => {
+      const outName = `${trackingId}_${spec.aspect}.jpg`;
+      const outPath = path.join(dir, outName);
+      const resized = await sharp(normalized)
+        .resize(spec.width, spec.height, { fit: "cover", position: "centre" })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+      await writeFile(outPath, resized);
+      return {
+        aspect: spec.aspect,
+        width: spec.width,
+        height: spec.height,
+        file_path: outPath,
+        public_url: photoStudioPublicUrl(outName),
+      };
+    })
+  );
 
   return {
     master_path: masterPath,

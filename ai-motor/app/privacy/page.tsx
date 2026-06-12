@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Cpu } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { MOTORSAI_BRAND } from "@/lib/landing-content";
 
 export const metadata: Metadata = {
@@ -20,10 +21,8 @@ export default function PrivacyPage() {
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Home
           </Link>
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#69C400]/15 ring-1 ring-[#69C400]/25">
-              <Cpu className="h-4 w-4 text-[#69C400]" aria-hidden />
-            </div>
+          <Link href="/" className="flex items-center gap-2.5">
+            <Logo size="sm" elevate decorative />
             <span className="font-semibold text-white">{MOTORSAI_BRAND.name}</span>
           </Link>
         </div>

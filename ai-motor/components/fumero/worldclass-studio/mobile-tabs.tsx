@@ -9,7 +9,7 @@ export function MobileTabs({ active, onChange }: Props) {
         type="button"
         role="tab"
         aria-selected={active === "make"}
-        className={`wc-mobile-tab${active === "make" ? "wc-mobile-tab--active" : ""}`}
+        className={`wc-mobile-tab${active === "make" ? " wc-mobile-tab--active" : ""}`}
         onClick={() => onChange("make")}
         data-testid="mobile-tab-make"
       >
@@ -20,7 +20,7 @@ export function MobileTabs({ active, onChange }: Props) {
         type="button"
         role="tab"
         aria-selected={active === "results"}
-        className={`wc-mobile-tab${active === "results" ? "wc-mobile-tab--active" : ""}`}
+        className={`wc-mobile-tab${active === "results" ? " wc-mobile-tab--active" : ""}`}
         onClick={() => onChange("results")}
         data-testid="mobile-tab-results"
       >

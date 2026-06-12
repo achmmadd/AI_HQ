@@ -51,7 +51,7 @@ export function NavRail({ activeView, onViewChange }: Props) {
         {PRIMARY.map((item) => {
           const Icon = item.icon;
           const active = activeView === item.id;
-          const className = `wc-nav-item${active ? "wc-nav-item--active" : ""}`;
+          const className = `wc-nav-item${active ? " wc-nav-item--active" : ""}`;
           if (item.href) {
             return (
               <Link

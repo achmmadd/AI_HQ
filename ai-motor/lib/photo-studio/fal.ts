@@ -1,4 +1,8 @@
 import type { CompanyId } from "@/lib/types";
+import {
+  FAL_IMAGE_EDIT_TIMEOUT_MS,
+  FAL_IMAGE_TXT2IMG_TIMEOUT_MS,
+} from "@/lib/photo-studio/generation-timeouts";
 import { FAL_MODEL_REGISTRY } from "@/lib/photo-studio/fal-model-registry";
 import type {
   ContentStudioAspectRatio,
@@ -153,8 +157,9 @@ export function logFalPrompt(mode: PhotoStudioMode, prompt: string): void {
   );
 }
 
-export function friendlyFalError(raw: string, isEdit = false): string {
-  const lower = raw.toLowerCase();
+export function friendlyFalError(raw: unknown, isEdit = false): string {
+  const text = typeof raw === "string" ? raw : raw != null ? JSON.stringify(raw) : "";
+  const lower = text.toLowerCase();
   if (lower.includes("image_url") || lower.includes("image_urls")) {
     return isEdit
       ? "Referentiebeeld kon niet worden verwerkt — upload opnieuw of kies een kleiner JPG/PNG."
@@ -171,7 +176,7 @@ export function friendlyFalError(raw: string, isEdit = false): string {
   if (lower.includes("rate limit") || lower.includes("rate_limit")) {
     return "fal.ai rate limit — wacht even en probeer opnieuw.";
   }
-  return raw;
+  return text || "fal.ai aanroep mislukt";
 }
 
 async function parseFalResponse(
@@ -190,8 +195,11 @@ async function parseFalResponse(
   }
 
   if (!res.ok) {
-    const errObj = data as { detail?: string; message?: string };
-    const raw = errObj.detail || errObj.message || `fal HTTP ${res.status}`;
+    const errObj = data as { detail?: unknown; message?: unknown };
+    const raw =
+      errObj.detail ??
+      errObj.message ??
+      `fal HTTP ${res.status}`;
     return { ok: false, error: friendlyFalError(raw, isEdit) };
   }
 
@@ -222,7 +230,7 @@ async function callFal(opts: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(opts.body),
-      signal: AbortSignal.timeout(isEdit ? 240_000 : 180_000),
+      signal: AbortSignal.timeout(isEdit ? FAL_IMAGE_EDIT_TIMEOUT_MS : FAL_IMAGE_TXT2IMG_TIMEOUT_MS),
     });
     return parseFalResponse(res, isEdit);
   } catch (e) {
@@ -347,12 +355,10 @@ async function generateNb2(opts: {
     if (!result.ok) return result;
     allImages.push(...result.images);
   } else {
-    const first = await runBatch(4);
+    const [first, second] = await Promise.all([runBatch(4), runBatch(1)]);
     if (!first.ok) return first;
-    allImages.push(...first.images.slice(0, 4));
-    const second = await runBatch(1);
     if (!second.ok) return second;
-    allImages.push(...second.images.slice(0, 1));
+    allImages.push(...first.images.slice(0, 4), ...second.images.slice(0, 1));
   }
 
   if (!allImages.length) {

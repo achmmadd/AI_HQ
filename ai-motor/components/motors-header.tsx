@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
+import { Logo } from "@/components/logo";
 import { useCompanyStore, getWorkspaceTheme } from "@/stores/useCompanyStore";
 import type { WorkspaceId } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -23,25 +23,8 @@ const PRIMARY_ROUTE_BY_WORKSPACE: Record<WorkspaceId, string> = {
   personal: "/chat",
 };
 
-function HeaderLogo({ workspace }: { workspace: WorkspaceId }) {
-  if (workspace === "fumero") {
-    return (
-      <FumeroLogoLockup compact className="px-2 py-1.5" />
-    );
-  }
-  if (workspace === "bokas") {
-    return (
-      <span className="font-bold tracking-[0.2em] text-ws-accent">BOKAS</span>
-    );
-  }
-  return (
-    <span
-      className="font-semibold tracking-tight text-ws-accent"
-      style={{ fontFamily: "var(--font-geist), Geist, sans-serif" }}
-    >
-      {MOTORSAI_WORKSPACE_LABEL}
-    </span>
-  );
+function HeaderLogo() {
+  return <Logo size="sm" />;
 }
 
 export function MotorsHeader({ title }: { title: string }) {
@@ -71,7 +54,7 @@ export function MotorsHeader({ title }: { title: string }) {
   return (
     <header className="sticky top-0 z-30 flex h-12 min-h-[48px] items-center justify-between border-b border-[var(--os-border)] bg-[var(--os-bg-elevated)]/80 px-4 font-ws backdrop-blur-2xl md:px-8 pt-[max(0px,env(safe-area-inset-top))]">
       <div className="flex min-w-0 items-center gap-3">
-        <HeaderLogo workspace={workspace} />
+        <HeaderLogo />
         <span className="hidden text-border md:inline">·</span>
         <h1 className="truncate text-[17px] font-semibold tracking-tight text-text-primary">
           {title || wsTheme.name}

@@ -4,9 +4,11 @@ import { resolveImageUrlsForFal } from "@/lib/photo-studio/fal-image-url";
 import { generateVideoWithFal } from "@/lib/photo-studio/fal-video";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
 import {
-  persistPhotoGeneration,
-  persistVideoGeneration,
+  persistPhotoGenerationFromBuffer,
+  persistVideoGenerationFromBuffer,
 } from "@/lib/photo-studio/library";
+import { FAL_VIDEO_TIMEOUT_MS } from "@/lib/photo-studio/generation-timeouts";
+import { downloadImageBuffer, downloadMediaBuffer } from "@/lib/photo-studio/download-master";
 import { requirePhotoStudioKlant } from "@/lib/photo-studio/workspace-auth";
 import {
   MAX_REF_IMAGES,
@@ -19,6 +21,8 @@ import {
 } from "@/lib/photo-studio/types";
 
 export const runtime = "nodejs";
+/** Video fal + download can take up to ~5 min — align with FAL_VIDEO_TIMEOUT_MS. */
+export const maxDuration = 300;
 
 const ASPECTS = new Set<ContentStudioAspectRatio>([
   "1:1",
@@ -53,7 +57,6 @@ export async function POST(req: NextRequest) {
     workspace_preset?: string;
     brand_enhancement?: boolean;
     start_image_url?: string;
-    end_image_url?: string;
   };
 
   const auth = await requirePhotoStudioKlant(req, body.klant);
@@ -168,13 +171,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: videoResult.error }, { status: 502 });
     }
 
-    const persisted = await persistVideoGeneration({
+    const videoBuffer = await downloadMediaBuffer(
+      videoResult.video_url,
+      FAL_VIDEO_TIMEOUT_MS
+    );
+    const persisted = await persistVideoGenerationFromBuffer({
       klant: auth.klant,
       mode: videoImageUrl ? "image_to_image" : "text_to_image",
       user_prompt: videoResult.user_prompt,
       fal_prompt: videoResult.fal_prompt,
       video_url: videoResult.video_url,
       source_image_url: imageUrls[0] ?? null,
+      buffer: videoBuffer,
     });
 
     const item = {
@@ -236,30 +244,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 502 });
   }
 
-  const items = [];
-  for (const url of result.images) {
-    const persisted = await persistPhotoGeneration({
-      klant: auth.klant,
-      mode,
-      user_prompt: result.user_prompt,
-      fal_prompt: result.fal_prompt,
-      master_url: url,
-      source_image_url: mode === "image_to_image" ? imageUrls[0] ?? null : null,
-      seed: seed ?? null,
-      workspace_preset:
-        typeof body.workspace_preset === "string" ? body.workspace_preset : null,
-      auto_variants: autoVariants,
-    });
-    items.push({
-      tracking_id: persisted.tracking_id,
-      master_url: persisted.master_public_url,
-      variants: persisted.variants,
-      content_id: persisted.content_id,
-      generation_id: persisted.id,
-      media_type: "image" as const,
-      analytics: persisted.analytics,
-    });
-  }
+  const items = await Promise.all(
+    result.images.map(async (url) => {
+      const buffer = await downloadImageBuffer(url);
+      const persisted = await persistPhotoGenerationFromBuffer({
+        klant: auth.klant,
+        mode,
+        user_prompt: result.user_prompt,
+        fal_prompt: result.fal_prompt,
+        master_url: url,
+        source_image_url: mode === "image_to_image" ? imageUrls[0] ?? null : null,
+        seed: seed ?? null,
+        workspace_preset:
+          typeof body.workspace_preset === "string" ? body.workspace_preset : null,
+        auto_variants: autoVariants,
+        buffer,
+      });
+      return {
+        tracking_id: persisted.tracking_id,
+        master_url: persisted.master_public_url,
+        variants: persisted.variants,
+        content_id: persisted.content_id,
+        generation_id: persisted.id,
+        media_type: "image" as const,
+        analytics: persisted.analytics,
+      };
+    })
+  );
 
   return NextResponse.json({
     ok: true,

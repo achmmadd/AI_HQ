@@ -1,5 +1,5 @@
 /**
- * Build Fumero brand assets from the source mascot PNG.
+ * Build brand assets from the single logo source PNG.
  * Run: node scripts/build-fumero-brand-assets.mjs
  */
 import fs from "node:fs/promises";
@@ -12,222 +12,152 @@ const ROOT = path.join(__dirname, "..");
 const BRANDS = path.join(ROOT, "public", "brands");
 const ICONS = path.join(ROOT, "public", "icons");
 
-const MASCOT_SRC =
-  process.env.FUMERO_MASCOT_SRC ??
+const LOGO_SRC =
+  process.env.FUMERO_LOGO_SRC ??
   path.join(__dirname, "brand-assets", "fumero-mascot-source.png");
 
-const GEIST_BOLD = path.join(
-  ROOT,
-  "node_modules/geist/dist/fonts/geist-sans/Geist-Bold.ttf"
-);
-const GEIST_SEMIBOLD = path.join(
-  ROOT,
-  "node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.ttf"
-);
-
-const BRAND_GREEN = "#78BE00";
-const BRAND_GREEN_UI = "#69C400";
-
-/** Reference full logo (1024×344) layout ratios. */
-const REF = {
-  mascotX: 22,
-  mascotHeightRatio: 297 / 344,
-  textGap: 39,
-  fumeroBaseline: 190,
-  taglineBaseline: 262,
-  fumeroSize: 120,
-  taglineSize: 36,
-  taglineTracking: 0.32,
-};
+/** Single canonical logo asset basename */
+const LOGO_BASENAME = "logo";
+const BRAND_GREEN = "#69C400";
+const BRAND_BG = "#0c0c0e";
 
 async function ensureDirs() {
   await fs.mkdir(BRANDS, { recursive: true });
   await fs.mkdir(ICONS, { recursive: true });
 }
 
-async function loadFontBase64(fontPath) {
-  return (await fs.readFile(fontPath)).toString("base64");
-}
-
-async function loadTrimmedMascot() {
-  return sharp(MASCOT_SRC).trim({ threshold: 10 }).png();
-}
-
-async function trimWithPadding(input, padding = 16) {
-  const { data, info } = await sharp(input)
+/** Strip near-black backgrounds from sources that ship without alpha. */
+async function stripDarkBackground(input) {
+  const { data, info } = await input
+    .clone()
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const { width: w, height: h } = info;
-  let minX = w;
-  let minY = h;
-  let maxX = 0;
-  let maxY = 0;
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const alpha = data[(y * w + x) * 4 + 3];
-      if (alpha > 8) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r < 32 && g < 32 && b < 32) {
+      data[i + 3] = 0;
     }
   }
 
-  if (maxX < minX || maxY < minY) {
-    return sharp(input);
-  }
-
-  const left = Math.max(0, minX - padding);
-  const top = Math.max(0, minY - padding);
-  const right = Math.min(w - 1, maxX + padding);
-  const bottom = Math.min(h - 1, maxY + padding);
-
-  return sharp(input).extract({
-    left,
-    top,
-    width: right - left + 1,
-    height: bottom - top + 1,
+  return sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 },
   });
 }
 
-function fontFaceCss(name, base64) {
-  return `@font-face{font-family:'${name}';src:url('data:font/ttf;base64,${base64}') format('truetype');font-weight:700;font-style:normal;}`;
+async function loadTrimmedLogo() {
+  const meta = await sharp(LOGO_SRC).metadata();
+  const base = meta.hasAlpha ? sharp(LOGO_SRC) : await stripDarkBackground(sharp(LOGO_SRC));
+  return base.trim({ threshold: 12 }).png();
 }
 
-async function writeMascotAssets(mascot) {
-  const mascotBuffer = await mascot.clone().png().toBuffer();
-  const meta = await sharp(mascotBuffer).metadata();
-  await fs.writeFile(path.join(BRANDS, "smokey-mascot.png"), mascotBuffer);
+async function writeLogoAssets(logo) {
+  const logoBuffer = await logo.clone().png().toBuffer();
+  const meta = await sharp(logoBuffer).metadata();
+  const width = meta.width ?? 692;
+  const height = meta.height ?? 795;
 
-  const mascotBase64 = mascotBuffer.toString("base64");
-  const mascotSvg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${meta.width} ${meta.height}" role="img" aria-label="Fumero mascot Smokey">
-  <image href="data:image/png;base64,${mascotBase64}" width="${meta.width}" height="${meta.height}" preserveAspectRatio="xMidYMid meet"/>
-</svg>`;
-  await fs.writeFile(path.join(BRANDS, "smokey-mascot.svg"), mascotSvg);
+  await fs.writeFile(path.join(BRANDS, `${LOGO_BASENAME}.png`), logoBuffer);
 
-  return { mascotBuffer, mascotBase64, meta };
-}
-
-async function buildFullLogo(mascotBase64, mascotMeta, fonts) {
-  const scale = 2;
-  const canvasH = 344 * scale;
-  const mascotH = Math.round(canvasH * REF.mascotHeightRatio);
-  const mascotW = Math.round((mascotMeta.width / mascotMeta.height) * mascotH);
-  const mascotX = REF.mascotX * scale;
-  const mascotY = Math.round((canvasH - mascotH) / 2);
-  const textX = mascotX + mascotW + REF.textGap * scale;
-  const canvasW = textX + 1100;
-
-  const fumeroSize = REF.fumeroSize * scale;
-  const taglineSize = REF.taglineSize * scale;
-  const taglineTracking = REF.taglineTracking * taglineSize;
-
+  const logoBase64 = logoBuffer.toString("base64");
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${canvasW}" height="${canvasH}" viewBox="0 0 ${canvasW} ${canvasH}" role="img" aria-label="Fumero Vapes and More">
-  <defs>
-    <style>
-      ${fontFaceCss("GeistBold", fonts.bold)}
-      ${fontFaceCss("GeistSemiBold", fonts.semiBold)}
-    </style>
-  </defs>
-  <image href="data:image/png;base64,${mascotBase64}" x="${mascotX}" y="${mascotY}" width="${mascotW}" height="${mascotH}" preserveAspectRatio="xMidYMid meet"/>
-  <text x="${textX}" y="${REF.fumeroBaseline * scale}" fill="${BRAND_GREEN}" font-family="GeistBold, sans-serif" font-size="${fumeroSize}" letter-spacing="1">FUMERO</text>
-  <text x="${textX}" y="${REF.taglineBaseline * scale}" fill="${BRAND_GREEN}" font-family="GeistSemiBold, sans-serif" font-size="${taglineSize}" letter-spacing="${taglineTracking.toFixed(1)}">VAPES &amp; MORE</text>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${width} ${height}" role="img" aria-label="Fumero">
+  <image xlink:href="data:image/png;base64,${logoBase64}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet"/>
 </svg>`;
 
-  const fullSvgPath = path.join(BRANDS, "fumero-logo.svg");
-  await fs.writeFile(fullSvgPath, svg);
+  await fs.writeFile(path.join(BRANDS, `${LOGO_BASENAME}.svg`), svg);
 
-  const fullPngRaw = await sharp(Buffer.from(svg)).png().toBuffer();
-  const trimmed = await trimWithPadding(fullPngRaw, 28);
-  const fullPng = await trimmed.png().toBuffer();
-  await fs.writeFile(path.join(BRANDS, "fumero-logo.png"), fullPng);
-
-  const meta = await sharp(fullPng).metadata();
-  const compactPng = await sharp(fullPng)
-    .resize(1024, null, { fit: "inside" })
-    .png()
-    .toBuffer();
-  await fs.writeFile(path.join(BRANDS, "fumero-logo-compact.png"), compactPng);
-
-  return meta;
+  return { logoBuffer, logoBase64, width, height };
 }
 
-async function buildIcons(mascotBuffer) {
+async function buildIcons(logoBuffer) {
   const sizes = [
-    { name: "fumero-icon-16.png", size: 16 },
-    { name: "fumero-icon-32.png", size: 32 },
-    { name: "fumero-icon-48.png", size: 48 },
-    { name: "fumero-icon-180.png", size: 180 },
-    { name: "fumero-icon-192.png", size: 192 },
-    { name: "fumero-icon-512.png", size: 512 },
+    { name: "favicon.png", size: 32 },
+    { name: "icon-16.png", size: 16 },
+    { name: "icon-32.png", size: 32 },
+    { name: "icon-48.png", size: 48 },
+    { name: "icon-180.png", size: 180 },
+    { name: "icon-192.png", size: 192 },
+    { name: "icon-512.png", size: 512 },
   ];
 
   for (const { name, size } of sizes) {
-    const out = await sharp(mascotBuffer)
-      .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    const out = await sharp(logoBuffer)
+      .resize(size, size, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
       .png()
       .toBuffer();
     await fs.writeFile(path.join(BRANDS, name), out);
-    if (name.endsWith("192.png") || name.endsWith("512.png")) {
-      await fs.writeFile(path.join(ICONS, name.replace("fumero-", "")), out);
+    if (name === "icon-192.png" || name === "icon-512.png") {
+      await fs.writeFile(path.join(ICONS, name), out);
     }
   }
 
-  const favicon32 = path.join(BRANDS, "fumero-icon-32.png");
-  await fs.copyFile(favicon32, path.join(BRANDS, "fumero-favicon.png"));
-  await fs.copyFile(favicon32, path.join(ROOT, "public", "favicon-fumero.png"));
+  await fs.copyFile(path.join(BRANDS, "favicon.png"), path.join(ROOT, "public", "favicon.ico"));
+  await fs.copyFile(path.join(BRANDS, "favicon.png"), path.join(ROOT, "public", "favicon-fumero.png"));
 }
 
-async function buildOgImage(mascotBase64, mascotMeta, fonts) {
-  const w = 1200;
-  const h = 630;
-  const mascotH = 400;
-  const mascotW = Math.round((mascotMeta.width / mascotMeta.height) * mascotH);
-  const mascotX = 72;
-  const mascotY = Math.round((h - mascotH) / 2);
-  const textX = mascotX + mascotW + 40;
+async function buildOgImage(logoBase64, width, height) {
+  const canvasW = 1200;
+  const canvasH = 630;
+  const logoH = 480;
+  const logoW = Math.round((width / height) * logoH);
+  const logoX = Math.round((canvasW - logoW) / 2);
+  const logoY = Math.round((canvasH - logoH) / 2);
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <defs>
-    <style>
-      ${fontFaceCss("GeistBold", fonts.bold)}
-      ${fontFaceCss("GeistSemiBold", fonts.semiBold)}
-    </style>
-  </defs>
-  <rect width="${w}" height="${h}" fill="#0c0c0e"/>
-  <image href="data:image/png;base64,${mascotBase64}" x="${mascotX}" y="${mascotY}" width="${mascotW}" height="${mascotH}" preserveAspectRatio="xMidYMid meet"/>
-  <text x="${textX}" y="290" fill="${BRAND_GREEN_UI}" font-family="GeistBold, sans-serif" font-size="128" letter-spacing="1">FUMERO</text>
-  <text x="${textX}" y="360" fill="${BRAND_GREEN_UI}" font-family="GeistSemiBold, sans-serif" font-size="38" letter-spacing="10">VAPES &amp; MORE</text>
-  <text x="${textX}" y="430" fill="#8b8b8f" font-family="GeistSemiBold, sans-serif" font-size="26" letter-spacing="0.5">Studio · Chat · Shop operations</text>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${canvasW}" height="${canvasH}" viewBox="0 0 ${canvasW} ${canvasH}">
+  <rect width="${canvasW}" height="${canvasH}" fill="${BRAND_BG}"/>
+  <image xlink:href="data:image/png;base64,${logoBase64}" x="${logoX}" y="${logoY}" width="${logoW}" height="${logoH}" preserveAspectRatio="xMidYMid meet"/>
+  <text x="${canvasW / 2}" y="${logoY + logoH + 48}" fill="${BRAND_GREEN}" font-family="system-ui, sans-serif" font-size="28" font-weight="600" text-anchor="middle" letter-spacing="2">FUMERO</text>
 </svg>`;
 
   const og = await sharp(Buffer.from(svg)).png().toBuffer();
-  await fs.writeFile(path.join(BRANDS, "fumero-og.png"), og);
+  await fs.writeFile(path.join(BRANDS, "og.png"), og);
+}
+
+async function removeLegacyAssets() {
+  const legacy = [
+    "fumero-logo.png",
+    "fumero-logo.svg",
+    "fumero-logo-compact.png",
+    "smokey-mascot.png",
+    "smokey-mascot.svg",
+    "fumero-spook-website.png",
+    "fumero-spook-website.svg",
+    "fumero_spook_website(1).svg",
+    "fumero-favicon.png",
+    "fumero-icon-16.png",
+    "fumero-icon-32.png",
+    "fumero-icon-48.png",
+    "fumero-icon-180.png",
+    "fumero-icon-192.png",
+    "fumero-icon-512.png",
+    "fumero-og.png",
+  ];
+  for (const name of legacy) {
+    try {
+      await fs.unlink(path.join(BRANDS, name));
+    } catch {
+      /* already removed */
+    }
+  }
 }
 
 async function main() {
   await ensureDirs();
-  const fonts = {
-    bold: await loadFontBase64(GEIST_BOLD),
-    semiBold: await loadFontBase64(GEIST_SEMIBOLD),
-  };
+  const logo = await loadTrimmedLogo();
+  const { logoBuffer, logoBase64, width, height } = await writeLogoAssets(logo);
+  await buildIcons(logoBuffer);
+  await buildOgImage(logoBase64, width, height);
+  await removeLegacyAssets();
 
-  const mascot = await loadTrimmedMascot();
-  const { mascotBuffer, mascotBase64, meta } = await writeMascotAssets(mascot);
-  const fullMeta = await buildFullLogo(mascotBase64, meta, fonts);
-  await buildIcons(mascotBuffer);
-  await buildOgImage(mascotBase64, meta, fonts);
-
-  console.log("Fumero brand assets written to public/brands/");
-  console.log("Full logo dimensions:", { width: fullMeta.width, height: fullMeta.height });
-  console.log("Mascot dimensions:", { width: meta.width, height: meta.height });
+  console.log(JSON.stringify({ width, height, svg: `/brands/${LOGO_BASENAME}.svg` }));
 }
 
 main().catch((err) => {

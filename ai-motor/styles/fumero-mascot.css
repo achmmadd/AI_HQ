@@ -1,0 +1,459 @@
+/**
+ * Smokey (Fumero mascot) motion — CSS-only, works app-wide (light + dark).
+ * Used by Logo / AgentAvatar.
+ */
+
+.fumero-mascot-motion {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+
+.fumero-mascot-motion .fumero-mascot-image {
+  position: relative;
+  z-index: 1;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+
+/* Mascot-only edge treatment (not full wordmark lockup). */
+.fumero-mascot-image {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08))
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.06));
+}
+
+html.dark .fumero-mascot-image,
+[data-theme="dark"] .fumero-mascot-image,
+.fumero-mascot-image--elevate {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0 12px rgba(255, 255, 255, 0.32));
+}
+
+/* ── Smoke wisps (idle, wave, thinking, chat) ── */
+.fumero-mascot-motion--smoke::before,
+.fumero-mascot-motion--smoke::after {
+  content: "";
+  position: absolute;
+  bottom: 6%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  filter: blur(3px);
+}
+
+.fumero-mascot-motion--smoke::before {
+  left: 42%;
+  width: 42%;
+  height: 26%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(140, 140, 140, 0.42) 0%,
+    transparent 72%
+  );
+  animation: fumero-smoke-rise-a 3.8s ease-in-out infinite;
+}
+
+.fumero-mascot-motion--smoke::after {
+  left: 26%;
+  width: 32%;
+  height: 22%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(120, 120, 120, 0.36) 0%,
+    transparent 70%
+  );
+  animation: fumero-smoke-rise-b 4.8s ease-in-out infinite;
+  animation-delay: -1.4s;
+}
+
+html.dark .fumero-mascot-motion--smoke::before,
+[data-theme="dark"] .fumero-mascot-motion--smoke::before {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(220, 220, 220, 0.3) 0%,
+    transparent 72%
+  );
+}
+
+html.dark .fumero-mascot-motion--smoke::after,
+[data-theme="dark"] .fumero-mascot-motion--smoke::after {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(200, 200, 200, 0.24) 0%,
+    transparent 70%
+  );
+}
+
+@keyframes fumero-smoke-rise-a {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.8);
+  }
+  15% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.45;
+    transform: translate(-62%, -24%) scale(1.25);
+  }
+  78% {
+    opacity: 0;
+    transform: translate(-72%, -42%) scale(1.5);
+  }
+}
+
+@keyframes fumero-smoke-rise-b {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(-40%, 2%) scale(0.75);
+  }
+  20% {
+    opacity: 0.6;
+  }
+  55% {
+    opacity: 0.38;
+    transform: translate(-52%, -20%) scale(1.18);
+  }
+  82% {
+    opacity: 0;
+    transform: translate(-60%, -36%) scale(1.4);
+  }
+}
+
+/* ── Idle: float + breathe + sway ── */
+@keyframes fumero-mascot-idle-body {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-3px, -8px) rotate(-2.5deg);
+  }
+  50% {
+    transform: translate(2px, -12px) rotate(0deg);
+  }
+  75% {
+    transform: translate(3px, -7px) rotate(2.5deg);
+  }
+}
+
+@keyframes fumero-mascot-idle-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.06, 0.96);
+  }
+}
+
+@keyframes fumero-mascot-idle-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-1.5deg);
+  }
+  70% {
+    transform: rotate(1.5deg);
+  }
+}
+
+.fumero-mascot-motion--idle {
+  animation: fumero-mascot-idle-body 3.2s ease-in-out infinite;
+}
+
+.fumero-mascot-motion--idle .fumero-mascot-image {
+  animation:
+    fumero-mascot-idle-breathe 2.4s ease-in-out infinite,
+    fumero-mascot-idle-wiggle 4s ease-in-out infinite;
+}
+
+/* ── Chat: subtle alive bob (sidebar / message avatars) ── */
+@keyframes fumero-mascot-chat-body {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-5px) rotate(-2deg);
+  }
+  66% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+@keyframes fumero-mascot-chat-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.fumero-mascot-motion--chat {
+  animation: fumero-mascot-chat-body 2.8s ease-in-out infinite;
+}
+
+.fumero-mascot-motion--chat .fumero-mascot-image {
+  animation: fumero-mascot-chat-breathe 2.2s ease-in-out infinite;
+}
+
+/* Claude-style chat shell pulse */
+@keyframes fumero-mascot-chat-shell {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0
+      color-mix(in srgb, var(--fumero-accent, #69c400) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--fumero-accent, #69c400) 12%, transparent);
+  }
+}
+
+.fumero-mascot-chat-shell--alive {
+  animation: fumero-mascot-chat-shell 3s ease-in-out infinite;
+}
+
+/* ── Wave: welcome / greeting ── */
+@keyframes fumero-mascot-wave {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  8% {
+    transform: translateY(-4px) rotate(-14deg);
+  }
+  16% {
+    transform: translateY(-8px) rotate(12deg);
+  }
+  24% {
+    transform: translateY(-5px) rotate(-12deg);
+  }
+  32% {
+    transform: translateY(-9px) rotate(10deg);
+  }
+  40% {
+    transform: translateY(-4px) rotate(-9deg);
+  }
+  48% {
+    transform: translateY(-7px) rotate(8deg);
+  }
+  56% {
+    transform: translateY(-3px) rotate(-6deg);
+  }
+  64% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+  72% {
+    transform: translateY(-2px) rotate(-3deg);
+  }
+  80% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+}
+
+@keyframes fumero-mascot-wave-bounce {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.05, 0.95);
+  }
+}
+
+.fumero-mascot-motion--wave {
+  animation: fumero-mascot-wave 2s ease-in-out infinite;
+}
+
+.fumero-mascot-motion--wave .fumero-mascot-image {
+  animation: fumero-mascot-wave-bounce 2s ease-in-out infinite;
+}
+
+/* ── Thinking: chat / streaming ── */
+@keyframes fumero-mascot-thinking-body {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  25% {
+    transform: translateY(-6px) rotate(3deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(-2deg);
+  }
+  75% {
+    transform: translateY(-7px) rotate(2.5deg);
+  }
+}
+
+@keyframes fumero-mascot-thinking-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.94);
+    opacity: 0.88;
+  }
+}
+
+@keyframes fumero-mascot-thinking-wiggle {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+.fumero-mascot-motion--thinking {
+  animation: fumero-mascot-thinking-body 1.6s ease-in-out infinite;
+}
+
+.fumero-mascot-motion--thinking .fumero-mascot-image {
+  animation:
+    fumero-mascot-thinking-pulse 1.4s ease-in-out infinite,
+    fumero-mascot-thinking-wiggle 2s ease-in-out infinite;
+}
+
+/* Thinking dots above mascot */
+.fumero-mascot-motion--thinking.fumero-mascot-motion--dots::before {
+  content: "···";
+  bottom: auto;
+  top: -4px;
+  left: 50%;
+  width: auto;
+  height: auto;
+  filter: none;
+  background: none;
+  font-size: 0.55em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--fumero-accent, #69c400) 70%, transparent);
+  opacity: 0.9;
+  animation: fumero-thinking-dots 1.2s ease-in-out infinite;
+  transform: translateX(-50%);
+}
+
+.fumero-mascot-motion--thinking.fumero-mascot-motion--dots::after {
+  display: none;
+}
+
+@keyframes fumero-thinking-dots {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateX(-50%) translateY(0) scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px) scale(1.05);
+  }
+}
+
+html.dark .fumero-mascot-motion--thinking.fumero-mascot-motion--dots::before,
+[data-theme="dark"] .fumero-mascot-motion--thinking.fumero-mascot-motion--dots::before {
+  color: color-mix(in srgb, var(--fumero-accent, #69c400) 85%, white);
+}
+
+/* ── Bounce: loading ── */
+@keyframes fumero-mascot-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(-18px) scale(0.9, 1.1);
+  }
+  30% {
+    transform: translateY(0) scale(1.1, 0.9);
+  }
+  45% {
+    transform: translateY(-12px) scale(0.92, 1.08);
+  }
+  60% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+  75% {
+    transform: translateY(-6px) scale(0.96, 1.04);
+  }
+}
+
+.fumero-mascot-motion--bounce {
+  animation: fumero-mascot-bounce 0.95s cubic-bezier(0.34, 1.4, 0.64, 1) infinite;
+}
+
+/* Loading ring around bounce mascot */
+@keyframes fumero-mascot-loading-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+.fumero-mascot-loading-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid
+    color-mix(in srgb, var(--fumero-accent, #69c400) 35%, transparent);
+  animation: fumero-mascot-loading-ring 1.4s ease-out infinite;
+  pointer-events: none;
+}
+
+/* Legacy alias (animated={true} without motion prop) */
+.fumero-mascot-animated {
+  animation: fumero-mascot-idle-body 3.2s ease-in-out infinite;
+}
+
+.fumero-mascot-animated .fumero-mascot-image {
+  animation:
+    fumero-mascot-idle-breathe 2.4s ease-in-out infinite,
+    fumero-mascot-idle-wiggle 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fumero-mascot-motion--idle,
+  .fumero-mascot-motion--chat,
+  .fumero-mascot-motion--wave,
+  .fumero-mascot-motion--thinking,
+  .fumero-mascot-motion--bounce,
+  .fumero-mascot-animated,
+  .fumero-mascot-motion--idle .fumero-mascot-image,
+  .fumero-mascot-motion--chat .fumero-mascot-image,
+  .fumero-mascot-motion--wave .fumero-mascot-image,
+  .fumero-mascot-motion--thinking .fumero-mascot-image,
+  .fumero-mascot-animated .fumero-mascot-image,
+  .fumero-mascot-motion--smoke::before,
+  .fumero-mascot-motion--smoke::after,
+  .fumero-mascot-motion--thinking.fumero-mascot-motion--dots::before,
+  .fumero-mascot-chat-shell--alive,
+  .fumero-mascot-loading-ring {
+    animation: none !important;
+  }
+}

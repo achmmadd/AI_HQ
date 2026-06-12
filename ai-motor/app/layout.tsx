@@ -6,6 +6,7 @@ import "./workspace-theme.css";
 import "../styles/ios-overrides.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-config";
+import { FUMERO_BRAND } from "@/lib/fumero/brand-assets";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -57,6 +58,10 @@ export const metadata: Metadata = {
     "AVG compliant AI",
   ],
   manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: FUMERO_BRAND.favicon, sizes: "32x32", type: "image/png" }],
+    apple: [{ url: FUMERO_BRAND.appleTouchIcon, sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     locale: "nl_NL",

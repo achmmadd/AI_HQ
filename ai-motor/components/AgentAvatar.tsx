@@ -1,74 +1,112 @@
 "use client";
 
-import Image from "next/image";
-import { FUMERO_BRAND } from "@/lib/fumero/brand-assets";
+import { Logo, type LogoMotion, type LogoSize } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import type { WorkspaceId } from "@/lib/types";
 
-const SIZES = {
-  xs: "h-6 w-6",
-  sm: "h-8 w-8",
-  md: "h-10 w-10",
-  lg: "h-14 w-14",
-} as const;
+const AVATAR_SIZE: Record<"xs" | "sm" | "md" | "lg", LogoSize> = {
+  xs: "xs",
+  sm: "sm",
+  md: "md",
+  lg: "lg",
+};
 
-/** Fumero mascot "Smokey" — sheet ghost with green trapper hat. */
-export function GhostAvatar({ className }: { className?: string }) {
+export type MascotMotion = LogoMotion;
+
+function resolveMotion(
+  animated?: boolean,
+  motion?: LogoMotion | false,
+  chatDefault?: LogoMotion
+): LogoMotion | false {
+  if (motion) return motion;
+  if (motion === false) return false;
+  if (animated) return "idle";
+  if (chatDefault) return chatDefault;
+  return false;
+}
+
+type AvatarProps = {
+  className?: string;
+  animated?: boolean;
+  motion?: LogoMotion | false;
+  smoke?: boolean;
+  thinkingDots?: boolean;
+  loadingRing?: boolean;
+  size?: LogoSize;
+};
+
+function LogoAvatar({
+  size = "sm",
+  className,
+  animated,
+  motion,
+  loadingRing,
+  chatDefault,
+}: AvatarProps & { chatDefault?: LogoMotion }) {
+  const activeMotion = resolveMotion(animated, motion, chatDefault);
+
   return (
-    <Image
-      src={FUMERO_BRAND.mascot.src}
-      alt={FUMERO_BRAND.mascot.alt}
-      width={FUMERO_BRAND.mascot.width}
-      height={FUMERO_BRAND.mascot.height}
-      className={cn("object-contain", className)}
-      aria-hidden
+    <span className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
+      {loadingRing && activeMotion === "bounce" ? (
+        <span className="fumero-mascot-loading-ring" aria-hidden />
+      ) : null}
+      <Logo
+        size={size}
+        motion={activeMotion || false}
+        decorative
+      />
+    </span>
+  );
+}
+
+/** Fumero mascot — central Logo asset with optional motion. */
+export function GhostAvatar(props: AvatarProps) {
+  return <LogoAvatar {...props} />;
+}
+
+/** Chat avatar — same Logo asset, optional chat motion. */
+export function SmokeyChatAvatar({
+  size = "sm",
+  ...props
+}: AvatarProps & { size?: keyof typeof AVATAR_SIZE; className?: string }) {
+  return (
+    <LogoAvatar
+      size={AVATAR_SIZE[size]}
+      chatDefault="chat"
+      {...props}
     />
   );
 }
 
-function MotorAvatar({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-center rounded-xl bg-ws-accent font-bold text-white",
-        className
-      )}
-    >
-      M
-    </div>
-  );
-}
-
-function BokasAvatar({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-center rounded-full bg-ws-accent font-bold text-white",
-        className
-      )}
-    >
-      B
-    </div>
-  );
-}
-
 export function AgentAvatar({
-  workspace,
+  workspace: _workspace,
   size = "md",
+  variant = "plain",
+  animated = false,
+  motion,
+  loadingRing,
   className,
 }: {
   workspace: WorkspaceId | string;
-  size?: keyof typeof SIZES;
+  size?: keyof typeof AVATAR_SIZE;
+  variant?: "plain" | "chat";
+  animated?: boolean;
+  motion?: LogoMotion | false;
+  smoke?: boolean;
+  thinkingDots?: boolean;
+  loadingRing?: boolean;
   className?: string;
 }) {
-  const dim = SIZES[size];
-  const ws = workspace as WorkspaceId;
+  const chatDefault = variant === "chat" ? "chat" : undefined;
 
-  if (ws === "fumero") {
-    return <GhostAvatar className={cn(dim, className)} />;
-  }
-  if (ws === "bokas") {
-    return <BokasAvatar className={cn(dim, "text-sm", className)} />;
-  }
-  return <MotorAvatar className={cn(dim, "text-sm", className)} />;
+  return (
+    <LogoAvatar
+      size={AVATAR_SIZE[size]}
+      animated={animated}
+      motion={motion}
+      loadingRing={loadingRing}
+      chatDefault={chatDefault}
+      className={className}
+    />
+  );
 }

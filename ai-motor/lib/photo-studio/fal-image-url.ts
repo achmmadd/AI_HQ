@@ -100,52 +100,68 @@ function toDataUri(buffer: Buffer, filenameHint: string): string {
  * fal.ai needs publicly reachable URLs or data URIs.
  * Relative `/api/upload/file/…` paths are auth-gated and invisible to fal — convert locally.
  */
+async function resolveOneImageUrlForFal(
+  raw: string,
+  cache?: Map<string, string>
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Lege referentie-URL." };
+  }
+
+  const cached = cache?.get(trimmed);
+  if (cached) return { ok: true, url: cached };
+
+  if (trimmed.startsWith("data:image/")) {
+    cache?.set(trimmed, trimmed);
+    return { ok: true, url: trimmed };
+  }
+
+  const pathname = pathnameFromRef(trimmed);
+  const isLocal =
+    Boolean(pathname?.startsWith("/api/upload/file/")) ||
+    Boolean(pathname?.startsWith("/api/photo-studio/assets/")) ||
+    (trimmed.startsWith("http") && isOwnAppUrl(trimmed));
+
+  if (isLocal) {
+    try {
+      const buffer = await loadImageBufferFromRef(trimmed);
+      const hint = pathname?.split("/").pop() ?? "ref.jpg";
+      const dataUri = toDataUri(buffer, hint);
+      cache?.set(trimmed, dataUri);
+      return { ok: true, url: dataUri };
+    } catch (e) {
+      return {
+        ok: false,
+        error:
+          e instanceof Error
+            ? e.message
+            : "Referentiebeeld kon niet worden geladen.",
+      };
+    }
+  }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    cache?.set(trimmed, trimmed);
+    return { ok: true, url: trimmed };
+  }
+
+  return {
+    ok: false,
+    error: `Ongeldige referentie-URL: ${trimmed.slice(0, 80)}`,
+  };
+}
+
 export async function resolveImageUrlsForFal(
-  urls: string[]
+  urls: string[],
+  cache?: Map<string, string>
 ): Promise<{ ok: true; urls: string[] } | { ok: false; error: string }> {
   const resolved: string[] = [];
 
   for (const raw of urls) {
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-
-    if (trimmed.startsWith("data:image/")) {
-      resolved.push(trimmed);
-      continue;
-    }
-
-    const pathname = pathnameFromRef(trimmed);
-    const isLocal =
-      Boolean(pathname?.startsWith("/api/upload/file/")) ||
-      Boolean(pathname?.startsWith("/api/photo-studio/assets/")) ||
-      (trimmed.startsWith("http") && isOwnAppUrl(trimmed));
-
-    if (isLocal) {
-      try {
-        const buffer = await loadImageBufferFromRef(trimmed);
-        const hint = pathname?.split("/").pop() ?? "ref.jpg";
-        resolved.push(toDataUri(buffer, hint));
-      } catch (e) {
-        return {
-          ok: false,
-          error:
-            e instanceof Error
-              ? e.message
-              : "Referentiebeeld kon niet worden geladen.",
-        };
-      }
-      continue;
-    }
-
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-      resolved.push(trimmed);
-      continue;
-    }
-
-    return {
-      ok: false,
-      error: `Ongeldige referentie-URL: ${trimmed.slice(0, 80)}`,
-    };
+    const one = await resolveOneImageUrlForFal(raw, cache);
+    if (!one.ok) return one;
+    resolved.push(one.url);
   }
 
   if (!resolved.length) {

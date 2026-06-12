@@ -34,7 +34,12 @@ export function ChatOsEmptyHome({
         className
       )}
     >
-      <AgentAvatar workspace={workspace} size="lg" />
+      <AgentAvatar
+        workspace={workspace}
+        size="lg"
+        variant={workspace === "fumero" ? "chat" : "plain"}
+        motion={workspace === "fumero" ? "wave" : false}
+      />
 
       <div className="space-y-2">
         <h2 className="text-[22px] font-semibold tracking-tight text-[var(--os-text)]">

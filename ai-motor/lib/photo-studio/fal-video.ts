@@ -1,4 +1,5 @@
 import type { CompanyId } from "@/lib/types";
+import { FAL_VIDEO_TIMEOUT_MS } from "@/lib/photo-studio/generation-timeouts";
 import { contentTypeForKlant, type PhotoStudioContentType } from "@/lib/photo-studio/fal";
 
 const MINIMAX_I2V = "fal-ai/minimax/video-01/image-to-video";
@@ -57,7 +58,7 @@ async function callFalVideo(opts: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(opts.body),
-      signal: AbortSignal.timeout(300_000),
+      signal: AbortSignal.timeout(FAL_VIDEO_TIMEOUT_MS),
     });
 
     const text = await res.text();

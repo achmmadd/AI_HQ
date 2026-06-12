@@ -187,7 +187,20 @@ export function ChatOsContextPanel({
             <ContextSection title="Agent">
               <div className="chat-os-agent-card os-glass">
                 <div className="flex items-start gap-3">
-                  <AgentAvatar workspace={workspace === "personal" ? "fumero" : workspace} size="md" />
+                  <AgentAvatar
+                    workspace={workspace === "personal" ? "fumero" : workspace}
+                    size="md"
+                    variant={
+                      workspace === "fumero" || workspace === "personal"
+                        ? "chat"
+                        : "plain"
+                    }
+                    motion={
+                      workspace === "fumero" || workspace === "personal"
+                        ? "chat"
+                        : false
+                    }
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-[14px] font-semibold text-[var(--os-text)]">

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { GhostAvatar } from "@/components/AgentAvatar";
 import { BUILDER_LOADING_MESSAGES } from "@/lib/fumero/builder-content";
 
 type BuilderLoadingStateProps = {
@@ -49,15 +50,14 @@ export function BuilderLoadingState({
 
   return (
     <div className="builder-loading-state flex flex-col items-center gap-6 p-8">
-      <motion.div
-        className="relative flex h-16 w-16 items-center justify-center"
-        animate={reduceMotion ? undefined : { rotate: [0, 5, -5, 0] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <div className="builder-loading-icon-wrap">
-          <Sparkles className="h-6 w-6 text-[var(--builder-text-secondary)]" />
-        </div>
-      </motion.div>
+      <div className="builder-loading-icon-wrap relative flex h-16 w-16 items-center justify-center">
+        <GhostAvatar
+          motion={reduceMotion ? false : "bounce"}
+          smoke={false}
+          loadingRing={!reduceMotion}
+          className="h-10 w-10"
+        />
+      </div>
 
       <AnimatePresence mode="wait">
         <motion.p

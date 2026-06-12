@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Cpu, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 import { LANDING_NAV, MOTORSAI_BRAND } from "@/lib/landing-content";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +22,7 @@ export function LandingHeader() {
 
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 sm:px-8 lg:px-10">
         <Link href="/" className="flex items-center gap-2.5" aria-label={`${MOTORSAI_BRAND.name} home`}>
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#69C400]/15 ring-1 ring-[#69C400]/25">
-            <Cpu className="h-5 w-5 text-[#69C400]" aria-hidden />
-          </div>
+          <Logo size="sm" elevate />
           <span className="text-xl font-bold tracking-tight text-white">
             {MOTORSAI_BRAND.name}
           </span>

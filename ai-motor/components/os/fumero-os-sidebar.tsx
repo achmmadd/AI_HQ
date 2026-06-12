@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { useLayoutStore } from "@/stores/useLayoutStore";
 import { logoutClient } from "@/lib/auth-logout";
 import { FumeroSidebarKpiFooter } from "@/components/fumero/ops/fumero-chat-kpi-strip";
-import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
+import { Logo } from "@/components/logo";
 
 type NavGroup = { label: string; items: { href: string; label: string; icon: LucideIcon; count?: number }[] };
 
@@ -111,17 +111,17 @@ export function FumeroOsSidebar() {
     >
       <div className="border-b border-[var(--os-border)] px-2 py-3 md:px-4 md:py-4">
         <div className={cn("hidden", !collapsed && "md:block")}>
-          <FumeroLogoLockup compact />
-          <p className="mt-2 text-[11px] text-[var(--os-text-subtle)]">Studio</p>
+          <Logo size="lg" className="max-h-9 w-auto" />
+          <p className="mt-1.5 text-[11px] text-[var(--os-text-subtle)]">Studio</p>
         </div>
         <div
           className={cn(
-            "mx-auto flex h-8 w-8 items-center justify-center",
+            "mx-auto flex items-center justify-center",
             !collapsed && "md:hidden"
           )}
           aria-hidden
         >
-          <FumeroLogoLockup compact variant="mascot" className="!p-0" />
+          <Logo size="sm" motion="idle" />
         </div>
       </div>
 

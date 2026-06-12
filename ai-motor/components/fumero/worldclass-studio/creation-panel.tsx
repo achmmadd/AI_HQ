@@ -28,14 +28,10 @@ export function CreationPanel({ klant, studio, step }: Props) {
     uploading,
     fileRef,
     frameFileRef,
-    pendingFrameTarget,
-    setPendingFrameTarget,
     creditsLabel,
     creditsLoading,
     startFrame,
     setStartFrame,
-    endFrame,
-    setEndFrame,
     maxRefs,
     isVideo,
     isEdit,
@@ -44,7 +40,7 @@ export function CreationPanel({ klant, studio, step }: Props) {
     generate,
     cancelGenerate,
     uploadImages,
-    uploadFrameForTarget,
+    uploadStartFrame,
     removeRef,
     applyStarter,
   } = studio;
@@ -79,17 +75,17 @@ export function CreationPanel({ klant, studio, step }: Props) {
         <div className="wc-step-indicator mt-2">
           {" "}
           <span
-            className={`wc-step-dot${step >= 1 ? "wc-step-dot--active" : ""}`}
+            className={`wc-step-dot${step >= 1 ? " wc-step-dot--active" : ""}`}
           />{" "}
           <span>Beschrijven</span>{" "}
           <span className="mx-1 text-[var(--wc-text-subtle)]">→</span>{" "}
           <span
-            className={`wc-step-dot${step >= 2 ? "wc-step-dot--active" : ""}`}
+            className={`wc-step-dot${step >= 2 ? " wc-step-dot--active" : ""}`}
           />{" "}
           <span>Bekijken</span>{" "}
           <span className="mx-1 text-[var(--wc-text-subtle)]">→</span>{" "}
           <span
-            className={`wc-step-dot${step >= 3 ? "wc-step-dot--active" : ""}`}
+            className={`wc-step-dot${step >= 3 ? " wc-step-dot--active" : ""}`}
           />{" "}
           <span>Publiceren</span>{" "}
         </div>{" "}
@@ -149,9 +145,8 @@ export function CreationPanel({ klant, studio, step }: Props) {
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (!f || !pendingFrameTarget) return;
-            void uploadFrameForTarget(f, pendingFrameTarget);
-            setPendingFrameTarget(null);
+            if (!f) return;
+            void uploadStartFrame(f);
           }}
         />{" "}
         {refs.length < maxRefs ? (
@@ -198,57 +193,40 @@ export function CreationPanel({ klant, studio, step }: Props) {
         ))}{" "}
       </div>{" "}
       {isVideo ? (
-        <div className="flex gap-2">
-          {" "}
-          {(["start", "end"] as const).map((target) => {
-            const frame = target === "start" ? startFrame : endFrame;
-            const setFrame = target === "start" ? setStartFrame : setEndFrame;
-            return (
+        <button
+          type="button"
+          className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--wc-border)] bg-[var(--wc-surface-muted)] text-[10px] text-[var(--wc-text-muted)]"
+          onClick={() => frameFileRef.current?.click()}
+        >
+          {startFrame ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={startFrame.preview}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
               <button
-                key={target}
                 type="button"
-                className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--wc-border)] bg-[var(--wc-surface-muted)] text-[10px] text-[var(--wc-text-muted)]"
-                onClick={() => {
-                  setPendingFrameTarget(target);
-                  frameFileRef.current?.click();
+                className="absolute right-0.5 top-0.5 rounded-full bg-black/50 p-0.5 text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (startFrame.preview.startsWith("blob:"))
+                    URL.revokeObjectURL(startFrame.preview);
+                  setStartFrame(null);
                 }}
+                aria-label="Startframe verwijderen"
               >
-                {" "}
-                {frame ? (
-                  <>
-                    {" "}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}{" "}
-                    <img
-                      src={frame.preview}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />{" "}
-                    <button
-                      type="button"
-                      className="absolute right-0.5 top-0.5 rounded-full bg-black/50 p-0.5 text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (frame.preview.startsWith("blob:"))
-                          URL.revokeObjectURL(frame.preview);
-                        setFrame(null);
-                      }}
-                      aria-label={`${target} frame verwijderen`}
-                    >
-                      {" "}
-                      <X className="h-3 w-3" />{" "}
-                    </button>{" "}
-                  </>
-                ) : (
-                  <>
-                    {" "}
-                    <ImagePlus className="mb-0.5 h-3.5 w-3.5" />{" "}
-                    {target === "start" ? "Start" : "Eind"}{" "}
-                  </>
-                )}{" "}
+                <X className="h-3 w-3" />
               </button>
-            );
-          })}{" "}
-        </div>
+            </>
+          ) : (
+            <>
+              <ImagePlus className="mb-0.5 h-3.5 w-3.5" />
+              Startframe
+            </>
+          )}
+        </button>
       ) : null}{" "}
       {!isVideo ? (
         <div
@@ -343,7 +321,7 @@ export function CreationPanel({ klant, studio, step }: Props) {
       ) : null}{" "}
       <button
         type="button"
-        className={`wc-btn-primary mt-auto w-full${isEdit && !busy ? "!bg-[var(--fumero-text-muted)] hover:!bg-[var(--fumero-text-subtle)]" : ""}${busy ? "!bg-[var(--fumero-text-muted)] hover:!bg-[var(--fumero-text-subtle)]" : ""}`}
+        className={`wc-btn-primary mt-auto w-full${isEdit && !busy ? " !bg-[var(--fumero-text-muted)] hover:!bg-[var(--fumero-text-subtle)]" : ""}${busy ? " !bg-[var(--fumero-text-muted)] hover:!bg-[var(--fumero-text-subtle)]" : ""}`}
         disabled={!busy && (!canSubmit || uploading)}
         onClick={() => (busy ? cancelGenerate() : void generate())}
         data-testid="make-button"

@@ -31,9 +31,8 @@ import {
   NAV_WIDTH_EXPANDED,
   useLayoutStore,
 } from "@/stores/useLayoutStore";
-import { AgentAvatar } from "@/components/AgentAvatar";
-import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
-import { useCompanyStore, getWorkspaceTheme } from "@/stores/useCompanyStore";
+import { Logo } from "@/components/logo";
+import { useCompanyStore } from "@/stores/useCompanyStore";
 import { workspaceFromPathname } from "@/lib/workspace-themes";
 import type { WorkspaceId } from "@/lib/types";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -178,31 +177,11 @@ export function MotorsSidebar() {
       >
         {collapsed ? (
           <div className="flex items-center justify-center px-2 pb-3 pt-5">
-            {activeWorkspace === "fumero" ? (
-              <AgentAvatar workspace="fumero" size="sm" />
-            ) : (
-              <span className="text-[15px] font-bold tracking-tight text-ws-accent">
-                M
-              </span>
-            )}
+            <Logo size="sm" />
           </div>
         ) : (
           <div className="px-5 pb-5 pt-6">
-            {activeWorkspace === "fumero" ? (
-              <FumeroLogoLockup compact className="w-full min-w-[128px]" />
-            ) : (
-              <>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
-                  MotorsAI
-                </p>
-                <p
-                  className="mt-1 text-[20px] font-semibold tracking-tight text-ws-accent"
-                  style={{ fontFamily: "var(--ws-font)" }}
-                >
-                  {getWorkspaceTheme(activeWorkspace).name}
-                </p>
-              </>
-            )}
+            <Logo size="lg" className="max-h-9 w-auto" />
           </div>
         )}
 

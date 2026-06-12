@@ -65,6 +65,7 @@ export type ContentStudioSettings = {
 
 export type PhotoStudioAspect =
   | "ig_1_1"
+  | "ig_4_5"
   | "stories_9_16"
   | "pinterest_2_3"
   | "hero_16_9";

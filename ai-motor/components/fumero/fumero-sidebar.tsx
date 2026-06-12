@@ -13,7 +13,6 @@ import {
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
-  Palette,
   Megaphone,
   Settings,
   ShoppingBag,
@@ -22,7 +21,7 @@ import {
 import { fetchJsonOptional } from "@/lib/fetch-json-client";
 import { cn } from "@/lib/utils";
 import { useLayoutStore } from "@/stores/useLayoutStore";
-import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
+import { Logo } from "@/components/logo";
 import { FumeroSidebarKpiFooter } from "@/components/fumero/ops/fumero-chat-kpi-strip";
 
 type NavItem = {
@@ -53,11 +52,13 @@ function isActive(pathname: string, href: string): boolean {
   if (href === "/fumero/code") {
     return pathname === "/fumero/code" || pathname.startsWith("/fumero/code/");
   }
-  if (href === "/fumero/brand-kit") {
-    return pathname === "/fumero/brand-kit" || pathname.startsWith("/fumero/brand-kit/");
-  }
   if (href === "/fumero/campaign-studio") {
-    return pathname === "/fumero/campaign-studio" || pathname.startsWith("/fumero/campaign-studio/");
+    return (
+      pathname === "/fumero/campaign-studio" ||
+      pathname.startsWith("/fumero/campaign-studio/") ||
+      pathname === "/fumero/brand-kit" ||
+      pathname.startsWith("/fumero/brand-kit/")
+    );
   }
   if (href === "/fumero/settings/context") {
     return pathname.startsWith("/fumero/settings");
@@ -130,8 +131,7 @@ export function FumeroSidebar() {
         label: "Studio",
         items: [
           { href: "/fumero/photo-studio", label: "Studio", icon: Camera },
-          { href: "/fumero/brand-kit", label: "Brand Kit", icon: Palette },
-          { href: "/fumero/campaign-studio", label: "Campaigns", icon: Megaphone },
+          { href: "/fumero/campaign-studio", label: "Campaign Studio", icon: Megaphone },
           { href: "/fumero/bouwen", label: "Bouwen", icon: Hammer },
           { href: "/fumero/code", label: "Code", icon: Code2 },
           { href: "/fumero/automations", label: "Automatisering", icon: Workflow },
@@ -168,7 +168,7 @@ export function FumeroSidebar() {
       )}
       aria-label="Fumero Studio navigatie"
     >
-      <div className="border-b border-[var(--fumero-border)] px-2 py-3 md:px-4 md:py-4">
+      <div className="border-b border-[var(--fumero-border)] px-3 py-4 md:px-4">
         <Link
           href="/fumero"
           aria-label="Naar Fumero Command Center"
@@ -179,15 +179,15 @@ export function FumeroSidebar() {
           )}
         >
           <div className={cn("hidden", !collapsed && "md:block")}>
-            <FumeroLogoLockup compact />
+            <Logo size="lg" className="max-h-9 w-auto" />
           </div>
           <div
             className={cn(
-              "mx-auto flex h-8 w-8 items-center justify-center rounded-[var(--fumero-radius)] bg-[var(--fumero-accent-muted)] md:hidden",
+              "mx-auto flex items-center justify-center md:hidden",
               collapsed && "md:flex"
             )}
           >
-            <FumeroLogoLockup compact variant="mascot" motion="idle" className="!p-0" />
+            <Logo size="sm" motion="idle" />
           </div>
         </Link>
       </div>

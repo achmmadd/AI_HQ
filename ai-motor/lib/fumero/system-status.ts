@@ -62,6 +62,12 @@ function statusLabel(level: SystemStatusLevel): string {
   }
 }
 
+function falConfigured(): boolean {
+  return Boolean(
+    process.env.FAL_KEY?.trim() || process.env.FAL_API_KEY?.trim()
+  );
+}
+
 export async function buildFumeroSystemStatus(): Promise<FumeroSystemStatus> {
   const checked_at = new Date().toISOString();
   const checks: SystemCheck[] = [];
@@ -93,7 +99,17 @@ export async function buildFumeroSystemStatus(): Promise<FumeroSystemStatus> {
     label: "AI-runtime (OpenRouter)",
     ok: openrouterOk,
     status: openrouterOk ? "ok" : "config_required",
-    hint: openrouterOk ? undefined : "OpenRouter API-key ontbreekt",
+    hint: openrouterOk ? undefined : "OPENROUTER_API_KEY ontbreekt op de server",
+  });
+
+  checks.push({
+    id: "fal_media",
+    label: "Campaign media (fal.ai)",
+    ok: falConfigured(),
+    status: falConfigured() ? "ok" : "config_required",
+    hint: falConfigured()
+      ? undefined
+      : "FAL_KEY of FAL_API_KEY ontbreekt — static/Reels in Campaign Studio",
   });
 
   checks.push({

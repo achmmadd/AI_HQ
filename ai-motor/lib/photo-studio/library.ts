@@ -59,20 +59,29 @@ export async function persistPhotoGeneration(
   return persistPhotoGenerationFromBuffer({ ...input, buffer });
 }
 
+export async function persistVideoGenerationFromBuffer(
+  input: Omit<PersistGenerationInput, "auto_variants" | "master_url"> & {
+    video_url: string;
+    buffer: Buffer;
+  }
+): Promise<PersistedGeneration> {
+  ensurePhotoStudioSchema();
+  const tracking_id = newPhotoTrackingId();
+  return persistWithBuffer(
+    { ...input, master_url: input.video_url, auto_variants: false, media_type: "video" },
+    tracking_id,
+    input.buffer,
+    "video"
+  );
+}
+
 export async function persistVideoGeneration(
   input: Omit<PersistGenerationInput, "auto_variants" | "master_url"> & {
     video_url: string;
   }
 ): Promise<PersistedGeneration> {
-  ensurePhotoStudioSchema();
-  const tracking_id = newPhotoTrackingId();
   const buffer = await downloadMediaBuffer(input.video_url, 300_000);
-  return persistWithBuffer(
-    { ...input, master_url: input.video_url, auto_variants: false, media_type: "video" },
-    tracking_id,
-    buffer,
-    "video"
-  );
+  return persistVideoGenerationFromBuffer({ ...input, buffer });
 }
 
 async function persistWithBuffer(

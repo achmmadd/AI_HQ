@@ -317,50 +317,51 @@ export function ContentStudioTileDrawer({
     try {
       const baseBlocks = blocksFromPrompt(item.user_prompt);
       const normalizedQuality = normalizeQualityForModel("nano-banana-2", "2K");
-      const results: VariationCandidate[] = [];
-
-      for (const mode of VARIATION_MODES) {
-        const prompt = composePromptFromBlocks(
-          varyPromptBlocks(baseBlocks, mode)
-        );
-        const res = await fetchJsonChecked<{
-          items?: Array<{
-            tracking_id: string;
-            master_url: string;
-            content_id: number | null;
-            generation_id: number;
-            variants: ContentStudioGridItem["variants"];
-          }>;
-          user_prompt?: string;
-        }>("/api/photo-studio/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            klant,
-            prompt,
-            model: "nano-banana-2",
-            aspect_ratio: aspectRatio,
-            quality: normalizedQuality,
-            count: 1,
-            auto_variants: true,
-          }),
-        });
-        const row = res.items?.[0];
-        if (row) {
-          results.push({
-            id: row.generation_id,
-            tracking_id: row.tracking_id,
-            user_prompt: res.user_prompt ?? prompt,
-            master_url: row.master_url,
-            media_type: "image",
-            content_id: row.content_id,
-            created_at: new Date().toISOString(),
-            variants: row.variants ?? [],
-            variationMode: mode,
-          });
-        }
-      }
+      const results = (
+        await Promise.all(
+          VARIATION_MODES.map(async (mode) => {
+            const prompt = composePromptFromBlocks(
+              varyPromptBlocks(baseBlocks, mode)
+            );
+            const res = await fetchJsonChecked<{
+              items?: Array<{
+                tracking_id: string;
+                master_url: string;
+                content_id: number | null;
+                generation_id: number;
+                variants: ContentStudioGridItem["variants"];
+              }>;
+              user_prompt?: string;
+            }>("/api/photo-studio/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                klant,
+                prompt,
+                model: "nano-banana-2",
+                aspect_ratio: aspectRatio,
+                quality: normalizedQuality,
+                count: 1,
+                auto_variants: true,
+              }),
+            });
+            const row = res.items?.[0];
+            if (!row) return null;
+            return {
+              id: row.generation_id,
+              tracking_id: row.tracking_id,
+              user_prompt: res.user_prompt ?? prompt,
+              master_url: row.master_url,
+              media_type: "image" as const,
+              content_id: row.content_id,
+              created_at: new Date().toISOString(),
+              variants: row.variants ?? [],
+              variationMode: mode,
+            };
+          })
+        )
+      ).filter((row): row is NonNullable<typeof row> => row !== null);
 
       if (!results.length) throw new Error("Geen variaties ontvangen");
       setVariations(results);

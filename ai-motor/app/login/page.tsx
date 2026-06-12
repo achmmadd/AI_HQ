@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowLeft, ArrowRight, Cpu } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LandingBackground } from "@/components/landing/shared";
-import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
+import { Logo } from "@/components/logo";
 import { MOTORSAI_BRAND } from "@/lib/landing-content";
 
 function LoginForm() {
@@ -90,18 +90,13 @@ function LoginForm() {
 
       <Card className="border-white/10 bg-white/[0.04] backdrop-blur-xl">
         <CardHeader className="text-center">
-          {fromFumero ? (
-            <FumeroLogoLockup
-              compact
-              variant="mascot"
-              elevate
-              className="mx-auto mb-1 !p-0 [&_img]:!h-14 [&_img]:!max-w-none"
-            />
-          ) : (
-            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#69C400]/15 ring-1 ring-[#69C400]/25">
-              <Cpu className="h-5 w-5 text-[#69C400]" aria-hidden />
-            </div>
-          )}
+          <Logo
+            size="lg"
+            elevate
+            motion="wave"
+            wrapperClassName="mx-auto mb-1"
+            className="!h-14 !max-w-none"
+          />
           <CardTitle className="text-white">
             {fromFumero ? "Fumero Studio" : MOTORSAI_BRAND.name}
           </CardTitle>

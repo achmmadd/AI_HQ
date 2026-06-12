@@ -2,53 +2,33 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <title>Fumero logo preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logo preview</title>
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, sans-serif; }
-    section { padding: 32px; }
-    .dark { background: #0c0c0e; color: #fff; }
-    .light { background: #fafafa; color: #111; }
-    .row { display: flex; flex-wrap: wrap; gap: 32px; align-items: center; margin-top: 16px; }
-    img { display: block; }
-    .full-compact { height: 32px; width: auto; }
-    .full-regular { height: 48px; width: auto; max-width: 240px; }
-    .mascot-compact { height: 32px; width: auto; }
-    .mascot-regular { height: 64px; width: auto; }
-    .elevate {
-      filter: drop-shadow(0 0 1px rgba(255,255,255,0.9))
-        drop-shadow(0 0 12px rgba(255,255,255,0.35));
-    }
-    .card { padding: 16px; border-radius: 12px; border: 1px solid rgba(128,128,128,.25); }
-    h2 { margin: 0 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .08em; opacity: .7; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; }
+    .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .panel { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; }
+    .panel.dark { background: #0c0c0e; border-color: #2a2a36; color: #ededef; }
+    .panel.light { background: #f6f7f9; }
+    .logo-compact { height: 32px; width: auto; object-fit: contain; }
+    .logo-regular { height: 96px; width: auto; object-fit: contain; }
+    .elevate { filter: drop-shadow(0 0 12px rgba(255,255,255,0.32)); }
   </style>
 </head>
 <body>
-  <section class="dark">
-    <h2>Dark background (met glow)</h2>
-    <div class="row">
-      <div class="card">
-        <img src="/brands/fumero-logo.png" alt="" class="full-compact elevate" />
-        <img src="/brands/fumero-logo.png" alt="" class="full-regular elevate" style="margin-top:12px" />
-      </div>
-      <div class="card">
-        <img src="/brands/smokey-mascot.png" alt="" class="mascot-compact elevate" />
-        <img src="/brands/smokey-mascot.png" alt="" class="mascot-regular elevate" style="margin-top:12px" />
-      </div>
-    </div>
-  </section>
-  <section class="light">
-    <h2>Light background (sidebar)</h2>
-    <div class="row">
-      <div class="card">
-        <img src="/brands/fumero-logo.png" alt="" class="full-compact" />
-        <img src="/brands/fumero-logo.png" alt="" class="full-regular" style="margin-top:12px" />
-      </div>
-      <div class="card">
-        <img src="/brands/smokey-mascot.png" alt="" class="mascot-compact" />
-        <img src="/brands/smokey-mascot.png" alt="" class="mascot-regular" style="margin-top:12px" />
-      </div>
-    </div>
-  </section>
+  <h1>Logo preview</h1>
+  <p>Canonical asset: <code>/brands/logo.svg</code></p>
+  <div class="grid">
+    <section class="panel dark">
+      <h2>Dark background</h2>
+      <img src="/brands/logo.svg" alt="" class="logo-compact elevate" />
+      <img src="/brands/logo.svg" alt="" class="logo-regular elevate" style="margin-top:12px;display:block" />
+    </section>
+    <section class="panel light">
+      <h2>Light background</h2>
+      <img src="/brands/logo.svg" alt="" class="logo-compact" />
+      <img src="/brands/logo.svg" alt="" class="logo-regular" style="margin-top:12px;display:block" />
+    </section>
+  </div>
 </body>
 </html>

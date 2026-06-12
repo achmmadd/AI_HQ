@@ -58,7 +58,7 @@ export function FumeroShell({
             flush || immersive
               ? "flex min-h-0 flex-1 flex-col overflow-hidden"
               : "flex-1 overflow-y-auto",
-            "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+            "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
           )}
         >
           {flush || immersive ? children : (

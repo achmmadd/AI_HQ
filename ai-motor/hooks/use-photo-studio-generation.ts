@@ -5,6 +5,10 @@ import { DEFAULT_STUDIO_SETTINGS } from "@/components/photo-studio/content-studi
 import { useGenerationProgress } from "@/hooks/use-generation-progress";
 import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import {
+  STUDIO_IMAGE_ETA_MS,
+  STUDIO_VIDEO_ETA_MS,
+} from "@/lib/photo-studio/generation-timeouts";
+import {
   MAX_REF_IMAGES,
   normalizeQualityForModel,
   type ContentStudioGridItem,
@@ -36,11 +40,11 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
   const [creditsLabel, setCreditsLabel] = useState("Onbeperkt ∞");
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [startFrame, setStartFrame] = useState<RefImage | null>(null);
-  const [endFrame, setEndFrame] = useState<RefImage | null>(null);
   const frameFileRef = useRef<HTMLInputElement>(null);
-  const [pendingFrameTarget, setPendingFrameTarget] = useState<"start" | "end" | null>(null);
   const generateAbortRef = useRef<AbortController | null>(null);
-  const genProgress = useGenerationProgress(mediaType === "video" ? 18_000 : 10_000);
+  const genProgress = useGenerationProgress(
+    mediaType === "video" ? STUDIO_VIDEO_ETA_MS : STUDIO_IMAGE_ETA_MS
+  );
 
   const loadLibrary = useCallback(async () => {
     try {
@@ -88,7 +92,6 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
 
   const onGenerated = useCallback((newItems: ContentStudioGridItem[]) => {
     setItems((prev) => [...newItems, ...prev]);
-    setRefreshKey((n) => n + 1);
   }, []);
 
   const patchSettings = useCallback((patch: Partial<ContentStudioSettings>) => {
@@ -191,8 +194,8 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
     [klant, maxRefs, refs.length]
   );
 
-  const uploadFrameForTarget = useCallback(
-    async (file: File, target: "start" | "end") => {
+  const uploadStartFrame = useCallback(
+    async (file: File) => {
       setUploading(true);
       setError("");
       try {
@@ -205,9 +208,7 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
         );
         if (!data.media_url) throw new Error(data.error || "Upload mislukt");
         const preview = URL.createObjectURL(file);
-        const ref = { url: data.media_url, preview };
-        if (target === "start") setStartFrame(ref);
-        else setEndFrame(ref);
+        setStartFrame({ url: data.media_url, preview });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Upload mislukt");
       } finally {
@@ -266,7 +267,6 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
           model: settings.model,
           image_urls: refs.map((r) => r.url),
           start_image_url: startFrame?.url,
-          end_image_url: endFrame?.url,
           aspect_ratio: settings.aspect_ratio,
           quality: settings.quality,
           count: isVideo ? 1 : settings.count,
@@ -295,7 +295,6 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
       setPrompt("");
       if (mediaType === "video") {
         setStartFrame(null);
-        setEndFrame(null);
       }
     } catch (e) {
       genProgress.reset();
@@ -316,7 +315,6 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
     klant,
     settings,
     startFrame,
-    endFrame,
     isVideo,
     skeletonSlots,
     currentSkeletonMode,
@@ -357,14 +355,10 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
     uploading,
     fileRef,
     frameFileRef,
-    pendingFrameTarget,
-    setPendingFrameTarget,
     creditsLabel,
     creditsLoading,
     startFrame,
     setStartFrame,
-    endFrame,
-    setEndFrame,
     maxRefs,
     isVideo,
     isEdit,
@@ -372,7 +366,7 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
     generate,
     cancelGenerate,
     uploadImages,
-    uploadFrameForTarget,
+    uploadStartFrame,
     removeRef,
     applyStarter,
     onGenerated,

@@ -31,8 +31,14 @@ function isActive(pathname: string, match: string): boolean {
   return pathname === match || pathname.startsWith(`${match}/`);
 }
 
+const HIDE_ON_PREFIXES = ["/fumero/campaign-studio"] as const;
+
 export function FumeroMobileNav() {
   const pathname = usePathname() ?? "";
+
+  if (HIDE_ON_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return null;
+  }
 
   return (
     <nav

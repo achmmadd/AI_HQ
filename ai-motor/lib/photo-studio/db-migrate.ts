@@ -88,6 +88,17 @@ export function ensurePhotoStudioSchema(): void {
 
     CREATE INDEX IF NOT EXISTS idx_content_studio_templates_klant
       ON content_studio_templates(klant, is_recipe, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS photo_studio_brand_kits (
+      id TEXT PRIMARY KEY,
+      klant TEXT NOT NULL,
+      data_json TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_photo_studio_brand_kits_klant
+      ON photo_studio_brand_kits(klant, updated_at DESC);
   `);
 
   done = true;

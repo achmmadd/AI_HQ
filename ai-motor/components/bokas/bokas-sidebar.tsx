@@ -12,6 +12,7 @@ import {
   TrendingUp,
   UtensilsCrossed,
 } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -52,7 +53,7 @@ export function BokasSidebar() {
     <aside className="sidebar">
       <div className="sb-top">
         <div className="sb-logo">
-          <div className="sb-mark">B</div>
+          <Logo size="sm" />
           <div>
             <div className="sb-name">Bokas</div>
             <div className="sb-domain">Restaurant · operations</div>

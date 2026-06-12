@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Check, Monitor } from "lucide-react";
+import { Check } from "lucide-react";
+import { GhostAvatar } from "@/components/AgentAvatar";
 import { BUILDER_PREVIEW_FEATURES } from "@/lib/fumero/builder-content";
 import {
   BuilderDeviceToggle,
@@ -49,8 +50,11 @@ export function BuilderPreviewEmpty({
             )}
           >
             <div className="builder-preview-empty__illustration relative">
-              <div className="builder-preview-empty__icon-wrap">
-                <Monitor className="h-9 w-9 text-[var(--builder-text-secondary)]" strokeWidth={1.5} />
+              <div className="builder-preview-empty__icon-wrap flex items-center justify-center">
+                <GhostAvatar
+                  motion={reduceMotion ? false : "idle"}
+                  className="h-10 w-10"
+                />
               </div>
             </div>
 

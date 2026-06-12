@@ -28,8 +28,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AgentAvatar } from "@/components/AgentAvatar";
-import { FumeroLogoLockup } from "@/components/fumero-logo-lockup";
+import { Logo } from "@/components/logo";
 import {
   NAV_WIDTH_COLLAPSED,
   NAV_WIDTH_EXPANDED,
@@ -190,12 +189,12 @@ export function PremiumSidebar() {
         <div className={cn("px-4 pb-4 pt-5", collapsed && "flex justify-center px-2")}>
           {collapsed ? (
             activeWorkspace === "fumero" ? (
-              <AgentAvatar workspace="fumero" size="sm" />
+              <Logo size="sm" motion="idle" />
             ) : (
               <span className="text-[15px] font-bold tracking-tight text-[var(--os-accent)]">M</span>
             )
           ) : activeWorkspace === "fumero" ? (
-            <FumeroLogoLockup compact className="w-full min-w-[128px]" />
+            <Logo size="lg" className="max-h-9 w-auto" />
           ) : activeWorkspace === "bokas" ? (
             <span className="font-bold tracking-[0.2em] text-[var(--os-accent)]">BOKAS</span>
           ) : (
