@@ -4,17 +4,17 @@
  *
  *   BASE_URL=http://127.0.0.1:3040 node scripts/test-bouwen-e2e.mjs
  */
-import { createFumeroTestToken } from "./lib/motorsai-test-auth.mjs";
+import { createFumeroTestCookie } from "./lib/motorsai-test-auth.mjs";
 
 const base = (process.env.BASE_URL || "http://127.0.0.1:3040").replace(/\/$/, "");
 const maxWaitMs = Number(process.env.BOUWEN_E2E_MAX_MS || 600_000);
 
-const token = await createFumeroTestToken();
+const cookie = await createFumeroTestCookie(base);
 
 const headers = {
   Accept: "application/json",
   "Content-Type": "application/json",
-  Cookie: `motorsai_token=${token}`,
+  Cookie: cookie,
 };
 
 const PROMPTS = [

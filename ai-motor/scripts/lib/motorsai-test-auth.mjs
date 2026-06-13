@@ -56,3 +56,23 @@ export async function createFumeroTestToken() {
   const sig = await hmacSha256(body);
   return `${body}.${sig}`;
 }
+
+/** Prefer login cookie — matches running server's session secret. */
+export async function createFumeroTestCookie(baseUrl) {
+  const explicit = process.env.MOTORSAI_TOKEN?.trim();
+  if (explicit) return `motorsai_token=${explicit}`;
+
+  const password = process.env.MOTORSAI_PASSWORD?.trim();
+  if (password) {
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.token) return `motorsai_token=${json.token}`;
+  }
+
+  const token = await createFumeroTestToken();
+  return `motorsai_token=${token}`;
+}
