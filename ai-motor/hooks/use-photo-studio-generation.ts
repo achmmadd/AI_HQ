@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_STUDIO_SETTINGS } from "@/components/photo-studio/content-studio-prompt-bar";
 import { useGenerationProgress } from "@/hooks/use-generation-progress";
-import { fetchJsonChecked } from "@/lib/fetch-json-client";
+import { failedResponseToError, fetchJsonChecked } from "@/lib/fetch-json-client";
 import {
   STUDIO_IMAGE_ETA_MS,
   STUDIO_VIDEO_ETA_MS,
@@ -18,6 +18,7 @@ import {
   type StarterTemplate,
 } from "@/lib/photo-studio/types";
 import { resolveEffectivePrompt } from "@/lib/fumero/worldclass-studio/prompt-submit";
+import { pollStudioVideoJob } from "@/lib/photo-studio/studio-video-client";
 import type { CompanyId } from "@/lib/types";
 
 export type RefImage = { url: string; preview: string };
@@ -244,18 +245,7 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
     onSkeletonCount(skeletonSlots, currentSkeletonMode);
 
     try {
-      const data = await fetchJsonChecked<{
-        error?: string;
-        items?: Array<{
-          tracking_id: string;
-          master_url: string;
-          content_id: number | null;
-          generation_id: number;
-          media_type?: ContentStudioMediaType;
-          variants: ContentStudioGridItem["variants"];
-        }>;
-        user_prompt?: string;
-      }>("/api/photo-studio/generate", {
+      const res = await fetch("/api/photo-studio/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -275,8 +265,50 @@ export function usePhotoStudioGeneration(klant: CompanyId) {
         }),
       });
 
+      const text = await res.text();
+      let data: {
+        error?: string;
+        job_id?: string;
+        jobId?: string;
+        status?: string;
+        items?: Array<{
+          tracking_id: string;
+          master_url: string;
+          content_id: number | null;
+          generation_id: number;
+          media_type?: ContentStudioMediaType;
+          variants: ContentStudioGridItem["variants"];
+        }>;
+        user_prompt?: string;
+      };
+      try {
+        data = JSON.parse(text) as typeof data;
+      } catch {
+        throw failedResponseToError(text, res.status);
+      }
+
+      if (!res.ok) {
+        throw failedResponseToError(text, res.status);
+      }
+
+      if (res.status === 202 && isVideo) {
+        const jobId = data.job_id ?? data.jobId;
+        if (!jobId) throw new Error("Async video job starten mislukt — geen job_id.");
+
+        const finished = await pollStudioVideoJob(jobId, {
+          klant,
+          signal: ac.signal,
+          onProgress: (msg) => {
+            if (msg) genProgress.setProgressMessage(msg);
+          },
+        });
+        data = finished;
+      }
+
       const rawItems = Array.isArray(data.items) ? data.items : [];
-      if (!rawItems.length) throw new Error("Geen afbeelding ontvangen");
+      if (!rawItems.length) {
+        throw new Error(isVideo ? "Geen video ontvangen" : "Geen afbeelding ontvangen");
+      }
 
       const gridItems: ContentStudioGridItem[] = rawItems.map((item) => ({
         id: item.generation_id,

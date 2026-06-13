@@ -1,6 +1,7 @@
 import db from "@/lib/db/database";
 import { ensureCampaignSchema } from "@/lib/photo-studio/campaign/db-migrate";
 import type { CampaignPackData, CampaignPackRow, CampaignPackStatus } from "@/lib/photo-studio/campaign/types";
+import type { CompanyId } from "@/lib/types";
 
 type DbRow = {
   id: string;
@@ -16,7 +17,7 @@ function rowToPack(row: DbRow): CampaignPackRow {
   const data = JSON.parse(row.data_json) as CampaignPackData;
   return {
     id: row.id,
-    klant: "fumero",
+    klant: row.klant as CompanyId,
     status: row.status as CampaignPackStatus,
     zip_path: row.zip_path,
     created_at: row.created_at,
@@ -25,16 +26,21 @@ function rowToPack(row: DbRow): CampaignPackRow {
   };
 }
 
-export function getCampaignPack(id: string): CampaignPackRow | null {
+export function getCampaignPack(id: string, klant?: CompanyId): CampaignPackRow | null {
   ensureCampaignSchema();
-  const row = db
-    .prepare(`SELECT * FROM fumero_campaign_packs WHERE id = ? AND klant = 'fumero'`)
-    .get(id) as DbRow | undefined;
+  const row = klant
+    ? (db
+        .prepare(`SELECT * FROM fumero_campaign_packs WHERE id = ? AND klant = ?`)
+        .get(id, klant) as DbRow | undefined)
+    : (db
+        .prepare(`SELECT * FROM fumero_campaign_packs WHERE id = ?`)
+        .get(id) as DbRow | undefined);
   return row ? rowToPack(row) : null;
 }
 
 export function saveCampaignPack(
   id: string,
+  klant: CompanyId,
   data: CampaignPackData,
   status: CampaignPackStatus,
   zipPath?: string | null
@@ -48,28 +54,28 @@ export function saveCampaignPack(
   if (existing) {
     db.prepare(
       `UPDATE fumero_campaign_packs
-       SET data_json = ?, status = ?, zip_path = ?, updated_at = datetime('now')
+       SET data_json = ?, status = ?, zip_path = ?, klant = ?, updated_at = datetime('now')
        WHERE id = ?`
-    ).run(json, status, zipPath ?? null, id);
+    ).run(json, status, zipPath ?? null, klant, id);
   } else {
     db.prepare(
       `INSERT INTO fumero_campaign_packs (id, klant, status, data_json, zip_path)
-       VALUES (?, 'fumero', ?, ?, ?)`
-    ).run(id, status, json, zipPath ?? null);
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(id, klant, status, json, zipPath ?? null);
   }
 
-  const saved = getCampaignPack(id);
+  const saved = getCampaignPack(id, klant);
   if (!saved) throw new Error("Campaign pack opslaan mislukt.");
   return saved;
 }
 
-export function listCampaignPacks(limit = 20): CampaignPackRow[] {
+export function listCampaignPacks(klant: CompanyId, limit = 20): CampaignPackRow[] {
   ensureCampaignSchema();
   const rows = db
     .prepare(
-      `SELECT * FROM fumero_campaign_packs WHERE klant = 'fumero'
+      `SELECT * FROM fumero_campaign_packs WHERE klant = ?
        ORDER BY updated_at DESC LIMIT ?`
     )
-    .all(limit) as DbRow[];
+    .all(klant, limit) as DbRow[];
   return rows.map(rowToPack);
 }

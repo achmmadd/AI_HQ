@@ -291,3 +291,10 @@ export {
   DEFAULT_CHAT_MODEL,
   DEFAULT_RESEARCH_MODEL,
 } from "@/lib/chat-models";
+
+export {
+  resolveCodeModelForTurn,
+  getMotorCodeModel,
+  DEFAULT_CODE_MODEL_HEAVY,
+  PARETO_CODE_MODEL,
+} from "@/lib/code-agent/code-models";

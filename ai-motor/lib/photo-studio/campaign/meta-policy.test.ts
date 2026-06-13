@@ -16,11 +16,22 @@ test("checkMetaPolicy rejects iDEAL mention", () => {
   assert.equal(result.pass, false);
 });
 
-test("checkMetaPolicy passes clean Fumero copy", () => {
+test("checkMetaPolicy passes clean Fumero copy with fumero_hhc profile", () => {
   const result = checkMetaPolicy(
-    "Premium HHC vape bij Fumero. Discreet verpakt, snelle levering. 18+."
+    "Premium HHC vape bij Fumero. Discreet verpakt, snelle levering. 18+.",
+    "fumero_hhc"
   );
   assert.equal(result.pass, true);
+});
+
+test("checkMetaPolicy default_ecom allows emoji", () => {
+  const result = checkMetaPolicy("Premium product 🔥", "default_ecom");
+  assert.equal(result.pass, true);
+});
+
+test("checkMetaPolicy fumero_hhc rejects emoji", () => {
+  const result = checkMetaPolicy("Premium product 🔥", "fumero_hhc");
+  assert.equal(result.pass, false);
 });
 
 test("sanitizeHeadline enforces 40 char limit", () => {

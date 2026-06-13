@@ -1,6 +1,11 @@
 import type { BrandKitRow } from "@/lib/photo-studio/brand-kit/types";
-import { FUMERO_BRAND_VOICE, FUMERO_FACTS } from "@/lib/photo-studio/campaign/brand-voice";
 import { callCampaignLlmJson } from "@/lib/photo-studio/campaign/llm";
+import {
+  buildBrandFacts,
+  buildBrandVoice,
+  localeLabel,
+  resolveCampaignLocale,
+} from "@/lib/photo-studio/campaign/tenant-profile";
 import type {
   AdAngleId,
   AdAngleTemplate,
@@ -76,9 +81,11 @@ function buildBrandContext(kit: BrandKitRow): string {
   const colors = kit.colors.map((c) => c.hex).join(", ");
   return JSON.stringify(
     {
+      brand: kit.name,
       product: kit.product_name,
       price: kit.price ? `${kit.price} ${kit.currency}` : null,
       description: kit.description ? String(kit.description).slice(0, 400) : "",
+      locale: resolveCampaignLocale(kit),
       reviews,
       colors,
       source_url: kit.source_url,
@@ -149,16 +156,19 @@ export async function generateAdStrategy(
     return buildTemplateStrategy(kit, goal);
   }
 
+  const locale = resolveCampaignLocale(kit);
+  const lang = localeLabel(locale);
   const angles = Object.values(AD_ANGLE_TEMPLATES);
-  const system = `Je bent een senior Meta Ads strateeg voor ${FUMERO_BRAND_VOICE}
+  const system = `Je bent een senior Meta Ads strateeg voor ${buildBrandVoice(kit)}
 Maak precies 3 advertentieconcepten — één per angle: prijs, vertrouwen, probleem_oplossing.
 Antwoord ALLEEN met geldig JSON:
 {"concepts":[{"angle":"prijs|vertrouwen|probleem_oplossing","hook":"...","visual_direction":"...","rationale":"..."}]}
-Hooks: kort, Nederlands, geen gezondheidsclaims, geen emoji.
+Hooks: kort, ${lang}, geen gezondheidsclaims, geen emoji.
 Visual direction: concreet beeld/scene voor image-to-image generatie.`;
 
   const user = [
     `Campagnedoel: ${goalLabel(goal)} (${goal})`,
+    `Taal: ${lang}`,
     `Doel-hint: ${GOAL_VISUAL_HINTS[goal]}`,
     "",
     "Brand Kit:",
@@ -173,13 +183,14 @@ Visual direction: concreet beeld/scene voor image-to-image generatie.`;
       .join("\n"),
     "",
     "Feiten:",
-    FUMERO_FACTS.join("\n"),
+    buildBrandFacts(kit).join("\n"),
   ].join("\n");
 
   const llm = await callCampaignLlmJson<LlmStrategyResponse>({
     system,
     user,
     n8nType: "campaign_strategy",
+    klant: kit.klant,
   });
 
   if (!llm.ok) {

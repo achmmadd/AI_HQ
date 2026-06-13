@@ -12,7 +12,7 @@ export function campaignDataRoot(): string {
 
 export function campaignPackDir(packId: string): string {
   const dir = path.join(campaignDataRoot(), packId);
-  for (const sub of ["static", "video"]) {
+  for (const sub of ["static", "video", "refs"]) {
     const subDir = path.join(dir, sub);
     if (!fs.existsSync(subDir)) fs.mkdirSync(subDir, { recursive: true });
   }

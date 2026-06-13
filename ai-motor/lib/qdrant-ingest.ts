@@ -1,5 +1,8 @@
 import { embedForQdrant } from "@/lib/knowledge-service";
-import { qdrantCollectionForScope } from "@/lib/qdrant-collection";
+import {
+  logQdrantCollectionPlan,
+  qdrantCollectionForScope,
+} from "@/lib/qdrant-collection";
 import {
   buildMultitenantPayloadFields,
   type QdrantPayloadSource,
@@ -101,6 +104,7 @@ export async function upsertKnowledgeChunks(opts: {
   if (!chunks.length) return { error: "Geen chunks" };
 
   const collection = collectionForKlant(klant);
+  logQdrantCollectionPlan("ingest", klant);
   const ingested_at = new Date().toISOString();
   const multitenant = buildMultitenantPayloadFields({
     tenant: klant,

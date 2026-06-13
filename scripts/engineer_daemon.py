@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT / "logs"
 LOCKDOWN_FLAG = ROOT / "data" / "lockdown.flag"
+BRIDGE_DISABLED_FLAG = ROOT / "bridge_disabled.flag"
 CLOUDFLARED_CONTAINER = "omega-cloudflared"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -66,6 +67,14 @@ def _send_telegram(text: str) -> bool:
 
 
 BRIDGE_CONTAINER = "omega-telegram-bridge"
+
+
+def _bridge_intentionally_disabled() -> bool:
+    """Bridge bewust uit (bv. OpenClaw owns Pietjebel token) — geen auto-repair."""
+    if BRIDGE_DISABLED_FLAG.exists():
+        return True
+    v = os.environ.get("OMEGA_BRIDGE_DISABLED", "").strip().lower()
+    return v in ("1", "true", "yes")
 
 
 def check_bridge():
@@ -218,7 +227,11 @@ if __name__ == "__main__":
             # ——— Bridge check: elke INTERVAL seconden ———
             if now - last_bridge_check >= INTERVAL:
                 last_bridge_check = now
-                if check_bridge():
+                if _bridge_intentionally_disabled():
+                    logger.info(
+                        "Engineer check: Omega-bridge bewust uitgeschakeld (OpenClaw/token); skip auto-repair"
+                    )
+                elif check_bridge():
                     logger.info("Engineer check: Omega-bridge draait")
                 else:
                     logger.warning("Engineer check: Omega-bridge niet gevonden — auto-repair")

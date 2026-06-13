@@ -9,6 +9,7 @@ import type {
 } from "@/lib/photo-studio/brand-kit/types";
 import { dedupeBrandKitColors } from "@/lib/photo-studio/brand-kit/dedupe-colors";
 import { emptyBrandKitDraft } from "@/lib/photo-studio/brand-kit/types";
+import { detectLocaleFromUrl } from "@/lib/photo-studio/campaign/tenant-profile";
 
 const IMPORT_TIMEOUT_MS = 25_000;
 
@@ -134,6 +135,7 @@ export async function importBrandKitFromUrl(url: string): Promise<BrandKitImport
     logo_url: BRAND_LOGO.src,
     status: "draft",
     import_warnings: warnings,
+    locale: detectLocaleFromUrl(trimmed) ?? "nl",
   };
 
   return { ok: true, draft, elapsed_ms: Date.now() - started };

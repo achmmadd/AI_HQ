@@ -3,7 +3,8 @@ import { FAL_VIDEO_TIMEOUT_MS } from "@/lib/photo-studio/generation-timeouts";
 import { contentTypeForKlant, type PhotoStudioContentType } from "@/lib/photo-studio/fal";
 
 const MINIMAX_I2V = "fal-ai/minimax/video-01/image-to-video";
-const MINIMAX_T2V = "fal-ai/minimax/video-01/text-to-video";
+/** fal model page: T2V lives at /video-01 (no /text-to-video suffix). */
+const MINIMAX_T2V = "fal-ai/minimax/video-01";
 
 const VIDEO_MOTION: Record<PhotoStudioContentType, string> = {
   product:

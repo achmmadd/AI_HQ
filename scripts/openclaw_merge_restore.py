@@ -2,7 +2,7 @@
 """
 Merge Factory OS-relevant config into ~/.openclaw/openclaw.json:
 - models.providers from agents/main/agent/models.json (indien aanwezig)
-- agents.defaults.model.primary (Gemini flash)
+- agents.defaults.model.primary (deepseek-v4-pro via OpenRouter)
 - channels.telegram from TELEGRAM_* (eerst ~/AI_HQ/.env, dan .env.zwartehand, .env.bak.webui)
 - plugins.telegram enabled
 
@@ -69,7 +69,7 @@ def main() -> None:
     defaults.setdefault("maxConcurrent", 4)
     defaults.setdefault("subagents", {"maxConcurrent": 8})
     model = defaults.setdefault("model", {})
-    model.setdefault("primary", "google/gemini-1.5-flash")
+    model.setdefault("primary", "openrouter/deepseek/deepseek-v4-pro")
 
     if token:
         allow = ["*"] if not chat else [chat]

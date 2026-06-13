@@ -92,7 +92,7 @@ export function Logo({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center",
+        "fumero-logo-wrap inline-flex shrink-0 items-center justify-center",
         wrapperClassName
       )}
     >

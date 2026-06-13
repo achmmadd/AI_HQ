@@ -17,9 +17,25 @@ test("wizardStepIndex en navigatie", () => {
   assert.equal(wizardNextStep("preview"), null);
 });
 
-test("sanitizeWizardStepAfterRefresh reset generate naar concepts", () => {
+test("sanitizeWizardStepAfterRefresh reset generate en preview naar concepts", () => {
   assert.equal(sanitizeWizardStepAfterRefresh("generate"), "concepts");
+  assert.equal(sanitizeWizardStepAfterRefresh("preview"), "concepts");
   assert.equal(sanitizeWizardStepAfterRefresh("goal"), "goal");
+});
+
+test("sanitizeWizardStepAfterRefresh behoudt generate/preview met actieve session job", () => {
+  const session = {
+    step: "generate" as const,
+    jobId: "job_1",
+    selectedKitId: "bk_1",
+    goal: "verkoop" as const,
+    startedAt: Date.now(),
+  };
+  assert.equal(sanitizeWizardStepAfterRefresh("generate", session), "generate");
+  assert.equal(
+    sanitizeWizardStepAfterRefresh("preview", { ...session, step: "preview" }),
+    "preview"
+  );
 });
 
 test("canAdvanceWizardStep vereist brand kit op stap 1", () => {

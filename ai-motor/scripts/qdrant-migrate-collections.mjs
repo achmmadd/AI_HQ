@@ -6,18 +6,22 @@
  *   node scripts/qdrant-migrate-collections.mjs --dry-run
  *   node scripts/qdrant-migrate-collections.mjs --klant fumero
  *   node scripts/qdrant-migrate-collections.mjs --klant bokas --batch 200
+ *   node scripts/qdrant-migrate-collections.mjs --delete-legacy --klant fumero
+ *   node scripts/qdrant-migrate-collections.mjs --delete-legacy --dry-run
  *
  * Env:
  *   QDRANT_URL                  (default http://127.0.0.1:6333)
  *   QDRANT_COLLECTION           legacy bron-collectie (default factory_os)
  *   QDRANT_COLLECTION_PREFIX    doel-prefix (default factory_os)
  *
- * --dry-run: alleen tellen en rapporteren; geen upserts.
+ * --dry-run: alleen tellen en rapporteren; geen upserts/deletes.
+ * --delete-legacy: verwijder gemigreerde punten (client=klant) uit legacy bucket.
  * Zonder --klant: migreer fumero én bokas.
  */
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const deleteLegacy = args.includes("--delete-legacy");
 const klantArgIdx = args.indexOf("--klant");
 const batchArgIdx = args.indexOf("--batch");
 
@@ -144,6 +148,60 @@ async function upsertPoints(collection, points) {
   }
 }
 
+async function deleteLegacyPoints(klant) {
+  console.log(
+    `\n── ${klant}: delete from ${LEGACY_COLLECTION} ${dryRun ? "(dry-run)" : ""}`
+  );
+
+  if (!(await collectionExists(LEGACY_COLLECTION))) {
+    console.log(`  ⚠ Bron-collectie ${LEGACY_COLLECTION} ontbreekt — overslaan.`);
+    return { klant, deleted: 0, skipped: true };
+  }
+
+  let offset = undefined;
+  let scanned = 0;
+  let deleted = 0;
+
+  for (;;) {
+    const { points, nextOffset, missing } = await scrollLegacyPoints(klant, offset);
+    if (missing) break;
+    if (!points.length) break;
+
+    scanned += points.length;
+    const ids = points.map((p) => p.id);
+
+    if (dryRun) {
+      console.log(`  … ${scanned} punten gevonden (batch ${ids.length})`);
+    } else {
+      const { res, text } = await qdrantFetch(
+        `/collections/${encodeURIComponent(LEGACY_COLLECTION)}/points/delete?wait=true`,
+        {
+          method: "POST",
+          body: JSON.stringify({ points: ids }),
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`Delete from ${LEGACY_COLLECTION} failed: ${res.status} ${text}`);
+      }
+      deleted += ids.length;
+      console.log(`  ✓ ${deleted} punten verwijderd`);
+    }
+
+    if (nextOffset == null) break;
+    offset = nextOffset;
+  }
+
+  if (scanned === 0) {
+    console.log(`  · Geen punten met client=${klant} in ${LEGACY_COLLECTION}`);
+  } else if (dryRun) {
+    console.log(`  ✓ Dry-run: ${scanned} punten zouden uit ${LEGACY_COLLECTION} gaan`);
+  } else {
+    console.log(`  ✓ Klaar: ${deleted} punten verwijderd uit ${LEGACY_COLLECTION}`);
+  }
+
+  return { klant, deleted: dryRun ? 0 : deleted, scanned, skipped: false };
+}
+
 async function migrateKlant(klant) {
   const target = targetCollection(klant);
   console.log(`\n── ${klant}: ${LEGACY_COLLECTION} → ${target} ${dryRun ? "(dry-run)" : ""}`);
@@ -205,25 +263,45 @@ async function main() {
   console.log(`  URL:     ${QDRANT_URL}`);
   console.log(`  Bron:    ${LEGACY_COLLECTION}`);
   console.log(`  Prefix:  ${PREFIX}`);
-  console.log(`  Modus:   ${dryRun ? "dry-run (geen writes)" : "live copy"}`);
+  console.log(
+    `  Modus:   ${
+      deleteLegacy
+        ? dryRun
+          ? "delete-legacy dry-run"
+          : "delete-legacy live"
+        : dryRun
+          ? "dry-run (geen writes)"
+          : "live copy"
+    }`
+  );
   console.log(`  Klanten: ${tenants.join(", ")}`);
 
   const summary = [];
   for (const klant of tenants) {
-    summary.push(await migrateKlant(klant));
+    if (deleteLegacy) {
+      summary.push(await deleteLegacyPoints(klant));
+    } else {
+      summary.push(await migrateKlant(klant));
+    }
   }
 
   console.log("\n── Samenvatting ──");
   for (const row of summary) {
     if (row.skipped) continue;
-    console.log(
-      `  ${row.klant}: ${row.scanned} gescand, ${dryRun ? "0 (dry-run)" : row.upserted} geschreven`
-    );
+    if (deleteLegacy) {
+      console.log(
+        `  ${row.klant}: ${row.scanned} gescand, ${dryRun ? "0 (dry-run)" : row.deleted} verwijderd`
+      );
+    } else {
+      console.log(
+        `  ${row.klant}: ${row.scanned} gescand, ${dryRun ? "0 (dry-run)" : row.upserted} geschreven`
+      );
+    }
   }
 
   if (dryRun) {
     console.log(
-      "\nDry-run afgerond. Voer zonder --dry-run uit om daadwerkelijk te kopiëren."
+      `\nDry-run afgerond. Voer zonder --dry-run uit om daadwerkelijk ${deleteLegacy ? "te verwijderen" : "te kopiëren"}.`
     );
   }
 }

@@ -32,3 +32,14 @@ test("generateCampaignCopy sets are policy-checked", async () => {
     assert.ok(Array.isArray(s.policy_warnings));
   }
 });
+
+test("generateCampaignCopy template uses locale from brand kit", async () => {
+  const kit = brandKitRowFromFixture(FUMERO_PRODUCT_FIXTURES[0]!);
+  kit.locale = "de";
+  const strategy = await generateAdStrategy(kit, "verkoop", { templateOnly: true });
+  const copy = await generateCampaignCopy(kit, strategy, { templateOnly: true });
+  assert.ok(
+    copy.sets.some((s) => s.primary_text.includes("schnelle Lieferung")),
+    "German delivery note expected for locale=de"
+  );
+});

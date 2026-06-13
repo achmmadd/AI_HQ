@@ -1,5 +1,6 @@
 import {
-  qdrantSearchCollectionsForScope,
+  describeQdrantCollectionsForScope,
+  logQdrantCollectionPlan,
 } from "@/lib/qdrant-collection";
 import { buildQdrantSearchFilter } from "@/lib/qdrant-payload";
 import {
@@ -144,7 +145,8 @@ export async function searchKnowledge(
       (klant
         ? await resolveWorkspaceIdBySlug(workspaceSlugForKlant(klant))
         : null);
-    const collections = qdrantSearchCollectionsForScope(klant);
+    const plan = logQdrantCollectionPlan("search", klant);
+    const collections = plan.search;
 
     const searches = await Promise.all(
       collections.map((collection) =>
@@ -156,12 +158,34 @@ export async function searchKnowledge(
       )
     );
 
+    const perCollection = collections.map((name, i) => ({
+      name,
+      hits: searches[i]?.results.length ?? 0,
+      missing: searches[i]?.missing === true,
+      error: searches[i]?.error,
+    }));
+
     const errors = searches
       .filter((s) => s.error)
       .map((s) => s.error as string);
     const merged = searches.flatMap((s) => s.results);
     merged.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     const results = merged.slice(0, cap);
+
+    if (results.length === 0) {
+      const allMissing = perCollection.every((c) => c.missing);
+      const ingestPlan = describeQdrantCollectionsForScope(klant);
+      console.warn(
+        `[qdrant:search] 0 hits klant=${plan.klant} query=${JSON.stringify(q.slice(0, 80))} collections=${JSON.stringify(perCollection)} ingest=${ingestPlan.ingest}${allMissing ? " — all buckets missing; check Qdrant or run migrate script" : ""}`
+      );
+    } else {
+      const emptyBuckets = perCollection.filter((c) => c.hits === 0);
+      if (emptyBuckets.length > 0 && emptyBuckets.length < perCollection.length) {
+        console.info(
+          `[qdrant:search] partial klant=${plan.klant} empty=${emptyBuckets.map((c) => c.name).join(", ")}`
+        );
+      }
+    }
 
     return {
       results,

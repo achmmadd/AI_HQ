@@ -1,5 +1,8 @@
 import { buildCodeSystemPrompt } from "@/lib/code-agent/code-system-prompt";
-import { getMotorCodeModel } from "@/lib/code-agent/code-models";
+import {
+  getMotorCodeModel,
+  resolveCodeModelForTurn,
+} from "@/lib/code-agent/code-models";
 import {
   enrichCodeAgentMessage,
   type CodeSelectionContext,
@@ -88,6 +91,7 @@ export async function runOpenRouterCodeAgentStream(opts: {
   message: string;
   history: Array<{ role: "user" | "assistant"; content: string }>;
   openFiles: string[];
+  sessionId?: number | null;
   selection?: CodeSelectionContext | null;
   terminalOutput?: string | null;
   reviewWrites?: boolean;
@@ -99,12 +103,14 @@ export async function runOpenRouterCodeAgentStream(opts: {
   let fullAssistantText = "";
   let totalInput = 0;
   let totalOutput = 0;
-  const model = getMotorCodeModel("openrouter");
+  let model = getMotorCodeModel("openrouter");
 
   const system = await buildCodeSystemPrompt({
     klant: opts.klant,
     project: opts.project,
     openFiles: opts.openFiles,
+    userMessage: opts.message,
+    sessionId: opts.sessionId,
   });
 
   const userContent = await enrichCodeAgentMessage({
@@ -125,6 +131,18 @@ export async function runOpenRouterCodeAgentStream(opts: {
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
+      model = resolveCodeModelForTurn(
+        {
+          message: opts.message,
+          historyLength: opts.history.length,
+          turn,
+          openFilesCount: opts.openFiles.length,
+          hasTerminalOutput: Boolean(opts.terminalOutput),
+          hasSelection: Boolean(opts.selection),
+        },
+        "openrouter"
+      );
+
       const response = await createOpenRouterCodeMessage({
         system,
         messages,

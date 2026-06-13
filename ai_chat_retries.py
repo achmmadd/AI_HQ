@@ -1,7 +1,7 @@
 """
-Eén gebruikerbericht naar de AI (Gemini, OpenAI of Ollama) en antwoord terug.
+Eén gebruikerbericht naar de AI en antwoord terug.
 Wordt o.a. door telegram_bridge gebruikt.
-Volgorde: Gemini (gratis tier) → OpenAI → Ollama.
+Volgorde: OpenRouter (DeepSeek) → Ollama → OpenAI → Gemini.
 Retries bij tijdelijke fouten (rate limit, timeout).
 """
 import os
@@ -22,7 +22,10 @@ def _ensure_env_loaded():
     env_file = root / ".env"
     if not env_file.exists():
         return
-    want = ("GOOGLE_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GEMINI_MODEL", "OLLAMA_HOST", "OLLAMA_MODEL")
+    want = (
+        "GOOGLE_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY",
+        "GEMINI_MODEL", "OPENROUTER_MODEL", "OLLAMA_HOST", "OLLAMA_MODEL",
+    )
     with open(env_file) as f:
         for line in f:
             line = line.strip()
@@ -55,11 +58,63 @@ SYSTEM = (
 )
 
 
+def _openrouter_api_key() -> str:
+    key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+    if key:
+        return key
+    models_json = Path.home() / ".openclaw/agents/main/agent/models.json"
+    try:
+        import json
+        data = json.loads(models_json.read_text(encoding="utf-8"))
+        return (data.get("providers", {}).get("openrouter", {}).get("apiKey") or "").strip()
+    except Exception:
+        return ""
+
+
+def _openrouter_reply(msg: str, max_length: int) -> str | None:
+    api_key = _openrouter_api_key()
+    if not api_key:
+        return None
+    import requests
+    model = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-v4-pro")
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM},
+                    {"role": "user", "content": msg},
+                ],
+                "max_tokens": 1024,
+            },
+            timeout=90,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+        if not content:
+            return None
+        try:
+            from mission_control import record_spend
+            record_spend(0.002)
+        except Exception:
+            pass
+        return content[:max_length] if len(content) > max_length else content
+    except Exception as e:
+        logger.warning("OpenRouter call failed: %s", e)
+        return None
+
+
 def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None = None) -> str:
     """
     Stuur user_message naar de AI en geef het antwoord terug.
     chat_id: optioneel Telegram chat-id voor toestemmingsflow (Omega-handelingen).
-    Volgorde: Gemini (GOOGLE_API_KEY) → OpenAI → Ollama.
+    Volgorde: OpenRouter (DeepSeek) → Ollama → OpenAI → Gemini.
     """
     if not user_message or not user_message.strip():
         return "Stuur een bericht om een antwoord te krijgen."
@@ -76,7 +131,66 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
     except ImportError:
         pass
 
-    # 1. Gemini (gratis tier, goede kwaliteit — GOOGLE_API_KEY van aistudio.google.com)
+    # 1. OpenRouter / DeepSeek (zelfde stack als OpenClaw Pietjebel_bot)
+    openrouter_out = _openrouter_reply(msg, max_length)
+    if openrouter_out:
+        return openrouter_out
+
+    # 2. Ollama (lokaal, geen API-key nodig)
+    import requests
+    url = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+    model = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+    if ":" not in model:
+        model = "llama3.2:3b"
+    for _ in range(OLLAMA_RETRIES):
+        try:
+            resp = requests.post(
+                f"{url}/api/chat",
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM},
+                        {"role": "user", "content": msg},
+                    ],
+                    "stream": False,
+                },
+                timeout=OLLAMA_TIMEOUT,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = (data.get("message") or {}).get("content") or ""
+            out = content.strip()
+            if out:
+                return out[:max_length] if len(out) > max_length else out
+        except Exception as e:
+            logger.warning("Ollama call failed: %s", e)
+            time.sleep(OLLAMA_RETRY_DELAY)
+
+    # 3. OpenAI (als OPENAI_API_KEY gezet is)
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if api_key and not api_key.startswith("sk-xxx"):
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+            r = client.chat.completions.create(
+                model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+                messages=[
+                    {"role": "system", "content": SYSTEM},
+                    {"role": "user", "content": msg},
+                ],
+                max_tokens=1024,
+            )
+            if r.choices and r.choices[0].message and r.choices[0].message.content:
+                try:
+                    record_spend(0.01)
+                except Exception:
+                    pass
+                out = r.choices[0].message.content.strip()
+                return out[:max_length] if len(out) > max_length else out
+        except Exception as e:
+            logger.warning("OpenAI call failed: %s", e)
+
+    # 4. Gemini (fallback — tools voor Omega-handelingen)
     api_key = (os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or "").strip()
     if api_key:
         try:
@@ -155,61 +269,8 @@ def get_ai_reply(user_message: str, max_length: int = 3500, chat_id: int | None 
         except Exception as e:
             logger.warning("Gemini call failed: %s", e)
 
-    # 2. OpenAI (als OPENAI_API_KEY gezet is)
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if api_key and not api_key.startswith("sk-xxx"):
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
-            r = client.chat.completions.create(
-                model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-                messages=[
-                    {"role": "system", "content": SYSTEM},
-                    {"role": "user", "content": msg},
-                ],
-                max_tokens=1024,
-            )
-            if r.choices and r.choices[0].message and r.choices[0].message.content:
-                try:
-                    from mission_control import record_spend
-                    record_spend(0.01)  # ~€0.01 per OpenAI call
-                except Exception:
-                    pass
-                out = r.choices[0].message.content.strip()
-                return out[:max_length] if len(out) > max_length else out
-        except Exception as e:
-            logger.warning("OpenAI call failed: %s", e)
-
-    # 3. Ollama (fallback, met retry)
-    import requests
-    url = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-    model = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
-    if ":" not in model:
-        model = "llama3.2:3b"
-    for _ in range(OLLAMA_RETRIES):
-        try:
-            resp = requests.post(
-                f"{url}/api/chat",
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": SYSTEM},
-                        {"role": "user", "content": msg},
-                    ],
-                    "stream": False,
-                },
-                timeout=OLLAMA_TIMEOUT,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            content = (data.get("message") or {}).get("content") or ""
-            out = content.strip()
-            return out[:max_length] if len(out) > max_length else out
-        except Exception as e:
-            logger.warning("Ollama call failed: %s", e)
-            time.sleep(OLLAMA_RETRY_DELAY)
     return (
-        "AI reageert niet na meerdere pogingen (Gemini + Ollama). "
+        "AI reageert niet na meerdere pogingen (OpenRouter, Ollama, OpenAI, Gemini). "
         "Probeer het over een minuut opnieuw, of stel een kortere vraag. "
-        "Controleer .env: GOOGLE_API_KEY; Ollama: ollama run llama3:8b"
+        "Controleer .env: OPENROUTER_API_KEY of Ollama: ollama run llama3:8b"
     )

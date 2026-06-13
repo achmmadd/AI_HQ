@@ -1,11 +1,17 @@
 import type { BrandKitRow } from "@/lib/photo-studio/brand-kit/types";
 import { AD_ANGLE_TEMPLATES } from "@/lib/photo-studio/campaign/ad-strategy";
-import { FUMERO_BRAND_VOICE, FUMERO_FACTS } from "@/lib/photo-studio/campaign/brand-voice";
 import { callCampaignLlmJson } from "@/lib/photo-studio/campaign/llm";
 import {
   checkCopySetPolicy,
   sanitizeHeadline,
 } from "@/lib/photo-studio/campaign/meta-policy";
+import {
+  buildBrandFacts,
+  buildBrandVoice,
+  localeLabel,
+  resolveCampaignLocale,
+  resolvePolicyProfile,
+} from "@/lib/photo-studio/campaign/tenant-profile";
 import type {
   AdAngleId,
   AdConcept,
@@ -16,11 +22,19 @@ import type {
 } from "@/lib/photo-studio/campaign/types";
 import { CAMPAIGN_GOALS } from "@/lib/photo-studio/campaign/types";
 
-const CTA_BY_GOAL: Record<CampaignGoal, [string, string]> = {
-  verkoop: ["Bestel nu", "Naar de shop"],
-  bereik: ["Ontdek Fumero", "Meer info"],
-  retargeting: ["Maak je bestelling af", "Bekijk opnieuw"],
-};
+function ctaByGoal(goal: CampaignGoal, brandName: string): [string, string] {
+  const brand = brandName.trim() || "Shop";
+  switch (goal) {
+    case "verkoop":
+      return ["Bestel nu", "Naar de shop"];
+    case "bereik":
+      return [`Ontdek ${brand}`, "Meer info"];
+    case "retargeting":
+      return ["Maak je bestelling af", "Bekijk opnieuw"];
+    default:
+      return ["Bestel nu", "Meer info"];
+  }
+}
 
 function goalLabel(goal: CampaignGoal): string {
   return CAMPAIGN_GOALS.find((g) => g.id === goal)?.label ?? goal;
@@ -32,6 +46,9 @@ function templateCopySet(
   kit: BrandKitRow,
   goal: CampaignGoal
 ): CopySet {
+  const policyProfile = resolvePolicyProfile(kit);
+  const locale = resolveCampaignLocale(kit);
+  const brandName = kit.name?.trim() || kit.klant;
   const angle = AD_ANGLE_TEMPLATES[concept.angle];
   const hook =
     hookVariant === 1
@@ -44,24 +61,39 @@ function templateCopySet(
       : `${String(kit.product_name ?? "")} — ${String(angle.label).toLowerCase()}`
   );
 
+  const deliveryNote =
+    locale === "de"
+      ? "Diskret verpackt, schnelle Lieferung."
+      : locale === "en"
+        ? "Discreet packaging, fast delivery."
+        : "Discreet verpakt, snelle levering.";
+
   const primaryParts = [
     hook,
-    String(kit.description ?? "").slice(0, 120) || `${String(kit.product_name ?? "")} bij Fumero.`,
+    String(kit.description ?? "").slice(0, 120) ||
+      `${String(kit.product_name ?? "")} — ${brandName}.`,
     kit.price ? `Vanaf ${kit.price} ${kit.currency}.` : null,
-    "Discreet verpakt, snelle levering in NL.",
+    deliveryNote,
   ].filter(Boolean);
 
-  const [ctaPrimary, ctaSecondary] = CTA_BY_GOAL[goal];
+  const [ctaPrimary, ctaSecondary] = ctaByGoal(goal, brandName);
+
+  const disclaimer =
+    locale === "de"
+      ? "18+. Keine Gesundheitsversprechen."
+      : locale === "en"
+        ? "18+. No health claims."
+        : "18+. Geen gezondheidsclaims.";
 
   const fields = {
     headline,
     primary_text: primaryParts.join(" "),
-    description: `${String(kit.product_name ?? "")} — premium HHC lifestyle. 18+. Geen gezondheidsclaims.`,
+    description: `${String(kit.product_name ?? "")} — premium. ${disclaimer}`,
     cta_primary: ctaPrimary,
     cta_secondary: ctaSecondary,
   };
 
-  const policy = checkCopySetPolicy(fields);
+  const policy = checkCopySetPolicy(fields, policyProfile);
 
   return {
     angle: concept.angle,
@@ -95,6 +127,10 @@ export async function generateCampaignCopy(
 ): Promise<CopyGeneratorResult> {
   const goal = strategy.goal;
   const concepts = strategy.concepts;
+  const locale = resolveCampaignLocale(kit);
+  const policyProfile = resolvePolicyProfile(kit);
+  const brandName = kit.name?.trim() || kit.klant;
+  const ctas = ctaByGoal(goal, brandName);
 
   if (opts?.templateOnly) {
     const sets: CopySet[] = [];
@@ -112,12 +148,13 @@ export async function generateCampaignCopy(
     };
   }
 
-  const system = `Je bent copywriter voor Meta Ads voor ${FUMERO_BRAND_VOICE}
+  const lang = localeLabel(locale);
+  const system = `Je bent copywriter voor Meta Ads voor ${buildBrandVoice(kit)}
 Schrijf 6 advertentieteksten (2 hook-varianten × 3 angles: prijs, vertrouwen, probleem_oplossing).
 Regels:
 - headline max 40 tekens
-- primary_text: 2-3 zinnen NL
-- description: 1 zin
+- primary_text: 2-3 zinnen in ${lang}
+- description: 1 zin in ${lang}
 - 2 CTA-varianten per set (cta_primary, cta_secondary)
 - Geen gezondheidsclaims, geen emoji, geen iDEAL/creditcard
 Antwoord ALLEEN JSON:
@@ -125,6 +162,7 @@ Antwoord ALLEEN JSON:
 
   const user = [
     `Campagnedoel: ${goalLabel(goal)}`,
+    `Taal: ${lang}`,
     `Product: ${kit.product_name}`,
     kit.price ? `Prijs: ${kit.price} ${kit.currency}` : "",
     "",
@@ -135,7 +173,7 @@ Antwoord ALLEEN JSON:
     ),
     "",
     "Feiten:",
-    FUMERO_FACTS.join("\n"),
+    buildBrandFacts(kit).join("\n"),
   ]
     .filter(Boolean)
     .join("\n");
@@ -144,6 +182,7 @@ Antwoord ALLEEN JSON:
     system,
     user,
     n8nType: "campaign_copy",
+    klant: kit.klant,
     maxTokens: 3000,
   });
 
@@ -159,10 +198,10 @@ Antwoord ALLEEN JSON:
         headline: sanitizeHeadline(String(raw.headline ?? "")),
         primary_text: String(raw.primary_text ?? "").trim(),
         description: String(raw.description ?? "").trim(),
-        cta_primary: String(raw.cta_primary ?? CTA_BY_GOAL[goal][0]).trim(),
-        cta_secondary: String(raw.cta_secondary ?? CTA_BY_GOAL[goal][1]).trim(),
+        cta_primary: String(raw.cta_primary ?? ctas[0]).trim(),
+        cta_secondary: String(raw.cta_secondary ?? ctas[1]).trim(),
       };
-      const policy = checkCopySetPolicy(fields);
+      const policy = checkCopySetPolicy(fields, policyProfile);
       sets.push({
         angle,
         hook_variant: hookVariant as 1 | 2,

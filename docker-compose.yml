@@ -21,7 +21,7 @@ services:
       - omega_logs:/app/logs
       - ./holding:/app/holding
       - /var/run/docker.sock:/var/run/docker.sock
-    restart: always
+    restart: "no"
     networks:
       - omega-net
 

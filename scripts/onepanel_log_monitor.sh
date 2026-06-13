@@ -45,6 +45,9 @@ SEND_ALERT() {
 # Check Docker containers (omega-*)
 if command -v docker >/dev/null 2>&1; then
   for name in omega-telegram-bridge omega-heartbeat omega-dashboard omega-engineer; do
+    if [ "$name" = "omega-telegram-bridge" ] && { [ -f "$ROOT/bridge_disabled.flag" ] || [ -f "$ROOT/holding/data/bridge_disabled.flag" ]; }; then
+      continue
+    fi
     status=$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo "missing")
     if [ "$status" != "running" ] && [ "$status" != "missing" ]; then
       SEND_ALERT "Jarvis: container [$name] is niet running (status=$status). Overweeg herstart via 1Panel of: docker start $name"

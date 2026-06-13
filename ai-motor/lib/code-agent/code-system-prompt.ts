@@ -1,14 +1,17 @@
 import { getMotorDisciplineSuffix } from "@/lib/motor-discipline";
+import { buildProgressiveCodeMemoryContext } from "@/lib/motor-memory";
 import { readAutoContext } from "@/lib/code-workspace";
 import fs from "fs/promises";
 import { resolveFileAbs } from "@/lib/code-workspace";
 
-export { getMotorCodeModel } from "@/lib/code-agent/code-models";
+export { getMotorCodeModel, resolveCodeModelForTurn } from "@/lib/code-agent/code-models";
 
 export async function buildCodeSystemPrompt(opts: {
   klant: string;
   project: string;
   openFiles: string[];
+  userMessage?: string;
+  sessionId?: number | null;
 }): Promise<string> {
   const autoContext = await readAutoContext(opts.klant, opts.project);
   let openFilesContext = "";
@@ -22,6 +25,15 @@ export async function buildCodeSystemPrompt(opts: {
     }
   }
 
+  const memoryBlock = opts.userMessage?.trim()
+    ? await buildProgressiveCodeMemoryContext({
+        query: opts.userMessage,
+        klant: opts.klant,
+        sessionId: opts.sessionId,
+        project: opts.project,
+      })
+    : "";
+
   return `Je bent Motor AI Code — coding agent voor ${opts.klant}/${opts.project}.
 
 Regels:
@@ -32,7 +44,7 @@ Regels:
 - Rapporteer aan het einde welke bestanden je hebt gewijzigd
 - Nederlands tenzij de gebruiker Engels spreekt
 
-${autoContext}
+${memoryBlock ? `${memoryBlock}\n\n` : ""}${autoContext}
 ${openFilesContext}
 
 ${getMotorDisciplineSuffix()}`;

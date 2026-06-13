@@ -50,7 +50,6 @@ function LoginForm() {
       };
 
       if (data.token) {
-        localStorage.setItem("motorsai_token", data.token);
         const from = searchParams.get("from");
         const scope = data.user?.scope;
         const defaultHome =
@@ -118,7 +117,7 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="jij@bedrijf.nl"
-                className="border-white/10 bg-white/5 text-white placeholder:text-slate-500"
+                className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:border-[#69C400]/50 focus-visible:ring-2 focus-visible:ring-[#69C400]/40"
                 autoFocus
                 autoComplete="email"
               />
@@ -134,7 +133,7 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Jouw wachtwoord"
-                className="border-white/10 bg-white/5 text-white placeholder:text-slate-500"
+                className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:border-[#69C400]/50 focus-visible:ring-2 focus-visible:ring-[#69C400]/40"
                 autoComplete="current-password"
               />
             </div>

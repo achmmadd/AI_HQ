@@ -15,6 +15,7 @@ import {
 } from "@/lib/code-sessions";
 import { checkBudgetBeforeUsage } from "@/lib/usage-budget";
 import { requireApiAuthForKlant } from "@/lib/require-api-auth";
+import { maybeIngestCodeSessionMemory } from "@/lib/motor-memory";
 
 export const runtime = "nodejs";
 
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
         klant,
         project,
         message,
+        sessionId,
         terminalOutput,
         history: history
           .filter(
@@ -159,6 +161,7 @@ export async function POST(req: NextRequest) {
           content: fullAssistant,
         });
         touchCodeSession(sessionId);
+        maybeIngestCodeSessionMemory(sessionId, klant);
       }
       controller.close();
     },

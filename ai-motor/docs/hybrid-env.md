@@ -173,4 +173,16 @@ sudo systemctl stop ollama
 sudo systemctl disable ollama
 ```
 
-Zie [`hetzner-migration.md`](hetzner-migration.md) LLM-strategie.
+## AgentShield security scan (2026-06-13)
+
+One-time audit for MKB security dept baseline:
+
+```bash
+npx ecc-agentshield scan   # from ai-motor root
+```
+
+| Grade | Score | Findings |
+|-------|-------|----------|
+| A | 100/100 | 0 (secrets, permissions, hooks, MCP, agents) |
+
+Re-run after adding MCP servers, hooks, or agent configs. See [AgentShield](https://www.npmjs.com/package/ecc-agentshield).

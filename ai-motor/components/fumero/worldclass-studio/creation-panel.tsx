@@ -316,6 +316,7 @@ export function CreationPanel({ klant, studio, step }: Props) {
         <ContentStudioGenerationProgress
           progress={genProgress.progress}
           etaSeconds={genProgress.etaSeconds}
+          message={genProgress.message}
           onCancel={cancelGenerate}
         />
       ) : null}{" "}

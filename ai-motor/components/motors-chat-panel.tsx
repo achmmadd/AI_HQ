@@ -1307,13 +1307,14 @@ export function MotorsChatPanel({
         setLivePreview({
           title: name,
           previewUrl: instantPreview,
-          status: "generating",
+          status: "ready",
           version: 1,
           building: false,
           buildPhase: undefined,
           buildProgressPct: undefined,
           buildElapsedMs: undefined,
           runtime: "html",
+          interactive: false,
         });
         updateMessage(cardMsgId, {
           content: `**Genereren mislukt.** ${msg}\n\nJe prompt blijft bewaard — probeer opnieuw.`,

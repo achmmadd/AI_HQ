@@ -1,14 +1,23 @@
 # MotorsAI /code agent — voeg toe aan .env.local
 OPENROUTER_API_KEY=sk-or-...
 MOTOR_CODE_PROVIDER=openrouter
-# Stabiel default (geen upstream rate limits); optioneel expliciet zetten:
-# MOTOR_CODE_MODEL=deepseek/deepseek-v4-flash
-# Bij 429 op primair model: automatische retry met fallback:
-# OPENROUTER_FALLBACK_MODEL=deepseek/deepseek-v4-flash
-# Kostenefficiënt alternatief (auto-routing op coding score):
+
+# Cost-aware routing (default): zware turns → Sonnet, lichte edits → pareto-code.
+# Laat MOTOR_CODE_MODEL leeg voor automatische routing via resolveCodeModelForTurn().
+# MOTOR_CODE_MODEL=anthropic/claude-sonnet-4.6
+# MOTOR_CODE_ROUTING=fixed   # altijd zwaar model (geen pareto)
+
+# Expliciet pareto voor alles (goedkoop, auto-routing op coding score):
 # MOTOR_CODE_MODEL=openrouter/pareto-code
 # MOTOR_CODE_MIN_CODING_SCORE=0.65
+
+# Bij 429 op primair model: automatische retry met fallback (chat, niet code default):
+# OPENROUTER_FALLBACK_MODEL=deepseek/deepseek-v4-flash
+
 # Fallback zonder OpenRouter:
 # MOTOR_CODE_PROVIDER=anthropic
 # ANTHROPIC_API_KEY=sk-ant-...
 # MOTOR_CODE_MODEL=claude-sonnet-4-20250514
+
+# Optioneel: eenmalige security baseline (ECC AgentShield, niet installeren):
+# npx ecc-agentshield scan ~/AI_HQ/ai-motor

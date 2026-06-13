@@ -31,11 +31,11 @@ export function getCampaignStudioConfig(): CampaignStudioConfig {
   }
   if (templateOnly) {
     hints.push(
-      "Template-modus actief — strategie en copy gebruiken vaste Fumero-templates (CAMPAIGN_TEMPLATE_ONLY=1 of development default)."
+      "Template-modus actief — strategie en copy gebruiken vaste templates (CAMPAIGN_TEMPLATE_ONLY=1). Media blijft beschikbaar als FAL_KEY aanwezig is."
     );
   } else if (!openrouter) {
     hints.push(
-      "OPENROUTER_API_KEY ontbreekt — strategie en copy proberen n8n, anders templates (max ~25s)."
+      "OPENROUTER_API_KEY ontbreekt — strategie en copy proberen n8n, anders templates na timeout (max ~30s)."
     );
   }
 
@@ -43,7 +43,7 @@ export function getCampaignStudioConfig(): CampaignStudioConfig {
     fal_configured: fal,
     openrouter_configured: openrouter,
     template_only: templateOnly,
-    default_skip_media: !fal || templateOnly,
+    default_skip_media: !fal,
     media_available: fal,
     hints,
   };
@@ -53,22 +53,15 @@ export function resolveCampaignSkipMedia(
   skipMediaFlag: boolean | undefined
 ): { skipMedia: boolean; autoSkipped: boolean } {
   const fal = falConfigured();
-  const templateOnly = isCampaignTemplateOnly();
 
   if (skipMediaFlag === true) {
     return { skipMedia: true, autoSkipped: false };
   }
-  if (skipMediaFlag === false && fal && !templateOnly) {
+  if (skipMediaFlag === false && fal) {
     return { skipMedia: false, autoSkipped: false };
   }
   if (!fal) {
     return { skipMedia: true, autoSkipped: true };
-  }
-  if (templateOnly) {
-    return {
-      skipMedia: true,
-      autoSkipped: true,
-    };
   }
   return { skipMedia: false, autoSkipped: false };
 }

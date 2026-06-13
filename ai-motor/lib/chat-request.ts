@@ -32,7 +32,8 @@ export function shouldUseBrowserTaskForAgent(
 
 export async function buildPromptForN8n(
   klant: string,
-  userPrompt: string
+  userPrompt: string,
+  opts?: { conversationId?: number | null }
 ): Promise<{
   promptForFactory: string;
   experimentId: number | null;
@@ -44,7 +45,9 @@ export async function buildPromptForN8n(
   const experimentOverlay =
     exp && expVariant ? experimentInstructionOverlay(exp, expVariant) : "";
 
-  const preamble = await buildChatSystemPreamble(klant, userPrompt.trim());
+  const preamble = await buildChatSystemPreamble(klant, userPrompt.trim(), {
+    conversationId: opts?.conversationId,
+  });
   const promptForFactory =
     preamble +
     `\n\n${getMotorDisciplineSuffix()}\n` +

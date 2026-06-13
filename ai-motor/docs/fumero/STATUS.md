@@ -34,3 +34,4 @@ Legacy redirects: `/fumero/apps`, `/fumero/tools` → Projecten; `/fumero/chat?m
 - Team-auth en gedeelde team-apps
 - UX-review voor full-stack apps (nu tool/HTML-only)
 - Verdere Content Studio sprint-items (zie `docs/DESIGN-SPEC-content-studio.md`)
+- Campaign Agency / Content Department roadmap → [`docs/MOTOR-CONTENT-DEPARTMENT-ROADMAP.md`](../MOTOR-CONTENT-DEPARTMENT-ROADMAP.md)

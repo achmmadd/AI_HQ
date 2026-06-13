@@ -1,15 +1,17 @@
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import JSZip from "jszip";
+import { buildAssetFeedSpec } from "@/lib/photo-studio/campaign/asset-feed-spec";
 import { generateAdStrategy } from "@/lib/photo-studio/campaign/ad-strategy";
 import { generateCampaignCopy } from "@/lib/photo-studio/campaign/copy-generator";
-import { generateCampaignCreatives } from "@/lib/photo-studio/campaign/creative";
+import { generateCampaignCreatives, collectCreativeQualityWarnings } from "@/lib/photo-studio/campaign/creative";
 import { isCampaignTemplateOnly } from "@/lib/photo-studio/campaign/llm";
 import { deriveSku } from "@/lib/photo-studio/campaign/naming";
 import { campaignPackDir, campaignZipPath } from "@/lib/photo-studio/campaign/paths";
 import { saveCampaignPack } from "@/lib/photo-studio/campaign/storage";
 import { generateCampaignVideo } from "@/lib/photo-studio/campaign/video";
 import { getCampaignStudioConfig } from "@/lib/photo-studio/campaign/studio-config";
+import { resolveTenantKlant } from "@/lib/photo-studio/campaign/tenant-profile";
 import { CAMPAIGN_VIDEO_TIMEOUT_MS } from "@/lib/photo-studio/generation-timeouts";
 import type {
   AdAngleId,
@@ -40,7 +42,7 @@ function copyToCsv(data: CampaignPackData): string {
 
 function buildReadme(data: CampaignPackData, packId: string): string {
   return [
-    `# Fumero Campaign Pack`,
+    `# Campaign Pack — ${data.brand_name}`,
     ``,
     `Pack ID: ${packId}`,
     `Brand: ${data.brand_name}`,
@@ -58,6 +60,7 @@ function buildReadme(data: CampaignPackData, packId: string): string {
     `- static/: ${data.static_assets.filter((a) => a.file_path).length} bestanden (1:1 + 4:5 per angle)`,
     `- video/: ${data.video_assets.filter((a) => a.file_path).length} Reels (9:16)`,
     `- copy.csv: ${data.copy.sets.length} copy sets`,
+    `- meta/asset_feed_spec.json: Meta Marketing API skeleton (headlines, bodies, images, CTAs)`,
     ``,
     `## Kwaliteit`,
     ...data.static_assets
@@ -79,6 +82,12 @@ async function buildZip(packId: string, data: CampaignPackData): Promise<string>
 
   zip.file("copy.csv", copyToCsv(data));
   zip.file("README.md", buildReadme(data, packId));
+
+  const metaFolder = zip.folder("meta");
+  metaFolder?.file(
+    "asset_feed_spec.json",
+    JSON.stringify(buildAssetFeedSpec(data), null, 2)
+  );
 
   const staticFolder = zip.folder("static");
   const videoFolder = zip.folder("video");
@@ -107,6 +116,7 @@ export async function buildCampaignPack(
   onProgress?: (progress: CampaignPackProgress) => void
 ): Promise<CampaignPackRow> {
   const { brandKit, goal, skip_media, angles, strategy: presetStrategy } = input;
+  const klant = resolveTenantKlant(brandKit);
   const sku = deriveSku(brandKit.product_name, brandKit.id);
   const { fal_configured: falReady } = getCampaignStudioConfig();
   const skipMedia = skip_media ?? !falReady;
@@ -154,7 +164,7 @@ export async function buildCampaignPack(
   });
 
   const saveDraft = (data: CampaignPackData) => {
-    saveCampaignPack(packId, data, "generating", null);
+    saveCampaignPack(packId, klant, data, "generating", null);
   };
 
   onProgress?.({
@@ -168,7 +178,7 @@ export async function buildCampaignPack(
   if (skipMedia) {
     for (const concept of concepts) {
       const assets = await generateCampaignCreatives({
-        klant: "fumero",
+        klant,
         packId,
         brandKit,
         concept,
@@ -189,7 +199,7 @@ export async function buildCampaignPack(
           static_total: staticTotal,
         });
         const assets = await generateCampaignCreatives({
-          klant: "fumero",
+          klant,
           packId,
           brandKit,
           concept,
@@ -212,6 +222,11 @@ export async function buildCampaignPack(
     }
   }
 
+  const qualityWarnings = collectCreativeQualityWarnings(static_assets);
+  if (qualityWarnings.length) {
+    errors.push(...qualityWarnings);
+  }
+
   saveDraft({ ...baseData(), static_assets, video_assets: [] });
 
   const video_assets = [];
@@ -230,7 +245,7 @@ export async function buildCampaignPack(
     try {
       video = await Promise.race([
         generateCampaignVideo({
-          klant: "fumero",
+          klant,
           packId,
           brandKit,
           concept: primaryConcept,
@@ -287,7 +302,7 @@ export async function buildCampaignPack(
     data.errors = errors;
   }
 
-  return saveCampaignPack(packId, data, zipPath ? "ready" : "failed", zipPath);
+  return saveCampaignPack(packId, klant, data, zipPath ? "ready" : "failed", zipPath);
 }
 
 export { generateAdStrategy, generateCampaignCopy };

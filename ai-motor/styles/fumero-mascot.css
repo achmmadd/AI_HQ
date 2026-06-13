@@ -25,6 +25,13 @@
     drop-shadow(0 0 1px rgba(0, 0, 0, 0.06));
 }
 
+/* Ghost body is hollow in the PNG — solid white fill on dark UI */
+html.dark .fumero-logo-wrap .fumero-mascot-image,
+[data-theme="dark"] .fumero-logo-wrap .fumero-mascot-image {
+  background: #ffffff;
+  border-radius: 42% 42% 36% 36% / 48% 48% 30% 30%;
+}
+
 html.dark .fumero-mascot-image,
 [data-theme="dark"] .fumero-mascot-image,
 .fumero-mascot-image--elevate {

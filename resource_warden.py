@@ -22,10 +22,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 INTERVAL = 60
-TEMP_THRESHOLD = 80.0   # °C
-LOAD_THRESHOLD = 90.0   # %
+TEMP_THRESHOLD = 85.0   # °C — echte oververhitting
+LOAD_THRESHOLD = 95.0   # % CPU (psutil)
+RECOVER_TEMP_THRESHOLD = 78.0
+RECOVER_LOAD_THRESHOLD = 80.0
+ALERT_COOLDOWN_SEC = 1800  # max 1 melding per 30 min
+SUSTAINED_RECOVERY_CHECKS = 3  # voorkom fladderen rond drempel
 # Niet-kritieke BU's die we pauzeren bij overbelasting (Finance blijft draaien)
 BU_CONTAINERS_TO_PAUSE = ("bu_marketing", "bu_app_studio")
+STATE_FILE = LOG_DIR / "resource_warden_state.json"
 
 
 def _load_env():
@@ -60,6 +65,24 @@ def _send_telegram(text: str) -> bool:
     except Exception as e:
         logger.warning("Telegram send: %s", e)
         return False
+
+
+def _load_state() -> dict:
+    try:
+        if STATE_FILE.exists():
+            import json
+            return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.warning("State laden: %s", e)
+    return {}
+
+
+def _save_state(state: dict) -> None:
+    try:
+        import json
+        STATE_FILE.write_text(json.dumps(state), encoding="utf-8")
+    except Exception as e:
+        logger.warning("State opslaan: %s", e)
 
 
 def _get_metrics():
@@ -136,23 +159,34 @@ def _unpause_bu_containers():
 
 if __name__ == "__main__":
     _load_env()
-    logger.info("Resource Warden gestart (interval %ds, temp>%s°C of load>%s%% → pause BU's)", INTERVAL, TEMP_THRESHOLD, LOAD_THRESHOLD)
-    over_threshold = False
-    already_notified = False
-    already_paused = False
+    logger.info(
+        "Resource Warden gestart (interval %ds, alert temp>%s°C of load>%s%%, cooldown %ds)",
+        INTERVAL, TEMP_THRESHOLD, LOAD_THRESHOLD, ALERT_COOLDOWN_SEC,
+    )
+    state = _load_state()
+    already_paused = bool(state.get("already_paused"))
+    recovery_streak = int(state.get("recovery_streak") or 0)
+    last_alert_at = float(state.get("last_alert_at") or 0.0)
 
     while True:
         try:
             time.sleep(INTERVAL)
             m = _get_metrics()
-            load_pct = m.get("load_pct") or 0.0
+            load_pct = float(m.get("load_pct") or 0.0)
             temp_c = m.get("temp_c")
             hot = temp_c is not None and float(temp_c) > TEMP_THRESHOLD
             overloaded = load_pct > LOAD_THRESHOLD
             over_threshold = hot or overloaded
+            recovered = (
+                (temp_c is None or float(temp_c) <= RECOVER_TEMP_THRESHOLD)
+                and load_pct <= RECOVER_LOAD_THRESHOLD
+            )
 
+            now = time.time()
             if over_threshold:
-                if not already_notified:
+                recovery_streak = 0
+                cooldown_ok = (now - last_alert_at) >= ALERT_COOLDOWN_SEC
+                if cooldown_ok:
                     msg = (
                         "Meneer, de NUC wordt te heet of te zwaar belast. "
                         "Ik pauzeer de niet-kritieke Business Units."
@@ -162,18 +196,26 @@ if __name__ == "__main__":
                     msg += f" Load: {load_pct:.1f}%."
                     if _send_telegram("🌡️ " + msg):
                         logger.info("Telegram melding verzonden (overbelasting)")
-                    already_notified = True
+                        last_alert_at = now
                 if not already_paused:
                     _pause_bu_containers()
                     already_paused = True
-            else:
-                if already_paused:
+            elif recovered:
+                recovery_streak += 1
+                if already_paused and recovery_streak >= SUSTAINED_RECOVERY_CHECKS:
                     _unpause_bu_containers()
                     already_paused = False
-                if already_notified:
-                    if _send_telegram("✅ NUC weer binnen norm. Niet-kritieke BU's hervat."):
-                        pass
-                    already_notified = False
+                    recovery_streak = 0
+                    if (now - last_alert_at) < 86400:
+                        _send_telegram("✅ NUC weer binnen norm. Niet-kritieke BU's hervat.")
+            else:
+                recovery_streak = 0
+
+            _save_state({
+                "already_paused": already_paused,
+                "recovery_streak": recovery_streak,
+                "last_alert_at": last_alert_at,
+            })
         except KeyboardInterrupt:
             logger.info("Resource Warden gestopt")
             break

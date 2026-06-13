@@ -21,6 +21,7 @@ import type {
   CampaignGoal,
   CampaignPackRow,
 } from "@/lib/photo-studio/campaign/types";
+import type { CompanyId } from "@/lib/types";
 
 export type CampaignJobRequest = {
   brand_kit_id: string;
@@ -92,7 +93,7 @@ async function runCampaignJob(jobId: string, klant: string, request: CampaignJob
   const config = getCampaignStudioConfig();
 
   try {
-    const kit = getBrandKit(request.brand_kit_id, "fumero");
+    const kit = getBrandKit(request.brand_kit_id, klant as CompanyId);
     if (!kit) throw new Error("Brand Kit niet gevonden.");
 
     const pack = await withTimeout(

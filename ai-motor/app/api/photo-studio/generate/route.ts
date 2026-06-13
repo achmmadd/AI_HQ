@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithModel } from "@/lib/photo-studio/fal";
 import { resolveImageUrlsForFal } from "@/lib/photo-studio/fal-image-url";
-import { generateVideoWithFal } from "@/lib/photo-studio/fal-video";
 import { ensurePhotoStudioSchema } from "@/lib/photo-studio/db-migrate";
 import {
   persistPhotoGenerationFromBuffer,
-  persistVideoGenerationFromBuffer,
 } from "@/lib/photo-studio/library";
-import { FAL_VIDEO_TIMEOUT_MS } from "@/lib/photo-studio/generation-timeouts";
-import { downloadImageBuffer, downloadMediaBuffer } from "@/lib/photo-studio/download-master";
+import { downloadImageBuffer } from "@/lib/photo-studio/download-master";
 import { requirePhotoStudioKlant } from "@/lib/photo-studio/workspace-auth";
+import { startStudioVideoJob } from "@/lib/photo-studio/studio-video-runner";
 import {
   MAX_REF_IMAGES,
   normalizeQualityForModel,
@@ -21,7 +19,7 @@ import {
 } from "@/lib/photo-studio/types";
 
 export const runtime = "nodejs";
-/** Video fal + download can take up to ~5 min — align with FAL_VIDEO_TIMEOUT_MS. */
+/** Image sync path; video returns 202 immediately and runs in background. */
 export const maxDuration = 300;
 
 const ASPECTS = new Set<ContentStudioAspectRatio>([
@@ -153,64 +151,27 @@ export async function POST(req: NextRequest) {
       typeof body.start_image_url === "string"
         ? body.start_image_url.trim()
         : "";
-    let videoImageUrl = imageUrls[0] || startFrameUrl;
-    if (videoImageUrl) {
-      const resolved = await resolveImageUrlsForFal([videoImageUrl]);
-      if (!resolved.ok) {
-        return NextResponse.json({ error: resolved.error }, { status: 400 });
-      }
-      videoImageUrl = resolved.urls[0];
-    }
-    const videoResult = await generateVideoWithFal({
-      userPrompt: effectivePrompt,
-      klant: auth.klant,
-      imageUrl: videoImageUrl,
-      brandEnhancement,
-    });
-    if (!videoResult.ok) {
-      return NextResponse.json({ error: videoResult.error }, { status: 502 });
-    }
 
-    const videoBuffer = await downloadMediaBuffer(
-      videoResult.video_url,
-      FAL_VIDEO_TIMEOUT_MS
+    const { jobId } = startStudioVideoJob({
+      klant: auth.klant,
+      request: {
+        user_prompt: effectivePrompt,
+        image_urls: imageUrls,
+        start_image_url: startFrameUrl || undefined,
+        brand_enhancement: brandEnhancement,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        ok: true,
+        job_id: jobId,
+        jobId,
+        status: "processing",
+        media_type: "video",
+      },
+      { status: 202 }
     );
-    const persisted = await persistVideoGenerationFromBuffer({
-      klant: auth.klant,
-      mode: videoImageUrl ? "image_to_image" : "text_to_image",
-      user_prompt: videoResult.user_prompt,
-      fal_prompt: videoResult.fal_prompt,
-      video_url: videoResult.video_url,
-      source_image_url: imageUrls[0] ?? null,
-      buffer: videoBuffer,
-    });
-
-    const item = {
-      tracking_id: persisted.tracking_id,
-      master_url: persisted.master_public_url,
-      variants: persisted.variants,
-      content_id: persisted.content_id,
-      generation_id: persisted.id,
-      media_type: "video" as const,
-      analytics: persisted.analytics,
-    };
-
-    return NextResponse.json({
-      ok: true,
-      klant: auth.klant,
-      mode: videoImageUrl ? "image_to_image" : "text_to_image",
-      media_type: "video",
-      model: videoResult.model,
-      user_prompt: videoResult.user_prompt,
-      fal_prompt: videoResult.fal_prompt,
-      items: [item],
-      tracking_id: item.tracking_id,
-      master_url: item.master_url,
-      variants: item.variants,
-      content_id: item.content_id,
-      generation_id: item.generation_id,
-      analytics: item.analytics,
-    });
   }
 
   const seed =

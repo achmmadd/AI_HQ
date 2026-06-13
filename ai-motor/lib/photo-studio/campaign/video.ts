@@ -13,6 +13,7 @@ import type { AdConcept, CampaignGoal, CampaignVideoAsset } from "@/lib/photo-st
 import type { BrandKitRow } from "@/lib/photo-studio/brand-kit/types";
 import type { CompanyId } from "@/lib/types";
 import { downloadMediaBuffer } from "@/lib/photo-studio/download-master";
+import { campaignAssetPublicUrl } from "@/lib/photo-studio/campaign/tenant-profile";
 
 async function checkVideoFile(filePath: string): Promise<QualityCheckResult[]> {
   const fileStat = await stat(filePath);
@@ -86,7 +87,7 @@ export async function generateCampaignVideo(opts: {
     };
   }
 
-  const prompt = buildVideoPrompt(concept, goal);
+  const prompt = buildVideoPrompt(concept, goal, brandKit.name);
   let imageUrl: string | undefined;
   if (productImage) {
     const resolved = await resolveImageUrlsForFal([productImage]);
@@ -146,7 +147,7 @@ export async function generateCampaignVideo(opts: {
     format: "9:16",
     filename,
     file_path: filePath,
-    public_url: `/api/fumero/campaign/assets/${encodeURIComponent(packId)}/video/${encodeURIComponent(filename)}`,
+    public_url: campaignAssetPublicUrl(packId, "video", filename),
     generation_id: persisted.id,
     quality_checks: checks,
     quality_pass: qualityPass(checks),

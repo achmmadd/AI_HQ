@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 /** Simulated progress for sync blocking generate calls (0→90% over duration, 100% on complete). */
 export function useGenerationProgress(estimatedMs = 10_000) {
   const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef(0);
   const estimatedMsRef = useRef(estimatedMs);
@@ -21,6 +22,7 @@ export function useGenerationProgress(estimatedMs = 10_000) {
     estimatedMsRef.current = estimatedMs;
     startedAtRef.current = Date.now();
     setProgress(0);
+    setMessage(null);
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startedAtRef.current;
       const ratio = Math.min(1, elapsed / estimatedMsRef.current);
@@ -44,9 +46,14 @@ export function useGenerationProgress(estimatedMs = 10_000) {
   const reset = useCallback(() => {
     stopInterval();
     setProgress(0);
+    setMessage(null);
   }, [stopInterval]);
+
+  const setProgressMessage = useCallback((next: string | null) => {
+    setMessage(next);
+  }, []);
 
   const etaSeconds = Math.max(1, Math.round(estimatedMs / 1000));
 
-  return { progress, etaSeconds, start, complete, reset };
+  return { progress, message, etaSeconds, start, complete, reset, setProgressMessage };
 }

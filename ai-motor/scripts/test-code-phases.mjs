@@ -469,9 +469,12 @@ function phase13() {
     path.join(process.cwd(), "lib/code-agent/code-models.ts"),
     "utf-8"
   );
-  if (models.includes("deepseek/deepseek-v4-flash")) {
-    pass("13", "default model deepseek/deepseek-v4-flash");
-  } else fail("13", "code-models mist deepseek default");
+  if (models.includes("resolveCodeModelForTurn")) {
+    pass("13", "resolveCodeModelForTurn cost-aware routing");
+  } else fail("13", "code-models mist resolveCodeModelForTurn");
+  if (models.includes("anthropic/claude-sonnet-4.6")) {
+    pass("13", "default heavy model claude-sonnet-4.6");
+  } else fail("13", "code-models mist claude-sonnet-4.6 default");
 }
 
 async function phase18() {

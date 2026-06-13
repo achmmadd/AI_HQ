@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
+import { requireApiAuthSession } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
 
@@ -13,9 +14,12 @@ const MIME: Record<string, string> = {
 };
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ filename: string }> }
 ) {
+  const auth = await requireApiAuthSession(req);
+  if (auth instanceof NextResponse) return auth;
+
   const { filename: raw } = await ctx.params;
   const filename = decodeURIComponent(raw);
   if (!filename || filename.includes("..") || filename.includes("/")) {

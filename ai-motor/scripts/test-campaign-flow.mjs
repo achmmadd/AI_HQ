@@ -66,7 +66,12 @@ if (!kitsRes.ok) fail("brand-kits", kitsRes.status, kitsText);
 let brandKitId;
 try {
   const j = JSON.parse(kitsText);
-  brandKitId = j.items?.[0]?.id;
+  const items = Array.isArray(j.items) ? j.items : [];
+  const confirmed = items.find((k) => k.status === "confirmed");
+  brandKitId = confirmed?.id ?? items[0]?.id;
+  if (!confirmed && brandKitId) {
+    console.warn("WARN: no confirmed brand kit — using first kit (may fail API validation)");
+  }
 } catch {
   fail("brand-kits parse", kitsRes.status, kitsText);
 }

@@ -73,7 +73,11 @@ export function encodePasswordAsToken(password: string): string {
 }
 
 export function getAuthPassword(): string {
-  return process.env.MOTORSAI_PASSWORD || "demo123";
+  const configured = process.env.MOTORSAI_PASSWORD?.trim();
+  if (configured) return configured;
+  // Fail closed in production — no implicit demo password.
+  if (process.env.NODE_ENV === "production") return "";
+  return "demo123";
 }
 
 /** Waarschuwing in productie als default wachtwoord actief is. */

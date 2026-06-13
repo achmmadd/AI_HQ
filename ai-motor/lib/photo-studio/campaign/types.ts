@@ -1,5 +1,6 @@
 import type { BrandKitRow } from "@/lib/photo-studio/brand-kit/types";
 import type { QualityCheckResult } from "@/lib/photo-studio/quality/types";
+import type { CompanyId } from "@/lib/types";
 
 /** Campagnedoel — Meta Ads objective mapping. */
 export type CampaignGoal = "verkoop" | "bereik" | "retargeting";
@@ -113,7 +114,7 @@ export type CampaignPackData = {
 
 export type CampaignPackRow = {
   id: string;
-  klant: "fumero";
+  klant: CompanyId;
   status: CampaignPackStatus;
   zip_path: string | null;
   created_at: string;

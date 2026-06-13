@@ -26,7 +26,7 @@ const token = await createSignedSessionToken({
 });
 
 const cookie = `motorsai_token=${token}`;
-const port = process.argv[2] || "3041";
+const port = process.argv[2] || process.env.PORT || "3040";
 const base = `http://127.0.0.1:${port}`;
 
 const probes = [

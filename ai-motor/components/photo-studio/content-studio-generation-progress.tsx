@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   progress: number;
   etaSeconds: number;
+  message?: string | null;
   onCancel?: () => void;
   className?: string;
 };
@@ -14,6 +15,7 @@ type Props = {
 export function ContentStudioGenerationProgress({
   progress,
   etaSeconds,
+  message,
   onCancel,
   className,
 }: Props) {
@@ -22,9 +24,9 @@ export function ContentStudioGenerationProgress({
   return (
     <div className={cn("space-y-1.5", className)} role="status" aria-live="polite">
       <div className="flex items-center justify-between gap-2 text-[10px] text-[var(--fumero-text-subtle)]">
-        <span className="inline-flex items-center gap-1">
-          <Loader2 className="h-3 w-3 animate-spin text-[var(--fumero-accent)]" aria-hidden />
-          Genereren…
+        <span className="inline-flex min-w-0 items-center gap-1 truncate">
+          <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[var(--fumero-accent)]" aria-hidden />
+          {message ?? "Genereren…"}
         </span>
         <span className="tabular-nums">~{etaSeconds} sec</span>
       </div>

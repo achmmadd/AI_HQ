@@ -585,7 +585,7 @@ export async function POST(req: NextRequest) {
           experimentId,
           experimentVariant,
           experimentName,
-        } = await buildPromptForN8n(klant, prompt.trim());
+        } = await buildPromptForN8n(klant, prompt.trim(), { conversationId });
 
         const webhookUrl = resolveChatWebhookUrl(intent, { agentMode });
 

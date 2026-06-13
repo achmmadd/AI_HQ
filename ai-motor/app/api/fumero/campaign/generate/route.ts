@@ -32,9 +32,7 @@ function packResponse(
     config,
     media_skipped: skipMedia,
     media_skip_reason: autoSkipped
-      ? config.template_only
-        ? "Template-modus — media standaard overgeslagen."
-        : "FAL_KEY of FAL_API_KEY ontbreekt — media automatisch overgeslagen."
+      ? "FAL_KEY of FAL_API_KEY ontbreekt — media automatisch overgeslagen."
       : skipMedia
         ? "Media overgeslagen op verzoek (skip_media=true)."
         : null,

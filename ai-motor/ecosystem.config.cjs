@@ -64,7 +64,7 @@ module.exports = {
         MOTOR_CODE_MODEL: process.env.MOTOR_CODE_MODEL,
         MOTOR_CODE_MIN_CODING_SCORE: process.env.MOTOR_CODE_MIN_CODING_SCORE,
         MOTORS_INTERNAL_TOKEN: process.env.MOTORS_INTERNAL_TOKEN,
-        CAMPAIGN_TEMPLATE_ONLY: "1",
+        CAMPAIGN_TEMPLATE_ONLY: "0",
       },
     },
     {

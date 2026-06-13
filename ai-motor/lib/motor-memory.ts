@@ -1,9 +1,14 @@
+import { getChatTranscriptForMemory } from "@/lib/chat-memory-transcript";
+import { getCodeSessionTranscriptForMemory } from "@/lib/code-memory-transcript";
 import {
   embedForQdrant,
   payloadText,
   type QdrantHit,
 } from "@/lib/knowledge-service";
 import { anthropicComplete, getAnthropicApiKey } from "@/lib/anthropic-messages";
+
+export const MOTOR_MEMORY_SOURCE_CHAT = "chat";
+export const MOTOR_MEMORY_SOURCE_CODE_AGENT = "code_agent";
 
 const QDRANT_URL = (process.env.QDRANT_URL || "http://127.0.0.1:6333").replace(
   /\/$/,
@@ -50,6 +55,145 @@ function ensureCollectionOnce(): Promise<void> {
   return ensureCollectionPromise;
 }
 
+function memorySearchFilter(
+  klant: string,
+  source?: string
+): Record<string, unknown> | undefined {
+  const must: Record<string, unknown>[] = [];
+  const k = (klant || "").trim();
+  if (k) must.push({ key: "client", match: { value: k } });
+  const src = (source || "").trim();
+  if (src) must.push({ key: "source", match: { value: src } });
+  if (!must.length) return undefined;
+  return { must };
+}
+
+export type MotorMemoryIndexHit = {
+  id: string;
+  score: number;
+  onderwerpen?: string;
+  conversationId?: number;
+  codeSessionId?: number;
+  datum?: string;
+  source?: string;
+};
+
+export async function searchMotorMemoryIndex(
+  query: string,
+  klant: string,
+  opts?: { limit?: number; source?: string }
+): Promise<{ hits: MotorMemoryIndexHit[]; error?: string }> {
+  const q = query.trim();
+  if (!q) return { hits: [] };
+
+  try {
+    await ensureCollectionOnce();
+    const vector = await embedForQdrant(q);
+    if (!vector.length) return { hits: [], error: "embedding failed" };
+
+    const cap = Math.min(Math.max(opts?.limit ?? 8, 1), 20);
+    const body: Record<string, unknown> = {
+      vector,
+      limit: cap,
+      with_payload: [
+        "onderwerpen",
+        "conversation_id",
+        "code_session_id",
+        "source",
+        "datum",
+      ],
+    };
+
+    const filter = memorySearchFilter(klant, opts?.source);
+    if (filter) body.filter = filter;
+
+    const res = await fetch(
+      `${QDRANT_URL}/collections/${MOTOR_MEMORY_COLLECTION}/points/search`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      }
+    );
+
+    const text = await res.text();
+    if (!res.ok) {
+      return { hits: [], error: text || `Qdrant ${res.status}` };
+    }
+
+    const data = JSON.parse(text) as { result?: QdrantHit[] };
+    const results = Array.isArray(data.result) ? data.result : [];
+    const hits: MotorMemoryIndexHit[] = [];
+    for (const h of results) {
+      const p = h.payload || {};
+      const id = h.id != null ? String(h.id) : "";
+      if (!id) continue;
+      hits.push({
+        id,
+        score: typeof h.score === "number" ? h.score : 0,
+        onderwerpen:
+          typeof p.onderwerpen === "string" ? p.onderwerpen : undefined,
+        conversationId:
+          typeof p.conversation_id === "number"
+            ? p.conversation_id
+            : undefined,
+        codeSessionId:
+          typeof p.code_session_id === "number"
+            ? p.code_session_id
+            : undefined,
+        datum: typeof p.datum === "string" ? p.datum : undefined,
+        source: typeof p.source === "string" ? p.source : undefined,
+      });
+    }
+    return { hits };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { hits: [], error: msg };
+  }
+}
+
+export async function fetchMotorMemoryChunks(
+  ids: string[]
+): Promise<{ id: string; text: string }[]> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (!unique.length) return [];
+
+  try {
+    await ensureCollectionOnce();
+    const res = await fetch(
+      `${QDRANT_URL}/collections/${MOTOR_MEMORY_COLLECTION}/points`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: unique,
+          with_payload: true,
+          with_vector: false,
+        }),
+        signal: AbortSignal.timeout(30_000),
+      }
+    );
+    const text = await res.text();
+    if (!res.ok) return [];
+
+    const data = JSON.parse(text) as {
+      result?: Array<{ id?: unknown; payload?: Record<string, unknown> }>;
+    };
+    const rows = Array.isArray(data.result) ? data.result : [];
+    return rows
+      .map((row) => {
+        const id = row.id != null ? String(row.id) : "";
+        const body =
+          typeof row.payload?.text === "string" ? row.payload.text.trim() : "";
+        return id && body ? { id, text: body } : null;
+      })
+      .filter((x): x is { id: string; text: string } => x != null);
+  } catch {
+    return [];
+  }
+}
+
 export async function searchMotorMemories(
   query: string,
   klant: string,
@@ -70,12 +214,8 @@ export async function searchMotorMemories(
       with_payload: true,
     };
 
-    const k = (klant || "").trim();
-    if (k) {
-      body.filter = {
-        must: [{ key: "client", match: { value: k } }],
-      };
-    }
+    const filter = memorySearchFilter(klant);
+    if (filter) body.filter = filter;
 
     const res = await fetch(
       `${QDRANT_URL}/collections/${MOTOR_MEMORY_COLLECTION}/points/search`,
@@ -143,7 +283,9 @@ Antwoord uitsluitend met geldige JSON (geen markdown), formaat:
 
 export async function upsertMotorMemoryPoint(opts: {
   klant: string;
-  conversationId: number;
+  conversationId?: number;
+  codeSessionId?: number;
+  source?: string;
   summary: string;
   topics: string;
 }): Promise<{ ok: boolean; error?: string }> {
@@ -170,7 +312,13 @@ export async function upsertMotorMemoryPoint(opts: {
                 client: opts.klant,
                 datum,
                 onderwerpen: opts.topics,
-                conversation_id: opts.conversationId,
+                source: opts.source?.trim() || MOTOR_MEMORY_SOURCE_CHAT,
+                ...(opts.conversationId != null
+                  ? { conversation_id: opts.conversationId }
+                  : {}),
+                ...(opts.codeSessionId != null
+                  ? { code_session_id: opts.codeSessionId }
+                  : {}),
               },
             },
           ],
@@ -207,6 +355,130 @@ export function formatMotorMemoryContext(hits: QdrantHit[], maxChars = 2400): st
   return lines.join("\n");
 }
 
+function formatTimelineExcerpt(
+  transcript: { role: string; content: string }[],
+  maxChars = 1800
+): string {
+  const lines: string[] = [];
+  let used = 0;
+  for (const t of transcript) {
+    const line = `${t.role}: ${t.content.trim().slice(0, 400)}`;
+    if (used + line.length + 1 > maxChars) break;
+    lines.push(line);
+    used += line.length + 1;
+  }
+  return lines.join("\n");
+}
+
+/** 3-layer retrieval: index → session timeline → full chunks (claude-mem pattern). */
+export async function buildProgressiveCodeMemoryContext(opts: {
+  query: string;
+  klant: string;
+  sessionId?: number | null;
+  project?: string;
+}): Promise<string> {
+  const q = opts.query.trim();
+  if (!q) return "";
+
+  const index = await searchMotorMemoryIndex(q, opts.klant, {
+    limit: 8,
+    source: MOTOR_MEMORY_SOURCE_CODE_AGENT,
+  });
+
+  const sections: string[] = [];
+
+  if (index.hits.length) {
+    const indexLines = index.hits
+      .slice(0, 6)
+      .map(
+        (h, i) =>
+          `${i + 1}. [${h.score.toFixed(3)}] ${h.onderwerpen || "code"} (${h.datum || "?"})`
+      )
+      .join("\n");
+    sections.push(`### Geheugen-index (Qdrant ${MOTOR_MEMORY_COLLECTION})\n${indexLines}`);
+  }
+
+  if (opts.sessionId) {
+    const timeline = getCodeSessionTranscriptForMemory(opts.sessionId, 16);
+    if (timeline.length) {
+      sections.push(
+        `### Sessie-timeline (code_session ${opts.sessionId})\n${formatTimelineExcerpt(timeline)}`
+      );
+    }
+  }
+
+  const topIds = index.hits.slice(0, 3).map((h) => h.id);
+  if (topIds.length) {
+    const chunks = await fetchMotorMemoryChunks(topIds);
+    if (chunks.length) {
+      const chunkBlock = chunks
+        .map((c, i) => `${i + 1}. ${c.text.slice(0, 700)}`)
+        .join("\n");
+      sections.push(`### Relevante samenvattingen\n${chunkBlock}`);
+    }
+  }
+
+  if (!sections.length) return "";
+  const project = opts.project?.trim();
+  const header = project
+    ? `## Code-geheugen (${opts.klant}/${project})`
+    : `## Code-geheugen (${opts.klant})`;
+  return `${header}\n${sections.join("\n\n")}`;
+}
+
+/** 3-layer retrieval for main chat: index → Postgres timeline → full chunks. */
+export async function buildProgressiveChatMemoryContext(opts: {
+  query: string;
+  klant: string;
+  conversationId?: number | null;
+}): Promise<string> {
+  const q = opts.query.trim();
+  if (!q) return "";
+
+  const index = await searchMotorMemoryIndex(q, opts.klant, {
+    limit: 8,
+    source: MOTOR_MEMORY_SOURCE_CHAT,
+  });
+
+  const sections: string[] = [];
+
+  if (index.hits.length) {
+    const indexLines = index.hits
+      .slice(0, 6)
+      .map(
+        (h, i) =>
+          `${i + 1}. [${h.score.toFixed(3)}] ${h.onderwerpen || "chat"} (${h.datum || "?"})`
+      )
+      .join("\n");
+    sections.push(
+      `### Geheugen-index (Qdrant ${MOTOR_MEMORY_COLLECTION})\n${indexLines}`
+    );
+  }
+
+  if (opts.conversationId) {
+    const timeline = getChatTranscriptForMemory(opts.conversationId, 16);
+    if (timeline.length) {
+      sections.push(
+        `### Sessie-timeline (conversation ${opts.conversationId})\n${formatTimelineExcerpt(timeline)}`
+      );
+    }
+  }
+
+  const topIds = index.hits.slice(0, 3).map((h) => h.id);
+  if (topIds.length) {
+    const chunks = await fetchMotorMemoryChunks(topIds);
+    if (chunks.length) {
+      const chunkBlock = chunks
+        .map((c, i) => `${i + 1}. ${c.text.slice(0, 700)}`)
+        .join("\n");
+      sections.push(`### Relevante samenvattingen\n${chunkBlock}`);
+    }
+  }
+
+  if (!sections.length) return "";
+  return `## Chat-geheugen (${opts.klant})\n${sections.join("\n\n")}`;
+}
+
 export async function ingestConversationToMotorMemory(
   transcript: { role: string; content: string }[],
   klant: string,
@@ -218,6 +490,7 @@ export async function ingestConversationToMotorMemory(
     const up = await upsertMotorMemoryPoint({
       klant,
       conversationId,
+      source: MOTOR_MEMORY_SOURCE_CHAT,
       summary: parsed.summary,
       topics: parsed.topics,
     });
@@ -227,5 +500,45 @@ export async function ingestConversationToMotorMemory(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.warn("[motor-memory] ingest failed:", msg);
+  }
+}
+
+const CODE_MEMORY_INGEST_MIN_MESSAGES = 4;
+
+export function maybeIngestCodeSessionMemory(
+  sessionId: number | null | undefined,
+  klant: string
+): void {
+  if (!sessionId) return;
+  const transcript = getCodeSessionTranscriptForMemory(sessionId, 32);
+  if (transcript.length < CODE_MEMORY_INGEST_MIN_MESSAGES) return;
+
+  const assistantTurns = transcript.filter((t) => t.role === "assistant").length;
+  if (assistantTurns < 2 || assistantTurns % 3 !== 0) return;
+
+  void ingestCodeSessionToMotorMemory(transcript, klant, sessionId);
+}
+
+export async function ingestCodeSessionToMotorMemory(
+  transcript: { role: string; content: string }[],
+  klant: string,
+  codeSessionId: number
+): Promise<void> {
+  try {
+    const parsed = await summarizeConversationForMotorMemory(transcript, klant);
+    if (!parsed) return;
+    const up = await upsertMotorMemoryPoint({
+      klant,
+      codeSessionId,
+      source: MOTOR_MEMORY_SOURCE_CODE_AGENT,
+      summary: parsed.summary,
+      topics: parsed.topics,
+    });
+    if (!up.ok && up.error) {
+      console.warn("[motor-memory] code ingest skipped:", up.error);
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[motor-memory] code ingest failed:", msg);
   }
 }

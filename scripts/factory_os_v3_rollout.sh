@@ -17,6 +17,12 @@ set -euo pipefail
 AI_HQ="${AI_HQ:-$HOME/AI_HQ}"
 cd "$AI_HQ"
 
+# shellcheck source=lib/qdrant-collection.sh
+source "$AI_HQ/scripts/lib/qdrant-collection.sh"
+# Primary ingest bucket for Fumero rollout (SSOT: qdrantCollectionForScope("fumero"))
+QDRANT_FUMERO_COLLECTION="$(qdrant_collection_for_scope fumero)"
+QDRANT_LEGACY_COLLECTION="$(qdrant_legacy_collection)"
+
 mkdir -p "$AI_HQ/logs"
 LOG_FILE="$AI_HQ/logs/v3_rollout_$(date +%Y%m%d_%H%M).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
@@ -24,6 +30,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 echo "🏭 FACTORY OS V3 — ROLLOUT"
 echo "Log: $LOG_FILE"
 echo "DRY_RUN=$DRY_RUN SKIP_GIT=$SKIP_GIT"
+echo "Qdrant ingest (fumero): $QDRANT_FUMERO_COLLECTION"
 echo "=========================="
 
 dry_run() {
@@ -96,6 +103,10 @@ git_add_known_paths() {
     "factory-os/klanten"
     "factory-os/systeem"
     "scripts/factory_os_v3_rollout.sh"
+    "scripts/run_factory_os_backup.sh"
+    "scripts/run_factory_os_v3_finalize.sh"
+    "scripts/run_qdrant_ingest_kennisbank.sh"
+    "scripts/lib/qdrant-collection.sh"
   )
   local p
   for p in "${adds[@]}"; do
@@ -282,13 +293,23 @@ EOF
 }
 
 ensure_backup_cron() {
-  local script_path="$AI_HQ/scripts/factory_os_backup.sh"
+  local script_path="$AI_HQ/scripts/run_factory_os_backup.sh"
   if [ ! -x "$script_path" ]; then
     return 0
   fi
   local line="0 3 * * * $script_path"
   if crontab -l 2>/dev/null | grep -Fq "$script_path"; then
     echo "✅ cron bevat al backup: $script_path"
+    return 0
+  fi
+  # Migreer legacy cron (root-owned factory_os_backup.sh → scoped wrapper)
+  if crontab -l 2>/dev/null | grep -Fq "factory_os_backup.sh"; then
+    if ! dry_run; then
+      crontab -l 2>/dev/null | sed "s|factory_os_backup.sh|run_factory_os_backup.sh|g" | crontab -
+      echo "✅ cron gemigreerd: factory_os_backup.sh → run_factory_os_backup.sh"
+    else
+      echo "[DRY_RUN] zou cron factory_os_backup.sh → run_factory_os_backup.sh migreren"
+    fi
     return 0
   fi
   if dry_run; then
@@ -331,31 +352,36 @@ deel3_finale() {
     echo "⚠️  ~/.openclaw/mcp.json mist (nog niet geconfigureerd?)"
   fi
 
-  local qc
-  qc=$(curl -s --max-time 5 "http://localhost:6333/collections/factory_os" | python3 -c "
-import sys,json
-try:
-  d=json.load(sys.stdin)
-  st=d.get('result',{}).get('status')
-  print(st or '?')
-except Exception:
-  print('ERR')
-" 2>/dev/null || echo "ERR")
-  if [ "$qc" = "green" ]; then
-    verified+=("Qdrant collection factory_os: green")
-    echo "✅ Qdrant factory_os: green"
+  local qc qc_status qc_points legacy_probe legacy_status legacy_points
+  qc=$(qdrant_collection_probe "$QDRANT_FUMERO_COLLECTION")
+  qc_status="${qc%%|*}"
+  qc_points="${qc#*|}"
+  if [ "$qc_status" = "green" ]; then
+    verified+=("Qdrant collection ${QDRANT_FUMERO_COLLECTION}: green (${qc_points} points)")
+    echo "✅ Qdrant ${QDRANT_FUMERO_COLLECTION}: green (${qc_points} points)"
   else
-    echo "⚠️  Qdrant factory_os: $qc (nog aanmaken via V3 prompt STAP 6?)"
+    echo "⚠️  Qdrant ${QDRANT_FUMERO_COLLECTION}: ${qc_status} (${qc_points} points) — ingest via run_qdrant_ingest_kennisbank.sh?"
+  fi
+
+  if [ "$QDRANT_LEGACY_COLLECTION" != "$QDRANT_FUMERO_COLLECTION" ]; then
+    legacy_probe=$(qdrant_collection_probe "$QDRANT_LEGACY_COLLECTION")
+    legacy_status="${legacy_probe%%|*}"
+    legacy_points="${legacy_probe#*|}"
+    if [ "$legacy_status" != "MISSING" ] && [ "${legacy_points:-0}" -gt 0 ] 2>/dev/null; then
+      echo "⚠️  Legacy Qdrant ${QDRANT_LEGACY_COLLECTION}: ${legacy_points} points — migreer/verwijder via ai-motor/scripts/qdrant-migrate-collections.mjs"
+    elif [ "$legacy_status" = "green" ] && [ "${legacy_points:-0}" -eq 0 ] 2>/dev/null; then
+      echo "ℹ️  Legacy ${QDRANT_LEGACY_COLLECTION}: leeg (OK na migratie)"
+    fi
   fi
 
   local backup_ok=0
-  if [ -x "$AI_HQ/scripts/factory_os_backup.sh" ]; then
-    verified+=("factory_os_backup.sh uitvoerbaar")
+  if [ -x "$AI_HQ/scripts/run_factory_os_backup.sh" ]; then
+    verified+=("run_factory_os_backup.sh uitvoerbaar (scoped Qdrant)")
     backup_ok=1
-    echo "✅ Backup script aanwezig"
+    echo "✅ Backup wrapper aanwezig (scoped collections)"
   fi
-  if [ "$backup_ok" = "1" ] && crontab -l 2>/dev/null | grep -Fq "factory_os_backup.sh"; then
-    verified+=("cron met factory_os_backup.sh")
+  if [ "$backup_ok" = "1" ] && crontab -l 2>/dev/null | grep -Fq "run_factory_os_backup.sh"; then
+    verified+=("cron met run_factory_os_backup.sh")
     echo "✅ Backup cron actief"
   fi
 
@@ -423,13 +449,23 @@ except Exception:
   fi
 
   mkdir -p "$AI_HQ/factory-os/docs"
-  local n8n_st q_st ol_st c
+  local n8n_st q_st ol_st c qdrant_col_st
   c=$(http_code "http://localhost:5678/healthz")
   [ "$c" = "200" ] && n8n_st="✅ n8n" || n8n_st="❌ n8n"
   c=$(http_code "http://localhost:6333/healthz")
   [ "$c" = "200" ] && q_st="✅ qdrant" || q_st="❌ qdrant"
   c=$(http_code "http://localhost:11434/api/tags")
   [ "$c" = "200" ] && ol_st="✅ ollama" || ol_st="❌ ollama"
+
+  local qc qc_status qc_points
+  qc=$(qdrant_collection_probe "$QDRANT_FUMERO_COLLECTION")
+  qc_status="${qc%%|*}"
+  qc_points="${qc#*|}"
+  if [ "$qc_status" = "green" ]; then
+    qdrant_col_st="✅ Qdrant ${QDRANT_FUMERO_COLLECTION} (${qc_points} points)"
+  else
+    qdrant_col_st="⚠️ Qdrant ${QDRANT_FUMERO_COLLECTION}: ${qc_status}"
+  fi
 
   cat > "$AI_HQ/factory-os/docs/V3_STATUS.md" << EOF
 # Factory OS V3 — Status $ts
@@ -438,6 +474,7 @@ except Exception:
 $n8n_st
 $q_st
 $ol_st
+$qdrant_col_st
 
 ## MCP servers (config keys)
 $mcp_block

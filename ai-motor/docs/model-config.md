@@ -41,7 +41,13 @@ node scripts/qdrant-migrate-collections.mjs --dry-run
 # Kopieer vectors met payload client=fumero|bokas
 node scripts/qdrant-migrate-collections.mjs --klant fumero
 node scripts/qdrant-migrate-collections.mjs
+
+# Na verificatie: verwijder gemigreerde punten uit legacy bucket
+node scripts/qdrant-migrate-collections.mjs --delete-legacy --klant fumero --dry-run
+node scripts/qdrant-migrate-collections.mjs --delete-legacy --klant fumero
 ```
+
+File-ingest (markdown → Qdrant): canonical `scripts/qdrant_ingest_kennisbank.py`; vanuit `AI_HQ/` gebruik `scripts/run_qdrant_ingest_kennisbank.sh` (wrapper). Zie `docs/qdrant-ingest-paths.md`.
 
 Optioneel UI-spiegel (zelfde prefix als server): `NEXT_PUBLIC_QDRANT_COLLECTION_PREFIX` — alleen voor labels in client components.
 

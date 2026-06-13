@@ -91,10 +91,31 @@ def get_host_stats() -> dict[str, Any]:
         return {"ok": False, "error": str(e)}
 
 
+def _cpu_cores() -> int:
+    try:
+        return max(1, int(os.cpu_count() or 1))
+    except (TypeError, ValueError):
+        return 1
+
+
+def _load_pct_from_loadavg(load1: float, cores: int | None = None) -> float:
+    """Load average → benadering CPU-gebruik (0–100%). load1=cores ≈ 100%."""
+    cores = cores or _cpu_cores()
+    return min(100.0, (float(load1) / cores) * 100.0)
+
+
 def get_host_metrics() -> dict[str, Any]:
-    """CPU load (0–100%) en temperatuur (°C) voor Resource Warden. Gebruikt 1Panel API + fallback /proc, /sys."""
+    """CPU load (0–100%) en temperatuur (°C) voor Resource Warden. Gebruikt psutil, 1Panel API + fallback /proc, /sys."""
     out: dict[str, Any] = {"ok": True, "load_pct": 0.0, "temp_c": None, "raw": None}
-    # 1) Load en temp uit 1Panel
+    cores = _cpu_cores()
+    # 1) Actuele CPU % (betrouwbaarder dan ruwe load average)
+    try:
+        import psutil
+
+        out["load_pct"] = float(psutil.cpu_percent(interval=0.5))
+    except Exception:
+        pass
+    # 2) Load en temp uit 1Panel (alleen als psutil geen waarde gaf)
     try:
         stats = get_host_stats()
         if stats.get("ok") and stats.get("data"):
@@ -102,19 +123,14 @@ def get_host_metrics() -> dict[str, Any]:
             inner = d.get("data", d) if isinstance(d, dict) else d
             if isinstance(inner, dict):
                 out["raw"] = inner
-                # Load: load1, load5, load15 of loadAverage (soms genormaliseerd)
-                load1 = inner.get("load1") or inner.get("loadOne") or inner.get("load")
-                load5 = inner.get("load5") or inner.get("loadFive")
-                load15 = inner.get("load15") or inner.get("loadFifteen")
-                if load1 is not None:
-                    try:
-                        load_val = float(load1)
-                        # Schatting: load ~ gebruik over N cores; als > 1 dan > 100% mogelijk
-                        cores = max(1, int(inner.get("cpuCores") or inner.get("cores") or 1))
-                        out["load_pct"] = min(100.0, (load_val / cores) * 100.0)
-                    except (TypeError, ValueError):
-                        pass
-                # Temperatuur (als 1Panel het levert)
+                if out["load_pct"] == 0.0:
+                    load1 = inner.get("load1") or inner.get("loadOne") or inner.get("load")
+                    if load1 is not None:
+                        try:
+                            api_cores = max(1, int(inner.get("cpuCores") or inner.get("cores") or cores))
+                            out["load_pct"] = _load_pct_from_loadavg(float(load1), api_cores)
+                        except (TypeError, ValueError):
+                            pass
                 t = inner.get("temperature") or inner.get("temp") or inner.get("cpuTemp")
                 if t is not None:
                     try:
@@ -123,7 +139,7 @@ def get_host_metrics() -> dict[str, Any]:
                         pass
     except Exception:
         pass
-    # 2) Fallback: /proc/loadavg en /sys/class/thermal (op host)
+    # 3) Fallback: /proc/loadavg en /sys/class/thermal (op host)
     if out["temp_c"] is None:
         for path in ("/sys/class/thermal/thermal_zone0/temp", "/sys/class/hwmon/hwmon0/temp1_input"):
             try:
@@ -137,9 +153,7 @@ def get_host_metrics() -> dict[str, Any]:
             with open("/proc/loadavg", encoding="utf-8") as f:
                 parts = f.read().strip().split()
             if parts:
-                load1 = float(parts[0])
-                # Geen core-count hier; 1.0 = 100% bij 1 core
-                out["load_pct"] = min(100.0, load1 * 100.0)
+                out["load_pct"] = _load_pct_from_loadavg(float(parts[0]), cores)
         except (OSError, ValueError):
             pass
     return out

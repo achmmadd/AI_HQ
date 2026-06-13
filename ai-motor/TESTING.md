@@ -41,6 +41,8 @@ Gecombineerde flow: **Brand Kit → Campagnedoel → Concepten → Genereren →
 - [ ] Voortgangsmelding tijdens async job
 - [ ] Copy sets, static creatives, video (indien FAL_KEY) in preview
 - [ ] Download ZIP werkt
+- [ ] ZIP bevat `meta/asset_feed_spec.json` (Meta skeleton)
+- [ ] Refresh tijdens async job hervat polling (sessionStorage, zelfde tab)
 - [ ] Geen console errors
 
 ## Mobiel
@@ -52,9 +54,12 @@ Gecombineerde flow: **Brand Kit → Campagnedoel → Concepten → Genereren →
 
 ```bash
 cd /home/pietje/AI_HQ/ai-motor
-npx tsx --test lib/photo-studio/campaign/wizard-steps.test.ts
-npx tsx --test lib/photo-studio/campaign/wizard-storage.test.ts
+npx tsx --test lib/photo-studio/campaign/*.test.ts
 npx tsx --test lib/photo-studio/brand-kit/parse-product-page.test.ts
-BASE_URL=http://127.0.0.1:3040 npx tsx scripts/test-campaign-flow.mjs
+BASE_URL=http://127.0.0.1:3040 node scripts/test-campaign-strategy.mjs
+BASE_URL=http://127.0.0.1:3040 node scripts/test-campaign-flow.mjs
+BASE_URL=http://127.0.0.1:3040 node scripts/test-campaign-full-media.mjs
 npm run build
 ```
+
+Beta protocol: `docs/fumero/BETA-PROTOCOL.md`

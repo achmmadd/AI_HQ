@@ -2,7 +2,11 @@ import { execFileSync } from "node:child_process";
 import { unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { validateAppCode } from "@/lib/builder-code";
+import {
+  normalizeVanillaAppHtml,
+  scrubInvisibleSourceChars,
+  validateAppCode,
+} from "@/lib/builder-code";
 import { loadFlappyReferenceSeed } from "@/lib/fumero/reference-seeds";
 
 export { loadFlappyReferenceSeed };
@@ -155,11 +159,14 @@ function detectTruncation(html: string, script: string): string[] {
     errors.push("Script heeft ongebalanceerde haakjes");
   }
 
-  if (script.length > 0 && !/\)\s*;?\s*\}\s*\)\s*;?\s*$/.test(script.trim())) {
-    const lastLine = script.trim().split("\n").pop()?.trim() ?? "";
-    if (lastLine && !/[;})]$/.test(lastLine) && !/\/\/|\/\*/.test(lastLine)) {
-      errors.push(`Script lijkt afgekapt op regel: "${lastLine.slice(0, 60)}"`);
-    }
+  const lastLine = script.trim().split("\n").pop()?.trim() ?? "";
+  if (
+    lastLine &&
+    openBraces === closeBraces &&
+    openParens === closeParens &&
+    /\b(if|for|while|function)\s*\([^)]*$/.test(lastLine)
+  ) {
+    errors.push(`Script lijkt afgekapt op regel: "${lastLine.slice(0, 60)}"`);
   }
 
   return errors;
@@ -173,19 +180,132 @@ function detectBrandIssues(html: string): string[] {
   return errors;
 }
 
-function detectWidgetInteractivity(html: string, script: string): string[] {
+function detectWidgetInteractivity(
+  html: string,
+  script: string,
+  templateId?: string
+): string[] {
   const errors: string[] = [];
   const hasInteractivity =
     /addEventListener/i.test(script) ||
     /\bonclick\s*=/i.test(html) ||
     /\.onclick\s*=/.test(script) ||
     /requestAnimationFrame/i.test(script);
+  if (hasInteractivity) return errors;
+
+  if (templateId === "landing") {
+    const hasCta =
+      /<button\b/i.test(html) ||
+      /<form\b/i.test(html) ||
+      /<a\b[^>]*href\s*=\s*["']#/.test(html);
+    if (hasCta) return errors;
+  }
+
   if (!hasInteractivity) {
     errors.push(
       "Widget mist interactiviteit (addEventListener, onclick of requestAnimationFrame)"
     );
   }
   return errors;
+}
+
+export type AutoFixGeneratedHtmlResult = {
+  html: string;
+  fixes: string[];
+};
+
+/** Herstel veelvoorkomende LLM-syntaxfouten vóór strikte validatie. */
+export function autoFixGeneratedHtml(html: string): AutoFixGeneratedHtmlResult {
+  const fixes: string[] = [];
+  let out = scrubInvisibleSourceChars(html.trim());
+
+  out = out.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi, (_m, open, css, close) => {
+    let fixedCss = css as string;
+    if (/^\s*,\s*::before/m.test(fixedCss)) {
+      fixedCss = fixedCss.replace(/^\s*,\s*::before/m, "*, ::before");
+      fixes.push("CSS universele *-selector hersteld");
+    }
+    fixedCss = fixedCss.replace(
+      /(^|[\n\r])\s*,\s*(::before|::after)/g,
+      "$1*, $2"
+    );
+    return `${open}${fixedCss}${close}`;
+  });
+
+  out = out.replace(/(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi, (_m, open, body, close) => {
+    let script = body as string;
+    const before = script;
+    script = script.replace(/Math\.random\(\)\s+([A-Za-z(])/g, "Math.random() * $1");
+    script = script.replace(/Math\.PI\s+(\d)/g, "Math.PI * $1");
+    script = script.replace(
+      /Math\.(cos|sin)\(([^)]+)\)\s+([a-zA-Z0-9_(])/g,
+      "Math.$1($2) * $3"
+    );
+    if (script !== before) {
+      fixes.push("Ontbrekende *-operators in script hersteld");
+    }
+    return `${open}${script}${close}`;
+  });
+
+  if (/bouw uw score op/i.test(out)) {
+    out = out.replace(/bouw uw score op/gi, "bouw je score op");
+    fixes.push("Brand voice gecorrigeerd (je/jij)");
+  }
+
+  if (!/<\/html>\s*$/i.test(out.trim()) && /<html[\s>]/i.test(out)) {
+    if (!/<\/body>/i.test(out)) out += "\n</body>";
+    out += "\n</html>";
+    fixes.push("Sluitende </html>-tag toegevoegd");
+  }
+
+  out = normalizeVanillaAppHtml(out);
+
+  let scripts = extractScriptBodies(out);
+  const script = scripts.join("\n\n");
+  const hasHandler =
+    /addEventListener/i.test(script) ||
+    /\bonclick\s*=/i.test(out) ||
+    /requestAnimationFrame/i.test(script);
+  const needsControls =
+    /<button\b/i.test(out) ||
+    /<input\b/i.test(out) ||
+    /<form\b/i.test(out) ||
+    /<a\b[^>]*href\s*=\s*["']#/.test(out);
+  const needsScript = scripts.length === 0 || (!hasHandler && needsControls);
+
+  if (needsScript && /<body[\s>]/i.test(out)) {
+    const patch = `<script>
+(function () {
+  document.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(function (el) {
+    if (el.dataset.bound) return;
+    el.dataset.bound = '1';
+    el.addEventListener('click', function () { el.classList.toggle('is-active'); });
+  });
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    if (a.dataset.bound) return;
+    a.dataset.bound = '1';
+    a.addEventListener('click', function (e) {
+      var id = (a.getAttribute('href') || '').slice(1);
+      var target = id ? document.getElementById(id) : null;
+      if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+    });
+  });
+})();
+</script>`;
+    if (/<\/body>/i.test(out)) {
+      out = out.replace(/<\/body>/i, `${patch}\n</body>`);
+    } else {
+      out += patch;
+    }
+    fixes.push(
+      scripts.length === 0
+        ? "Ontbrekend script-blok toegevoegd"
+        : "Minimale interactiviteit toegevoegd voor knoppen/links"
+    );
+    scripts = extractScriptBodies(out);
+  }
+
+  return { html: out, fixes: [...new Set(fixes)] };
 }
 
 function detectGameCompleteness(html: string, script: string): string[] {
@@ -269,7 +389,7 @@ export function validateGeneratedHtml(
   if (asGame) {
     errors.push(...detectGameCompleteness(trimmed, script));
   } else if (script) {
-    errors.push(...detectWidgetInteractivity(trimmed, script));
+    errors.push(...detectWidgetInteractivity(trimmed, script, templateId));
   }
 
   const unique = [...new Set(errors)];

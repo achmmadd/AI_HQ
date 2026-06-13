@@ -142,6 +142,33 @@ async function resolveOneImageUrlForFal(
   }
 
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    const inlineExternal =
+      process.env.FAL_INLINE_EXTERNAL_REFS === "1" ||
+      process.env.CAMPAIGN_FAL_INLINE_REFS !== "0";
+    if (inlineExternal) {
+      try {
+        const buffer = await loadImageBufferFromRef(trimmed);
+        const maxBytes = 4 * 1024 * 1024;
+        if (buffer.length > maxBytes) {
+          return {
+            ok: false,
+            error: `Referentiebeeld te groot (${Math.round(buffer.length / 1024 / 1024)}MB) — max 4MB.`,
+          };
+        }
+        const hint = trimmed.split("/").pop()?.split("?")[0] ?? "ref.jpg";
+        const dataUri = toDataUri(buffer, hint);
+        cache?.set(trimmed, dataUri);
+        return { ok: true, url: dataUri };
+      } catch (e) {
+        return {
+          ok: false,
+          error:
+            e instanceof Error
+              ? e.message
+              : "Referentiebeeld kon niet worden geladen.",
+        };
+      }
+    }
     cache?.set(trimmed, trimmed);
     return { ok: true, url: trimmed };
   }

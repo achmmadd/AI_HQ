@@ -1,5 +1,14 @@
 import type { CampaignGoal } from "@/lib/photo-studio/campaign/types";
 
+export type CampaignWizardSessionState = {
+  step: "generate" | "preview";
+  jobId: string;
+  packId?: string;
+  selectedKitId: string;
+  goal: CampaignGoal;
+  startedAt: number;
+};
+
 export const WIZARD_STEPS = [
   { id: "brand", label: "Brand Kit" },
   { id: "goal", label: "Campagnedoel" },
@@ -46,7 +55,13 @@ export function parseCampaignGoal(raw: string | null | undefined): CampaignGoal 
   return goals.includes(raw as CampaignGoal) ? (raw as CampaignGoal) : null;
 }
 
-/** In-flight generation cannot be restored after refresh. */
-export function sanitizeWizardStepAfterRefresh(step: WizardStep): WizardStep {
-  return step === "generate" ? "concepts" : step;
+/** In-flight generation and preview cannot be restored after refresh (pack not in storage). */
+export function sanitizeWizardStepAfterRefresh(
+  step: WizardStep,
+  session?: CampaignWizardSessionState | null
+): WizardStep {
+  if (session && (step === "generate" || step === "preview")) {
+    return session.step;
+  }
+  return step === "generate" || step === "preview" ? "concepts" : step;
 }

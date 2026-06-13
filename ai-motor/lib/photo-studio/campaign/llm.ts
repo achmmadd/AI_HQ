@@ -8,12 +8,18 @@ export type CampaignLlmResult<T> =
   | { ok: true; data: T; source: "openrouter" | "n8n" }
   | { ok: false; error: string };
 
-/** Max wait for campaign LLM calls — keeps wizard responsive (default 25s, cap 30s). */
+/** Max wait for campaign LLM calls — keeps wizard responsive (default 30s, cap 30s). */
 export function campaignLlmTimeoutMs(): number {
   const raw = process.env.CAMPAIGN_LLM_TIMEOUT_MS?.trim();
-  const n = raw ? Number.parseInt(raw, 10) : 25_000;
-  if (!Number.isFinite(n) || n < 3_000) return 25_000;
+  const n = raw ? Number.parseInt(raw, 10) : 30_000;
+  if (!Number.isFinite(n) || n < 3_000) return 30_000;
   return Math.min(n, 30_000);
+}
+
+/** Optional faster OpenRouter model for campaign JSON (e.g. google/gemini-2.5-flash). */
+export function campaignLlmModel(): string | undefined {
+  const model = process.env.CAMPAIGN_LLM_MODEL?.trim();
+  return model || undefined;
 }
 
 function stripJsonFence(raw: string): string {
@@ -23,9 +29,10 @@ function stripJsonFence(raw: string): string {
 }
 
 export function isCampaignTemplateOnly(): boolean {
+  /** Production always uses LLM first; templates are timeout/parse fallbacks only. */
+  if (process.env.NODE_ENV === "production") return false;
   if (process.env.CAMPAIGN_TEMPLATE_ONLY === "1") return true;
   if (process.env.CAMPAIGN_TEMPLATE_ONLY === "0") return false;
-  // Dev default: skip external LLM unless explicitly disabled.
   return process.env.NODE_ENV === "development";
 }
 
@@ -33,9 +40,10 @@ export async function callCampaignLlmJson<T>(opts: {
   system: string;
   user: string;
   n8nType: string;
+  klant?: string;
   maxTokens?: number;
 }): Promise<CampaignLlmResult<T>> {
-  const { system, user, n8nType, maxTokens = 2000 } = opts;
+  const { system, user, n8nType, klant = "fumero", maxTokens = 2000 } = opts;
   const timeoutMs = campaignLlmTimeoutMs();
 
   if (isCampaignTemplateOnly()) {
@@ -49,6 +57,7 @@ export async function callCampaignLlmJson<T>(opts: {
           { role: "system", content: system },
           { role: "user", content: user },
         ],
+        model: campaignLlmModel(),
         maxTokens,
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -63,7 +72,7 @@ export async function callCampaignLlmJson<T>(opts: {
   const n8n = await callFactoryN8n(
     {
       prompt: `${system}\n\n${user}`,
-      klant: "fumero",
+      klant,
       afdeling: "marketing",
       type: n8nType,
     },

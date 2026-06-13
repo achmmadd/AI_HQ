@@ -2,6 +2,7 @@ import { buildCodeSystemPrompt } from "@/lib/code-agent/code-system-prompt";
 import {
   getMotorCodeModel,
   resolveCodeAgentProvider,
+  resolveCodeModelForTurn,
 } from "@/lib/code-agent/code-models";
 import {
   enrichCodeAgentMessage,
@@ -33,6 +34,7 @@ export async function runCodeAgentStream(opts: {
   message: string;
   history: Array<{ role: "user" | "assistant"; content: string }>;
   openFiles: string[];
+  sessionId?: number | null;
   selection?: CodeSelectionContext | null;
   terminalOutput?: string | null;
   reviewWrites?: boolean;
@@ -48,12 +50,14 @@ export async function runCodeAgentStream(opts: {
   let fullAssistantText = "";
   let totalInput = 0;
   let totalOutput = 0;
-  const model = getMotorCodeModel("anthropic");
+  let model = getMotorCodeModel("anthropic");
 
   const system = await buildCodeSystemPrompt({
     klant: opts.klant,
     project: opts.project,
     openFiles: opts.openFiles,
+    userMessage: opts.message,
+    sessionId: opts.sessionId,
   });
 
   const userContent = await enrichCodeAgentMessage({
@@ -74,6 +78,18 @@ export async function runCodeAgentStream(opts: {
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
+      model = resolveCodeModelForTurn(
+        {
+          message: opts.message,
+          historyLength: opts.history.length,
+          turn,
+          openFilesCount: opts.openFiles.length,
+          hasTerminalOutput: Boolean(opts.terminalOutput),
+          hasSelection: Boolean(opts.selection),
+        },
+        "anthropic"
+      );
+
       const response = await createAnthropicMessage({
         system,
         messages,

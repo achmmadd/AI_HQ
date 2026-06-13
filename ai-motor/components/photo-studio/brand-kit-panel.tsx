@@ -96,22 +96,29 @@ export function BrandKitPanel({
   const [importNote, setImportNote] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [kitsLoading, setKitsLoading] = useState(true);
+  const [kitsLoadError, setKitsLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
 
   const loadKits = useCallback(async () => {
+    setKitsLoadError(null);
     try {
       const res = await fetch("/api/photo-studio/brand-kit?klant=fumero", {
         credentials: "include",
+        signal: AbortSignal.timeout(15_000),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        throw new Error(`Brand Kits laden mislukt (HTTP ${res.status}).`);
+      }
       const data = (await res.json()) as { items?: BrandKitRow[] };
       const items = Array.isArray(data.items) ? data.items : [];
       setKits(items);
       onKitsLoaded?.(items);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Brand Kits laden mislukt — vernieuw de pagina.";
+      setKitsLoadError(msg);
     }
   }, [onKitsLoaded]);
 
@@ -119,19 +126,26 @@ export function BrandKitPanel({
     let cancelled = false;
     void (async () => {
       setKitsLoading(true);
+      setKitsLoadError(null);
       try {
         const res = await fetch("/api/photo-studio/brand-kit?klant=fumero", {
           credentials: "include",
+          signal: AbortSignal.timeout(15_000),
         });
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { items?: BrandKitRow[] };
-        if (!cancelled) {
-          const items = Array.isArray(data.items) ? data.items : [];
-          setKits(items);
-          onKitsLoaded?.(items);
+        if (cancelled) return;
+        if (!res.ok) {
+          throw new Error(`Brand Kits laden mislukt (HTTP ${res.status}).`);
         }
-      } catch {
-        /* ignore */
+        const data = (await res.json()) as { items?: BrandKitRow[] };
+        const items = Array.isArray(data.items) ? data.items : [];
+        setKits(items);
+        onKitsLoaded?.(items);
+      } catch (e) {
+        if (!cancelled) {
+          setKitsLoadError(
+            e instanceof Error ? e.message : "Brand Kits laden mislukt — vernieuw de pagina."
+          );
+        }
       } finally {
         if (!cancelled) setKitsLoading(false);
       }
@@ -312,18 +326,32 @@ export function BrandKitPanel({
     setImportNote(null);
   };
 
-  const deleteKit = async (id: string) => {
-    const res = await fetch(`/api/photo-studio/brand-kit/${id}?klant=fumero`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (res.ok) {
+  const deleteKit = async (id: string, name: string) => {
+    if (
+      !window.confirm(
+        `Brand Kit "${name}" verwijderen? Dit kan niet ongedaan worden gemaakt.`
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    try {
+      const res = await fetch(`/api/photo-studio/brand-kit/${id}?klant=fumero`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Verwijderen mislukt.");
+      }
       if (savedId === id) {
         setSavedId(null);
         setDraft(null);
         setPhase("idle");
       }
       await loadKits();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Verwijderen mislukt.");
     }
   };
 
@@ -674,6 +702,11 @@ export function BrandKitPanel({
             <label className="block space-y-1">
               <span className="fumero-text-caption font-medium text-[var(--fumero-text-muted)]">
                 Prijs
+                {draft.price ? (
+                  <span className="ml-2 font-normal text-[var(--fumero-text)]">
+                    ({formatPriceEur(draft.price, draft.currency) ?? draft.price})
+                  </span>
+                ) : null}
               </span>
               <input
                 value={draft.price ?? ""}
@@ -978,6 +1011,20 @@ export function BrandKitPanel({
         </section>
       ) : null}
 
+      {kitsLoadError ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--fumero-danger-border)] bg-[var(--fumero-danger-bg)] px-4 py-3 fumero-text-body-sm text-[var(--fumero-danger)]">
+          <span>{kitsLoadError}</span>
+          <button
+            type="button"
+            onClick={() => void loadKits()}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--fumero-danger-border)] px-3 fumero-text-caption font-medium hover:bg-white/50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Opnieuw
+          </button>
+        </div>
+      ) : null}
+
       {kitsLoading ? (
         <section className="space-y-3" aria-busy="true" aria-label="Brand Kits laden">
           <h2 className="fumero-text-body font-semibold text-[var(--fumero-text)]">
@@ -999,19 +1046,28 @@ export function BrandKitPanel({
           </h2>
           <ul className="divide-y divide-[var(--fumero-border)] rounded-[var(--fumero-radius-lg)] border border-[var(--fumero-border)] bg-[var(--fumero-surface)]">
             {kits.map((kit) => {
-              const isSelected = isWizard && kit.status === "confirmed" && selectedKitId === kit.id;
+              const isConfirmed = kit.status === "confirmed";
+              const isSelected = isWizard && isConfirmed && selectedKitId === kit.id;
               return (
                 <li
                   key={kit.id}
                   className={cn(
                     "flex flex-wrap items-center justify-between gap-3 px-4 py-3",
-                    isSelected && "bg-[var(--fumero-accent-muted)]"
+                    isSelected && "bg-[var(--fumero-accent-muted)]",
+                    isWizard && !isConfirmed && "opacity-75"
                   )}
                 >
                   <button
                     type="button"
                     onClick={() => {
-                      if (isWizard && kit.status === "confirmed") {
+                      if (isWizard && !isConfirmed) {
+                        setError(
+                          "Dit is een concept-kit — bevestig eerst via Bewerken voordat je verder gaat."
+                        );
+                        loadKit(kit);
+                        return;
+                      }
+                      if (isWizard && isConfirmed) {
                         selectConfirmedKit(kit);
                         return;
                       }
@@ -1026,6 +1082,11 @@ export function BrandKitPanel({
                         </span>
                       ) : null}
                       {kit.name}
+                      {!isConfirmed ? (
+                        <span className="ml-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 fumero-text-caption font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                          Concept
+                        </span>
+                      ) : null}
                     </p>
                     <p className="truncate fumero-text-caption text-[var(--fumero-text-muted)]">
                       {kit.product_name}
@@ -1047,7 +1108,7 @@ export function BrandKitPanel({
                     ) : null}
                     <button
                       type="button"
-                      onClick={() => void deleteKit(kit.id)}
+                      onClick={() => void deleteKit(kit.id, kit.name)}
                       className="rounded-lg p-2 text-[var(--fumero-text-muted)] hover:bg-[var(--fumero-danger-bg)] hover:text-[var(--fumero-danger)]"
                       aria-label="Verwijderen"
                     >

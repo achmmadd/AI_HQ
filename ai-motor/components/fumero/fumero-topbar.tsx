@@ -49,7 +49,7 @@ export function FumeroTopbar({
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="truncate text-[var(--fumero-text-muted)] hover:text-[var(--fumero-text)]"
+                  className="truncate text-[var(--fumero-text-muted)] rounded-sm hover:text-[var(--fumero-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fumero-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--fumero-surface)]"
                 >
                   {crumb.label}
                 </Link>

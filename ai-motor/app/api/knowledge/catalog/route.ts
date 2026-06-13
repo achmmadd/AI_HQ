@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
 import { ensurePlatformSchema } from "@/lib/db/platform-schema";
-import { qdrantSearchCollectionsForScope } from "@/lib/qdrant-collection";
+import { describeQdrantCollectionsForScope } from "@/lib/qdrant-collection";
 import { requireApiAuthForKlant } from "@/lib/require-api-auth";
 
 export const runtime = "nodejs";
@@ -71,9 +71,13 @@ export async function GET(req: NextRequest) {
           canonical_source: null as string | null,
         }));
 
+    const collectionPlan = describeQdrantCollectionsForScope(klant);
+
     return NextResponse.json({
       klant,
-      qdrant_collections: qdrantSearchCollectionsForScope(klant),
+      qdrant_collections: collectionPlan.search,
+      qdrant_ingest_collection: collectionPlan.ingest,
+      qdrant_scrape_collection: collectionPlan.scrape,
       documents: rows.map((r) => ({
         id: r.id,
         filename: r.filename,

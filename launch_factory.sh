@@ -103,7 +103,9 @@ if [ -f "scripts/engineer_daemon.py" ]; then
 fi
 
 # ——— Resource Warden (NUC temp/load → pause BU's bij overbelasting) ———
-if [ -f "resource_warden.py" ]; then
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx omega-resource-warden; then
+  echo "  ↷ Resource Warden draait al in Docker (omega-resource-warden)"
+elif [ -f "resource_warden.py" ]; then
   nohup python3 "$ROOT/resource_warden.py" >> "$ROOT/logs/resource_warden.log" 2>&1 &
   echo "  ✓ Resource Warden (system caretaker)"
   disown 2>/dev/null || true

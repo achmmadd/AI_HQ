@@ -17,8 +17,11 @@ import { BrandKitWizardStep } from "@/components/photo-studio/brand-kit-wizard-s
 import type { BrandKitRow } from "@/lib/photo-studio/brand-kit/types";
 import {
   buildCampaignWizardSearchParams,
+  clearCampaignWizardSession,
   readCampaignWizardFromSearchParams,
+  readCampaignWizardSession,
   readCampaignWizardState,
+  writeCampaignWizardSession,
   writeCampaignWizardState,
 } from "@/lib/photo-studio/campaign/wizard-storage";
 import {
@@ -139,6 +142,57 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    const jobId = resumeJobRef.current;
+    if (!jobId || loading) return;
+    resumeJobRef.current = null;
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      setStep("generate");
+      setJobPhase("static");
+      setJobProgress("Generatie hervat na refresh…");
+      pollAbortRef.current?.abort();
+      const pollAc = new AbortController();
+      pollAbortRef.current = pollAc;
+      try {
+        const finished = await pollCampaignJob(
+          jobId,
+          (job) => {
+            setJobPhase(job.phase ?? null);
+            setJobProgress(job.progress_message ?? null);
+          },
+          pollAc.signal
+        );
+        if (finished.config) setStudioConfig(finished.config);
+        const resultPack = finished.pack ?? null;
+        setPack(resultPack);
+        setCopy(resultPack?.copy ?? null);
+        setStrategy(resultPack?.strategy ?? null);
+        if (finished.partial || finished.status === "error") {
+          setPartialWarning(
+            finished.error ??
+              "Generatie stopte voortijdig — hieronder zie je wat wél is gelukt."
+          );
+        }
+        setStep("preview");
+        clearCampaignWizardSession(
+          typeof window !== "undefined" ? window.sessionStorage : null
+        );
+      } catch (err) {
+        clearCampaignWizardSession(
+          typeof window !== "undefined" ? window.sessionStorage : null
+        );
+        setError(err instanceof Error ? err.message : "Hervatten mislukt.");
+        setStep("concepts");
+      } finally {
+        setLoading(false);
+        setJobProgress(null);
+        setJobPhase(null);
+      }
+    })();
+  }, [loading]);
+
   const confirmedKits = kits.filter((k) => k.status === "confirmed");
   const selectedKit = confirmedKits.find((k) => k.id === selectedKitId) ?? null;
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.id === step);
@@ -157,19 +211,28 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
     [step, selectedKitId, goal, router]
   );
 
+  const resumeJobRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (hydrated.current) return;
     hydrated.current = true;
+    const sessionStorage =
+      typeof window !== "undefined" ? window.sessionStorage : null;
+    const session = readCampaignWizardSession(sessionStorage);
     const fromUrl = readCampaignWizardFromSearchParams(searchParams);
     const fromStorage = readCampaignWizardState(
       typeof window !== "undefined" ? window.localStorage : null
     );
     const rawStep = fromUrl.step ?? fromStorage.step;
-    const initialStep = sanitizeWizardStepAfterRefresh(rawStep);
-    const initialKit = fromUrl.selectedKitId ?? fromStorage.selectedKitId;
+    const initialStep = sanitizeWizardStepAfterRefresh(rawStep, session);
+    const initialKit =
+      session?.selectedKitId ?? fromUrl.selectedKitId ?? fromStorage.selectedKitId;
     setStep(initialStep);
     setSelectedKitId(initialKit);
-    setGoal(fromUrl.goal ?? fromStorage.goal);
+    setGoal(session?.goal ?? fromUrl.goal ?? fromStorage.goal);
+    if (session?.jobId && (initialStep === "generate" || initialStep === "preview")) {
+      resumeJobRef.current = session.jobId;
+    }
     skipPersist.current = false;
   }, [searchParams]);
 
@@ -222,9 +285,14 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
   }, []);
 
   async function runStrategy() {
-    if (!selectedKitId) return;
+    if (!selectedKitId || !selectedKit) {
+      setError("Selecteer een bevestigde Brand Kit om verder te gaan.");
+      return;
+    }
     setLoading(true);
     setError(null);
+    setJobPhase("strategy");
+    setJobProgress("Advertentieconcepten worden gegenereerd…");
     try {
       const data = await fetchJsonChecked<{
         strategy?: AdStrategyResult;
@@ -249,6 +317,8 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
       setError(err instanceof Error ? err.message : "Strategie genereren mislukt.");
     } finally {
       setLoading(false);
+      setJobProgress(null);
+      setJobPhase(null);
     }
   }
 
@@ -312,6 +382,17 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
         const jobId = startData.job_id ?? startData.jobId;
         if (!jobId) throw new Error("Async job starten mislukt — geen job_id.");
 
+        writeCampaignWizardSession(
+          {
+            step: "generate",
+            jobId,
+            selectedKitId,
+            goal,
+            startedAt: Date.now(),
+          },
+          typeof window !== "undefined" ? window.sessionStorage : null
+        );
+
         const finished = await pollCampaignJob(
           jobId,
           (job) => {
@@ -333,6 +414,9 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
           );
         }
         setStep("preview");
+        clearCampaignWizardSession(
+          typeof window !== "undefined" ? window.sessionStorage : null
+        );
         return;
       }
 
@@ -340,6 +424,9 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
       setCopy(startData.pack?.copy ?? null);
       setStrategy(startData.pack?.strategy ?? strategy);
       setStep("preview");
+      clearCampaignWizardSession(
+        typeof window !== "undefined" ? window.sessionStorage : null
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Onbekende fout";
       if (studioConfig && !studioConfig.fal_configured && !skipMedia) {
@@ -356,6 +443,9 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
         setCanRetry(true);
       }
       setStep("concepts");
+      clearCampaignWizardSession(
+        typeof window !== "undefined" ? window.sessionStorage : null
+      );
     } finally {
       setLoading(false);
       setJobProgress(null);
@@ -375,7 +465,7 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
   }
 
   const canGoNext = canAdvanceWizardStep(step, {
-    selectedKitId,
+    selectedKitId: selectedKit?.id ?? null,
     hasStrategy: Boolean(strategy?.concepts?.length),
   });
 
@@ -567,36 +657,72 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
         </section>
       ) : null}
 
-      {step === "preview" && pack ? (
+      {step === "preview" && !(pack || copy || strategy) ? (
+        <section className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-8 text-center">
+          <p className="fumero-text-body-sm text-[var(--fumero-text-muted)]">
+            Geen pack in dit tabblad — genereer opnieuw of ga terug naar advertentieconcepten.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStep(strategy ? "concepts" : "goal")}
+            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--fumero-accent)] px-4 fumero-text-body-sm font-semibold text-[var(--fumero-accent-foreground)]"
+          >
+            {strategy ? "Terug naar concepten" : "Naar campagnedoel"}
+          </button>
+        </section>
+      ) : null}
+
+      {step === "preview" && (pack || copy || strategy) ? (
         <section className="space-y-6">
-          <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="fumero-text-subheading text-[var(--fumero-text)]">
-                  {pack.product_name} — {pack.goal}
-                </h2>
-                <p className="fumero-text-caption text-[var(--fumero-text-muted)]">
-                  Pack {pack.id} · {pack.status}
-                </p>
+          {pack ? (
+            <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="fumero-text-subheading text-[var(--fumero-text)]">
+                    {pack.product_name} — {pack.goal}
+                  </h2>
+                  <p className="fumero-text-caption text-[var(--fumero-text-muted)]">
+                    Pack {pack.id} · {pack.status}
+                  </p>
+                </div>
+                {pack.zip_path ? (
+                  <a
+                    href={`/api/fumero/campaign/${pack.id}/download`}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--fumero-accent)] px-4 fumero-text-body-sm font-semibold text-[var(--fumero-accent-foreground)]"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download ZIP
+                  </a>
+                ) : null}
               </div>
-              {pack.zip_path ? (
-                <a
-                  href={`/api/fumero/campaign/${pack.id}/download`}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--fumero-accent)] px-4 fumero-text-body-sm font-semibold text-[var(--fumero-accent-foreground)]"
-                >
-                  <Download className="h-4 w-4" />
-                  Download ZIP
-                </a>
+              {pack.errors.length ? (
+                <ul className="mt-3 space-y-1 fumero-text-caption text-amber-700">
+                  {pack.errors.map((e) => (
+                    <li key={e}>⚠ {e}</li>
+                  ))}
+                </ul>
               ) : null}
             </div>
-            {pack.errors.length ? (
-              <ul className="mt-3 space-y-1 fumero-text-caption text-amber-700">
-                {pack.errors.map((e) => (
-                  <li key={e}>⚠ {e}</li>
+          ) : null}
+
+          {strategy && !pack ? (
+            <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-5">
+              <h3 className="mb-3 fumero-text-subheading">Strategie</h3>
+              <div className="grid gap-3">
+                {strategy.concepts.map((c) => (
+                  <article
+                    key={c.angle}
+                    className="rounded-lg border border-[var(--fumero-border)] p-4"
+                  >
+                    <p className="fumero-text-caption font-semibold uppercase text-[var(--fumero-accent)]">
+                      {c.angle_label}
+                    </p>
+                    <p className="mt-1 font-medium text-[var(--fumero-text)]">{c.hook}</p>
+                  </article>
                 ))}
-              </ul>
-            ) : null}
-          </div>
+              </div>
+            </div>
+          ) : null}
 
           {copy ? (
             <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-5">
@@ -627,7 +753,7 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
             </div>
           ) : null}
 
-          {pack.static_assets.filter((a) => a.public_url).length ? (
+          {pack && pack.static_assets.filter((a) => a.public_url).length ? (
             <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-5">
               <h3 className="mb-3 fumero-text-subheading">Static creatives</h3>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -655,7 +781,7 @@ export function CampaignStudioWizard({ className }: { className?: string }) {
             </div>
           ) : null}
 
-          {pack.video_assets.filter((a) => a.public_url).length ? (
+          {pack && pack.video_assets.filter((a) => a.public_url).length ? (
             <div className="rounded-xl border border-[var(--fumero-border)] bg-[var(--fumero-surface)] p-5">
               <h3 className="mb-3 fumero-text-subheading">Reels video</h3>
               {pack.video_assets

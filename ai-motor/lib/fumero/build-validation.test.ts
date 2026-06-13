@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import {
+  autoFixGeneratedHtml,
   BROKEN_FLAPPY_PATTERNS,
   formatValidationRetryHint,
   isGamePrompt,
@@ -163,6 +164,49 @@ test("rejects missing </html>", () => {
 test("isGamePrompt detects arcade prompts", () => {
   assert.equal(isGamePrompt("Bouw een flappy arcade game"), true);
   assert.equal(isGamePrompt("FAQ chatbot over verzending"), false);
+});
+
+test("autoFix repairs CSS universal selector and Math.random multiply", () => {
+  const broken = brokenFlappyHtml();
+  const fixed = autoFixGeneratedHtml(broken);
+  assert.ok(fixed.fixes.length > 0);
+  assert.ok(!/^\s*,\s*::before/m.test(fixed.html));
+  assert.match(fixed.html, /Math\.random\(\)\s*\*/);
+});
+
+test("autoFix + validate accepts repaired calculator-style widget", () => {
+  const html = `<!DOCTYPE html>
+<html lang="nl"><head><meta charset="UTF-8"/>
+<style>${BROKEN_FLAPPY_PATTERNS.cssMissingStar} button { padding: 8px; }</style>
+</head><body>
+<div id="display">0</div>
+<button id="plus">+</button><button id="minus">-</button>
+<script>
+(function () {
+  var display = document.getElementById('display');
+  var val = 0;
+  document.getElementById('plus').addEventListener('click', function () {
+    val = val + 1;
+    display.textContent = String(val);
+  });
+  document.getElementById('minus').addEventListener('click', function () {
+    val = val - 1;
+    display.textContent = String(val);
+  });
+})();
+</script></body></html>`;
+  const fixed = autoFixGeneratedHtml(html);
+  const result = validateGeneratedHtml(fixed.html, "calculator");
+  assert.equal(result.valid, true, result.errors.join("; "));
+});
+
+test("autoFix injects handlers when buttons exist without JS", () => {
+  const html = `<!DOCTYPE html><html><head><style>*{box-sizing:border-box}</style></head>
+<body><button type="button">CTA</button></body></html>`;
+  const fixed = autoFixGeneratedHtml(html);
+  assert.match(fixed.html, /addEventListener/);
+  const result = validateGeneratedHtml(fixed.html, "landing");
+  assert.equal(result.valid, true, result.errors.join("; "));
 });
 
 test("formatValidationRetryHint lists errors", () => {

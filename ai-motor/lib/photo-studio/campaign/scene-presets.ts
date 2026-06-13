@@ -138,10 +138,12 @@ export function buildCreativePrompt(
 
 export function buildVideoPrompt(
   concept: AdConcept,
-  goal: CampaignGoal
+  goal: CampaignGoal,
+  brandName: string
 ): string {
+  const brand = brandName.trim() || "Brand";
   return [
-    `Korte Meta Reels advertentie voor Fumero. Hook: "${concept.hook}".`,
+    `Korte Meta Reels advertentie voor ${brand}. Hook: "${concept.hook}".`,
     `Doel: ${goal}. Subtle product motion, premium e-commerce quality.`,
     concept.visual_direction,
     "9:16 vertical, geen tekst-overlays, geen gezondheidsclaims.",

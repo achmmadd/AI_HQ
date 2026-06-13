@@ -3,7 +3,7 @@ import {
   useRichChatContext,
   useRichChatContextForKlant,
 } from "@/lib/chat-routing-policy";
-import { searchMotorMemories } from "@/lib/motor-memory";
+import { buildProgressiveChatMemoryContext } from "@/lib/motor-memory";
 import {
   payloadTextWithProvenance,
   searchKnowledge,
@@ -60,7 +60,7 @@ function buildChatInstructionPrefix(opts: {
     CHAT_OUTPUT_INSTRUCTION_PREFIX +
     `${opts.personaLine} Werk conversationeel en concreet (zoals een sterke Claude-chat): heldere stappen bij complexe taken, maximaal één verduidelijkende vraag als iets ontbreekt. Antwoord in het Nederlands, tenzij de gebruiker expliciet een andere taal vraagt. Bij live webonderzoek: vermeld bronnen met URL. Gebruik onderstaand geheugen en kennis waar relevant; verzin geen feiten die daar niet in staan. Bij twijfel tussen bronnen: geef voorkeur aan de snippet met nieuwere indexdatum of expliciete bron-URI.\n\n` +
     `${opts.resumeBlock}${masterBlock}\n\n` +
-    `### Qdrant-geheugen\n${opts.memoriesBlock}\n\n` +
+    `### Langetermijngeheugen\n${opts.memoriesBlock}\n\n` +
     `### Kennisbank\n${opts.knowledgeBlock}${styleBlock}${knowledgeGuideBlock}${maxBlock}${scrapeBlock}`
   );
 }
@@ -95,7 +95,7 @@ function maxScrapeCapabilityBlockForKlant(klant: string): string | undefined {
 }
 
 /**
- * Systeemprompt-deel voor elke chat: persona, Qdrant-geheugen (top 5), kennisbank (top 3).
+ * Systeemprompt-deel voor elke chat: persona, 3-layer geheugen, kennisbank (top 3).
  */
 function openClawFastPreambleEnabled(): boolean {
   if (process.env.OPENCLAW_FAST_PREAMBLE?.trim() === "0") return false;
@@ -142,8 +142,12 @@ export async function buildChatSystemPreamble(
     });
   }
 
-  const [memRes, knowRes, resumeBlock, masterContextRaw] = await Promise.all([
-    searchMotorMemories(q, klant, 5),
+  const [memoryBlock, knowRes, resumeBlock, masterContextRaw] = await Promise.all([
+    buildProgressiveChatMemoryContext({
+      query: q,
+      klant,
+      conversationId: opts?.conversationId,
+    }),
     searchKnowledge(q, { klant, limit: 3 }),
     buildResumeContextBlock(klant, {
       userPrompt: q,
@@ -155,11 +159,7 @@ export async function buildChatSystemPreamble(
   const masterContextBlock = formatMasterContextBlock(masterContextRaw ?? "");
 
   const memoriesBlock =
-    memRes.results.length > 0
-      ? memRes.results
-          .map((h, i) => `${i + 1}. ${payloadTextWithProvenance(h)}`)
-          .join("\n")
-      : "(geen eerdere herinneringen)";
+    memoryBlock.trim() || "(geen eerdere herinneringen)";
 
   const knowledgeBlock =
     knowRes.results.length > 0

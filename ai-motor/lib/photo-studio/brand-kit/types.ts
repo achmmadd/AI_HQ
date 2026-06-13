@@ -1,3 +1,5 @@
+import type { CampaignLocale } from "@/lib/photo-studio/campaign/tenant-profile";
+import type { CampaignPolicyProfileId } from "@/lib/photo-studio/campaign/meta-policy";
 import type { CompanyId } from "@/lib/types";
 
 export type BrandKitSource = "url_import" | "manual";
@@ -42,6 +44,10 @@ export type BrandKitData = {
   logo_url: string | null;
   status: BrandKitStatus;
   import_warnings?: string[];
+  /** Copy/strategy language — defaults from source_url TLD when unset. */
+  locale?: CampaignLocale;
+  /** Meta policy profile override (tenant/branche). */
+  policy_profile?: CampaignPolicyProfileId;
 };
 
 export type BrandKitRow = BrandKitData & {
@@ -70,6 +76,7 @@ export function emptyBrandKitDraft(source: BrandKitSource = "manual"): BrandKitD
     logo_url: null,
     status: "draft",
     import_warnings: [],
+    locale: "nl",
   };
 }
 

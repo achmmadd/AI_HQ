@@ -14,10 +14,8 @@ export const maxDuration = 30;
 
 const VALID_GOALS = new Set<CampaignGoal>(CAMPAIGN_GOALS.map((g) => g.id));
 
-const ROUTE_TIMEOUT_MS = Math.min(
-  30_000,
-  campaignLlmTimeoutMs() + 5_000
-);
+/** Align with maxDuration — LLM already aborts at campaignLlmTimeoutMs(). */
+const ROUTE_TIMEOUT_MS = Math.min(30_000, campaignLlmTimeoutMs() + 2_000);
 
 async function generateStrategyWithFallback(
   kit: BrandKitRow,

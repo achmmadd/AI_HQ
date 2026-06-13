@@ -1,6 +1,7 @@
 import db from "@/lib/db/database";
 import { generateArtifactHtml } from "@/lib/artifact-generate";
 import {
+  autoFixGeneratedHtml,
   formatValidationRetryHint,
   validateGeneratedHtml,
 } from "@/lib/fumero/build-validation";
@@ -172,15 +173,17 @@ export async function generateToolHtml(
       lastBuilderError = built.error || "Genereren mislukt";
       continue;
     }
-    const validation = validateGeneratedHtml(built.html, templateId, {
+    const fixed = autoFixGeneratedHtml(built.html);
+    const validation = validateGeneratedHtml(fixed.html, templateId, {
       isGame: /\b(flappy|game|spel|snake|pong|tetris|arcade)\b/i.test(prompt),
     });
     if (validation.valid) {
-      if (!/<script[\s>]/i.test(built.html)) {
+      const htmlOut = fixed.html;
+      if (!/<script[\s>]/i.test(htmlOut)) {
         const seed = seedHtmlForTemplate(templateId, "Tool", prompt, deployType);
         if (seed) return { html: seed };
       }
-      return { html: built.html };
+      return { html: htmlOut };
     }
     lastValidationErrors = validation.errors;
     lastBuilderError = validation.errors.join("; ");
