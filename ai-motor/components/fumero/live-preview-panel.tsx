@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  Check,
   ExternalLink,
   Gamepad2,
   Loader2,
@@ -79,6 +81,7 @@ export function FumeroLivePreviewPanel({
   onUxReview?: () => void;
   uxReviewDisabled?: boolean;
 }) {
+  const reduceMotion = useReducedMotion();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [uxBusy, setUxBusy] = useState(false);
@@ -101,11 +104,16 @@ export function FumeroLivePreviewPanel({
   const versionLabel =
     preview.version != null ? fumeroConceptVersionLabel(preview.version) : null;
 
-  const subtitle = isGenerating
-    ? `Max bouwt je ${preview.title}…`
-    : interactive
-      ? "Klaar om te spelen"
-      : versionLabel ?? "Live preview";
+  const subtitle = preview.buildSuccessFlash
+    ? "Klaar!"
+    : isGenerating
+      ? `Max bouwt je ${preview.title}…`
+      : interactive
+        ? "Klaar om te spelen"
+        : versionLabel ?? "Live preview";
+
+  const showStaticOverlay =
+    isGenerating && src && !interactive && !preview.buildSuccessFlash;
 
   const showUxReview =
     Boolean(onUxReview) &&
@@ -219,7 +227,11 @@ export function FumeroLivePreviewPanel({
           >
             {isGenerating ? (
               <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin text-[var(--fumero-text-muted)]" />
+                {preview.buildSuccessFlash ? (
+                  <Check className="h-3 w-3 text-[var(--fumero-accent)]" aria-hidden />
+                ) : (
+                  <Loader2 className="h-3 w-3 animate-spin text-[var(--fumero-text-muted)]" />
+                )}
                 {subtitle}
               </span>
             ) : (
@@ -327,6 +339,8 @@ export function FumeroLivePreviewPanel({
           <FumeroBuildTimeline
             activePhase={preview.buildPhase}
             building={preview.building ?? true}
+            progressPct={preview.buildProgressPct}
+            elapsedMs={preview.buildElapsedMs}
             compact
           />
         </div>
@@ -366,13 +380,20 @@ export function FumeroLivePreviewPanel({
         ) : src ? (
           <div
             className={cn(
-              "flex h-full min-h-[320px] w-full items-start justify-center overflow-auto p-4",
+              "relative flex h-full min-h-[320px] w-full items-start justify-center overflow-auto p-4",
               deviceFrame !== "desktop" && "bg-[var(--fumero-bg)]",
             )}
           >
-            <div
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0.85, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 280, damping: 28 }
+              }
               className={cn(
-                "h-full min-h-[320px] w-full",
+                "relative h-full min-h-[320px] w-full",
                 deviceFrame !== "desktop" &&
                   "builder-device-phone mx-auto h-auto max-h-full w-full rounded-[28px] border border-[var(--fumero-border)] shadow-[var(--fumero-shadow-lg)]",
               )}
@@ -392,7 +413,8 @@ export function FumeroLivePreviewPanel({
                 src={src}
                 sandbox={PLAYABLE_PREVIEW_SANDBOX}
                 className={cn(
-                  "pointer-events-auto w-full border-0",
+                  "pointer-events-auto w-full border-0 transition-opacity duration-500",
+                  showStaticOverlay && "opacity-60",
                   deviceFrame === "mobile"
                     ? "min-h-[640px] h-[calc(100%-24px)]"
                     : deviceFrame === "tablet"
@@ -401,7 +423,41 @@ export function FumeroLivePreviewPanel({
                 )}
                 onLoad={interactive ? focusPreviewForPlay : undefined}
               />
-            </div>
+              {showStaticOverlay ? (
+                <div
+                  className="pointer-events-none absolute inset-0 flex flex-col gap-3 bg-[var(--fumero-surface-muted)]/55 p-6 backdrop-blur-[1px]"
+                  aria-hidden
+                >
+                  <div className="builder-skeleton h-8 w-2/3 rounded-lg" />
+                  <div className="builder-skeleton h-4 w-full rounded-md" />
+                  <div className="builder-skeleton h-4 w-5/6 rounded-md" />
+                  <div className="mt-2 grid flex-1 grid-cols-3 gap-2">
+                    <div className="builder-skeleton min-h-[72px] rounded-xl" />
+                    <div className="builder-skeleton min-h-[72px] rounded-xl" />
+                    <div className="builder-skeleton min-h-[72px] rounded-xl" />
+                  </div>
+                </div>
+              ) : null}
+              <AnimatePresence>
+                {preview.buildSuccessFlash ? (
+                  <motion.div
+                    key="build-success"
+                    initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={reduceMotion ? undefined : { opacity: 0 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.35 }}
+                    className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--fumero-surface-muted)]/80"
+                  >
+                    <div className="flex items-center gap-2 rounded-full border border-[var(--fumero-border)] bg-[var(--fumero-surface)] px-4 py-2 shadow-sm">
+                      <Check className="h-4 w-4 text-[var(--fumero-accent)]" />
+                      <span className="text-[14px] font-semibold text-[var(--fumero-text)]">
+                        Klaar!
+                      </span>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </motion.div>
           </div>
         ) : (
           <BuilderPreviewEmpty

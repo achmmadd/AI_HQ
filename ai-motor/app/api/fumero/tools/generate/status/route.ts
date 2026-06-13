@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
         status: job.status,
         phase: job.phase,
         progress_message: job.progressMessage,
+        progress_pct: job.progressPct,
+        elapsed_ms: job.elapsedMs,
         error: formatFumeroBuilderError(job.error || "Genereren mislukt"),
       });
     }
@@ -45,6 +47,8 @@ export async function GET(req: NextRequest) {
       status: job.status,
       phase: job.phase,
       progress_message: job.progressMessage,
+      progress_pct: job.progressPct,
+      elapsed_ms: job.elapsedMs,
       result: job.result,
     });
   } catch (error) {

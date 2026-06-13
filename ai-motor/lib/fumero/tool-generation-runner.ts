@@ -22,6 +22,10 @@ import {
   type ToolGenerationJobPayload,
   type ToolGenerationJobRow,
 } from "@/lib/fumero/tool-generation-jobs";
+import {
+  toolGenerationElapsedMs,
+  toolGenerationProgressPct,
+} from "@/lib/fumero/tool-generation-progress";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -77,8 +81,13 @@ async function runCreateJob(
   if (!name) throw new Error("name is verplicht voor create-job");
 
   updateToolGenerationJobProgress(db, jobId, {
+    phase: "analyzing",
+    message: "Opdracht wordt geanalyseerd…",
+  });
+
+  updateToolGenerationJobProgress(db, jobId, {
     phase: "generating",
-    message: "HTML-widget wordt gegenereerd...",
+    message: "Structuur en inhoud worden opgebouwd…",
   });
 
   const gen = await generateToolHtml(deployType, prompt, templateId);
@@ -87,8 +96,13 @@ async function runCreateJob(
   }
 
   updateToolGenerationJobProgress(db, jobId, {
+    phase: "validating",
+    message: "Styling en inhoud worden gecontroleerd…",
+  });
+
+  updateToolGenerationJobProgress(db, jobId, {
     phase: "saving",
-    message: "Concept wordt opgeslagen...",
+    message: "Preview wordt klaargezet…",
   });
 
   const created = createTool({
@@ -119,8 +133,13 @@ async function runIterateJob(
   }
 
   updateToolGenerationJobProgress(db, jobId, {
+    phase: "analyzing",
+    message: "Aanpassingen worden bekeken…",
+  });
+
+  updateToolGenerationJobProgress(db, jobId, {
     phase: "generating",
-    message: "Tool wordt verfijnd...",
+    message: "Tool wordt verfijnd…",
   });
 
   const updated = await updateConceptCode(toolId, prompt, undefined, {
@@ -129,6 +148,16 @@ async function runIterateJob(
   if ("error" in updated) {
     throw new Error(formatFumeroBuilderError(updated.error));
   }
+
+  updateToolGenerationJobProgress(db, jobId, {
+    phase: "validating",
+    message: "Resultaat wordt gecontroleerd…",
+  });
+
+  updateToolGenerationJobProgress(db, jobId, {
+    phase: "saving",
+    message: "Preview wordt bijgewerkt…",
+  });
 
   markToolGenerationJobDone(db, jobId, {
     ok: true,
@@ -224,6 +253,8 @@ export type ToolGenerationJobStatusResponse = {
   result: Record<string, unknown> | null;
   phase: string | null;
   progressMessage: string | null;
+  progressPct: number;
+  elapsedMs: number;
   error: string | null;
   createdAt: string;
   updatedAt: string;
@@ -258,6 +289,8 @@ export function getToolGenerationJobStatus(
     result,
     phase: row.phase,
     progressMessage: row.progress_message,
+    progressPct: toolGenerationProgressPct(row.phase, row.status),
+    elapsedMs: toolGenerationElapsedMs(row.created_at, row.started_at),
     error: row.error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

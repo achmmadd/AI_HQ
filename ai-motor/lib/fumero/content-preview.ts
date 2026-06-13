@@ -25,6 +25,12 @@ export type FumeroLivePreviewPayload = {
   /** Build-fase voor coder preview timeline. */
   buildPhase?: string;
   building?: boolean;
+  /** Server-side voortgang 0–100 tijdens async generatie. */
+  buildProgressPct?: number;
+  /** Verstreken ms sinds job-start (poll). */
+  buildElapsedMs?: number;
+  /** Korte success-flash vóór live iframe. */
+  buildSuccessFlash?: boolean;
   /** Widget embed snippet (na build). */
   embedCode?: string | null;
   /** Bouw-runtime voor preview-badge (Widget | Website | App). */

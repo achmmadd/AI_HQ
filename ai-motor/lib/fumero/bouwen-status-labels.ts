@@ -21,16 +21,36 @@ export function bouwenHumanStatusLabel(
 
   if (
     t === "planning" ||
+    t === "analyzing" ||
+    t === "queued" ||
     t.includes("generatieplan") ||
-    t.includes("planning")
+    t.includes("planning") ||
+    t.includes("analys")
   ) {
     return "Je verzoek bekijken";
   }
-  if (t === "generating" || t === "generating…") {
+  if (
+    t === "generating" ||
+    t === "generating…" ||
+    t.includes("structuur") ||
+    t.includes("html-widget")
+  ) {
     return "De pagina aanpassen";
   }
-  if (t === "validating" || t === "repairing" || t === "done") {
-    return t === "done" ? "Preview klaarzetten" : "Het resultaat controleren";
+  if (
+    t === "validating" ||
+    t === "repairing" ||
+    t.includes("styl") ||
+    t.includes("control") ||
+    t.includes("gecontroleerd")
+  ) {
+    return "Het resultaat controleren";
+  }
+  if (t === "saving" || t.includes("klaarzet") || t.includes("opslaan")) {
+    return "Preview klaarzetten";
+  }
+  if (t === "done") {
+    return "Preview klaarzetten";
   }
 
   if (

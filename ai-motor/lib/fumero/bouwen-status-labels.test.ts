@@ -39,7 +39,9 @@ describe("bouwenHumanStatusLabel", () => {
     );
   });
 
-  it("maps full-app backend phases to human steps", () => {
+  it("maps backend job phases to human steps", () => {
+    assert.equal(bouwenHumanStatusLabel("analyzing"), "Je verzoek bekijken");
+    assert.equal(bouwenHumanStatusLabel("saving"), "Preview klaarzetten");
     assert.equal(bouwenHumanStatusLabel("planning"), "Je verzoek bekijken");
     assert.equal(bouwenHumanStatusLabel("generating"), "De pagina aanpassen");
     assert.equal(bouwenHumanStatusLabel("validating"), "Het resultaat controleren");

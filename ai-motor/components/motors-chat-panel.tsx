@@ -119,6 +119,7 @@ import {
   fetchToolDetail,
   iterateFumeroTool,
   publishFumeroTool,
+  type ToolGenerationProgress,
 } from "@/lib/fumero/tool-chat-client";
 import {
   createFullApp,
@@ -133,6 +134,9 @@ import {
   type FumeroPublishModalPayload,
 } from "@/components/fumero/features/fumero-publish-modal";
 import { CODER_BUILD_PHASES } from "@/lib/fumero/coder-build-phases";
+import {
+  monotonicCoderBuildPhase,
+} from "@/lib/fumero/bouwen-status-labels";
 import {
   formatFumeroBuilderError,
   cacheBustPreviewUrl,
@@ -690,6 +694,11 @@ export function MotorsChatPanel({
     [fumeroCoderMode]
   );
   const [toolBusy, setToolBusy] = useState(false);
+  const toolBuildAbortRef = useRef<AbortController | null>(null);
+  const toolBuildPhaseMaxRef = useRef(0);
+  const lastToolBuildRef = useRef<{ userText: string; seedOverride?: string } | null>(
+    null
+  );
   const [fumeroPrepStatus, setFumeroPrepStatus] = useState<string | null>(null);
   const [fumeroPrepActivities, setFumeroPrepActivities] = useState<string[]>([]);
   const [fumeroStuckHint, setFumeroStuckHint] = useState<string | null>(null);
@@ -725,6 +734,36 @@ export function MotorsChatPanel({
     [onFumeroLivePreview]
   );
 
+  const applyToolBuildProgress = useCallback(
+    (update: ToolGenerationProgress) => {
+      const label = update.message || update.phase || "";
+      const { phase, index } = monotonicCoderBuildPhase(
+        toolBuildPhaseMaxRef.current,
+        label,
+        { building: true }
+      );
+      toolBuildPhaseMaxRef.current = index;
+      setCoderBuildPhase(phase);
+      if (livePreviewRef.current?.building) {
+        setLivePreview({
+          ...livePreviewRef.current,
+          building: true,
+          buildPhase: phase,
+          buildProgressPct: update.progressPct,
+          buildElapsedMs: update.elapsedMs,
+          status: livePreviewRef.current.previewUrl ? "ready" : "generating",
+        });
+      }
+    },
+    [setLivePreview]
+  );
+
+  useEffect(() => {
+    return () => {
+      toolBuildAbortRef.current?.abort();
+    };
+  }, []);
+
   useEffect(() => {
     if (!toolBusy || !fumeroCoderMode) {
       if (!toolBusy && livePreviewRef.current?.building) {
@@ -732,28 +771,33 @@ export function MotorsChatPanel({
           ...livePreviewRef.current,
           building: false,
           buildPhase: undefined,
+          buildProgressPct: undefined,
+          buildElapsedMs: undefined,
         });
       }
-      setCoderBuildPhase(CODER_BUILD_PHASES[0]);
+      if (!toolBusy) {
+        toolBuildPhaseMaxRef.current = 0;
+        setCoderBuildPhase(CODER_BUILD_PHASES[0]);
+      }
       return;
     }
-    let i = 0;
-    const syncPhase = (phase: string) => {
+    // Langzame fallback als polling even stilvalt — nooit terug springen.
+    const id = window.setInterval(() => {
+      const nextIndex = Math.min(
+        CODER_BUILD_PHASES.length - 1,
+        toolBuildPhaseMaxRef.current + 1
+      );
+      if (nextIndex <= toolBuildPhaseMaxRef.current) return;
+      toolBuildPhaseMaxRef.current = nextIndex;
+      const phase = CODER_BUILD_PHASES[nextIndex]!;
       setCoderBuildPhase(phase);
-      if (livePreviewRef.current) {
+      if (livePreviewRef.current?.building) {
         setLivePreview({
           ...livePreviewRef.current,
-          building: true,
           buildPhase: phase,
-          status: livePreviewRef.current.previewUrl ? "ready" : "generating",
         });
       }
-    };
-    syncPhase(CODER_BUILD_PHASES[0]);
-    const id = window.setInterval(() => {
-      i = (i + 1) % CODER_BUILD_PHASES.length;
-      syncPhase(CODER_BUILD_PHASES[i]);
-    }, 2400);
+    }, 12_000);
     return () => window.clearInterval(id);
   }, [toolBusy, fumeroCoderMode, setLivePreview]);
 
@@ -1091,10 +1135,18 @@ export function MotorsChatPanel({
 
   const runToolBuild = useCallback(
     async (userText: string, seedOverride?: string) => {
+      if (toolBusy) return;
+      lastToolBuildRef.current = { userText, seedOverride };
+      toolBuildAbortRef.current?.abort();
+      const abort = new AbortController();
+      toolBuildAbortRef.current = abort;
+      toolBuildPhaseMaxRef.current = 0;
+
       setFumeroPrepStatus(null);
       setFumeroSubmitting(false);
       setFumeroPrepActivities([]);
       fumeroPrepActivitiesRef.current = [];
+
       const seed = (seedOverride ?? activeToolPrompt ?? userText).trim();
       const quick = resolveTemplateFromQuickReply(userText);
       const tplFromText =
@@ -1111,31 +1163,6 @@ export function MotorsChatPanel({
         enrichCasualBouwenPrompt(userText),
         seedLine
       );
-
-      let scrapeNotice: string | null = null;
-      if (workspace === "fumero") {
-        setBuildStatusUnlessCoder("Live info ophalen…");
-        try {
-          const scrapeCtx = await buildScrapeContextForToolBuild(userText, "fumero");
-          if (scrapeCtx?.block) {
-            merged = `${scrapeCtx.block}\n\n${merged}`;
-            const pages = scrapeCtx.urls.length;
-            scrapeNotice =
-              pages > 1
-                ? `Ik heb **${pages} pagina's** van fumero.nl uitgelezen — die info gebruik ik in je chatbot.`
-                : `Ik heb **fumero.nl** uitgelezen — die info gebruik ik in je chatbot.`;
-            if (scrapeCtx.errors.length) {
-              scrapeNotice += `\n\n_Niet alle pagina's gelukt: ${scrapeCtx.errors.slice(0, 2).join("; ")}_`;
-            }
-          }
-        } catch {
-          /* bouwen gaat door zonder scrape */
-        }
-      }
-
-      if (enabledConnectors.includes("designer")) {
-        merged = applyDesignerHints(merged, templateId);
-      }
       const name = deriveToolName(seed || userText, templateId);
 
       setAwaitingToolTemplate(false);
@@ -1157,30 +1184,60 @@ export function MotorsChatPanel({
         version: 1,
         building: true,
         buildPhase: CODER_BUILD_PHASES[0],
+        buildProgressPct: 4,
+        buildElapsedMs: 0,
         runtime: "html",
       });
       setPreviewPanelOpen(true);
       onFumeroContentPreview?.(null);
 
-      const cardMsgId = appendAssistantMessage(
-        scrapeNotice ??
-          (fumeroCoderMode && layout === "split"
-            ? "Ik bouw je tool — preview rechts."
-            : "Ik genereer je tool — dit kan even duren."),
-        {
-          toolCard: {
-            toolId: 0,
-            name,
-            previewUrl: null,
-            deployType,
-            status: "generating",
-            basePrompt: merged,
-            version: 1,
-            builderLabel: fumeroBuilderLabel,
-          },
-        }
-      );
+      const cardMsgId = appendAssistantMessage("Bezig met bouwen…", {
+        toolCard: {
+          toolId: 0,
+          name,
+          previewUrl: instantPreview,
+          deployType,
+          status: "generating",
+          basePrompt: merged,
+          version: 1,
+          builderLabel: fumeroBuilderLabel,
+        },
+      });
       setActiveToolCardMsgId(cardMsgId);
+
+      let scrapeNotice: string | null = null;
+      if (workspace === "fumero") {
+        applyToolBuildProgress({
+          phase: "analyzing",
+          message: "Live info ophalen…",
+          status: "running",
+          progressPct: 12,
+        });
+        try {
+          const scrapeCtx = await buildScrapeContextForToolBuild(userText, "fumero");
+          if (scrapeCtx?.block) {
+            merged = `${scrapeCtx.block}\n\n${merged}`;
+            const pages = scrapeCtx.urls.length;
+            scrapeNotice =
+              pages > 1
+                ? `Ik heb **${pages} pagina's** van fumero.nl uitgelezen — die info gebruik ik in je chatbot.`
+                : `Ik heb **fumero.nl** uitgelezen — die info gebruik ik in je chatbot.`;
+            if (scrapeCtx.errors.length) {
+              scrapeNotice += `\n\n_Niet alle pagina's gelukt: ${scrapeCtx.errors.slice(0, 2).join("; ")}_`;
+            }
+          }
+        } catch {
+          /* bouwen gaat door zonder scrape */
+        }
+      }
+
+      if (enabledConnectors.includes("designer")) {
+        merged = applyDesignerHints(merged, templateId);
+      }
+
+      if (scrapeNotice) {
+        updateMessage(cardMsgId, { content: scrapeNotice });
+      }
 
       try {
         const { tool_id } = await createFumeroTool(
@@ -1191,15 +1248,33 @@ export function MotorsChatPanel({
             template_id: templateId,
           },
           {
-            onProgress: (update) => {
-              if (update.message) setCoderBuildPhase(update.message);
-            },
+            signal: abort.signal,
+            onProgress: applyToolBuildProgress,
           }
         );
         const detail = await fetchToolDetail(tool_id);
         setActiveToolId(tool_id);
         setActiveToolPrompt(detail.concept?.prompt ?? merged);
         const card = detailToToolCard(detail, "concept", Date.now());
+
+        setLivePreview({
+          title: detail.tool.name,
+          previewUrl: card.previewUrl,
+          status: "generating",
+          previewEpoch: card.previewEpoch,
+          version: card.version,
+          building: true,
+          buildPhase: CODER_BUILD_PHASES[CODER_BUILD_PHASES.length - 1],
+          buildProgressPct: 100,
+          buildSuccessFlash: true,
+          embedCode: card.embedCode ?? null,
+          runtime: runtimeFromDeployType(card.deployType),
+          uxReviewAvailable: true,
+          interactive: false,
+        });
+
+        await new Promise((r) => setTimeout(r, 650));
+
         setLivePreview({
           title: detail.tool.name,
           previewUrl: card.previewUrl,
@@ -1208,6 +1283,9 @@ export function MotorsChatPanel({
           version: card.version,
           building: false,
           buildPhase: undefined,
+          buildProgressPct: undefined,
+          buildElapsedMs: undefined,
+          buildSuccessFlash: false,
           embedCode: card.embedCode ?? null,
           runtime: runtimeFromDeployType(card.deployType),
           uxReviewAvailable: true,
@@ -1221,15 +1299,40 @@ export function MotorsChatPanel({
           toolCard: card,
         });
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         const msg = formatFumeroBuilderError(
           err instanceof Error ? err.message : "Genereren mislukt"
         );
         setArtifactErr(msg);
+        setLivePreview({
+          title: name,
+          previewUrl: instantPreview,
+          status: "generating",
+          version: 1,
+          building: false,
+          buildPhase: undefined,
+          buildProgressPct: undefined,
+          buildElapsedMs: undefined,
+          runtime: "html",
+        });
         updateMessage(cardMsgId, {
-          content: `**Genereren mislukt.** ${msg}`,
-          toolCard: undefined,
+          content: `**Genereren mislukt.** ${msg}\n\nJe prompt blijft bewaard — probeer opnieuw.`,
+          toolCard: {
+            toolId: 0,
+            name,
+            previewUrl: instantPreview,
+            deployType,
+            status: "concept",
+            basePrompt: merged,
+            version: 1,
+            builderLabel: fumeroBuilderLabel,
+          },
+          toolQuickReplies: [{ label: "Opnieuw proberen", prompt: userText }],
         });
       } finally {
+        if (toolBuildAbortRef.current === abort) {
+          toolBuildAbortRef.current = null;
+        }
         setToolBusy(false);
         setBuildStatus(null);
         scrollBottom(true);
@@ -1238,15 +1341,16 @@ export function MotorsChatPanel({
     [
       activeToolPrompt,
       appendAssistantMessage,
+      applyToolBuildProgress,
       detailToToolCard,
       enabledConnectors,
       fumeroBuilderLabel,
       fumeroCoderMode,
       layout,
       onFumeroContentPreview,
-      onFumeroLivePreview,
       scrollBottom,
       setPreviewPanelOpen,
+      toolBusy,
       updateMessage,
       workspace,
     ]
@@ -1311,11 +1415,15 @@ export function MotorsChatPanel({
 
   const runToolIterate = useCallback(
     async (instruction: string) => {
-      if (!activeToolId) return;
+      if (!activeToolId || toolBusy) return;
+      toolBuildAbortRef.current?.abort();
+      const abort = new AbortController();
+      toolBuildAbortRef.current = abort;
+      toolBuildPhaseMaxRef.current = 0;
+
       setFumeroPrepStatus(null);
       setFumeroSubmitting(false);
       setToolBusy(true);
-      setBuildStatusUnlessCoder("Tool verfijnen…");
       const merged = mergeToolPrompt(activeToolPrompt, instruction);
       const withDesign =
         enabledConnectors.includes("designer")
@@ -1326,6 +1434,7 @@ export function MotorsChatPanel({
       const nextVersion = (prevCard?.version ?? 1) + 1;
       showFumeroToast(`Versie ${nextVersion} wordt gebouwd…`);
       setPreviewPanelOpen(true);
+      setCoderBuildPhase(CODER_BUILD_PHASES[0]);
       setLivePreview({
         title: prevCard?.name ?? "Preview",
         previewUrl: prevCard?.previewUrl ?? null,
@@ -1334,6 +1443,8 @@ export function MotorsChatPanel({
         version: nextVersion,
         building: true,
         buildPhase: CODER_BUILD_PHASES[0],
+        buildProgressPct: 4,
+        buildElapsedMs: 0,
       });
       if (activeToolCardMsgId && prevCard) {
         updateMessage(activeToolCardMsgId, {
@@ -1348,13 +1459,29 @@ export function MotorsChatPanel({
       }
       try {
         await iterateFumeroTool(activeToolId, withDesign, {
-          onProgress: (update) => {
-            if (update.message) setCoderBuildPhase(update.message);
-          },
+          signal: abort.signal,
+          onProgress: applyToolBuildProgress,
         });
         const detail = await fetchToolDetail(activeToolId);
         setActiveToolPrompt(detail.concept?.prompt ?? withDesign);
         const card = detailToToolCard(detail, "concept", previewEpoch);
+
+        setLivePreview({
+          title: detail.tool.name,
+          previewUrl: card.previewUrl,
+          status: "generating",
+          previewEpoch,
+          version: card.version,
+          building: true,
+          buildPhase: CODER_BUILD_PHASES[CODER_BUILD_PHASES.length - 1],
+          buildProgressPct: 100,
+          buildSuccessFlash: true,
+          embedCode: card.embedCode ?? null,
+          interactive: false,
+        });
+
+        await new Promise((r) => setTimeout(r, 650));
+
         setLivePreview({
           title: detail.tool.name,
           previewUrl: card.previewUrl,
@@ -1363,6 +1490,9 @@ export function MotorsChatPanel({
           version: card.version,
           building: false,
           buildPhase: undefined,
+          buildProgressPct: undefined,
+          buildElapsedMs: undefined,
+          buildSuccessFlash: false,
           embedCode: card.embedCode ?? null,
           interactive: true,
         });
@@ -1379,6 +1509,7 @@ export function MotorsChatPanel({
           appendAssistantMessage(`Concept bijgewerkt${versionNote}.`, { toolCard: card });
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         const msg = formatFumeroBuilderError(
           err instanceof Error ? err.message : "Aanpassen mislukt"
         );
@@ -1387,9 +1518,13 @@ export function MotorsChatPanel({
           updateMessage(activeToolCardMsgId, {
             content: `**Verfijnen mislukt.** ${msg}`,
             toolCard: { ...prevCard, status: "concept" },
+            toolQuickReplies: [{ label: "Opnieuw proberen", prompt: instruction }],
           });
         }
       } finally {
+        if (toolBuildAbortRef.current === abort) {
+          toolBuildAbortRef.current = null;
+        }
         setToolBusy(false);
         setBuildStatus(null);
         scrollBottom(true);
@@ -1400,13 +1535,14 @@ export function MotorsChatPanel({
       activeToolId,
       activeToolPrompt,
       appendAssistantMessage,
+      applyToolBuildProgress,
       detailToToolCard,
       enabledConnectors,
       fumeroBuilderLabel,
       messages,
-      onFumeroLivePreview,
       scrollBottom,
       setPreviewPanelOpen,
+      toolBusy,
       updateMessage,
     ]
   );

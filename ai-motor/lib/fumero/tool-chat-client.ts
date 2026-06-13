@@ -1,5 +1,6 @@
 import { fetchJsonChecked } from "@/lib/fetch-json-client";
 import { formatFumeroBuilderError } from "@/lib/fumero/builder-config";
+import { adaptiveToolPollIntervalMs } from "@/lib/fumero/tool-generation-progress";
 import type { FumeroDeployType } from "@/lib/fumero/tool-templates";
 
 export type ToolDetailResponse = {
@@ -26,6 +27,8 @@ type ToolJobPollResponse = {
   status?: "pending" | "running" | "done" | "error";
   phase?: string | null;
   progress_message?: string | null;
+  progress_pct?: number;
+  elapsed_ms?: number;
   result?: {
     tool_id?: number;
     preview_url?: string;
@@ -37,32 +40,55 @@ export type ToolGenerationProgress = {
   phase?: string | null;
   message?: string | null;
   status?: string;
+  progressPct?: number;
+  elapsedMs?: number;
 };
 
 type ToolJobOptions = {
   onProgress?: (update: ToolGenerationProgress) => void;
   pollIntervalMs?: number;
   maxWaitMs?: number;
+  signal?: AbortSignal;
 };
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 async function pollToolGenerationJob(
   jobId: string,
   opts?: ToolJobOptions
 ): Promise<{ tool_id: number; preview_url?: string }> {
-  const pollInterval = opts?.pollIntervalMs ?? 2_000;
   const maxWait = opts?.maxWaitMs ?? 580_000;
   const started = Date.now();
 
   while (Date.now() - started < maxWait) {
+    if (opts?.signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+
     const json = await fetchJsonChecked<ToolJobPollResponse>(
       `/api/fumero/tools/generate/status?jobId=${encodeURIComponent(jobId)}`,
-      { credentials: "include" }
+      { credentials: "include", signal: opts?.signal }
     );
 
     opts?.onProgress?.({
       phase: json.phase,
       message: json.progress_message,
       status: json.status,
+      progressPct: json.progress_pct,
+      elapsedMs: json.elapsed_ms,
     });
 
     if (json.status === "done") {
@@ -78,7 +104,10 @@ async function pollToolGenerationJob(
       throw new Error(formatFumeroBuilderError(json.error || "Genereren mislukt"));
     }
 
-    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    const elapsed = Date.now() - started;
+    const interval =
+      opts?.pollIntervalMs ?? adaptiveToolPollIntervalMs(elapsed);
+    await sleep(interval, opts?.signal);
   }
 
   throw new Error("Tool-generatie duurde te lang — probeer opnieuw");
@@ -95,12 +124,19 @@ async function startToolGenerationJob(
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: opts?.signal,
     }
   );
   if (!json.jobId) {
     throw new Error(formatFumeroBuilderError(json.error || "Async generatie starten mislukt"));
   }
-  opts?.onProgress?.({ phase: "queued", message: "Generatie gestart...", status: "pending" });
+  opts?.onProgress?.({
+    phase: "queued",
+    message: "Generatie gestart…",
+    status: "pending",
+    progressPct: 8,
+    elapsedMs: 0,
+  });
   return json.jobId;
 }
 
