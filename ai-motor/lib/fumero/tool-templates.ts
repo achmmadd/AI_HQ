@@ -160,6 +160,52 @@ export function buildTemplatePreviewHtml(opts: {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
+  if (opts.templateId === "landing") {
+    return `<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#fafafa;color:#171717;line-height:1.5}
+  .hero{padding:48px 24px;text-align:center;background:#fff;border-bottom:1px solid #e5e5e5}
+  .hero h1{font-size:clamp(1.75rem,4vw,2.5rem);font-weight:600;margin-bottom:12px}
+  .hero p{max-width:520px;margin:0 auto 24px;color:#525252;font-size:15px}
+  .cta{display:inline-block;padding:12px 28px;border:none;border-radius:10px;background:#69C400;color:#0a0a0a;font-weight:600;font-size:15px;cursor:pointer}
+  .cta:hover{background:#5db000}
+  .grid{max-width:960px;margin:0 auto;padding:40px 24px;display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px}
+  .card h2{font-size:16px;margin-bottom:8px}
+  .card p{font-size:13px;color:#525252}
+  footer{text-align:center;padding:24px;font-size:12px;color:#737373;border-top:1px solid #e5e5e5}
+</style>
+</head>
+<body>
+<section class="hero">
+  <h1>${escaped(title)}</h1>
+  <p>${escaped(body.slice(0, 180))}</p>
+  <button class="cta" type="button" id="cta">Neem contact op</button>
+</section>
+<section class="grid">
+  <article class="card"><h2>Snel geleverd</h2><p>Bestel voor 17:00 — volgende werkdag onderweg.</p></article>
+  <article class="card"><h2>Premium kwaliteit</h2><p>Professioneel assortiment voor B2B.</p></article>
+  <article class="card"><h2>Persoonlijk advies</h2><p>Ons team helpt je de juiste keuze te maken.</p></article>
+</section>
+<footer>© Fumero · ${escaped(typeLabel)}</footer>
+<script>
+(function(){
+  var btn=document.getElementById('cta');
+  if(btn) btn.addEventListener('click',function(){
+    btn.textContent='Bedankt — we nemen contact op!';
+    btn.disabled=true;
+  });
+})();
+</script>
+</body>
+</html>`;
+  }
+
   if (opts.templateId === "calculator") {
     return `<!DOCTYPE html>
 <html lang="nl">

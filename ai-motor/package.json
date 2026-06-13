@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "deploy:safe": "bash scripts/safe-deploy.sh"
+    "deploy:safe": "bash scripts/safe-deploy.sh",
+    "prebuild": "bash scripts/pm2-stop-for-build.sh"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

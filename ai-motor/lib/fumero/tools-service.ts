@@ -68,7 +68,8 @@ function seedHtmlForTemplate(
     prompt,
     deployType,
   });
-  return /<script[\s>]/i.test(seeded) ? seeded : null;
+  const fixed = autoFixGeneratedHtml(seeded);
+  return /<script[\s>]/i.test(fixed.html) ? fixed.html : null;
 }
 
 function templateBuildHint(templateId?: string): string {

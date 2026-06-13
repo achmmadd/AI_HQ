@@ -1,38 +1,15 @@
-#!/usr/bin/env node --import tsx
+#!/usr/bin/env node
 /**
  * Bouwen E2E: 3 standaard prompts via async tool generation API.
  *
  *   BASE_URL=http://127.0.0.1:3040 node scripts/test-bouwen-e2e.mjs
- *
- * Vereist .env.local met MOTORSAI_SESSION_SECRET / builder backend.
  */
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { createSignedSessionToken } from "../lib/auth-session.ts";
-
-const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const envPath = path.join(root, ".env.local");
-if (fs.existsSync(envPath)) {
-  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq <= 0) continue;
-    const key = trimmed.slice(0, eq).trim();
-    if (!process.env[key]) process.env[key] = trimmed.slice(eq + 1).trim();
-  }
-}
+import { createFumeroTestToken } from "./lib/motorsai-test-auth.mjs";
 
 const base = (process.env.BASE_URL || "http://127.0.0.1:3040").replace(/\/$/, "");
 const maxWaitMs = Number(process.env.BOUWEN_E2E_MAX_MS || 600_000);
 
-const token = await createSignedSessionToken({
-  userId: 1,
-  email: "e2e.bouwen@motorsai.local",
-  role: "fumero",
-  scope: "fumero",
-});
+const token = await createFumeroTestToken();
 
 const headers = {
   Accept: "application/json",

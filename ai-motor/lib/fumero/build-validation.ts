@@ -221,14 +221,19 @@ export function autoFixGeneratedHtml(html: string): AutoFixGeneratedHtmlResult {
 
   out = out.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi, (_m, open, css, close) => {
     let fixedCss = css as string;
-    if (/^\s*,\s*::before/m.test(fixedCss)) {
-      fixedCss = fixedCss.replace(/^\s*,\s*::before/m, "*, ::before");
-      fixes.push("CSS universele *-selector hersteld");
-    }
+    const before = fixedCss;
     fixedCss = fixedCss.replace(
-      /(^|[\n\r])\s*,\s*(::before|::after)/g,
+      /^\s*,\s*::before\s*,\s*::after\s*\{/m,
+      "*, ::before, ::after {"
+    );
+    fixedCss = fixedCss.replace(/^\s*,\s*(::before|::after)/m, "*, $1");
+    fixedCss = fixedCss.replace(
+      /([;{}]\s*|\n\s*),\s*(::before|::after)/g,
       "$1*, $2"
     );
+    if (fixedCss !== before) {
+      fixes.push("CSS universele *-selector hersteld");
+    }
     return `${open}${fixedCss}${close}`;
   });
 

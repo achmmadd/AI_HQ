@@ -11,6 +11,9 @@ REBUILD_NODE="${AI_MOTOR_NODE:-$(command -v node)}"
 export PATH="$(dirname "$REBUILD_NODE"):${PATH}"
 echo "== safe-deploy: node $(command -v node) ($(node -v)) =="
 
+echo "== safe-deploy: pm2 stop ai-motor (exclusive .next build) =="
+pm2 stop ai-motor 2>/dev/null || true
+
 echo "== safe-deploy: npm run build (wacht op exit 0) =="
 npm run build
 echo "== safe-deploy: build geslaagd =="

@@ -209,6 +209,23 @@ test("autoFix injects handlers when buttons exist without JS", () => {
   assert.equal(result.valid, true, result.errors.join("; "));
 });
 
+test("autoFix repairs inline CSS after closing brace", () => {
+  const html = `<!DOCTYPE html><html><head><style>
+html { color: #111; }
+, ::before, ::after { box-sizing: border-box; }
+</style></head><body><button id="b">Go</button>
+<script>
+document.getElementById('b').addEventListener('click', function () {
+  document.getElementById('b').textContent = 'Geklikt';
+});
+</script>
+</body></html>`;
+  const fixed = autoFixGeneratedHtml(html);
+  assert.match(fixed.html, /\*,\s*::before/);
+  const result = validateGeneratedHtml(fixed.html, "landing");
+  assert.equal(result.valid, true, result.errors.join("; "));
+});
+
 test("formatValidationRetryHint lists errors", () => {
   const hint = formatValidationRetryHint(["fout A", "fout B"]);
   assert.match(hint, /fout A/);
