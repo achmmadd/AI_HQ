@@ -47,12 +47,14 @@ ingress:
     service: http://localhost:3040
   - hostname: bokas.motorsai.app
     service: http://localhost:3040
+  - hostname: menu.motorsai.app
+    service: http://localhost:3040
   - service: http_status:404
 CFEOF
 
 echo "✅ $HOME/.cloudflared/config.yml (tunnel $TUNNEL_ID)"
 
-for h in motorsai.app www.motorsai.app fumero.motorsai.app bokas.motorsai.app; do
+for h in motorsai.app www.motorsai.app fumero.motorsai.app bokas.motorsai.app menu.motorsai.app; do
   cloudflared tunnel route dns "$TUNNEL_NAME" "$h" || true
 done
 
@@ -86,9 +88,9 @@ else
   echo 'NEXT_PUBLIC_APP_URL=https://motorsai.app' >> "$ENVL"
 fi
 if grep -q '^EMBED_FRAME_ANCESTORS=' "$ENVL" 2>/dev/null; then
-  sed -i 's|^EMBED_FRAME_ANCESTORS=.*|EMBED_FRAME_ANCESTORS=https://motorsai.app,https://www.motorsai.app,https://fumero.motorsai.app,https://bokas.motorsai.app,https://fumero.nl,https://www.fumero.nl|' "$ENVL"
+  sed -i 's|^EMBED_FRAME_ANCESTORS=.*|EMBED_FRAME_ANCESTORS=https://motorsai.app,https://www.motorsai.app,https://fumero.motorsai.app,https://bokas.motorsai.app,https://menu.motorsai.app,https://fumero.nl,https://www.fumero.nl|' "$ENVL"
 else
-  echo 'EMBED_FRAME_ANCESTORS=https://motorsai.app,https://www.motorsai.app,https://fumero.motorsai.app,https://bokas.motorsai.app,https://fumero.nl,https://www.fumero.nl' >> "$ENVL"
+  echo 'EMBED_FRAME_ANCESTORS=https://motorsai.app,https://www.motorsai.app,https://fumero.motorsai.app,https://bokas.motorsai.app,https://menu.motorsai.app,https://fumero.nl,https://www.fumero.nl' >> "$ENVL"
 fi
 
 export PATH="$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node" 2>/dev/null | tail -1)/bin:$PATH"
@@ -98,7 +100,7 @@ pm2 save
 
 echo ""
 echo "Test (DNS kan even duren):"
-for url in "https://motorsai.app" "https://fumero.motorsai.app" "https://bokas.motorsai.app"; do
+for url in "https://motorsai.app" "https://fumero.motorsai.app" "https://bokas.motorsai.app" "https://menu.motorsai.app"; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 15 || echo "000")
   echo "  $url → $code"
 done
