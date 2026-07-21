@@ -1,8 +1,13 @@
 # 38. Hardware-update — NUC + RTX 3090: wat de GPU ontgrendelt
 
 > Aanvulling op [Motor AI 2.2](README.md), [doc 10](10-marktscan-homelab-kansen.md) en [doc 11](11-azie-next-level.md). Datum: 2026-07-21.
-> **Wijziging in uitgangspunten:** doc 10/11 gingen uit van "16 GB, geen GPU". De eigenaar heeft nu een **NUC + RTX 3090 (24 GB VRAM)**. De 3090 was in de marktscan al geïdentificeerd als de beste prijs/prestatie-keuze van de community — die staat er nu dus gewoon.
-> **Aanname:** de 3090 zit in een aparte PC/workstation (een NUC kan geen full-size GPU hosten), bereikbaar via Tailscale — d.w.z. de bestaande "PC-bridge"-machine of vergelijkbaar. Als dat anders is: alleen de plaatsing wijzigt, niet de architectuur.
+> **Wijziging in uitgangspunten:** doc 10/11 gingen uit van "16 GB, geen GPU". Definitieve topologie (bevestigd door eigenaar):
+>
+> - **NUC = orchestrator** — control plane-host: Motor Next.js, OpenClaw-gateway, Kernel/engine-aansturing, Telegram. Geen zware inference.
+> - **Nieuwe inference-PC (in aanbouw): Ryzen 7 + 32 GB RAM + RTX 3090 (24 GB VRAM)** — dedicated inference-worker in de execution plane, via Tailscale.
+> - **Hetzner 16 GB** — data plane + zware services (Postgres, Qdrant, LiteLLM, n8n) conform masterplan.
+>
+> De 3090 was in de marktscan al geïdentificeerd als de beste prijs/prestatie-keuze van de community. De 32 GB systeem-RAM naast de 24 GB VRAM is belangrijker dan hij lijkt: MoE-modellen met CPU-offload (Gemma 4 26B-A4B-, Qwen3.6-35B-A3B-klasse) worden daarmee haalbaar naast de dense modellen die volledig in VRAM passen.
 
 ---
 
@@ -40,12 +45,32 @@ Geen nieuwe plane, geen nieuwe waarheid. De GPU-box wordt:
 | **B3 LightRAG-trigger (doc 11)** | Extractiestap kan lokaal (`local.extract`) i.p.v. DeepSeek-API — indexeringskosten ≈ stroomkosten; drempel voor de proef wordt lager, ADR-107-trigger blijft gelden |
 | **Masterplan Appendix B/C** | "Ollama embed-only op Hetzner" blijft, maar zware embed/vision/transcribe verhuist logisch naar de 3090-box; Hetzner-RAM-budget wordt ruimer |
 
+## 38.3b Bouw- en inrichtingsadvies voor de Ryzen 7 / 32 GB / 3090-PC
+
+**Bouw (kort, alleen wat ertoe doet):**
+
+- **Voeding:** ≥850 W met twee aparte PCIe-kabels (geen daisy-chain) — de 3090 piekt >350 W met transients daarboven. Dit is de #1 stabiliteitsfout bij 3090-builds.
+- **Koeling/behuizing:** de 3090 dumpt ~350 W warmte; ruime airflow-case, en overweeg een undervolt/power-limit (~280 W kost ~5% prestaties, scheelt veel warmte/stroom — standaardpraktijk in de community voor 24/7-gebruik).
+- **RAM:** 2×16 GB is prima; laat sloten vrij voor upgrade naar 64 GB — dat is de trigger voor grotere MoE-modellen (Qwen3-Coder-Next-klasse wil ~48 GB+), niet nu nodig.
+- **Opslag:** 1–2 TB NVMe; modelbestanden zijn 10–40 GB per stuk en je wilt er meerdere cachen.
+- **OS:** headless Linux (Ubuntu LTS/Debian) + Docker + nvidia-container-toolkit, gepinde driverversie. Geen desktop-omgeving, geen dual-use als game-PC voor de Production Core-rol (of accepteer expliciet dat inference wijkt tijdens gebruik).
+
+**Rolverdeling (definitief):**
+
+| Machine | Plane | Draait | Draait níet |
+|---|---|---|---|
+| NUC (orchestrator) | Control | Motor Next.js, OpenClaw-gateway (gehardened), Kernel-API, Telegram-emitters, local-executor/PC-bridge-glue | inference, zware ingest |
+| Inference-PC (Ryzen 7/32 GB/3090) | Execution | Ollama/llama.cpp-server met `local.*`-modellen, embed/rerank, Whisper/Scriberr, MinerU-GPU-batch, evt. code-agent-sandboxes (CPU/RAM zat) | state (geen DB's), publieke endpoints, control-plane-taken |
+| Hetzner 16 GB | Data + zwaar | Postgres (SSOT), Qdrant, LiteLLM, n8n-adapter, engine | frontier-inference |
+
+Met MinerU/Whisper/sandboxes van de NUC en Hetzner áf ontstaat er bovendien RAM-headroom op beide — de Dify-decommissioning (ADR-105) plus deze verschuiving lost het 16 GB-knelpunt structureel op.
+
 ## 38.4 Serving-keuze en ops
 
 - **Start met Ollama (of kale llama.cpp `llama-server`) op de 3090-box** — 1 gebruiker/agent-verkeer, simpel beheer, past bij het team. **vLLM pas** wanneer batch-throughput aantoonbaar knelt (5+ gelijktijdige agent-runs); dat is een Watchlist-trigger, geen dag-1-keuze.
 - **Ops-eisen (Production Core-checklist §28):** Tailscale-only (nooit publiek), Beszel-agent + Uptime Kuma-check op het endpoint, nvidia-driver/container-toolkit gepind, runbook (`docs/runbooks/inference-worker.md`): herstart, modelcache legen, route-failover testen.
 - **Stroom/warmte:** een 3090 idlet op ~10–25 W maar trekt 300 W+ onder last. Voor batchwerk (nachtelijke ingest, transcriptie, dagbrief-voorbereiding) is dat prima; voor 24/7-idle is het acceptabel. Meet het mee in **kosten per succesvolle taak** (§35-criterium 7) — lokaal is niet gratis, het is een ander kostenmodel (stroom i.p.v. tokens).
-- **Fysieke locatie = risico-item:** de box staat (aanname) thuis naast de NUC → zelfde single-site-risico als de NUC. Geen extra DR-eis: alle lokale routes hebben cloud-fallback, dus uitval = duurdere taken, geen stilstand. Vastleggen in §27-degraded-modes: "3090 down → local.* routes failover naar cloud/EU; PII-taken wachten of gaan via EU-route met notificatie".
+- **Fysieke locatie = risico-item:** de inference-PC staat thuis naast de NUC → zelfde single-site-risico. Geen extra DR-eis: alle lokale routes hebben cloud-fallback, dus uitval = duurdere taken, geen stilstand. Vastleggen in §27-degraded-modes: "3090 down → local.* routes failover naar cloud/EU; PII-taken wachten of gaan via EU-route met notificatie".
 
 ## 38.5 Inpassing in de golven
 
