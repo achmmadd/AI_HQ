@@ -52,6 +52,7 @@
 | — | Verbeterde prompt marktscan-editie (Motor AI 2.4) | [`PROMPT-2.4.md`](PROMPT-2.4.md) |
 | 37 | Azië-scan: next level boven het starter kit (2026-07-21) | [`11-azie-next-level.md`](11-azie-next-level.md) |
 | 38 | Hardware-update: NUC + RTX 3090 (2026-07-21) | [`12-hardware-3090.md`](12-hardware-3090.md) |
+| 39 | Mini-datacenter-upgrade: het derde niveau (2026-07-21) | [`13-mini-datacenter-upgrade.md`](13-mini-datacenter-upgrade.md) |
 
 ## Bewijsniveaus (gebruikt in alle documenten)
 
