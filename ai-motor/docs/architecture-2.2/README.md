@@ -48,6 +48,8 @@
 | 34 | Definition of Done | [`09-definition-of-done-11-10.md`](09-definition-of-done-11-10.md) |
 | 35 | Meetbare 11/10-criteria | [`09-definition-of-done-11-10.md`](09-definition-of-done-11-10.md) |
 | — | Verbeterde prompt (Motor AI 2.3) | [`PROMPT-2.3.md`](PROMPT-2.3.md) |
+| 36 | Marktscan homelab/SMB-AI-ops + kansen (2026-07-21) | [`10-marktscan-homelab-kansen.md`](10-marktscan-homelab-kansen.md) |
+| — | Verbeterde prompt marktscan-editie (Motor AI 2.4) | [`PROMPT-2.4.md`](PROMPT-2.4.md) |
 
 ## Bewijsniveaus (gebruikt in alle documenten)
 
