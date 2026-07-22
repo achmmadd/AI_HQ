@@ -53,6 +53,7 @@
 | 37 | Azië-scan: next level boven het starter kit (2026-07-21) | [`11-azie-next-level.md`](11-azie-next-level.md) |
 | 38 | Hardware-update: NUC + RTX 3090 (2026-07-21) | [`12-hardware-3090.md`](12-hardware-3090.md) |
 | 39 | Mini-datacenter-upgrade: het derde niveau (2026-07-21) | [`13-mini-datacenter-upgrade.md`](13-mini-datacenter-upgrade.md) |
+| 40 | Stack-aanvullingen: creatieve laag, e-mail/agenda, CRM (2026-07-22) | [`14-stack-aanvullingen.md`](14-stack-aanvullingen.md) |
 
 ## Bewijsniveaus (gebruikt in alle documenten)
 
