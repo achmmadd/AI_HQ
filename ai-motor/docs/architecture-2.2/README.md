@@ -54,6 +54,9 @@
 | 38 | Hardware-update: NUC + RTX 3090 (2026-07-21) | [`12-hardware-3090.md`](12-hardware-3090.md) |
 | 39 | Mini-datacenter-upgrade: het derde niveau (2026-07-21) | [`13-mini-datacenter-upgrade.md`](13-mini-datacenter-upgrade.md) |
 | 40 | Stack-aanvullingen: creatieve laag, e-mail/agenda, CRM (2026-07-22) | [`14-stack-aanvullingen.md`](14-stack-aanvullingen.md) |
+| 41 | **Review-panel (4 onafhankelijke inspecties) + bindende amendementen AM-1..5** (2026-07-23) | [`15-review-panel.md`](15-review-panel.md) |
+
+> ⚠️ **Leesvolgorde-advies:** lees ná doc 01–14 altijd [doc 15](15-review-panel.md) — de panel-amendementen (AM-1 t/m AM-5) overschrijven onderdelen van eerdere documenten (omvang Production Core, meetcriteria, startvolgorde, Gateway-ontwerp, compliance-eisen).
 
 ## Bewijsniveaus (gebruikt in alle documenten)
 
