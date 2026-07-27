@@ -1,6 +1,6 @@
 # Motor AI 2.2 — Reference-First Architecture Synthesis
 
-> **Versie:** 2026-07-21 · **Eigenaar:** Pietje · **Status:** Voorstel ter review
+> **Versie:** 2026-07-27 · **Eigenaar:** Pietje · **Status:** Geconsolideerd volgens AM-1 t/m AM-5
 > **Vervangt niet:** [`../MASTER-BUILD-PLAN.md`](../MASTER-BUILD-PLAN.md) (infra-plan blijft geldig als Golf 0/1) — dit document is de **architectuurlaag erboven**.
 > **Methode:** Reverse-engineering van bewezen rolmodellen (OpenAI Codex, Cognition Devin, Manus, Anthropic, OpenHands, SWE-agent, Claude Code, Qwen-Agent, Coze Studio, DeerFlow, Youtu-Agent, OpenClaw, Hermes, Temporal/Inngest/DBOS/Restate/Hatchet/Conductor) op basis van primaire bronnen, daarna pas ontwerp.
 
@@ -8,7 +8,13 @@
 
 **Adopt proven patterns by default. Configure before wrapping. Wrap before extending. Extend before building. Build custom only when a documented gap remains.**
 
-## Leeswijzer — verplichte outputvolgorde (35 onderdelen)
+## Beginpunt en leeswijzer
+
+Start bij [`00-START-HIER.md`](00-START-HIER.md), controleer daarna de feitelijke staat in [`00-HUIDIGE-STAAT.md`](00-HUIDIGE-STAAT.md) en beslissingen in [`../DECISIONS.md`](../DECISIONS.md). Onderstaande documenten zijn verdieping.
+
+**Documentbevriezing:** geen doc 16+ en geen PROMPT-2.5 tot drie Playbooks productie draaien. Nieuwe inzichten gaan als kort delta-memo naar doc 15.
+
+### Oorspronkelijke outputvolgorde (35 onderdelen)
 
 | # | Output | Document |
 |---|--------|----------|
@@ -56,7 +62,7 @@
 | 40 | Stack-aanvullingen: creatieve laag, e-mail/agenda, CRM (2026-07-22) | [`14-stack-aanvullingen.md`](14-stack-aanvullingen.md) |
 | 41 | **Review-panel (4 onafhankelijke inspecties) + bindende amendementen AM-1..5** (2026-07-23) | [`15-review-panel.md`](15-review-panel.md) |
 
-> ⚠️ **Leesvolgorde-advies:** lees ná doc 01–14 altijd [doc 15](15-review-panel.md) — de panel-amendementen (AM-1 t/m AM-5) overschrijven onderdelen van eerdere documenten (omvang Production Core, meetcriteria, startvolgorde, Gateway-ontwerp, compliance-eisen).
+> **Bindende volgorde:** [`../DECISIONS.md`](../DECISIONS.md) bevat ADR-101–109; [doc 15](15-review-panel.md) bevat AM-1–5 en het conflictregister. De inhoud van doc 01–14 is op 2026-07-27 daarmee geconsolideerd.
 
 ## Bewijsniveaus (gebruikt in alle documenten)
 
@@ -70,4 +76,4 @@
 
 ## Kern van het oordeel in één alinea
 
-Het huidige masterplan is een goed **infrastructuurplan** (Postgres/RLS, LiteLLM, Inngest, Langfuse — allemaal validated door dit onderzoek), maar het is **geen agent-operating-system-architectuur**. Het mist precies de lagen waar de rolmodellen hun succes aan danken: een task lifecycle met verificatie en bewijs, een repository-local kennisstructuur die agents kunnen lezen, een Playbook/Skill-kristallisatiemechanisme, een Policy/Action Gateway die risicovolle acties technisch begrenst, evals als releasegate, en één canonieke eigenaar per waarheid (nu: minstens zes concurrerende state-stores). Bijna alles wat ontbreekt is al uitgevonden en gedocumenteerd — er hoeft vrijwel niets custom gebouwd te worden behalve dunne adapters. De grootste acute risico's: OpenClaw-hardening (CVE-2026-25253-klasse, supply-chain via skills), open auth-paden, en drie overlappende orchestrators (OpenClaw, n8n, Dify) zonder afgebakende rol.
+Het masterplan is een bruikbaar infrastructuurplan; de 2.2-laag voegt lifecycle, bewijs, één taskprojectie en technische policy toe. De actuele repo heeft chat/conversation-auth inmiddels dicht in code, maar OpenClaw-hardening, ADR-002-cutover en live runtimebewijs zijn open. Voor één technicus geldt de minimale variant: acht Core-componenten, vijf actieve criteria, K2→K1→migratie→dagbrief, engine/Kernel/Gateway op Hetzner, NUC als kanaal/UI-orchestrator en de 3090-PC uitsluitend als stateless lokale LLM-worker.

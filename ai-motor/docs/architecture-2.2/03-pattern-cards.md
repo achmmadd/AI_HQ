@@ -1,5 +1,6 @@
 # 5. Pattern Extraction Cards
 
+> **Eigenaar:** Pietje · **Geconsolideerd:** 2026-07-27
 > Onderdeel van [Motor AI 2.2](README.md). Structuur per kaart: Probleem · Gebruikt door · Structuur · Waarom het werkt · Wanneer toepassen · Wanneer niet · Failure modes · Motor AI-adoptie · Benodigde afwijking · Bewijs.
 > Adoptiestatussen: **Adopt as-is · Configure · Wrap · Extend · Reject · Defer**
 
@@ -14,7 +15,7 @@
 - **Wanneer toepassen:** Alle code-executie, browser-automation, alles met schrijfrechten.
 - **Wanneer niet:** Pure read-only Q&A op reeds geautoriseerde data (overhead zonder winst).
 - **Failure modes:** Sandbox-escape via gemounte volumes; secrets die tóch in de agentfase lekken; images die verouderen (Devin lost dit met snapshots + maintenance-script).
-- **Motor AI-adoptie:** **Adopt (vereenvoudigd).** Docker per taak op NUC/Hetzner; OpenHands-runtime als kandidaat-implementatie (Incubation).
+- **Motor AI-adoptie:** **Defer volgens AM-1.** Het patroon blijft gekozen, maar de sandbox-vloot start pas na dertig dagen groen van Playbook #1.
 - **Benodigde afwijking:** Geen eigen image-bouwdienst; één gestandaardiseerd base-image per taaktype (code / browser / data), handmatig beheerd.
 - **Bewijs:** openai.com/index/introducing-codex (2025-05-16); developers.openai.com/codex/cloud/environments; docs.devin.ai/product-guides/snapshots; OpenHands ICLR 2025-paper. E2/E4.
 
@@ -27,7 +28,7 @@
 - **Wanneer toepassen:** Altijd; het is de kennislaag.
 - **Wanneer niet:** N.v.t. — wel: geen encyclopedie in het entrypoint proppen.
 - **Failure modes:** Kaart verwijst naar dode docs (→ linkcheck in CI); niemand is eigenaar (→ eigenaar per doc verplicht); "when everything is important, nothing is".
-- **Motor AI-adoptie:** **Adopt as-is.** Zie [§20](05-target-architecture.md#20-knowledge--en-repositorystructuur).
+- **Motor AI-adoptie:** **Adopt de entrypoint-kaart nu.** Mechanische freshness-CI en doc-gardening blijven bevroren volgens AM-1; zie [§20](05-target-architecture.md#20-knowledge--en-repositorystructuur).
 - **Benodigde afwijking:** Motor AI voegt `tenant-specs/` en `playbooks/` toe (business-taken, niet alleen code) en tweetaligheid (NL voor business-docs, EN voor code-docs).
 - **Bewijs:** openai.com/index/harness-engineering (2026-02-11); agents.md; code.claude.com/docs/en/best-practices. E2 + E1 (conventie).
 
@@ -40,7 +41,7 @@
 - **Wanneer toepassen:** Elke taak die ≥3× voorkomt of tenant-overdraagbaar moet worden.
 - **Wanneer niet:** Eenmalige exploratieve taken (dan volstaat een goede intake).
 - **Failure modes:** Playbook-drift (procedure klopt niet meer met systeem — → regressietest per versie); te generiek (→ per tenant een Recipe-laag eroverheen).
-- **Motor AI-adoptie:** **Adopt as-is** als markdown-schema; **Extend** met tenant-scoping en versiepromotie (draft → tested → production → tenant-shared).
+- **Motor AI-adoptie:** **Adopt as-is** als markdown-schema. Tot de AM-1-gate volstaat een git-map met statuskolom; de registry en tenant-promotie zijn bevroren.
 - **Benodigde afwijking:** Motor AI-Playbooks gelden ook voor niet-code-werk (brief, boekhouding, content) — bewijsvereisten worden dan output-artifacts + bronvermelding i.p.v. tests.
 - **Bewijs:** docs.devin.ai/product-guides/creating-playbooks; cognition.ai/blog/how-cognition-uses-devin-to-build-devin (2026-02-27). E2.
 
@@ -100,25 +101,25 @@
 
 - **Probleem:** Promptinstructies zijn adviserend; een model kán ze negeren. Risicovolle acties vereisen technische, niet-omzeilbare grenzen.
 - **Gebruikt door:** Claude Code (PreToolUse-hook, exit 2 = harde block; Stop-hooks die beurt niet laten eindigen tot verificatie slaagt), SWE-agent (lint-gate weigert invalide edits), Codex (sandbox + allowlist buiten het model om).
-- **Structuur:** Elke toolcall passeert vóór uitvoering een policy-evaluatie buiten het model: allow / deny / require-approval, op basis van (tool, argumenten, tenant, risicoklasse, budgetstand, autonomieniveau). Denials injecteren een remediation-boodschap terug in de context (Codex-lint-truc).
+- **Structuur:** De Gateway is credential-broker/proxy en voert de side effect zelf uit. R1+ faalt gesloten; alleen allowlisted R0-reads mogen bij Gateway-uitval fail-open. Budget loopt in PG via reservering→uitvoering→settlement; elke call heeft een idempotency-key.
 - **Waarom het werkt:** De enforcementlaag draait in de harness, niet in het model — prompt-injectie of model-drift kan er niet omheen.
 - **Wanneer toepassen:** Elke side-effect-tool: betalingen, mail, publiceren, deletes, deploys, externe API's.
 - **Wanneer niet:** Read-only tools binnen reeds geautoriseerde scope (alleen loggen).
 - **Failure modes:** Policy-set raakt verouderd (→ policies versioned in git, getest); te grofmazig → alles vraagt approval → alert fatigue (→ risicoklassen + autonomieladder).
 - **Motor AI-adoptie:** **Adopt patroon / Wrap implementatie** — dit is de Motor Action Gateway ([§22](05-target-architecture.md#22-permission--en-action-gateway-structuur)); No-Invention Gate NIG-1 in [hoofdstuk 13](04-fit-gap-en-adoptieladder.md).
-- **Benodigde afwijking:** Tenant-dimensie en EUR-budgetten toevoegen (bestaat in geen enkel role-model kant-en-klaar).
+- **Benodigde afwijking:** Tenant-dimensie, EUR-budgetten en approval-binding aan `(tool, argument-hash, task_id, vervaltijd)` toevoegen (ADR-109).
 - **Bewijs:** code.claude.com/docs (hooks); SWE-agent NeurIPS 2024-ablaties (lint-gate = grootste enkele win). E1/E2/E4.
 
 ## PC-09 — Durable HITL (approval als workflow-state)
 
 - **Probleem:** Menselijke goedkeuring duurt uren/dagen; de wachtende taak moet crashes, redeploys en reboots overleven en kunnen herinneren/escaleren.
 - **Gebruikt door:** Inngest (`step.waitForEvent` + CEL + timeouts), DBOS (`send/recv` exactly-once + agent-inbox-referentie-app), Temporal (signals/updates), Restate (awakeables), Conductor (Human task).
-- **Structuur:** Approval = een durable wait-step in de workflow; de UI/Telegram-actie stuurt een event; timeout-tak stuurt reminder of escaleert; beslissing + beslisser + tijdstip worden audit-events.
+- **Structuur:** Approval = een durable wait-step in de workflow. Telegram stuurt alleen een notificatie+deeplink; de actie gebeurt in Motor UI. Het record bindt aan tool, argument-hash, task en vervaltijd; de Gateway hertoetst de hash.
 - **Waarom het werkt:** State leeft in de engine/Postgres, niet in een proces; exact-één-keer-semantiek voorkomt dubbele uitvoering na dubbele klik.
 - **Wanneer toepassen:** Alle risicoklasse-R2+-acties; plan-approvals; publish/deploy-momenten.
 - **Wanneer niet:** R0/R1 (lage-risico) — daar volstaat logging (anders alert fatigue).
 - **Failure modes:** Race: event vóór de wait geregistreerd (Inngest-caveat — → event-lookback of idempotente re-check); approvals versnipperd over kanalen zonder één state-eigenaar (huidige situatie!).
-- **Motor AI-adoptie:** **Configure** via de canonieke engine; Telegram/UI worden dunne event-emitters.
+- **Motor AI-adoptie:** **Configure** via de canonieke engine; Motor UI emit approvals, Telegram emit alleen notificatie+deeplink.
 - **Benodigde afwijking:** Geen.
 - **Bewijs:** inngest.com/docs/ai-patterns/human-in-the-loop; docs.dbos.dev/ai/hitl. E2/E4.
 
@@ -130,7 +131,7 @@
 - **Waarom het werkt:** Het verplaatst vertrouwen van de bewering naar het artefact; reviewers beoordelen outcome + bewijs i.p.v. proces.
 - **Wanneer toepassen:** Elke taak; de vorm van bewijs verschilt per taaktype (tests voor code; bronnen + queries voor analyses; before/after voor content).
 - **Wanneer niet:** —
-- **Failure modes:** Schijnbewijs (test die niets test) — → adversarial review + evals; bewijs zonder retentiebeleid → storage-groei (→ object storage + retentie).
+- **Failure modes:** Schijnbewijs (test die niets test) → menselijke review + evals; de aparte adversarial stap is tijdelijk bevroren. Bewijs zonder retentie/verwijderpad veroorzaakt groei én AVG-risico.
 - **Motor AI-adoptie:** **Adopt as-is.**
 - **Benodigde afwijking:** Bewijstypes voor business-taken definiëren (bronverwijzing met datum, query + resultaat-hash).
 - **Bewijs:** Codex system message (gepubliceerd, 2025-05-16); anthropic long-running post (2025-11-26); docs.devin.ai. E2.
@@ -157,7 +158,7 @@
 - **Wanneer toepassen:** Motor AI gebruikt OpenClaw al → hardening is verplicht, nu.
 - **Wanneer niet:** Nooit publiek exposen; nooit community-skills auto-installeren.
 - **Failure modes:** Reverse proxy die localhost-trust breekt ("ClawJacked"); token-lek via UI; supply-chain via skills.
-- **Motor AI-adoptie:** **Configure + Wrap**: OpenClaw hardenen (versie ≥ 2026.2.12-klasse fixes, auth aan, loopback + Tailscale-only, skills-allowlist in git) en alle side-effect-tools door de Motor Action Gateway laten lopen i.p.v. rechtstreeks.
+- **Motor AI-adoptie:** **Configure eerst:** OpenClaw hardenen (versie met fixes, auth, loopback+Tailscale, origin-validatie, eigen allowlist). Omleiding van side-effect-tools naar de Gateway volgt in Golf 3; tot die tijd krijgt OpenClaw geen nieuwe side-effect-capabilities.
 - **Benodigde afwijking:** OpenClaw wordt kanaal+harness in de execution plane; het mag nooit state-eigenaar of policy-eigenaar zijn.
 - **Bewijs:** CVE-2026-25253; Censys/Bitsight/SecurityScorecard-scans (jan–feb 2026); Koi Security ClawHavoc (2026-02). E1.
 
@@ -165,11 +166,11 @@
 
 - **Probleem:** Hardcoded modelstrings verspreid door de codebase; geen failover, geen kosten-attributie, geen tenant-budget.
 - **Gebruikt door:** OpenHands (LiteLLM), Motor-masterplan (LiteLLM gepland), Manus (model-agnostisch harness als expliciete strategie: "the boat, not the pillar").
-- **Structuur:** Eén proxy (LiteLLM) met named routes per taaktype (`chat.fast`, `code.strong`, `research.search`, `embed`), budget/rate-limits per key/tenant, logging naar Langfuse + usage-tabel; applicatiecode kent alleen route-namen.
+- **Structuur:** Eén proxy (LiteLLM) met maximaal acht named routes: `chat.fast`, `chat.deep`, `code.strong`, `extract`, `embed`, `judge`, `research.search`, `agent.orchestrate`. `local` is een provider-tier binnen een route, geen routeprefix. Rerank en transcriptie zijn services.
 - **Waarom het werkt:** Modelwissel = configwijziging; kosten worden meetbaar per taak/tenant; benchmark-gedreven routing wordt mogelijk.
 - **Wanneer toepassen:** Al het LLM-verkeer, ook OpenClaw en (zolang aanwezig) Dify.
 - **Wanneer niet:** —
-- **Failure modes:** Proxy als single point of failure (→ health-check + directe fallbackroute gedocumenteerd); "route-sprawl" (→ max ~8 named routes).
+- **Failure modes:** Proxy als single point of failure (→ health-check + gedocumenteerde fallback); route-sprawl (→ hard maximum acht routes).
 - **Motor AI-adoptie:** **Configure** (al gepland; dit document voegt route-namen, budget-enforcement en tenant-keys toe).
 - **Benodigde afwijking:** Geen.
 - **Bewijs:** LiteLLM E4/E5; OpenHands SDK-docs E4.
@@ -178,7 +179,7 @@
 
 - **Probleem:** Zonder evals is elke prompt-/model-/Playbook-wijziging een gok; regressies blijven onzichtbaar tot een klant ze ziet.
 - **Gebruikt door:** Anthropic (start met ~20 echte queries; één judge-rubric 0–1 + pass/fail; end-state-evaluatie voor state-muterende agents; menselijke steekproeven ernaast), Youtu-Agent (eval-harnesspatroon: data/processing/judging), Devin (verificatie per taak).
-- **Structuur:** Per Playbook/taaktype een kleine, echte queryset; judge beoordeelt output tegen rubric (accuraatheid, bronnen, volledigheid, kosten-efficiëntie); voor taken met side effects wordt de eindtoestand gecheckt, niet het pad; eval-run is releasegate voor Playbook-promotie en modelwissel.
+- **Structuur:** Per Playbook/taaktype een kleine, echte queryset; judge beoordeelt output tegen rubric; bij side effects telt de eindtoestand. Tot drie Playbooks productie draaien zijn alleen criteria #1, #2, #3, #7 en #16 actieve gates; de rest blijft observatie.
 - **Waarom het werkt:** 20 echte cases vangen de meeste regressies; end-state-evaluatie tolereert legitieme padvariatie van agents.
 - **Wanneer toepassen:** Vóór iedere promotie (Playbook-versie, modelwissel, promptwijziging in Production Core).
 - **Wanneer niet:** Watchlist-experimenten (daar is falen goedkoop).
@@ -204,7 +205,7 @@
 
 - **Probleem:** "Alles handmatig goedkeuren" schaalt niet; "alles autonoom" is onverantwoord. Vertrouwen moet meetbaar en omkeerbaar groeien.
 - **Gebruikt door:** Claude Code (permission modes: read-only → ask → auto binnen sandbox), Codex (approval modes + sandbox-gradaties), Devin (confidence-labels op reviews).
-- **Structuur:** Autonomieniveaus per Playbook × tenant: A0 mens doet het met AI-hulp → A1 agent stelt voor, mens keurt alles → A2 agent voert uit, mens keurt side-effects → A3 agent autonoom binnen budget/policy, mens reviewt steekproef + outcome. Promotie/degradatie op basis van gemeten task-success en correctieratio (uit evals + postmortems).
+- **Structuur:** Autonomieniveaus per Playbook × tenant: A0 mens doet het met AI-hulp → A1 agent stelt voor, mens keurt alles → A2 agent voert uit, mens keurt side-effects → A3 agent autonoom binnen budget/policy. Dertig dagen groen is alleen een autonomiepromotiegate, niet een verbod op nieuw A1-werk.
 - **Waarom het werkt:** Autonomie wordt een gemeten eigenschap per werksoort in plaats van een geloofsartikel.
 - **Wanneer toepassen:** Iedere Playbook krijgt een expliciet autonomieniveau; default A1.
 - **Wanneer niet:** —

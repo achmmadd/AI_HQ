@@ -1,6 +1,7 @@
 # MOTOR AI 2.3 — Verbeterde opdrachtprompt
 
-> Dit is de verbeterde versie van de "MOTOR AI 2.2"-prompt, zoals gevraagd ("verbeter mijn prompt").
+> **Eigenaar:** Pietje · **Geconsolideerd:** 2026-07-27
+> Dit is de verbeterde versie van de "MOTOR AI 2.2"-prompt; doc 15 AM-1 t/m AM-5 gelden bij hergebruik.
 > De 2.2-prompt was al sterk. Hieronder eerst wat er zwak aan was, daarna de verbeterde prompt zelf.
 
 ---
@@ -14,7 +15,7 @@
 | 3 | **Geen output-persistentie.** Niets zei wáár het resultaat moet landen — één chatantwoord verdampt (precies de kennisverlies-failure-mode die de prompt zelf bestrijdt). | 2.3 schrijft voor: resultaten als versioned bestanden in de repo (`docs/`-structuur), ADR's toegevoegd aan het bestaande beslissingendocument, en een PR. |
 | 4 | **Security ontbrak als onderzoeksopdracht.** Rolmodellen onderzoeken zonder hun incidenten onderzoeken mist de helft van de lessen (OpenClaw-CVE's, supply-chain via skills). | 2.3 maakt incident-/CVE-onderzoek per gebruikt product verplicht, met eigen kolom in de Atlas. |
 | 5 | **Geen baseline-discipline.** 11/10-criteria met streefwaarden zonder "meet eerst 30 dagen de huidige staat" leidt tot verzonnen normen. | 2.3: baseline-eerst-regel; streefwaarden pas vastklikken na meting. |
-| 6 | **Beslissingen mochten open blijven.** "Kies exact één workflow-engine" stond er wel, maar zonder besliscriteria/spike-formaat kon het antwoord bij een vergelijking blijven hangen. | 2.3 eist per openstaande keuze: besliscriteria, spike-opzet (≤2 dagen), default-bij-twijfel, en een deadline. |
+| 6 | **Beslissingen mochten open blijven.** "Kies exact één workflow-engine" stond er wel, maar zonder besliscriteria/spike-formaat kon het antwoord bij een vergelijking blijven hangen. | Incumbent maximaal 3 architectuurdagen; challenger alleen na harde trigger 3–5 dagen; criteria, default en deadline verplicht. |
 | 7 | **Herhaald onderzoek niet geregeld.** Bij een tweede run zou alles opnieuw onderzocht worden. | 2.3: de Atlas en Pattern Cards zijn levende documenten; een nieuwe run update ze (delta) i.p.v. ze te herschrijven. |
 | 8 | **Geen kosten-/effortbudget voor het onderzoek zelf.** | 2.3 begrenst: max N parallelle research-richtingen, bronprioriteit ongewijzigd, geen paywall-omzeiling. |
 | 9 | **Doelgroep/taal impliciet.** NL-business-termen en EN-techtermen liepen door elkaar zonder regel. | 2.3: business-documenten NL, code/tech-artefacten EN, citaten in brontaal. |
@@ -32,7 +33,7 @@ Werk als één geïntegreerd team van: Principal Distributed Systems Architect, 
 Harness Architect, Platform Engineer, SRE, AppSec Architect, Identity/AuthZ Architect,
 AI Evaluation Engineer, Privacy/GDPR-specialist, AI Governance Architect, Product
 Operations Architect, MKB-platformstrateeg en technisch due-diligenceonderzoeker.
-Ontwerp voor een team van 3–4 mensen dat zelf bouwt, beheert, beveiligt en herstelt.
+Ontwerp voor 1 technicus met 2–3 niet-technische helpers. De minimale variant is het plan.
 
 ## Input (verplicht, expliciet)
 1. Masterplan: <pad of geplakte inhoud — bijv. ai-motor/docs/MASTER-BUILD-PLAN.md>
@@ -61,7 +62,8 @@ FASE A — Inventarisatie & onderzoek
 
 FASE B — Besluiten
   4. Fit-gap-analyse + adoptieladder-plaatsing per onderdeel.
-  5. Voor iedere openstaande productkeuze: besliscriteria, spike-opzet (≤2 dagen),
+  5. Voor iedere openstaande productkeuze: besliscriteria en n=1-spike-opzet
+     (incumbent max 3 architectuurdagen; challenger 3–5 dagen alleen na trigger),
      default-bij-twijfel, beslisdeadline. Geen keuze open laten zonder dit vierluik.
   6. No-Invention Gates + ADR's voor elke custom component; alles zonder afgeronde
      gate krijgt status "Rejected pending evidence".
@@ -72,25 +74,24 @@ FASE C — Target architecture
   9. Source-of-Truth Matrix (elk nieuw opslagpunt vereist eerst een rij hier).
   10. Task lifecycle, long-running lifecycle, research- en recurring-lifecycles.
   11. Multi-agent-beslisboom (multi-agent alleen met 6-punts-rechtvaardiging).
-  12. Kennis-/repostructuur (entrypoint als kaart, docs als system of record,
-      mechanische freshness-validatie), Recipe/Playbook/Skill/Workflow/Tool/Policy-
+  12. Kennis-/repostructuur (entrypoint als kaart, docs als system of record;
+      freshness-CI blijft bevroren volgens AM-1), Recipe/Playbook/Skill/Workflow/Tool/Policy-
       definities, Action Gateway met risicoklassen + autonomieladder + EUR-budgetten,
-      multi-tenancy, modelrouting (named routes), evals als releasegates,
+      multi-tenancy, modelrouting (max 8 named routes; local als provider-tier),
       observability met één correlatie-ID, reliability met RTO/RPO + restore-tests.
-  13. Technology-lifecycle-matrix (Production Core < Incubation + Watchlist) en
+  13. Technology-lifecycle-matrix (Production Core maximaal 8) en
       role-model-traceability-matrix (geen Core zonder rij).
 
 FASE D — Executie & meting
   14. Migratiegolven vanaf de huidige productiestaat (afhankelijkheids-geordend,
       exit-criteria per golf; security-hardening is Golf 0, geen polish).
-  15. Verticale pilot (één echte workflow die álle lagen raakt) met 30-dagen-gates:
-      betrouwbaar, meetbaar, herstelbaar, betaalbaar, veilig.
-  16. Twaalfwekenplan: één architectuurwijziging per week naast de pilot, elke week
-      een committed increment.
+  15. Waardevolgorde AM-2: K2 reviews → K1 bonnetjes → K1/K2-migratie als
+      architectuurtest → dagbrief als Playbook #3.
+  16. Twaalfwekenplan: maximaal één architectuurdag per week in week 3–5.
+      30 dagen groen begrenst autonomiepromotie, niet de start van nieuw A1-werk.
   17. Definition of Done (taak / Playbook-versie / Core-component / geheel) en
-      meetbare criteria met: meetmethode, streefwaarde, bewijsperiode, eigenaar,
-      reactie bij overtreding. BASELINE-EERST: waar geen data is, eerst 30 dagen
-      meten, dan pas streefwaarden vastklikken.
+      vijf actieve criteria (#1, #2, #3, #7, #16); overige twaalf observaties tot
+      minstens drie Playbooks productie draaien.
 
 ## Rolmodellen (minimaal; voeg gemotiveerd toe, verwijder nooit stilzwijgend)
 OpenAI Codex + AGENTS.md/harness engineering · Cognition Devin (Playbooks, Session
@@ -121,10 +122,11 @@ geen aantoonbare winst geeft · geen tweede waarheid · elke Production-componen
 eigenaar en exitstrategie · elke risicovolle actie technisch begrensd · elke output
 verifieerbaar · elke lange taak hervatbaar · elke terugkerende succesvolle taak
 kristalliseerbaar tot versiebeheerd Playbook · elke afwijking van een rolmodel
-verantwoord · optimaliseer voor 3–4 mensen.
+verantwoord · optimaliseer voor 1 technicus + 2–3 niet-technische helpers.
 
 ## Zelfverbetering (vaste slotstap)
 Sluit elke run af met maximaal 5 concrete verbeteringen aan deze prompt, gebaseerd
 op waar de opdracht knelde (ontbrekende input, te brede scope, onduidelijke
-prioriteit). Nummer ze; de eigenaar besluit welke in versie 2.4 landen.
+prioriteit). Nummer ze; de eigenaar besluit welke als delta in doc 15 landen.
+Geen PROMPT-2.5 vóór drie Playbooks productie draaien.
 ```

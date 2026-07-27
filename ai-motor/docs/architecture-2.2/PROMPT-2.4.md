@@ -1,6 +1,7 @@
 # MOTOR AI 2.4 — Verbeterde opdrachtprompt (marktscan-editie)
 
-> Opvolger van [PROMPT-2.3](PROMPT-2.3.md). Versie 2.3 blijft de basisprompt voor architectuursynthese; 2.4 voegt de lessen toe uit de marktscan-run van 2026-07-21 ("kijk online wat de markt met hun homelab doet en wat Motor AI nog meer zou kunnen").
+> **Eigenaar:** Pietje · **Geconsolideerd:** 2026-07-27
+> Opvolger van [PROMPT-2.3](PROMPT-2.3.md). Tijdens AM-1-documentbevriezing levert deze prompt alleen delta's voor doc 15 op.
 
 ---
 
@@ -12,7 +13,7 @@
 | 2 | **Nieuwe kansen konden de architectuur omzeilen.** Een losse onderzoeksvraag levert een lijst tools op die buiten de lifecycle-matrix en golven om "leuk" lijken. | 2.4 verplicht: elke kans krijgt een adoptieladder-sport, een lifecycle-status (§28) én een golf-plaatsing (§31), anders is het geen aanbeveling maar een notitie. |
 | 3 | **Geen hype-filter als expliciete stap.** SEO-/AI-contentfarms domineren 2026-zoekresultaten; benchmarks van vergelijkingssites zijn vaak verzonnen. | 2.4: bronkwaliteit-check verplicht (claim alleen meewegen bij bevestiging door primaire bron); aparte "Hype/Rejected"-sectie is verplicht onderdeel van de output. |
 | 4 | **Regelgeving was een bijzaak.** De AI Act-deadline (Art. 50, 2 aug 2026) kwam alleen boven water omdat de researcher er toevallig op stuitte. | 2.4: vaste sub-opdracht "tijdgevoelige regelgeving met deadlines <12 maanden" (AI Act, e-invoicing/Peppol, GDPR-transfers), met verificatiedatum. |
-| 5 | **Budget-/capaciteitstoets ontbrak per kans.** Een kansenlijst zonder RAM-/effort-/teaminspanning leidt tot scope-explosie bij een 3–4-persoonsteam. | 2.4: per kans verplicht RAM-schatting, effort-klasse (S/M/L) en wat het eventueel *vervangt* (16 GB-regel: nieuw past in budget of vervangt iets). |
+| 5 | **Budget-/capaciteitstoets ontbrak per kans.** Een kansenlijst zonder RAM-/effort-/teaminspanning leidt tot scope-explosie voor één technicus. | Per kans: RAM, effort, vervanging, waarde/mnd, bouwuren en payback <6 maanden; anders Watchlist. |
 | 6 | **Commerciële toets was impliciet.** "Zou Motor AI dit later kunnen verkopen?" stond niet in de onderzoeksvraag. | 2.4: vaste sub-opdracht marktprijzen/productiseerbaarheid per kans (wat verkopen agencies, tegen welke retainers, met welk churn-patroon). |
 
 ---
@@ -26,8 +27,8 @@ Doel: vind wat de self-hosted/homelab-community en de SMB-AI-ops-markt inmiddels
 doen dat aantoonbaar aansluit op de bestaande Motor AI-architectuur — zonder de
 architectuur te omzeilen.
 
-Input: de bestaande synthese (docs/architecture-2.2/), de lifecycle-matrix (§28),
-de golvenplanning (§31) en de actuele repo-staat.
+Input: de bestaande synthese, lifecycle-matrix (§28), doc 15 AM-1/AM-2,
+de actuele repo-staat en DECISIONS.md.
 
 Onderzoek (max 3 parallelle richtingen, primaire bronnen, datums verplicht):
 1. Homelab-/self-hosted-stacktrends: inference-hardware en -modellen realistisch
@@ -47,17 +48,17 @@ kwaliteitsbewijs.
 Output per kans (verplicht format — anders is het een notitie, geen aanbeveling):
 - naam + wat het doet + bewijsniveau (E1–E7) met bron + datum;
 - adoptieladder-sport (Adopt/Configure/Wrap/Extend/Build);
-- lifecycle-status-voorstel (Production Core/Incubation/Watchlist/Rejected);
+- lifecycle-status-voorstel (Production Core max 8/Incubation/Watchlist/Rejected);
 - golf-plaatsing (in welke bestaande golf past dit — nieuwe golven alleen met reden);
-- RAM-schatting + effort-klasse (S/M/L) + wat het vervangt (16 GB-regel);
-- commerciële toets: is dit later productiseerbaar, wat betaalt de markt ervoor;
+- RAM-schatting + effort-klasse + wat het vervangt;
+- waarde/mnd + bouwuren + payback; zonder aantoonbare payback <6 mnd → Watchlist;
+- impact op de acht named routes (`local` is tier, geen nieuwe routeprefix);
 - welke bestaande regel/ADR erdoor geraakt wordt (bijv. embeddingswissel = re-index).
 
 Vaste output-secties: Tier 1 (adopt nu) · Tier 2 (ops-verbeteringen) ·
 Tier 3 (defer/voorwaardelijk) · Hype/Rejected (verplicht, met reden) ·
 Regelgevings-acties met deadline · Delta t.o.v. vorige scan.
 
-Persistentie: resultaten als genummerd document in docs/architecture-2.2/ (of
-opvolger), lifecycle-matrix en golvenplanning bijwerken (delta, niet herschrijven),
-commit + PR. Sluit af met max 5 verbeteringen aan deze prompt (→ versie 2.5).
+Persistentie tijdens de bevriezing: alleen een kort delta-memo in
+`15-review-panel.md`; geen doc 16+ en geen PROMPT-2.5. De eigenaar besluit wat landt.
 ```

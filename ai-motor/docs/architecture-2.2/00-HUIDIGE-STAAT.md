@@ -3,7 +3,7 @@
 > **Eigenaar:** Pietje
 > **Meetdatum:** 2026-07-27
 > **Bron:** PR #9, head `7f89408`
-> **Status:** Stap 1 — feitelijke nulmeting, wacht op akkoord van de eigenaar
+> **Status:** Stap 1 goedgekeurd op 2026-07-27; live runtimevelden blijven open
 > **Gerelateerd:** [Master Build Plan](../MASTER-BUILD-PLAN.md) · [ADR-001/002](../DECISIONS.md) · [bindend review-panel](15-review-panel.md)
 
 ## Uitkomst in één minuut
@@ -12,7 +12,9 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 
 ## Meetmethode en bewijslimiet
 
-De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. `MOTOR-AI-2.2-COMPLEET.md` is conform de opdracht niet als zelfstandige bron gebruikt.
+De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. De mechanische bundel `MOTOR-AI-2.2-COMPLEET.md` is niet als bron gebruikt en in consolidatiestap 3 verwijderd om dubbele waarheid te voorkomen.
+
+De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken.
 
 | Bron | Gemeten resultaat |
 |---|---|
@@ -66,7 +68,7 @@ Statussen hieronder betekenen:
 | WebSocket-originvalidatie | Geen OpenClaw-serverconfig gevonden | **onbekend, meten door eigenaar op NUC** | Niet bewezen |
 | Skills-allowlist uit eigen git | Geen complete, actieve allowlistconfig aangetroffen | **onbekend, meten door eigenaar op NUC** | Niet bewezen |
 | Side effects via Action Gateway | Action Gateway bestaat nog niet als component | Nee in repo | Niet geïmplementeerd |
-| Canonieke ADR | ADR-106 staat alleen in doc 07; `DECISIONS.md` stopt bij ADR-002/optionele ADR-003 | N.v.t. | Besluit is nog niet gespiegeld naar de beslis-SSOT |
+| Canonieke ADR | ADR-101–109 staan in `DECISIONS.md`; doc 07 §30 is index-only | N.v.t. | Gespiegeld; runtimebewijs voor ADR-101/106 blijft open |
 
 **Golf 0-eindoordeel:** de repo-items voor kennisbank, schema en auth zijn grotendeels af. Golf 0 als geheel is **niet af**, omdat OpenClaw-hardening, secrets-inventaris en de live 401/403-/healthbewijzen ontbreken.
 
@@ -219,4 +221,4 @@ Deze nulmeting maakt bewust geen runtime-aannames. Voor stap 2 zijn twee geldige
 1. de eigenaar vult de live metingen aan en keurt daarna deze tabel goed; of
 2. de eigenaar accepteert alle gemarkeerde runtimevelden voorlopig als onbekend en keurt deze repository-baseline goed.
 
-Tot dat akkoord blijft dit document **Stap 1** en worden stap 2–4 niet uitgevoerd.
+De eigenaar accepteerde op 2026-07-27 de repository-baseline en gaf opdracht stap 2–4 volledig af te ronden. De gemarkeerde live metingen blijven uitvoerblokkades voor deployment, niet voor documentconsolidatie.

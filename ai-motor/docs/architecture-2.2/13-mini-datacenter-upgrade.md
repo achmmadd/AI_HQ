@@ -1,7 +1,7 @@
 # 39. Mini-datacenter-upgrade — wat het derde niveau ontgrendelt
 
-> Aanvulling op [Motor AI 2.2](README.md) en [doc 12](12-hardware-3090.md). Datum: 2026-07-21.
-> Topologie: **NUC (orchestrator/control) + inference-PC (Ryzen 7 / 32 GB / RTX 3090, execution) + Hetzner 16 GB (data + zwaar)**, via Tailscale. Dat is functioneel een mini-datacenter: gescheiden control/execution/data over drie nodes, precies de planes-indeling uit §15 — maar nu fysiek.
+> **Eigenaar:** Pietje · **Geconsolideerd:** 2026-07-27
+> Topologie: **NUC (kanaal/UI/glue, informeel orchestrator) + Hetzner (data + durable engine/Kernel/Gateway) + inference-PC (stateless execution)** via Tailscale.
 
 ---
 
@@ -10,57 +10,38 @@
 Een mini-datacenter is capaciteit, geen vrijbrief. Deze regels blijven onverkort gelden:
 
 1. **Postgres op Hetzner blijft de enige SSOT** (§16). De inference-PC krijgt géén databases met waarheid.
-2. **Eén canonieke engine** (ADR-101), één orchestrator. Meer hardware ≠ meer orchestrators.
-3. **Production Core blijft klein** (§28). Elke nieuwe service op de PC vereist een lifecycle-rij, eigenaar en runbook — anders is het een experiment op de Watchlist.
-4. **De Bokas-pilot-gates (§32) blijven de maat.** Capaciteit versnelt de uitvoering, niet de bewijsperiodes.
-5. **De 30-dagen-regel blijft:** geen tweede complexe divisie vóór de eerste 30 dagen groen is.
+2. **Eén durable engine op Hetzner** (ADR-101/108). De NUC heet alleen informeel orchestrator.
+3. **Production Core = maximaal acht**; de inference-PC blijft Incubation.
+4. **Vijf actieve criteria** (#1, #2, #3, #7, #16); overige metingen zijn observaties.
+5. **Dertig dagen groen** begrenst autonomiepromotie en AM-1-scope-ontdooiing, niet de start van nieuw A1-werk.
 
 De les uit al het onderzoek (mini-SWE-agent, Azië-scan §37.1): het next level is operationele volwassenheid. Het mini-datacenter maakt die volwassenheid *goedkoper en sneller bereikbaar* — dat is de upgrade.
 
 ## 39.2 Wat het derde niveau wél ontgrendelt (zeven upgrades)
 
-### U1 — Parallelle sandbox-vloot → de Codex-werkwijze wordt haalbaar
+### U1 — Parallelle sandbox-vloot — bevroren
 
-De Ryzen 7 + 32 GB is ruim genoeg voor **3–5 gelijktijdige geïsoleerde task-sandboxes** (Docker, per-taak worktree) naast de inference-load. Daarmee wordt het Codex-patroon (PC-01: veel parallelle, goed afgebakende taken vanaf één board) praktisch uitvoerbaar in plaats van theoretisch:
+AM-1 bevriest de sandbox-vloot. Na ontdooiing vereist elk sandboxslot een engine-resource-lease met timeout; tot dan geen parallel programma op de PC.
 
-- masterplan-gap #7 ("multi-file repo-agent ❌") wordt: coding-CLI in sandbox × N parallel;
-- elke sandbox: eigen worktree, eigen branch, lint-gate, bewijs-artifacts, PR — mens reviewt outcomes.
-- **Golf-inpassing:** Golf 3 (stond al gepland; capaciteit was de bottleneck, die is weg).
+### U2 — Nachtwerk — alleen ingest-batch
 
-### U2 — De nachtploeg: autonome shifts terwijl je slaapt
+Tot Playbook #1 dertig dagen groen is, is alleen een ingest-batch toegestaan. Daarna start nachtwerk met **exact één increment per nacht**. Volledige rapportage staat in Motor UI; Telegram stuurt alleen een link. Gemiddelde ochtendreview moet ≤20 minuten over 14 dagen blijven, anders terug naar ingest-only.
 
-Het Anthropic long-running-harnas (§18) + batch-economie (doc 11 A4) + lokale stroom i.p.v. tokens = een **dagelijkse autonome nachtcyclus**:
+### U3 — Evals worden goedkoper; geen extra harde gates
 
-```
-23:00  ingest-batch (MinerU-parsing, embeddings, transcripties)   → inference-PC
-00:00  doc-gardening-agent (stale docs, fix-PR's — Codex-patroon) → sandbox
-01:00  1–2 long-running increments (feature_list.json, checkpoint) → sandboxes
-05:00  eval-runs op gewijzigde Playbooks/prompts                  → lokaal + judge
-06:30  dagbrief-voorbereiding (queries, anomaliedetectie, concept) → engine + lokaal
-07:30  ochtendrapport in Telegram: wat is gedaan, bewijs, wat wacht op approval
-```
+Routes `chat.fast` en `judge` kunnen later tier `local` gebruiken. Dit verlaagt kosten, maar maakt geen nieuwe harde gate: tot drie Playbooks productie draaien blijven twaalf criteria observaties.
 
-Alles binnen Gateway-policies en budgetten; R2+-acties blijven 's nachts geblokkeerd (wachten op ochtend-approval). Dit is de "engineers working in shifts"-metafoor van Anthropic, letterlijk gemaakt — en het is de snelste route naar §35-criterium 15 (autonome taakduur).
-**Golf-inpassing:** eerste versie in Golf 2 (alleen ingest + briefvoorbereiding), volledig in Golf 3.
+### U4 — Art. 9-werk — uitgesteld tot na DPIA
 
-### U3 — Evals worden bijna gratis → strakkere gates zonder frictie
+Lokale inference lost grondslag, doelbinding en DPIA niet op. Geen Playbook op loonstroken, verzuim of andere bijzondere persoonsgegevens vóór DPIA en grondslaganalyse. `pii-strict` gebruikt tier `local` en traceert geen content.
 
-Het duurste bezwaar tegen frequente eval-runs (tokens) vervalt voor het gros van de checks: judge-runs voor R0/R1-taken en regressiesets draaien op `local.chat`/`judge.local`. Consequentie: **eval-frequentie omhoog** — bij elke Playbook-wijziging én wekelijks als drift-detectie, niet alleen bij promoties. Cloud-judge blijft voor kalibratie (maandelijkse steekproef vergelijkt lokale vs cloud-judge-scores).
-**Golf-inpassing:** Golf 2, samen met de eerste eval-set.
+### U5 — Restore-test naar wegwerp-container
 
-### U4 — PII-volledig-lokale Playbooks: een nieuwe klasse werk
-
-Met `local.vision`/`local.extract` (doc 12) kan een categorie Playbooks die eerder principieel lastig was: **personeelsdata, loonstroken, medische verzuimcorrespondentie, contracten, financiële details** — alles waarvoor zelfs EU-cloud-routing een AVG-gesprek was. De Gateway-policy krijgt een dataklasse `pii-strict` → alleen `local.*`-routes toegestaan, geen fallback naar cloud (wachtrij bij uitval).
-**Golf-inpassing:** policy in Golf 2; eerste pii-strict Playbook (bijv. personeels-/contractadministratie) in Golf 3–4.
-
-### U5 — Echte staging-omgeving
-
-§17 definieerde "staging = tweede compose-stack" zonder plek. Die plek is er nu: **staging-stack op de inference-PC** (Motor-app + engine + kopie-DB met synthetische/gemaskeerde data). Daarmee worden migraties, Playbook-promoties en modelwissels toetsbaar vóór productie — en de maandelijkse restore-test (§27) krijgt een vast doelwit: restore náár staging is meteen de oefening.
-**Golf-inpassing:** Golf 2 (restore-test-doelwit), volwaardig in Golf 3.
+Een vaste staging-stack is bevroren. Voor restore-tests volstaat een tijdelijke container met synthetische/gemaskeerde data; engine/Kernel/Gateway blijven op Hetzner en draaien nooit permanent op de inference-PC.
 
 ### U6 — Derde backup-locatie: 3-2-1 wordt compleet
 
-NVMe/HDD op de inference-PC = tweede on-site kopie naast Hetzner; Storage Box/B2 = off-site. Daarmee is 3-2-1 (doc 10 O4) volledig: PG-dumps en Qdrant-snapshots nightly naar de PC (pull via Tailscale, append-only), off-site wekelijks+. RPO kan van 24u naar 15 min zonder extra kosten.
+NVMe/HDD op de inference-PC kan een extra kopie dragen nadat opslag is bevestigd. Nightly pulls geven **RPO 24 uur**. RPO 15 minuten vereist apart besloten WAL-shipping; dat is niet gratis of impliciet.
 **Golf-inpassing:** Golf 1–2 (klein, hoge waarde).
 
 ### U7 — Eerder afgewezen zwaargewichten krijgen een voorwaardelijke plek
@@ -76,10 +57,10 @@ Sommige "Rejected/Watchlist wegens RAM"-besluiten krijgen een nieuwe voorwaarde 
 
 ## 39.3 Wat dit betekent voor de 11/10-criteria
 
-- **Criterium 7 (kosten/succesvolle taak):** verwacht een structurele daling voor extractie-/batch-klasse taken (stroom ≈ €0,05–0,10/uur onder last vs token-kosten). Meet lokaal vs cloud per Playbook — dit wordt het eerste harde bewijs van de hardware-investering.
-- **Criterium 15 (autonome taakduur):** de nachtploeg (U2) is de motor; verwacte progressie van "1 increment/nacht" naar "meerdere parallelle increments/nacht" (U1) binnen twee kwartalen — mits criteria 1–3 groen blijven.
-- **Criterium 5/6 (herstelbaarheid/dataverlies):** U5+U6 maken de doelen (RTO 4u, RPO 15 min) haalbaar zonder nieuwe kosten.
-- **Nieuw sub-criterium (bij 7):** GPU-benutting 's nachts ≥ X% (anders is de nachtploeg te leeg gepland of de box overbodig groot) — baseline eerst, norm na 30 dagen.
+- **Actief criterium #7:** meet stroom+cloudkosten per succesvolle taak; geen aanname dat lokaal gratis is.
+- **Observatie #15:** maximaal één increment/nacht na ontdooiing; geen groei naar een vloot zonder nieuw besluit.
+- **Observaties #5/#6:** restore naar wegwerp-container; RPO 24 uur bij nightly, 15 minuten alleen met WAL.
+- **GPU-benutting:** observatie zonder gate-status.
 
 ## 39.4 Samengevat: het stappenpad
 
@@ -87,7 +68,7 @@ Sommige "Rejected/Watchlist wegens RAM"-besluiten krijgen een nieuwe voorwaarde 
 |---|---|---|
 | 1. Starter kit | chat + RAG + n8n (waar we vandaan komen) | ✅ bestaat |
 | 2. Operationele volwassenheid | lifecycle, Gateway, Playbooks, evals, één waarheid (2.2-kern, doc 01–09) | Golf 0–2, in uitvoering |
-| **3. Mini-datacenter** | **parallelle sandboxes, nachtploeg, gratis evals, pii-strict Playbooks, staging, 3-2-1** | **dit document; Golf 2–3** |
-| 4. Productfabriek | Playbooks tenant-shared, RaaS-pricing, New-API-billing (doc 10 §36.4, doc 11 Z4/B2) | Golf 4, ná 30 dagen groen |
+| **3. Mini-datacenter** | **stateless inference-worker + extra backupdoel** | Incubation; geen taken vóór SSH+Gateway/policy |
+| 4. Betalende pilot | één klant uit eigen netwerk, hands-on, zonder SLA | Golf 4; productfabriek pas daarna |
 
-Niveau 3 is geen nieuw project naast de golven — het zijn zeven upgrades die **binnen** de bestaande golven landen en vooral Golf 2–3 sneller en goedkoper maken. De volgorde blijft heilig: eerst Golf 0/1 (security, één waarheid, engine), dan pas draait de nachtploeg.
+Niveau 3 is capaciteit, geen parallel programma. Eerst Golf 0, daarna K2/K1 en maximaal één architectuurdag per week. De inference-PC blijft idle voor productietaken tot SSH, runbook en Gateway/policy staan.

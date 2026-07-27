@@ -59,15 +59,14 @@ Gededupliceerd over de vier reviews; bronverwijzing per reviewer (O=ops, A=archi
 2. **Week 1–2:** **K2 review-automation live** op bestaande n8n + Telegram-approvals, bewust wegwerp; migreert later onder de Kernel.
 3. **Week 2–4:** **K1 bonnetjes→Moneybird v1** (cloud-vision, elke boeking handmatig approven).
 4. **Week 3–5 parallel (max 1 dag/wk):** ADR-108/109 (hieronder) + engine-spike (verbreed, 3–5 dgn/kandidaat) + Kernel-tabellen.
-5. **Week 5–7:** C1 ComfyUI voor Fumero (eerste directe omzetondersteuning van de 3090).
+5. **Week 5–7, alleen na 30 dagen groen van Playbook #1:** C1 ComfyUI voor Fumero; anders schuift dit venster op.
 6. **Week 6–9:** K1+K2 migreren naar Kernel/Gateway — **de migratie zelf is de architectuurtest** (vervangt de brief in die rol).
 7. **Week 9–12:** dagbrief als Playbook #3, gevoed door de inmiddels bestaande adapters.
 8. **Gate-regel herzien (B-3):** 30 dagen groen is vereist voor **autonomie-promotie** (A1→A2→A3), niet voor het starten van nieuw A1-werk.
 
 ### AM-3 — Twee nieuwe ADR's vóór Golf 1-bouw (A-1, A-2, A-3)
 
-- **ADR-108 — Runtime-topologie:** engine + Kernel-API + Action Gateway draaien **op Hetzner, co-located met Postgres** (thuisuitval raakt dan alleen lokale inference en kanalen; checkpoint-latency verdwijnt). NUC = kanalen/UI/OpenClaw + local-executor-glue. Monitoring (Uptime Kuma/Beszel-hub) draait op Hetzner en bewaakt de thuissite, niet andersom. De spike-criteria worden uitgebreid met: multi-node-recovery, event-vóór-wait-race, checkpoint-latency over Tailscale, GPU-concurrency-limits, in-flight-versioning bij deploy, en de engine-store als apart backup-object (Inngest-geval).
-- **ADR-109 — Gateway-enforcementmodel:** expliciet **credential-broker/proxy-model** (side-effect-credentials leven alléén bij de Gateway); **fail-closed voor R1+**, fail-open alleen voor R0-reads; budget als **reservering→uitvoering→settlement** in één PG-transactie; approval-records binden aan **(tool, argument-hash, task_id, vervaltijd)** en de Gateway hertoetst de hash bij uitvoering; idempotency-key per toolcall. Gateway v1 dekt alléén mail/pay/delete via engine-workflows; OpenClaw-omleiding volgt in Golf 3.
+- **ADR-108 — Runtime-topologie** en **ADR-109 — Gateway-enforcementmodel:** de canonieke tekst staat in [`../DECISIONS.md`](../DECISIONS.md). Daar zijn ook de negen ADR-101-spikegates, runtimeplaatsing, credential-broker, failgedrag, budgettransactie, hash-binding en v1-scope vastgelegd.
 - Aanvullend (A-1): `tasks` muteert uitsluitend via engine-emitted events (append-only, idempotent op event-id) + periodieke reconciliation-job (run zonder task / task zonder run → alarm); dit wordt een NIG-3-bewijstest. State machines krijgen cancelled/failed/blocked/expired + resource-leases (A-5).
 
 ### AM-4 — Compliance-pakket als Golf 1-deliverable (P-1 t/m P-9)
@@ -118,7 +117,7 @@ Met AM-1 t/m AM-5 verwerkt beoordeelt het panel het plan als uitvoerbaar: SRE 7/
 | AM-1 | README-uitbreidingspad; PROMPT-2.4 slot | Nieuwe genummerde architectuurdocs en PROMPT-2.5 volgen uit volgende scans | Geen doc 16+ en geen PROMPT-2.5 tot drie Playbooks productie draaien; alleen een kort delta-memo in doc 15 | README, PROMPT-2.4 |
 | AM-2 | Doc 08 §31–33 | Eerst volledige engine/Kernel/Gateway-fundering, daarna de Bokas-brief als eerste pilot | Golf 0 → K2 week 1–2 → K1 week 2–4 → beperkte architectuurspike → migratie K1/K2 → dagbrief #3 | 08 |
 | AM-2 | Doc 10 §36.2/36.5; doc 11 §37.5 | K1 en K2 komen in Golf 3 en K1 gaat vóór K2 | K2 reviews is Playbook #1 in week 1–2; K1 bonnetjes is #2 in week 2–4 | 10, 11 |
-| AM-2 | Doc 07 ADR-101; doc 08 week 2; PROMPT-2.3 | Engine-spikes duren één à twee dagen en krijgen een volle architectuurweek | Bevestigingsspike duurt 3–5 dagen per kandidaat, uitgevoerd in week 3–5 met maximaal één architectuurdag per week naast waarde-werk | 07, 08, PROMPT-2.3 |
+| AM-2 | Doc 07 ADR-101; doc 08 week 2; PROMPT-2.3 | Engine-spikes duren één à twee dagen en krijgen een volle architectuurweek | N=1-uitwerking in ADR-101: Inngest max. 3 architectuurdagen in week 3–5; DBOS alleen na harde trigger 3–5 dagen, waarna downstream schuift | 07, 08, PROMPT-2.3 |
 | AM-2 | Doc 08 §32; doc 07 §29; doc 10 §36.5 | De Bokas-brief is de eerste en enige architectuurtest | Migratie van K1 en K2 naar Kernel/Gateway in week 6–9 is de architectuurtest | 07, 08, 10 |
 | AM-2 | Doc 08 §32–33; doc 10/11 pilotplaatsing | De dagbrief is Playbook #1 en gaat rond week 10 live | De dagbrief is Playbook #3 in week 9–12, gevoed door bestaande adapters | 08, 10, 11 |
 | AM-2 | Doc 08 §32; doc 13 §39.1; doc 09 §34 | Dertig dagen groen blokkeert het starten van de volgende workflow/divisie | Dertig dagen groen is vereist voor autonomiepromotie; nieuw A1-werk mag starten. AM-1-scope blijft wel bevroren tot #1 dertig dagen groen is | 08, 09, 13 |
@@ -147,3 +146,19 @@ Met AM-1 t/m AM-5 verwerkt beoordeelt het panel het plan als uitvoerbaar: SRE 7/
 | Panelconclusie | Doc 01 §1/P20; doc 07 ADR-105; doc 08 parallelregel; PROMPT-2.3/2.4 | Plan rekent met een technisch team van 3–4 mensen | Uitvoering is voor 1 technicus met 2–3 niet-technische helpers; minimale variant en maximaal één architectuurdag/week | 01, 07, 08, PROMPT-2.3, PROMPT-2.4 |
 
 **Afhandelregel voor stap 3:** de genoemde documenten worden inhoudelijk aangepast; er komen geen permanente override-banners. Na consolidatie blijft dit register de audit trail, niet een tweede set geldende instructies.
+
+## 41.7 Delta-memo 2026-07-27 — hardware en naamgeving
+
+**Eigenaar:** Pietje. De NUC is in dagelijkse taal de “orchestrator” omdat daar Motor UI, OpenClaw, kanalen en executor-glue samenkomen. Dit wijzigt AM-3 niet: **durable orchestratie, Kernel-API en Action Gateway draaien op Hetzner**. De nieuwe Ryzen 7/32 GB/RTX 3090-PC is uitsluitend een stateless lokale LLM-worker. Locatie, voeding en opslag mogen voorlopig onbekend blijven; vóór activering zijn SSH, Tailscale, runbook en Gateway/policy verplicht. Tot die tijd krijgt de PC geen taken.
+
+## 41.8 EUR-prioriteringsblad — onderhoud
+
+| Kans | Waarde/mnd | Bouwuren | Payback | Besluit | Laatst gemeten |
+|---|---:|---:|---:|---|---|
+| K2 reviews | Door eigenaar in te vullen vóór start | Door eigenaar in te vullen | Bouwkosten ÷ waarde/mnd | AM-2 #1; geen uitbreiding zonder cijfers | open |
+| K1 bonnetjes | Door eigenaar in te vullen vóór start | Door eigenaar in te vullen | Bouwkosten ÷ waarde/mnd | AM-2 #2; v1 handmatig | open |
+| K3 monitoring | Onbekend | Onbekend | Niet bewezen | Watchlist | open |
+| K4 forecast | Onbekend | Onbekend | Niet bewezen | Watchlist | open |
+| K5 infra-digest | Onbekend | Onbekend | Niet bewezen | Watchlist | open |
+
+**Regel:** zonder aantoonbare payback korter dan zes maanden blijft een kans Watchlist. Doc 10 bevat de marktcontext; dit is de onderhoudstabel en beslisbron.

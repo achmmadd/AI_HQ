@@ -1,6 +1,7 @@
 # 34–35. Definition of Done · Meetbare 11/10-criteria
 
-> Onderdeel van [Motor AI 2.2](README.md).
+> **Eigenaar:** Pietje · **Geconsolideerd:** 2026-07-27
+> Onderdeel van [Motor AI 2.2](README.md). AM-1 activeert vijf meetcriteria; de overige twaalf zijn observaties.
 
 ---
 
@@ -13,7 +14,7 @@ Een taak is pas *done* wanneer:
 1. Alle acceptatiecriteria/postconditions uit intake of Playbook aantoonbaar groen;
 2. **Bewijs-artifacts** aanwezig en gelinkt aan `task_id` (testoutput / bron-queries / screenshots — geen beweringen zonder artefact);
 3. Self-verificatie uitgevoerd zoals een eindgebruiker het zou ervaren (niet alleen unit-checks);
-4. Adversarial review gedaan bij R2+ of code;
+4. Menselijke outcome-review gedaan waar vereist; aparte adversarial-reviewstap is bevroren door AM-1;
 5. Vereiste approvals vastgelegd (wie, wanneer, op basis waarvan);
 6. Schone eindstaat: geen half werk, open punten expliciet gedocumenteerd;
 7. Audit- en usage-events compleet;
@@ -21,47 +22,56 @@ Een taak is pas *done* wanneer:
 
 ### DoD per Playbook-versie
 
-Groene eval-set (≥20 echte cases) + menselijke review + registry-promotie + rollbackpad getest.
+Kleine echte eval-set + menselijke review + status in git + rollbackversie getest. Een registry-product is bevroren.
 
 ### DoD per Production Core-component
 
-Eigenaar + runbook + observability + backup/exit-strategie + security-review + testdekking + rij in de traceability-matrix ([§29](07-lifecycle-en-traceability.md)).
+Voor de **acht AM-1-Core-componenten**: eigenaar + runbook + observability + backup/exit + security-review + testdekking + traceability-rij. Incubation krijgt eigenaar en exitnotitie.
 
 ### DoD voor Motor AI 2.2 als geheel (architectuur "af")
 
-Alle Golf 0–2-exitcriteria gehaald én de Bokas-pilot 30 dagen door alle vijf gates ([§32](08-migratie-pilot-twaalfweken.md)).
+Golf 0 groen; ADR-101-spike afgerond; ADR-108/109 van kracht; K1/K2 onder Kernel/Gateway; AM-4-punten 1–5 groen; Playbook #1 dertig dagen groen op de vijf actieve criteria. De dagbrief is Playbook #3, niet de eerste architectuurtest.
 
 ---
 
 ## 35. Meetbare 11/10-criteria
 
-Per criterium: meetmethode · streefwaarde · minimale bewijsperiode · eigenaar · reactie bij overtreding. Eigenaar is nu overal Pietje; bij teamgroei worden rollen gesplitst (security/ops). "Baseline eerst": waar geen historische data is, meten we 30 dagen vóór het vastklikken van de streefwaarde.
+Eigenaar is Pietje. Baseline-eerst geldt voor de vijf actieve criteria; observaties krijgen nog geen gate-status of geforceerde norm.
 
-| # | Criterium | Meetmethode | Streefwaarde | Bewijsperiode | Reactie bij overtreding |
-|---|---|---|---|---|---|
-| 1 | Task-success | % taken done zonder handmatige reparatie (Kernel-data) | ≥90% per Playbook in production | 30 dgn | Playbook terug naar `tested`; postmortem-analyse |
-| 2 | Menselijke correcties | correcties per 10 taken (feedback + postmortems) | dalend per Playbook-versie; ≤2/10 voor A2+ | 30 dgn | geen autonomie-promotie; Playbook-revisie |
-| 3 | Ongeautoriseerde acties | side effects zonder Gateway-allow (audit-reconciliatie) | **0** | continu | sev-hoog incident; kill switch toolfamilie; root cause vóór heractivering |
-| 4 | Tenantisolatie | isolation-evals + wekelijkse cross-tenant-pentest | 0 lekken | continu | sev-kritiek; tenant-API's dicht tot fix + regressietest |
-| 5 | Herstelbaarheid | maandelijkse restore-oefening + geënsceneerde crash mid-task | RTO ≤4 u (PG); taak hervat zonder dubbele side effects | maandelijks | migratie-/deploystop tot geslaagde herhaling |
-| 6 | Dataverlies | RPO-meting bij oefening/incident | ≤15 min (PG, Golf 2+) | maandelijks | backup-architectuur herzien |
-| 7 | Kosten per succesvolle taak | usage_events ÷ succesvolle taken, per Playbook | ≤ budget per Playbook; trend niet stijgend >20%/mnd zonder verklaring | 30 dgn | budget-cap verlagen; route-/promptoptimalisatie |
-| 8 | Doorlooptijd | intake→done p50/p90 per Playbook | p90 binnen Playbook-norm | 30 dgn | bottleneck-analyse (vaak approval-latency) |
-| 9 | False approvals | achteraf onterecht gebleken approvals (incidentkoppeling) | 0 met schade; ≤1/kwartaal zonder schade | kwartaal | approval-informatie verbeteren (bewijs bij verzoek) |
-| 10 | Rollback | tijd tot vorige Playbook-/deploy-versie actief | ≤15 min, getest | per release | release-freeze tot rollbackpad werkt |
-| 11 | Documentatiefreshness | doc-CI: % docs binnen review-termijn (90 dgn) | ≥90%; entrypoints 100% | continu | doc-gardening-taak; merge-block op verlopen kern-docs |
-| 12 | Playbookhergebruik | # Playbooks `production` + # tenant-shared | ≥3 production (Golf 3); ≥1 shared (Golf 4) | golf-exit | prioriteit herzien: minder nieuwbouw, meer kristallisatie |
-| 13 | Incidentfrequentie | sev-gewogen incidenten/maand | sev-kritiek: 0; sev-hoog ≤1/mnd, dalend | kwartaal | capaciteit van features naar reliability |
-| 14 | Evalregressies | eval-score per Playbook-versie t.o.v. vorige | geen daling >5% zonder expliciete acceptatie | per promotie | promotie geblokkeerd |
-| 15 | Autonome taakduur | langste succesvolle onbegeleide run (long-running-harnas) | groeiend per kwartaal bij gelijkblijvende criteria 1–3 | kwartaal | niet forceren; eerst 1–3 op orde |
-| 16 | Operatorvertrouwen | maandelijkse zelfscore eigenaar (1–10) + "delegeer ik dit blind?"-lijst per Playbook | stijgend; A3-Playbooks alleen bij score ≥8 | maandelijks | kwalitatieve review: wat ondermijnt vertrouwen |
-| 17 | Commerciële herbruikbaarheid | tijd om bewezen Playbook bij nieuwe tenant te activeren | ≤1 dag (white-label-runbook + registry) | per nieuwe tenant | provisioning-pad verbeteren |
+### Vijf actieve gates
+
+| # | Criterium | Meetmethode | Streefwaarde | Reactie |
+|---|---|---|---|---|
+| 1 | Task-success | % zonder handmatige reparatie | ≥90% per productie-Playbook | terug naar A1/status `tested`; postmortem |
+| 2 | Menselijke correcties | correcties per 10 runs | ≤2/10 voor A2+ | geen promotie; Playbook aanpassen |
+| 3 | Ongeautoriseerde acties | automatische Gateway↔effect-reconciliatie | **0** | kill switch + sev-hoog |
+| 7 | Kosten per succesvolle taak | usage ÷ succesvolle taken | binnen Playbookbudget | cap/route/prompt aanpassen |
+| 16 | Operatorvertrouwen | maandelijkse eigenaar-score 1–10 | ≥8 voor A3 | kwalitatieve review/degradatie |
+
+### Observaties zonder gate-status tot minstens drie Playbooks productie draaien
+
+| # | Observatie | Meetwijze / huidige notitie |
+|---|---|---|
+| 4 | Tenantisolatie | isolation-evals; een lek blijft wel een sev-kritiek security-incident |
+| 5 | Herstelbaarheid | restore-oefening + crash-recovery |
+| 6 | Dataverlies | RPO 24 u bij nightly; 15 min alleen als WAL-shipping apart is besloten |
+| 8 | Doorlooptijd | intake→done p50/p90 |
+| 9 | False approvals | incidentkoppeling |
+| 10 | Rollback | tijd naar vorige versie |
+| 11 | Documentatiefreshness | handmatig volgen; doc-freshness-CI en merge-block zijn bevroren |
+| 12 | Playbookhergebruik | aantal productie/shared |
+| 13 | Incidentfrequentie | sev-gewogen per maand |
+| 14 | Evalregressies | scoreverschil per versie |
+| 15 | Autonome taakduur | langste succesvolle run; geen nachtploeg vóór AM-1-gate |
+| 17 | Commerciële herbruikbaarheid | eerst één betalende hands-on pilot zonder SLA |
 
 ### Autonomie-promotieregels (koppeling criteria ↔ autonomieladder)
 
-- **A1 → A2:** criteria 1–4 groen gedurende 30 dagen voor dat Playbook × tenant.
-- **A2 → A3:** criteria 1–4 én 7–9 groen gedurende 60 dagen; kill switch getest; eigenaar-score ≥8.
+- **A1 → A2:** actieve criteria #1, #2, #3, #7 en #16 dertig dagen groen voor Playbook×tenant.
+- **A2 → A3:** dezelfde vijf zestig dagen groen; kill switch getest; eigenaar-score ≥8.
 - **Degradatie:** automatisch één niveau omlaag bij sev-hoog-incident dat aan het Playbook raakt; herstel alleen via nieuwe bewijsperiode.
+
+Nieuw A1-werk mag starten zonder voorafgaande 30-dagen-periode; de bewijsperiode begrenst alleen autonomiepromotie.
 
 ### Wat een 11/10 betekent
 
