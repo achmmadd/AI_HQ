@@ -162,3 +162,15 @@ Met AM-1 t/m AM-5 verwerkt beoordeelt het panel het plan als uitvoerbaar: SRE 7/
 | K5 infra-digest | Onbekend | Onbekend | Niet bewezen | Watchlist | open |
 
 **Regel:** zonder aantoonbare payback korter dan zes maanden blijft een kans Watchlist. Doc 10 bevat de marktcontext; dit is de onderhoudstabel en beslisbron.
+
+## 41.9 Verbeteringen aan de consolidatie-opdracht
+
+> **Opsteller:** architectuurreview · **Datum:** 2026-07-27 · **Beslisser:** eigenaar
+
+1. **Maak root-`AGENTS.md` expliciet een uitzondering op de paden-whitelist.** De absolute regel stond alleen `ai-motor/docs/` en `DECISIONS.md` toe, terwijl stap 4 root-`AGENTS.md` verplichtte.
+2. **Lever read-only hosttoegang of vooraf opgenomen output mee.** Zonder SSH-config/agent konden `pm2 list`, `docker ps`, `systemctl`, productieflags en SQLite↔PG-rijpariteit alleen als onbekend worden vastgelegd.
+3. **Scheid “documentatie final” van “runtime build-ready”.** Het entrypoint kan compleet zijn terwijl OpenClaw-hardening, ADR-002 M4 en live services nog niet bewezen zijn.
+4. **Los amendementconflicten in de opdracht zelf op.** AM-1 bevroor ComfyUI terwijl AM-2 week 5–7 noemde; “3–5 dagen per kandidaat” botste met maximaal één architectuurdag per week. Geef vooraf aan welke regel de gate en welke alleen het vroegste venster is.
+5. **Geef ieder stapdeliverable een pad en benoem de beslis-hiërarchie.** Stap 2 had geen doelbestand en “doc 15 bindend” versus “DECISIONS één waarheid” vereiste interpretatie; leg vast dat doc 15 scope/amendementen bevat en `DECISIONS.md` canonieke ADR-tekst.
+
+De eigenaar bepaalt welke verbeteringen in een volgende opdrachtversie landen; er wordt tijdens AM-1 geen nieuwe promptversie aangemaakt.
