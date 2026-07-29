@@ -127,11 +127,21 @@ services:
     depends_on:
       - omega-bridge
 
-  # Cloudflare Quick Tunnel — tunnel --url http://omega-mission-control:8501
+  # Cloudflare Tunnel: zonder TUNNEL_TOKEN → Quick Tunnel (trycloudflare.com).
+  # Met TUNNEL_TOKEN → named tunnel voor eigen domein (Public Hostname in Zero Trust → deze stack).
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: omega-cloudflared
-    command: ["tunnel", "--no-autoupdate", "--url", "http://omega-mission-control:8501"]
+    env_file:
+      - .env
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -n "$$TUNNEL_TOKEN" ]; then
+          exec cloudflared tunnel --no-autoupdate run --token "$$TUNNEL_TOKEN"
+        else
+          exec cloudflared tunnel --no-autoupdate --url http://omega-mission-control:8501
+        fi
     restart: always
     networks:
       - omega-net
