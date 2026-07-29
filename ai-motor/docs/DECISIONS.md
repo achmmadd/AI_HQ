@@ -1,5 +1,6 @@
 # Motor AI Factory OS — Architectuurbeslissingen
 
+> **Eigenaar:** Pietje · **Geconsolideerd:** 2026-07-27
 > **Doel:** Vastliggende keuzes die Cursor/agents **niet opnieuw mogen uitvinden** in latere sprints.  
 > **Gerelateerd:** [`MASTER-BUILD-PLAN.md`](MASTER-BUILD-PLAN.md) · [`hetzner-migration.md`](hetzner-migration.md)
 
@@ -69,7 +70,7 @@ Geen merge-migratie van scrape-vectors in Fase 0 of Fase 1.
 
 | Veld | Waarde |
 |------|--------|
-| **Status** | ✅ **Besloten** |
+| **Status** | ⚠️ **Besloten; uitvoering achter op M4** |
 | **Datum** | 2026-06-06 |
 | **Beslisser** | Pietje |
 | **Startpunt plan** | Fase 0 Week 1 = 2026-06-06 |
@@ -91,6 +92,8 @@ Motor draait op `better-sqlite3` (`~/AI_HQ/data/ai-motor.db`). Single-writer blo
 | **M6 — SQLite uit productie** | **2026-08-09** | 1.3 exit | `better-sqlite3` alleen nog `NODE_ENV=development` of expliciete fallback flag |
 
 **Cutover-datum (M4)** = **26 juli 2026** — dit is de officiële “Postgres is waarheid”-datum.
+
+**Werkelijke stand 2026-07-27:** M4 is niet gehaald. `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de SQLite read/write-routes nog niet aan; productieflags en rijpariteit zijn live onbekend. Zie [`architecture-2.2/00-HUIDIGE-STAAT.md`](architecture-2.2/00-HUIDIGE-STAAT.md). De eigenaar moet M4 expliciet herplannen of de implementatie aantoonbaar afronden; de oude datum is geen bewijs van cutover.
 
 ### Gevolgen
 
@@ -132,13 +135,361 @@ Na **M4**: rollback alleen via PG restore uit backup (geen automatische SQLite-t
 
 ---
 
+## ADR-101 — Canonieke workflow-engine: Inngest bevestigen, DBOS als challenger
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | 🟡 **Voorwaardelijk besloten** — Inngest is incumbent; bevestigingsspike open |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+| **Deadline** | Inngest-confirmatie **2026-08-30**; alleen bij DBOS-trigger eindbesluit **2026-09-13** |
+
+### Context
+
+`lib/inngest/` is geen lege skeleton: approvals emitten events en één HITL-workflow gebruikt `waitForEvent`. Zonder keys is de integratie no-op en runtimebewijs ontbreekt. n8n is geen durable engine; DBOS is de enige challenger die op de bestaande Hetzner/Postgres-topologie past.
+
+### Besluit
+
+Er komt exact één durable engine op Hetzner. **Inngest blijft de default**, omdat overstappen zonder aantoonbare winst migratierisico toevoegt. Inngest krijgt maximaal drie architectuurdagen totaal, één per week in week 3–5. DBOS krijgt alleen na de vastgelegde trigger een opeenvolgende spike van 3–5 dagen; downstream werk schuift dan mee.
+
+Dezelfde minimale workflow test intake → leased inference-step → approval met timeout/reminder → gesimuleerde side effect → settlement.
+
+Verplichte gates voor iedere geteste kandidaat:
+
+1. event-vóór-wait-race en normale HITL-flow slagen;
+2. kill/restart hervat zonder dubbel effect;
+3. herstel over NUC, Hetzner en inference-worker geeft geen orphan run/task;
+4. checkpointlatency over Tailscale is gemeten en acceptabel voor async steps;
+5. twee gelijktijdige GPU-stappen respecteren één resource-lease;
+6. een deploy laat in-flight runs veilig uitlopen of migreren;
+7. operator vindt en herstart een vastgelopen run binnen 5 minuten;
+8. engine-state is herstelbaar: DBOS via PG-restore; Inngest via apart backup-object;
+9. Hetzner houdt minimaal 2 GB RAM-headroom onder de testlast.
+
+**DBOS wordt alleen getriggerd** als Inngest na één herstelpoging minimaal één harde gate mist of geen aantoonbaar herstelbaar engine-store-backupobject levert. DBOS wint vervolgens alleen als het alle negen gates haalt. Slaagt Inngest, dan sluit ADR-101 uiterlijk 2026-08-30 zonder DBOS-spike. Bij trigger valt het eindbesluit uiterlijk 2026-09-13. Falen beide, dan bevriest de enginebouw.
+
+### Gevolgen
+
+- Workflows houden businesslogica in gewone functies; de engine-wrapper blijft dun.
+- De verliezer gaat naar Rejected met spike-evidence.
+- Inngest betekent een apart engine-store-backupobject; DBOS deelt het PG-backuppad.
+
+### Acceptatie
+
+- [ ] Inngest-uitkomst bevat recovery-, race-, lease-, deploy-, backup- en RAM-evidence
+- [ ] DBOS wordt alleen bij de vastgelegde trigger getest en krijgt dan dezelfde evidence
+- [ ] Inngest bewijst de gates binnen maximaal drie architectuurdagen; DBOS krijgt alleen na trigger 3–5 opeenvolgende dagen
+- [ ] Winnaar voldoet aan alle negen gates
+- [ ] Keuze staat uiterlijk 2026-08-30 vast, of bij geactiveerde DBOS-trigger uiterlijk 2026-09-13
+
+### Rollback
+
+Tot bevestiging blijft alleen de bestaande Inngest-approvalpilot toegestaan; geen nieuwe engine-workflows. Bij mislukte cutover: nieuwe runs stoppen, in-flight runs afhandelen, terug naar de laatst bewezen engineversie en alles naar autonomie A1.
+
+---
+
+## ADR-102 — Motor Action Gateway: scope en No-Invention Gate
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** — enforcement uitgewerkt in ADR-109 |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+Geen bestaand product combineert tenant, risicoklasse, autonomieniveau en EUR-budget over OpenClaw, engine en andere harnesses. Promptregels alleen zijn niet afdwingbaar.
+
+### Besluit
+
+Motor krijgt één cross-harness Action Gateway. Policies blijven versioned data in git; OPA/Cedar wordt pas overwogen boven circa twintig regels. ADR-109 vervangt het oude “adviescheck”-idee door het bindende credential-broker/proxymodel.
+
+### Gevolgen
+
+- Side-effect-tools worden centraal testbaar en auditable.
+- Gateway is een beveiligingszwaartepunt, geen vrijblijvende dunne helper.
+- OpenClaw-omleiding volgt pas in Golf 3.
+
+### Acceptatie
+
+- [ ] NIG-1 is traceerbaar naar policy-, bypass-, budget- en tenanttests
+- [ ] Geen tweede Gateway of harness-eigen policywaarheid
+
+### Rollback
+
+Gateway uit betekent autonomie A1 en side-effect-tools uit; credentials gaan niet terug naar harnesses.
+
+---
+
+## ADR-103 — Playbook/Skill-model: git nu, registry later
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten; registry-implementatie bevroren** |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+Het Devin-format is bruikbaar, maar een PG-registry met promotieworkflow is extra scope voor één technicus.
+
+### Besluit
+
+Playbooks en skills zijn bestanden in eigen git. Tot Playbook #1 dertig dagen groen is, volstaat een map met een statuskolom en rollbackversie. Geen externe skillregistry. Een PG-registry wordt pas heroverwogen nadat minstens drie Playbooks productie draaien.
+
+### Gevolgen
+
+- Procedures blijven leesbaar zonder platform.
+- Tenant-promotie en registry-UI zijn uit scope.
+- ClawHub/community-skills blijven verboden.
+
+### Acceptatie
+
+- [ ] Elk actief Playbook heeft owner, status, versie, verboden acties en rollback
+- [ ] Geen PG-registry of externe registry vóór de AM-1-gate
+
+### Rollback
+
+Vorige gitversie activeren; de statuskolom terugzetten. Er is geen registryservice om te herstellen.
+
+---
+
+## ADR-104 — Motor Kernel: event-projectie op Hetzner
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+`tasks` en engine-run-state mogen geen twee los muteerbare waarheden zijn. De huidige repo heeft nog geen 2.2-Kernel.
+
+### Besluit
+
+Kernel-API en taskmodel draaien op Hetzner naast engine en Postgres. `tasks` is een read-projectie en muteert uitsluitend door append-only, op event-id idempotente engine-events. Een reconciliation-job alarmeert op run zonder task en task zonder run. De state machine bevat ook `cancelled`, `failed`, `blocked` en `expired`; GPU/sandboxcapaciteit gebruikt leases.
+
+### Gevolgen
+
+- Motor Next.js op de NUC wordt client/emitter en schrijft geen taskstatus direct.
+- EXECUTION_BOARD.db en andere taskwaarheden gaan uit.
+- Compensatiepaden horen bij onomkeerbare side effects.
+
+### Acceptatie
+
+- [ ] Dubbel event geeft één projectiewijziging
+- [ ] Beide orphan-richtingen geven binnen de afgesproken meetperiode alarm
+- [ ] Abort, failure, block, expiry en lease-timeout zijn getest
+- [ ] NUC-uitval stopt geen lopende engine-run op Hetzner
+
+### Rollback
+
+Stop nieuwe dispatch, herstel de projectie uit engine-events en zet alle taken op A1. Nooit parallel twee schrijfbare taskstores openen.
+
+---
+
+## ADR-105 — Orchestratorconsolidatie
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+OpenClaw, n8n, Dify, SQLite-cron en Inngest overlappen. Dat is niet beheersbaar voor één technicus.
+
+### Besluit
+
+De ADR-101-winnaar is de enige durable orchestrator. OpenClaw blijft kanaal/chat-harness op de NUC; n8n blijft een stateless integratie-adapter; Dify krijgt geen nieuwe workflows en wordt uitgezet. “NUC-orchestrator” is alleen de informele naam voor kanaal/UI/glue.
+
+### Gevolgen
+
+- Nieuwe stateful n8n- of Dify-flows zijn verboden.
+- Dify-decommissioning levert circa 4–6 GB Hetzner-headroom.
+- Bestaande flows migreren alleen wanneer K1/K2 zelf naar Kernel/Gateway gaan.
+
+### Acceptatie
+
+- [ ] Geen nieuwe durable state buiten engine/Postgres
+- [ ] K1/K2-migratie bewijst het adaptermodel
+- [ ] Dify 30 dagen ongebruikt vóór verwijderen
+
+### Rollback
+
+Dify-compose blijft na uitzetten 30 dagen beschikbaar maar read-only; herstart alleen voor herstel van een bekende flow, niet voor nieuwbouw.
+
+---
+
+## ADR-106 — OpenClaw-hardening als releasevoorwaarde
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten; runtimebewijs open** |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+OpenClaw is een kanaalgateway met remote-shell-risico. De repo bewijst alleen optionele clienttokenondersteuning, niet de serverhardening.
+
+### Besluit
+
+Production Core vereist: versie met relevante CVE-fixes; verplichte token-auth; loopback-bind plus Tailscale-only beheer; WebSocket-originvalidatie; skills-allowlist uit eigen git; device-pairing-review. Geen ClawHub/community-skills. Tot Gateway-omleiding in Golf 3 krijgt OpenClaw geen nieuwe side-effect-capabilities.
+
+### Gevolgen
+
+- Ongehard OpenClaw blijft Incubation of staat uit.
+- Golf 0 is niet groen zonder live bind/auth/version/allowlist-bewijs.
+
+### Acceptatie
+
+- [ ] Versie, bindadres, tokencheck, origins, pairing en allowlist zijn live vastgelegd
+- [ ] OpenClaw is niet publiek bereikbaar
+- [ ] Geen nieuwe side-effect-tool vóór ADR-109-omleiding
+
+### Rollback
+
+OpenClaw uitschakelen; Motor UI blijft het kanaal. Nooit hardening terugdraaien om bereikbaarheid te herstellen.
+
+---
+
+## ADR-107 — Geen tweede memory-laag zonder aangetoonde taak
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+Qdrant, PG en filesystem dekken de huidige behoeften; legacy Chroma toont de kosten van extra waarheden.
+
+### Besluit
+
+Qdrant is businesskennis, PG FTS is transcript-/metadatazoeking en filesystem is herstelbare context. LightRAG, Cognee en andere graph-memory blijven Watchlist tot een concrete taak faalt én een eval aantoont dat graph-reasoning de fout oplost.
+
+### Gevolgen
+
+- Geen tweede vector-/graphstore op speculatie.
+- Legacy Chroma wordt volgens AM-5 bevroren en verwijderd.
+
+### Acceptatie
+
+- [ ] Elke voorgestelde memorylaag noemt taak, huidige failure en vergelijkende eval
+- [ ] Geen nieuwe store zonder SoT-matrixrij
+
+### Rollback
+
+Nieuwe memorylaag verwijderen en opnieuw indexeren vanuit canonieke bronnen; nooit vanuit de afgeleide store herstellen.
+
+---
+
+## ADR-108 — Runtime-topologie: durable control op Hetzner
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+Er zijn drie nodes: NUC, Hetzner 16 GB en een Ryzen 7/32 GB/RTX 3090-PC in aanbouw. Engine/Kernel op de thuissite maakt control en execution tegelijk afhankelijk van thuisstroom en WAN.
+
+### Besluit
+
+| Node | Verantwoordelijkheid |
+|---|---|
+| **Hetzner** | Postgres SSOT, canonieke engine, Kernel-API, Action Gateway, Qdrant, LiteLLM, n8n-adapter en Uptime Kuma/Beszel-hub |
+| **NUC** | Motor UI, gehard OpenClaw, Telegram/kanalen, local-executor/PC-bridge-glue en ingress |
+| **Inference-PC** | Stateless lokale LLM-/batchworker via Tailscale; geen DB of publiek endpoint |
+
+De eigenaar mag de NUC informeel “orchestrator” noemen voor kanalen/UI; de enige **durable orchestrator** is de engine op Hetzner. De inference-PC krijgt geen taken vóór SSH, runbook en Gateway/policy.
+
+### Gevolgen
+
+- Engine↔Postgres-checkpoints blijven lokaal op Hetzner; cross-node inference/glue meet nog steeds Tailscale-latency (ADR-101 gate 4).
+- NUC-uitval raakt kanalen, niet durable state.
+- Monitoring op Hetzner bewaakt de thuissite.
+- Inngest vereist een apart engine-store-backupobject.
+
+### Acceptatie
+
+- [ ] ADR-101-spike draait op deze topologie
+- [ ] NUC-uitval laat een lopende run veilig doorgaan
+- [ ] Hetzner-uitval geeft NUC degraded/read-only en stopt side effects
+- [ ] Monitoringhub ziet NUC en inference-PC
+- [ ] Locatie, voeding, opslag en SSH van de inference-PC zijn vóór activering vastgelegd
+
+### Rollback
+
+Bij een Hetzner-incident worden nieuwe runs gestopt en side effects geblokkeerd. Tijdelijk terugplaatsen naar NUC vereist een nieuw expliciet ADR-amendement; geen dual-run.
+
+---
+
+## ADR-109 — Gateway-enforcementmodel: credential-broker/proxy
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** |
+| **Datum** | 2026-07-27 |
+| **Beslisser** | Pietje |
+
+### Context
+
+Een losse HTTP-policycheck kan worden omzeild als harnesses credentials houden. Parallelle budgetchecks racen en een approval zonder argumentbinding heeft een TOCTOU-gat.
+
+### Besluit
+
+De Action Gateway op Hetzner is de enige houder van side-effect-credentials en voert calls als proxy uit.
+
+- **Fail-closed:** R1/R2/R3 weigeren bij Gateway-uitval; alleen allowlisted R0-reads mogen fail-open met audit.
+- **Budget:** reservering → uitvoering → settlement in PG; geen losse check-then-act.
+- **Approval:** bindt `(tool, argument_hash, task_id, expires_at)`; Gateway hertoetst de hash.
+- **Idempotency:** iedere toolcall heeft een key; een duplicate geeft hetzelfde resultaat zonder tweede effect.
+- **V1-scope:** alleen mail/pay/delete via engine-workflows. Deploys later; OpenClaw-omleiding in Golf 3.
+
+### Gevolgen
+
+- Harnesses krijgen geen externe side-effect-API-keys.
+- Gateway wordt een kritisch securitycomponent met race-, TOCTOU- en bypass-tests.
+- Telegram bevat alleen notificatie+link; approval gebeurt met identiteit in Motor UI.
+
+### Acceptatie
+
+- [ ] Netwerk-bypasstest blokkeert directe mail/pay/delete
+- [ ] Gateway-down blokkeert R1+
+- [ ] Tien parallelle budgetcalls overschrijden de cap niet
+- [ ] Gewijzigde arguments na approval geven DENY
+- [ ] Duplicate idempotency-key veroorzaakt één extern effect
+- [ ] Elk besluit en settlement heeft `task_id` in `audit_events`
+
+### Rollback
+
+Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials terugplaatsen in OpenClaw/n8n/code-agent is geen rollbackoptie.
+
+---
+
 ## ADR-index (overzicht)
 
 | ID | Onderwerp | Status |
 |----|-----------|--------|
 | ADR-001 | Qdrant dual-search | ✅ Besloten |
-| ADR-002 | SQLite → Postgres cutover | ✅ Besloten |
+| ADR-002 | SQLite → Postgres cutover | ⚠️ Besloten; M4 gemist |
 | ADR-003 | Qdrant unified collectie (optioneel) | ⏸ Open — alleen na ADR-001 evaluatie Q3 2026 |
+| ADR-101 | Canonieke engine: Inngest bevestigen vs DBOS | 🟡 Inngest uiterlijk 2026-08-30; DBOS bij trigger uiterlijk 2026-09-13 |
+| ADR-102 | Action Gateway scope/NIG-1 | ✅ Besloten; enforcement via ADR-109 |
+| ADR-103 | Playbook/Skill-model | ✅ Git besloten; registry bevroren |
+| ADR-104 | Motor Kernel | ✅ Event-projectie op Hetzner |
+| ADR-105 | Orchestratorconsolidatie | ✅ Besloten |
+| ADR-106 | OpenClaw-hardening | ✅ Besloten; runtimebewijs open |
+| ADR-107 | Geen tweede memorylaag | ✅ Besloten |
+| ADR-108 | Runtime-topologie | ✅ Hetzner durable control |
+| ADR-109 | Gateway-enforcementmodel | ✅ Credential-broker/proxy |
 
 ---
 
@@ -148,3 +499,4 @@ Na **M4**: rollback alleen via PG restore uit backup (geen automatische SQLite-t
 |-------|-----------|
 | 2026-06-06 | ADR-001 dual-search + ADR-002 Postgres milestones (M0–M6) |
 | 2026-06-06 | Sprint 1.3: Qdrant payload schema, master_contexts, PM2 single-instance note |
+| 2026-07-27 | ADR-101 t/m ADR-109 geconsolideerd uit Motor AI 2.2 AM-1 t/m AM-5; ADR-108/109 toegevoegd |
