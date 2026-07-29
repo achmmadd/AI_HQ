@@ -59,6 +59,18 @@ except ImportError:
 
 PLACEHOLDER = "123456789:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
+# Telegram: max ~4096 chars per bericht — split voor volledige holding-output.
+TG_TEXT_CHUNK = 4000
+
+
+async def _reply_long_text(message, text: str, chunk_size: int = TG_TEXT_CHUNK) -> None:
+    """Stuur lange tekst in opeenvolgende Telegram-berichten."""
+    if not text:
+        return
+    t = text.strip()
+    for i in range(0, len(t), chunk_size):
+        await message.reply_text(t[i:i + chunk_size])
+
 
 async def cmd_start(update, context):
     """Handler voor /start — welkom + menu."""
@@ -79,7 +91,7 @@ async def cmd_start(update, context):
         "• Creatieve taken (brainstormen, ideeën, suggesties)\n"
         "• Omega AI-Holding gerelateerde vragen\n\n"
         "Commando's: /panel (1Panel), /restart <container>, /secure (WAF), /tunnel (Quick Tunnel-URL), /lockdown.\n"
-        "Holding: /holding status | tasks | costs | health | seed — multi-tenant agents.\n\n"
+        "Holding: /holding status | tasks | exec … | costs | health | seed — multi-tenant agents.\n\n"
         "Supremacy: /task <omschrijving> of «taak: …» of spraak — Jarvis delegeert (geen zelf uitvoeren). /tunnel = Mission Control.\n\n"
         "Stuur gewoon een bericht met je vraag of opdracht."
     )
@@ -91,7 +103,7 @@ async def cmd_help(update, context):
     if update.message is None:
         return
     await update.message.reply_text(
-        "Help: /start (menu), /task (delegatie), /holding (status|tasks|costs|seed), /panel, /restart, /secure, /tunnel, /lockdown. Of typ een opdracht."
+        "Help: /start (menu), /task (delegatie), /holding (status|tasks|exec|costs|seed), /panel, /restart, /secure, /tunnel, /lockdown. Of typ een opdracht."
     )
 
 
@@ -465,7 +477,7 @@ async def handle_text(update, context):
             busy_task = asyncio.create_task(send_busy_after(12))
             try:
                 reply = await asyncio.to_thread(get_ai_reply, msg, 3500, chat_id)
-                await update.message.reply_text(reply or "Geen antwoord van de AI.")
+                await _reply_long_text(update.message, reply or "Geen antwoord van de AI.")
             finally:
                 busy_task.cancel()
         else:
@@ -581,13 +593,55 @@ async def cmd_holding(update, context):
         elif sub == "seed":
             from holding.src.agent_registry import seed_tenants_and_agents
             result = seed_tenants_and_agents()
-            await update.message.reply_text(f"Seed voltooid: {result['tenants']} tenants, {result['agents']} agents aangemaakt.")
+            pu = result.get("prompts_updated", 0)
+            await update.message.reply_text(
+                f"Seed voltooid: {result['tenants']} tenants, {result['agents']} agents aangemaakt. "
+                f"Prompts bijgewerkt in DB: {pu}."
+            )
+
+        elif sub == "exec":
+            # /holding exec <tenant_id> <task_type> <titel …>
+            parts = rest.split(None, 2)
+            if len(parts) < 3:
+                await update.message.reply_text(
+                    "Gebruik:\n/holding exec <tenant> <task_type> <titel of beschrijving>\n\n"
+                    "Voorbeeld:\n"
+                    "/holding exec lunchroom instagram Post voor nieuwe brunch op vrijdag\n"
+                    "/holding exec webshop product_descriptions Sokken bio-katoen duurzaam USP warmte\n\n"
+                    "Vaak gebruikte task_type:\n"
+                    "  lunchroom: instagram, local_seo\n"
+                    "  webshop: product_descriptions, keyword_research"
+                )
+                return
+            tenant_id, task_type, title = parts[0].strip(), parts[1].strip(), parts[2].strip()
+            if tenant_id not in ("lunchroom", "webshop"):
+                await update.message.reply_text("tenant moet lunchroom of webshop zijn.")
+                return
+            from holding.src.task_pipeline import run_full_pipeline
+            await update.message.reply_text("Holding pipeline draait (kan 20–90s duren)…")
+            result = await run_full_pipeline(tenant_id, task_type, title)
+            if not result.get("ok"):
+                await update.message.reply_text(f"Pipeline fout: {result.get('error', 'onbekend')}")
+                return
+            output = (result.get("output") or "").strip()
+            action = result.get("action", "")
+            review = result.get("review") or {}
+            task_id_done = result.get("task_id", "")
+            verdict = ""
+            if isinstance(review, dict):
+                verdict = (
+                    f" | verdict={review.get('verdict', '-')}"
+                    f" confidence={review.get('confidence', '-')}"
+                )
+            header = f"Taak klaar: {task_id_done}\nPipeline: {action}{verdict}"
+            await _reply_long_text(update.message, f"{header}\n\n{'=' * 20}\n\n{output}")
 
         else:
             await update.message.reply_text(
                 "Holding commands:\n"
                 "/holding status — overzicht tenants + agents\n"
                 "/holding tasks [lunchroom|webshop] — taken\n"
+                "/holding exec <tenant> <task_type> <titel…> — direct uitvoeren + output hier\n"
                 "/holding review [task_id] — review bekijken\n"
                 "/holding approve <task_id> — goedkeuren\n"
                 "/holding reject <task_id> <feedback> — afkeuren\n"

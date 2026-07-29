@@ -41,7 +41,7 @@ async def audit(auditor: dict, task: dict, output: str) -> dict:
     prompt = (
         f"Beoordeel de volgende output voor tenant '{task.get('tenant_id', '')}'.\n"
         f"Taak: {task.get('title', '')}\n"
-        f"Type: {task.get('type', '')}\n\n"
+        f"Type: {task.get('task_type') or task.get('type', '')}\n\n"
         f"--- OUTPUT ---\n{output}\n--- EINDE OUTPUT ---\n\n"
         "Geef je beoordeling als JSON met deze velden:\n"
         '{"confidence": 0.0-1.0, "verdict": "pass|needs_revision|reject", '
@@ -83,7 +83,7 @@ def apply_review(task_id: str, task: dict, auditor: dict, review: dict) -> dict:
     rules = _load_rules()
     confidence = review.get("confidence", 0.5)
     verdict = review.get("verdict", "needs_revision")
-    task_type = task.get("type", "")
+    task_type = task.get("task_type") or task.get("type", "")
     revision_count = task.get("revision_count", 0)
     max_revisions = task.get("max_revisions", 3)
 

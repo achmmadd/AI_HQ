@@ -28,7 +28,12 @@ logger = logging.getLogger(__name__)
 CALL_TIMEOUT = 15
 COOLDOWN_SECONDS = 300
 COOLDOWN_FAILURES = 3
-MAX_OUTPUT_TOKENS = 1024
+# Hogere waarde (2048+) geeft vollediger product-copy/SEO output; naar boven bij RAM-limiet aanpassen.
+try:
+    _tok = int((os.environ.get("HOLDING_LLM_MAX_OUTPUT_TOKENS") or "2048").strip())
+    MAX_OUTPUT_TOKENS = max(512, min(8192, _tok))
+except ValueError:
+    MAX_OUTPUT_TOKENS = 2048
 
 
 @dataclass
