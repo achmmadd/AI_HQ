@@ -1,0 +1,165 @@
+{
+  "version": "1.0",
+  "brand": "Fumero.nl",
+  "description": "Canva Pro Brand Kit configuratie — importeer handmatig via Canva Brand Hub",
+  "brand_name": "Fumero.nl",
+  "taglines": [
+    "Vrij. Puur. Krachtig.",
+    "Premium kwaliteit. Discreet geleverd.",
+    "Voor de bewuste keuze.",
+    "Natuur in zijn puurste vorm."
+  ],
+  "colors": {
+    "primary": [
+      {
+        "name": "Fumero Black",
+        "hex": "#0D0D0D",
+        "rgb": { "r": 13, "g": 13, "b": 13 },
+        "usage": "Primaire achtergrond, koppen"
+      },
+      {
+        "name": "Fumero White",
+        "hex": "#F5F5F0",
+        "rgb": { "r": 245, "g": 245, "b": 240 },
+        "usage": "Lichte achtergrond, tekst op donker"
+      },
+      {
+        "name": "Fumero Gold",
+        "hex": "#C9A84C",
+        "rgb": { "r": 201, "g": 168, "b": 76 },
+        "usage": "Premium accent, CTA buttons, highlights"
+      }
+    ],
+    "category_accents": [
+      {
+        "category": "vapes",
+        "name": "Midnight Blue",
+        "hex": "#1A1F36",
+        "rgb": { "r": 26, "g": 31, "b": 54 },
+        "usage": "Vapes categorie achtergrond en accenten"
+      },
+      {
+        "category": "gummies",
+        "name": "Coral Pink",
+        "hex": "#FF6B6B",
+        "rgb": { "r": 255, "g": 107, "b": 107 },
+        "usage": "Gummies categorie accent"
+      },
+      {
+        "category": "cookies",
+        "name": "Warm Amber",
+        "hex": "#E8A838",
+        "rgb": { "r": 232, "g": 168, "b": 56 },
+        "usage": "Cookies categorie accent"
+      },
+      {
+        "category": "truffels",
+        "name": "Deep Purple",
+        "hex": "#4A1D6E",
+        "rgb": { "r": 74, "g": 29, "b": 110 },
+        "usage": "Truffels categorie accent"
+      },
+      {
+        "category": "candy",
+        "name": "Electric Lime",
+        "hex": "#C2F03A",
+        "rgb": { "r": 194, "g": 240, "b": 58 },
+        "usage": "Candy categorie accent"
+      }
+    ],
+    "neutrals": [
+      {
+        "name": "Charcoal",
+        "hex": "#2C2C2C",
+        "usage": "Secondaire tekst, subkoppen"
+      },
+      {
+        "name": "Light Grey",
+        "hex": "#E8E8E8",
+        "usage": "Achtergrond variaties, dividers"
+      },
+      {
+        "name": "Mid Grey",
+        "hex": "#888888",
+        "usage": "Meta-informatie, captions"
+      }
+    ]
+  },
+  "typography": {
+    "heading": {
+      "font_family": "Montserrat",
+      "weights": ["700", "900"],
+      "usage": "Productkoppen, campagnetitels",
+      "canva_font": "Montserrat Bold",
+      "alternatives": ["Poppins Bold", "Raleway ExtraBold"]
+    },
+    "subheading": {
+      "font_family": "Montserrat",
+      "weights": ["400", "500"],
+      "usage": "Subtitels, categorie labels",
+      "canva_font": "Montserrat",
+      "alternatives": ["Poppins", "Raleway"]
+    },
+    "body": {
+      "font_family": "Open Sans",
+      "weights": ["400"],
+      "usage": "Beschrijvingen, body tekst",
+      "canva_font": "Open Sans",
+      "alternatives": ["Lato", "Roboto"]
+    },
+    "accent": {
+      "font_family": "Playfair Display",
+      "weights": ["400", "700"],
+      "style": "Italic",
+      "usage": "Taglines, quotes, premium accenten",
+      "canva_font": "Playfair Display Italic",
+      "alternatives": ["Cormorant Garamond Italic"]
+    }
+  },
+  "logos": {
+    "primary": {
+      "description": "Fumero logo horizontaal, kleur op donkere achtergrond",
+      "filename": "fumero-logo-primary.png",
+      "format": "PNG transparant",
+      "min_width_px": 120,
+      "safe_zone_px": 20
+    },
+    "white": {
+      "description": "Fumero logo wit, gebruik op donkere/gekleurde achtergrond",
+      "filename": "fumero-logo-white.png",
+      "format": "PNG transparant"
+    },
+    "black": {
+      "description": "Fumero logo zwart, gebruik op lichte achtergrond",
+      "filename": "fumero-logo-black.png",
+      "format": "PNG transparant"
+    },
+    "icon": {
+      "description": "Fumero icoon/monogram voor kleine toepassingen",
+      "filename": "fumero-icon.png",
+      "format": "PNG transparant"
+    }
+  },
+  "brand_voice": {
+    "tone": ["premium", "betrouwbaar", "discreet", "modern", "bewust"],
+    "avoid": ["goedkoop", "gratis", "illegaal", "gevaarlijk"],
+    "language": "nl-NL",
+    "hashtags": {
+      "general": ["#fumero", "#fumeronl", "#premiuminternederland"],
+      "vapes": ["#vapes", "#vapesnederland", "#premiumvape"],
+      "gummies": ["#gummies", "#cbdgummies", "#naturalgummies"],
+      "cookies": ["#cookies", "#magiccookies", "#artisanalbaking"],
+      "truffels": ["#truffels", "#magictruffels", "#psilocybine"],
+      "candy": ["#candy", "#premiumcandy", "#sweetlife"]
+    }
+  },
+  "canva_import_steps": [
+    "1. Open Canva Pro → ga naar Brand Hub",
+    "2. Klik 'Add a brand' → naam: Fumero.nl",
+    "3. Upload logo's (zie logos sectie hierboven)",
+    "4. Voeg primaire kleuren toe (gebruik HEX codes uit colors.primary)",
+    "5. Voeg categorie accentkleuren toe (colors.category_accents)",
+    "6. Stel lettertypen in (typography sectie)",
+    "7. Sla op als brand kit 'Fumero.nl'"
+  ]
+}

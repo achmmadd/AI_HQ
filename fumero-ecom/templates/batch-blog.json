@@ -1,0 +1,149 @@
+{
+  "version": "1.0",
+  "description": "Batch configuratie voor blog en webshop productbeelden — Fumero.nl",
+  "brand": "Fumero.nl",
+  "batch_name": "blog-webshop-batch",
+  "output_channels": ["blog_header", "blog_inline", "webshop_main", "webshop_thumbnail", "pinterest"],
+  "canva_template_map": {
+    "blog_header": "Fumero-Blog-Header",
+    "blog_inline": "Fumero-Blog-Inline",
+    "webshop_main": "Fumero-Product-Square",
+    "webshop_thumbnail": "Fumero-Product-Thumb",
+    "pinterest": "Fumero-Pinterest"
+  },
+  "sizes": {
+    "blog_header": { "width": 1200, "height": 628 },
+    "blog_inline": { "width": 800, "height": 600 },
+    "webshop_main": { "width": 1000, "height": 1000 },
+    "webshop_thumbnail": { "width": 300, "height": 300 },
+    "pinterest": { "width": 1000, "height": 1500 }
+  },
+  "export_settings": {
+    "format": "jpg",
+    "quality": 100,
+    "targets": {
+      "blog_header": { "max_kb": 200 },
+      "blog_inline": { "max_kb": 120 },
+      "webshop_main": { "max_kb": 150 },
+      "webshop_thumbnail": { "max_kb": 30 },
+      "pinterest": { "max_kb": 300 }
+    },
+    "compress_after_export": true,
+    "compress_tool": "tinypng"
+  },
+  "naming_pattern": "{categorie}-{productnaam}-{kanaal}-fumero.jpg",
+  "seo": {
+    "alt_text_pattern": "{display_name} kopen bij Fumero.nl – {seo_usp}",
+    "title_pattern": "{display_name} – Fumero.nl",
+    "description_pattern": "Koop {display_name} online bij Fumero.nl. {tagline} Snel en discreet geleverd in Nederland."
+  },
+  "products": [
+    {
+      "id": "vapes-001",
+      "categorie": "vapes",
+      "productnaam": "strawberry-pie",
+      "display_name": "Strawberry Pie Vape",
+      "prijs": "€12,95",
+      "tagline": "Vrij. Puur. Krachtig.",
+      "seo_usp": "premium kwaliteit, snel geleverd",
+      "blog_title": "Strawberry Pie Vape: de ultieme fruitige ervaring",
+      "blog_intro": "Ontdek de Strawberry Pie Vape van Fumero.nl – een premium disposable vape met een rijke aardbeiensmaak.",
+      "keywords": ["vapes kopen", "strawberry vape", "disposable vape nederland", "premium vape fumero"],
+      "flair_prompt": "misty dark forest floor with soft morning dew, golden hour backlight, atmospheric depth, bokeh background, premium lifestyle product photography, ultra realistic, 8k, no text, no watermark, commercial photography",
+      "canva_accent_color": "#1A1F36",
+      "input_file": "vapes-strawberry-pie-input.png",
+      "cms_category": "vapes",
+      "cms_tags": ["vapes", "disposable", "fruity", "premium"]
+    },
+    {
+      "id": "gummies-001",
+      "categorie": "gummies",
+      "productnaam": "tropical-mix",
+      "display_name": "Tropical Mix Gummies",
+      "prijs": "€8,95",
+      "tagline": "Zoet & Sappig.",
+      "seo_usp": "frisse tropische smaken, natuurlijke ingrediënten",
+      "blog_title": "Tropical Mix Gummies: een tropisch feestje in elke hap",
+      "blog_intro": "De Tropical Mix Gummies van Fumero.nl combineren exotische tropische smaken in één heerlijke mix.",
+      "keywords": ["gummies kopen", "tropical gummies", "fruitgummies nederland", "cbd gummies fumero"],
+      "flair_prompt": "sandy beach with tropical fruits and flowers, warm golden sunlight, turquoise water in background, colorful and fresh aesthetic, ultra realistic, 8k, no text, commercial photography",
+      "canva_accent_color": "#FF6B6B",
+      "input_file": "gummies-tropical-mix-input.png",
+      "cms_category": "gummies",
+      "cms_tags": ["gummies", "tropical", "fruity", "naturel"]
+    },
+    {
+      "id": "cookies-001",
+      "categorie": "cookies",
+      "productnaam": "chocolate-chunk",
+      "display_name": "Chocolate Chunk Cookie",
+      "prijs": "€9,95",
+      "tagline": "Vers uit de oven.",
+      "seo_usp": "ambachtelijk gebakken, rijke chocoladesmaak",
+      "blog_title": "Chocolate Chunk Cookie van Fumero: vers, rijk en onweerstaanbaar",
+      "blog_intro": "Onze Chocolate Chunk Cookie is ambachtelijk bereid met de beste ingrediënten voor een authentieke bakervaring.",
+      "keywords": ["cookies kopen", "chocolate cookie", "magic cookies nederland", "artisanale koekjes"],
+      "flair_prompt": "rustic wooden kitchen table with flour dusting, warm soft afternoon sunlight through window, cozy bakery atmosphere, artisanal baking aesthetic, ultra realistic, 8k, no text, commercial photography",
+      "canva_accent_color": "#E8A838",
+      "input_file": "cookies-chocolate-chunk-input.png",
+      "cms_category": "cookies",
+      "cms_tags": ["cookies", "chocolate", "artisanaal", "bakery"]
+    },
+    {
+      "id": "truffels-001",
+      "categorie": "truffels",
+      "productnaam": "gold-magic",
+      "display_name": "Gold Magic Truffels",
+      "prijs": "€24,95",
+      "tagline": "Mystiek & Exclusief.",
+      "seo_usp": "exclusieve selectie, bewust & verantwoord",
+      "blog_title": "Gold Magic Truffels: de premium keuze voor de bewuste gebruiker",
+      "blog_intro": "Gold Magic Truffels van Fumero.nl zijn zorgvuldig geselecteerd voor een zuivere, intense ervaring.",
+      "keywords": ["truffels kopen", "magic truffels", "psilocybine truffels nederland", "premium truffels fumero"],
+      "flair_prompt": "black velvet fabric background, single gold accent light, luxury premium presentation, dramatic shadows, exclusive high-end product shot, ultra realistic, 8k, no text, commercial photography",
+      "canva_accent_color": "#4A1D6E",
+      "input_file": "truffels-gold-magic-input.png",
+      "cms_category": "truffels",
+      "cms_tags": ["truffels", "magic", "premium", "bewust"]
+    },
+    {
+      "id": "candy-001",
+      "categorie": "candy",
+      "productnaam": "rainbow-bites",
+      "display_name": "Rainbow Bites Candy",
+      "prijs": "€7,95",
+      "tagline": "Kleuren voor je smaak.",
+      "seo_usp": "kleurrijke smaken, feestelijk voor elke gelegenheid",
+      "blog_title": "Rainbow Bites: kleurrijke candy voor elk feestje",
+      "blog_intro": "Rainbow Bites van Fumero.nl zijn de perfecte party-candy: kleurrijk, lekker en voor elke leeftijd.",
+      "keywords": ["candy kopen", "rainbow candy", "snoep online kopen", "premium candy nederland"],
+      "flair_prompt": "explosion of colorful candy and confetti, white background, vibrant saturated colors, fun and playful party atmosphere, ultra realistic, 8k, no text, commercial photography",
+      "canva_accent_color": "#C2F03A",
+      "input_file": "candy-rainbow-bites-input.png",
+      "cms_category": "candy",
+      "cms_tags": ["candy", "rainbow", "feest", "kleurrijk"]
+    }
+  ],
+  "workflow_steps": [
+    "1. Verzamel alle input_file PNG's in /fumero-ecom/input/",
+    "2. Open Flair AI → genereer achtergronden per product",
+    "3. Download beste resultaat per product als PNG",
+    "4. Open Canva Pro → template 'Fumero-Blog-Header' of 'Fumero-Product-Square'",
+    "5. Gebruik Canva Bulk Create: importeer dit JSON als databron",
+    "6. Koppel velden: display_name → productnaam tekst, tagline → tagline tekst",
+    "7. Exporteer alle varianten als ZIP",
+    "8. Comprimeer met TinyPNG (zie max_kb per kanaal)",
+    "9. Upload naar CMS: WordPress/WooCommerce",
+    "10. Vul alt_text in per afbeelding (gebruik alt_text_pattern)"
+  ],
+  "cms_upload_checklist": [
+    "□ Afbeelding comprimeerd (zie max_kb per kanaal)",
+    "□ Bestandsnaam SEO-vriendelijk (naampatroon gevolgd)",
+    "□ Alt-tekst ingevuld (gebruik alt_text_pattern)",
+    "□ Afbeeldingstitel ingevuld (gebruik title_pattern)",
+    "□ WooCommerce: productfoto ingesteld als featured image",
+    "□ WooCommerce: thumbnail toegevoegd aan productgallery",
+    "□ Blog: header afbeelding ingesteld als featured image",
+    "□ Pinterest: pin aangemaakt met product URL en beschrijving"
+  ]
+}
