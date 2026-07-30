@@ -1,0 +1,27 @@
+{
+  "project_naam": "Fumero Blog Beeldenworkflow",
+  "bedrijfsnaam": "Fumero.nl",
+  "niche": "Premium blog-illustraties & SEO-beelden",
+  "tone_of_voice": "Premium, helder, informatief",
+  "goals": [
+    "Snelle generatie van blog-ready afbeeldingen voor SEO-artikelen op Fumero.nl",
+    "Consistente visuele stijl voor hero-, featured-, inline- en OG-images",
+    "Automatische bestandsnaming conform blog-SEO-conventies",
+    "SEO alt-tekst suggesties per afbeeldingstype"
+  ],
+  "kpis": {
+    "beelden_per_blog": 4,
+    "typen": ["hero", "og-image", "inline", "comparison"],
+    "batch_tijd_minuten": 10
+  },
+  "project_id": 10,
+  "huisstijl": "Premium Minimal",
+  "hex_colors": [
+    "#1A1A1A",
+    "#FFFFFF",
+    "#C8A96E"
+  ],
+  "focus": "blog",
+  "website": "https://fumero.nl",
+  "primaire_usecase": "SEO blog-illustraties (geen social/pinterest/instagram)"
+}

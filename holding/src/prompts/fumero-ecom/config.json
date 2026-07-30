@@ -1,0 +1,54 @@
+{
+  "project": "fumero-ecom",
+  "website": "https://fumero.nl",
+  "focus": "SEO blog-illustraties",
+  "image_types": {
+    "hero": {
+      "breedte": 1200,
+      "hoogte": 628,
+      "formaat": "jpg",
+      "kwaliteit": 85,
+      "gebruik": "Bovenaan blogartikel, featured image in CMS",
+      "naamconventie": "fumero-[slug]-hero.jpg"
+    },
+    "og-image": {
+      "breedte": 1200,
+      "hoogte": 630,
+      "formaat": "jpg",
+      "kwaliteit": 85,
+      "gebruik": "Open Graph tag; preview in zoekmachines en social shares",
+      "naamconventie": "fumero-[slug]-og.jpg"
+    },
+    "featured": {
+      "breedte": 800,
+      "hoogte": 450,
+      "formaat": "jpg",
+      "kwaliteit": 85,
+      "gebruik": "CMS featured thumbnail, blog-overzichtspagina",
+      "naamconventie": "fumero-[slug]-featured.jpg"
+    },
+    "inline": {
+      "breedte": 800,
+      "hoogte": 500,
+      "formaat": "jpg",
+      "kwaliteit": 80,
+      "gebruik": "Illustratie binnen artikel bij alinea",
+      "naamconventie": "fumero-[slug]-inline-[nummer].jpg"
+    },
+    "comparison": {
+      "breedte": 1000,
+      "hoogte": 600,
+      "formaat": "jpg",
+      "kwaliteit": 80,
+      "gebruik": "Vergelijkingstabel, guide-visual, top-X overzicht",
+      "naamconventie": "fumero-[slug]-comparison.jpg"
+    }
+  },
+  "huisstijl": {
+    "primaire_kleuren": ["#1A1A1A", "#FFFFFF", "#C8A96E"],
+    "stijl": "Premium Minimal",
+    "tone": "Informatief, high-end, helder"
+  },
+  "uitgesloten": ["pinterest", "instagram", "tiktok", "story", "carousel", "social"],
+  "batch_standaard": ["hero", "og-image", "inline", "comparison"]
+}
