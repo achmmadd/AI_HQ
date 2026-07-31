@@ -83,13 +83,13 @@ De repo opent via `better-sqlite3` nog steeds `$HOME/AI_HQ/data/ai-motor.db` rea
 
 | Milestone | Historische datum | Status / criterium |
 |---|---|---|
-| **M0 — Geen nieuwe SQLite-only tabellen** | 2026-06-20 | Blijft gelden: nieuwe schema's zijn PostgreSQL-ready. |
+| **M0 — Geen nieuwe SQLite-only tabellen** | 2026-06-20 | **Niet bewezen.** De toekomstige regel blijft: nieuwe schema's zijn PostgreSQL-ready; geen nieuwe SQLite-only tabellen vanaf acceptatie. |
 | **M1 — PostgreSQL live op Hetzner** | 2026-06-28 | Toekomstige gate: read-only inventaris, gekozen versleutelde off-host backup, geïsoleerde restore, Tailscale-IP-bind, TLS met `sslmode=verify-full`, en negatieve publieke/non-TLS-tests. |
 | **M2 — Dual-write aan** | 2026-07-05 | **Geannuleerd, nooit gehaald.** Clean start gebruikt geen SQLite-dual-write. |
 | **M3 — Legacy-SQLite migreren** | 2026-07-19 | **Geannuleerd, nooit gehaald.** Geen migratie, rijpariteit of `legacy_sqlite_id`-reconciliatie. |
 | **M4 — PostgreSQL canonieke store** | 2026-07-26 | **Niet gehaald; toekomstige acceptatiegate.** Pietje kiest na inventory/restore expliciet de bestemming van de gerapporteerde stores; de schone runtime leest en schrijft daarna PostgreSQL zonder productie-SQLite. |
 | **M5 — RLS productie** | 2026-08-02 | Productieruntime gebruikt tenantgebonden least-privilege app-role/pool; RLS vertrouwt geen vrij instelbare tenant-GUC; same-tenant, 401, 403, directe SQL-, pool-reuse- en context-switchtests zijn groen. |
-| **M6 — Geen productie-SQLite** | 2026-08-09 | **Voorwaarde vóór deployment van de schone runtime:** geen `better-sqlite3`-write of SQLite-fallback in productie. |
+| **M6 — Geen productie-SQLite** | 2026-08-09 | **Voorwaarde vóór deployment:** geen `better-sqlite3`-import, -load, -open, -create, -read, -write of SQLite-fallback in productie. Bewijs: geen `.db`/`.db-wal`/`.db-shm` aangemaakt tijdens canary. |
 
 De oude datums zijn historische, rode gates en geen bewijs van uitvoering. De nulmeting van 2026-07-29 blijft uitsluitend een historisch, door de eigenaar geaccepteerd rapport: de ruwe command evidence is niet onafhankelijk reproduceerbaar vanuit deze repository. Iedere runtimeclaim wordt read-only opnieuw gevalideerd voordat zij gate-evidence vormt of aan een live actie voorafgaat.
 
@@ -99,16 +99,24 @@ De legacy-SSD is defect en permanent uitgesloten. Er volgt geen mount, read, cop
 
 De op Hetzner gerapporteerde PostgreSQL- en Qdrant-stores zijn strikt **no-touch**: niet verwijderen, resetten, overschrijven, leeg veronderstellen of stilzwijgend canoniek hergebruiken.
 
-#### Verplichte volgorde
+#### Vastgestelde volgorde — geen stap is voor uitvoering goedgekeurd
 
-0. **Historisch rapport revalideren:** caller-route, node- en runtimeclaims opnieuw read-only bewijzen vóór iedere live actie.
-1. **Herstelpaden bewijzen:** PostgreSQL read-only inventaris → gekozen versleutelde off-host backup → geïsoleerde restore. Qdrant read-only inventaris → afzonderlijk goedgekeurde snapshot → versleutelde off-host kopie → geïsoleerde restore → later als aparte wijziging exact het dan actuele digest pinnen.
-2. **Private transport:** Hetzner-Tailscale-identiteit en least-privilege ACL's herstellen; PostgreSQL uitsluitend private met TLS; publiek en non-TLS falen gesloten.
-3. **Identities en secrets:** owner/migrator/app-identiteiten voorbereiden, grants synthetisch testen en secrets veilig roteren zonder de oude credential voortijdig in te trekken.
-4. **Clean canary en G0 sluiten:** Pietje beslist eerst expliciet over reuse, quarantaine of latere decommissioning van de gerapporteerde Hetzner-stores. Daarna pas een Motor-canary met productie-SQLite uit, tenantgebonden pools en groene auth-, OpenClaw-, health- en M5-tests.
-5. **Inference-worker:** `motorai` / `motorai-server` blijft stateless en buiten Golf 0; zijn 2 TB is uitsluitend model/cache/scratch en nooit de enige of permanente backuplocatie.
+Deze documenten **authoriseren geen enkele live actie**. Zelfs read-only SSH of control-plane-export vereist aparte, command-specifieke Pietje-goedkeuring vóór uitvoering.
 
-De permanente versleutelde off-host backupbestemming, retentie en key-ownership zijn onbeslist. Dit blokkeert live G0/cutover, niet deze documentcorrectie. Iedere stap en iedere belangrijke beslissing vereist Pietjes aparte goedkeuring. Een toekomstige Claude-P0 mag alleen na verplichte secret-/PII-redactie in een PR-body worden overgenomen; `[REDACTED]` verlaagt de ernst niet.
+| Gate | Risico | Eigenaar | Doel / precondities | Goedkeuring | Evidence | Stop-gedrag |
+|---|---|---|---|---|---|---|
+| **PG-INVENTORY** | R0 | Infra-operator | Read-only inventaris gerapporteerde PostgreSQL-store | Pietje, command-specifiek | Geredigeerd schema-, RLS- en versie-overzicht | Stop; store blijft no-touch |
+| **PG-BACKUP** | R2 live write | Infra-operator | Gekozen versleutelde off-host backup van productie-PG | Pietje, command-specifiek | Manifest/checksum, retentie, RPO ≤ 24 u | Stop; geen restore/cutover |
+| **PG-RESTORE** | R2 scratch | Infra-operator | Geïsoleerde restore op scratch-omgeving | Pietje, command-specifiek | Schema/RLS/inhoudscontrole; RTO ≤ 4 u (doc 06 §27) | Stop; scratch blijft; productie no-touch |
+| **QD-INVENTORY** | R0 | Infra-operator | Read-only Qdrant-inventaris | Pietje, command-specifiek | Collecties, counts, digest-overzicht | Stop; store blijft no-touch |
+| **QD-SNAPSHOT** | R2 live write | Infra-operator | Apart goedgekeurde snapshot van productie-Qdrant | Pietje, command-specifiek | Snapshot-ID, checksum; RPO ≤ 24 u | Stop; geen restore |
+| **QD-RESTORE** | R2 scratch | Infra-operator | Geïsoleerde restore op scratch-omgeving | Pietje, command-specifiek | Point-count/digest-match; RTO ≤ 8 u (doc 06 §27) | Stop; scratch blijft; productie no-touch |
+| **QD-PIN** | R2 later | Infra-operator | Exact actueel digest pinnen | Pietje, command-specifiek | Digest-pin evidence | Aparte wijziging; geen stilzwijgende reuse |
+| **SCRATCH-DELETE** | R2 | Infra-operator | Verwijderen scratch na restore-test | Pietje, command-specifiek | Verwijderbewijs | Productie blijft no-touch |
+
+PostgreSQL- en Qdrant-RPO/RTO zijn **onafhankelijk** (doc 06 §27): PG RPO ≤ 24 u / RTO ≤ 4 u; Qdrant RPO ≤ 24 u / RTO ≤ 8 u.
+
+Na store-gates volgen private transport, identities/secrets, clean canary/G0-sluiting en inference-worker — elk met dezelfde command-specifieke Pietje-goedkeuring. De permanente versleutelde off-host backupbestemming, retentie en key-ownership zijn onbeslist; dit blokkeert live G0/cutover, niet deze documentcorrectie. Een toekomstige Claude-P0 mag alleen na verplichte secret-/PII-redactie in een PR-body worden overgenomen; `[REDACTED]` verlaagt de ernst niet.
 
 #### M5 v1 — database-identiteitsmodel
 
@@ -128,7 +136,7 @@ M5 is uitsluitend groen met synthetische fixtures en de **echte productiepool/ro
 2. Same-tenant API en directe `SELECT`/`INSERT` slagen zoals verwacht.
 3. Zonder authenticatie geven chat/conversation-routes 401; een fumero-sessie naar bokas geeft 403.
 4. Directe SQL als de echte fumero-app-role retourneert nul bokas-rijen en weigert bokas `INSERT`/`UPDATE`; omgekeerd hetzelfde.
-5. Op dezelfde fysieke poolverbinding falen adversariële `SET app.workspace_id`, `set_config(...)`, `SET ROLE`, query-ID- en reset/reuse-pogingen of zij veranderen de effectieve tenant niet.
+5. Op **dezelfde fysieke poolverbinding midden in een transactie** falen adversariële `SET app.workspace_id`, `set_config(...)`, `SET ROLE`, query-ID-, reset- en reuse-pogingen. **Na elke** poging herhalen negatieve `SELECT`/`INSERT` op de andere tenant: nul extra rijen en nul extra rechten.
 6. Requestbody/prompt kan de server-side sessiescope of poolkeuze niet overschrijven; ontbrekende/ongeldige scope faalt gesloten.
 7. Pool-reuse bewijst dat transactiecontext na commit/rollback leeg is en een fysieke connectie nooit tussen tenantpools wordt gedeeld.
 
@@ -148,7 +156,7 @@ Een test als owner, superuser, `BYPASSRLS`-role of andere identiteit dan de prod
 - [ ] Private PostgreSQL-transport met `sslmode=verify-full` groen; publiek en non-TLS falen
 - [ ] Pietje heeft de bestemming van bestaande Hetzner-stores expliciet besloten; geen silent reuse
 - [ ] M5-suite groen als echte tenantgebonden productieapp-roles/pools
-- [ ] Geen `better-sqlite3`-write of SQLite-fallback in productie vóór deployment
+- [ ] Geen `better-sqlite3`-import/load/open/create/read/write of SQLite-fallback in productie; geen `.db`/`.db-wal`/`.db-shm` aangemaakt tijdens canary
 
 ---
 
@@ -409,15 +417,15 @@ Nieuwe memorylaag verwijderen en opnieuw indexeren vanuit canonieke bronnen; noo
 
 | Veld | Waarde |
 |------|--------|
-| **Status** | ✅ **Besloten** |
+| **Status** | 🟡 **Besloten als owner-target; runtime-topologie pending revalidatie** |
 | **Datum** | 2026-07-27 |
 | **Beslisser** | Pietje |
 
 ### Context
 
-Er zijn drie nodes: NUC, Hetzner 16 GB en een Ryzen 7/32 GB/RTX 3090-PC in aanbouw. Engine/Kernel op de thuissite maakt control en execution tegelijk afhankelijk van thuisstroom en WAN.
+Er zijn drie nodes: NUC, Hetzner 16 GB en een Ryzen 7/32 GB/RTX 3090-PC in aanbouw. Engine/Kernel op de thuissite maakt control en execution tegelijk afhankelijk van thuisstroom en WAN. Onderstaande tabel is **owner-target**, geen aanwezig runtimefeit; live validatie volgt read-only vóór enige gate-evidence.
 
-### Besluit
+### Besluit (owner-target, pending revalidatie)
 
 | Node | Verantwoordelijkheid |
 |---|---|
@@ -505,7 +513,7 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 | ADR-105 | Orchestratorconsolidatie | ✅ Besloten |
 | ADR-106 | OpenClaw-hardening | ✅ Besloten; runtimebewijs open |
 | ADR-107 | Geen tweede memorylaag | ✅ Besloten |
-| ADR-108 | Runtime-topologie | ✅ Hetzner durable control |
+| ADR-108 | Runtime-topologie | 🟡 Owner-target; pending revalidatie |
 | ADR-109 | Gateway-enforcementmodel | ✅ Credential-broker/proxy |
 
 ---
@@ -518,4 +526,4 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 | 2026-06-06 | Sprint 1.3: Qdrant payload schema, master_contexts, PM2 single-instance note |
 | 2026-07-27 | ADR-101 t/m ADR-109 geconsolideerd uit Motor AI 2.2 AM-1 t/m AM-5; ADR-108/109 toegevoegd |
 | 2026-07-29 | ADR-002-amendement: recovery-first volgorde, private PostgreSQL+TLS-gate en M5 met tenantgebonden roles/pools, directe SQL-, context-switch- en pool-reusetests |
-| 2026-07-30 | ADR-002-amendement: defecte legacy-SSD uitgesloten; M2/M3 geannuleerd; PostgreSQL/Qdrant no-touch en clean-start-gates vastgelegd |
+| 2026-07-31 | ADR-002/108-amendement: M0 onbewezen; M5 mid-transactie context-switch; M6 better-sqlite3-ban; aparte PG/QD-gates; RPO/RTO doc 06 §27; ADR-108 owner-target |
