@@ -423,7 +423,7 @@ Nieuwe memorylaag verwijderen en opnieuw indexeren vanuit canonieke bronnen; noo
 
 ### Context
 
-Er zijn drie nodes: NUC, Hetzner 16 GB en een Ryzen 7/32 GB/RTX 3090-PC in aanbouw. Engine/Kernel op de thuissite maakt control en execution tegelijk afhankelijk van thuisstroom en WAN. Onderstaande tabel is **owner-target**, geen aanwezig runtimefeit; live validatie volgt read-only vóór enige gate-evidence.
+Pietjes beoogde owner-target is een drie-node-topologie (NUC, Hetzner 16 GB, Ryzen 7/32 GB/RTX 3090 inference-PC); geen claim dat die topologie nu bestaat — read-only revalidatie pending. Engine/Kernel op de thuissite maakt control en execution tegelijk afhankelijk van thuisstroom en WAN. Onderstaande tabel is **owner-target**, geen aanwezig runtimefeit; live validatie volgt read-only vóór enige gate-evidence.
 
 ### Besluit (owner-target, pending revalidatie)
 
