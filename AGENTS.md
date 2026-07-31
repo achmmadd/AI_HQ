@@ -1,7 +1,7 @@
 # AGENTS.md — AI_HQ / Motor AI
 
-> **Eigenaar:** Pietje · **Datum:** 2026-07-27
-> Dit bestand is een kaart. Het uitvoeringsentrypoint is [`ai-motor/docs/architecture-2.2/00-START-HIER.md`](ai-motor/docs/architecture-2.2/00-START-HIER.md).
+> **Eigenaar:** Pietje · **Datum:** 2026-07-31
+> Dit bestand is een kaart. Het navigatie-entrypoint is [`ai-motor/docs/architecture-2.2/00-START-HIER.md`](ai-motor/docs/architecture-2.2/00-START-HIER.md); uitvoering volgt uitsluitend de actuele grenzen in `00-HUIDIGE-STAAT.md` en `DECISIONS.md` en vereist de daar genoemde voorafgaande Pietje-goedkeuring.
 
 ## Verplichte leesvolgorde
 
@@ -12,6 +12,8 @@
 5. Open daarna alleen de taakrelevante verdiepingsdoc uit de leeskaart in START-HIER.
 
 Geen agent mag een planclaim als runtimefeit presenteren. Repo/config betekent “aanwezig”, niet “draait”.
+
+Geen document in deze repository autoriseert op zichzelf een live actie. Ook read-only SSH, een control-plane-export of een verhoogde read-only meting vereist **vooraf** een aparte, command-specifieke goedkeuring van Pietje. Zonder die goedkeuring blijft het werk lokaal en documentation-only.
 
 ## Team en uitvoeringsregel
 
@@ -28,7 +30,7 @@ Geen agent mag een planclaim als runtimefeit presenteren. Repo/config betekent �
 | Huidige repo/runtime | `ai-motor/docs/architecture-2.2/00-HUIDIGE-STAAT.md` |
 | ADR-001/002, ADR-101–109 | `ai-motor/docs/DECISIONS.md` |
 | Scope en volgorde AM-1–5 | `ai-motor/docs/architecture-2.2/15-review-panel.md` |
-| Infra Golf 0/1 | `ai-motor/docs/MASTER-BUILD-PLAN.md` |
+| Infra Golf 0/1 | `ai-motor/docs/MASTER-BUILD-PLAN.md` als historisch plan; nooit zelfstandig uitvoerbaar, uitsluitend na de toepasselijke gate én voorafgaande command-specifieke Pietje-goedkeuring |
 | Target architecture | `ai-motor/docs/architecture-2.2/05-target-architecture.md` |
 | Actuele uitvoeringsvolgorde | `ai-motor/docs/architecture-2.2/08-migratie-pilot-twaalfweken.md` |
 
@@ -45,17 +47,21 @@ Doc 07 §30 is alleen een ADR-index. De verwijderde mechanische bundel is geen b
 | `factory-os/`, `holding/`, `evomap/`, `omega*`, `singularity*` | Legacy-generaties | Niet uitbreiden of inhoud migreren; AM-5: bevriezen→30 dagen→verwijderen |
 | `memory/` | Sessienotities, geen product-SSOT | Nooit gebruiken als vervanging voor ADR/docs |
 
-## Runtime-topologie — niet heruitvinden
+## Owner-targettopologie — pending live revalidatie
 
-| Node | Verantwoordelijkheid |
+Onderstaande verdeling is ADR-108-doelontwerp van de eigenaar, **geen huidige runtimeclaim**. Iedere node-identiteit, service en netwerkroute blijft onbekend tot een apart goedgekeurde read-only revalidatie bewijs levert.
+
+| Node | Beoogde verantwoordelijkheid |
 |---|---|
 | **NUC** | Motor UI, gehard OpenClaw, kanalen, executor/bridge-glue en ingress; informeel “orchestrator” |
 | **Hetzner** | Postgres, canonieke engine, Kernel-API, Action Gateway, Qdrant, LiteLLM, n8n-adapter en monitoring-hub |
 | **Inference-PC** | Stateless lokale LLM-/batchworker via Tailscale |
 
-De inference-PC krijgt **geen taak** vóór SSH, Tailscale, runbook en Gateway/policy. Zodra SSH beschikbaar is: eerst de read-only nulmeting uit `00-HUIDIGE-STAAT`, daarna pas de eerstvolgende START-HIER-stap.
+De inference-PC krijgt **geen taak** vóór SSH, Tailscale, runbook en Gateway/policy. Beschikbare SSH-toegang is geen uitvoeringsmachtiging: eerst vraagt de operator Pietje om command-specifieke goedkeuring voor de read-only nulmeting uit `00-HUIDIGE-STAAT`; daarna volgt opnieuw een aparte goedkeuring voor iedere volgende stap.
 
 ## Wat nu wel mag
+
+Zonder aanvullende eigenaarstoestemming betekent “mag” hieronder uitsluitend: lokaal analyseren en documentatie voorbereiden. Live verificatie of wijziging begint pas na de hierboven vereiste command-specifieke goedkeuring.
 
 - Golf 0 verifiëren/afronden: auth 401/403, OpenClaw-hardening, secrets-inventaris, health.
 - ADR-002 live meten en M4 aantoonbaar afronden of expliciet herplannen.
@@ -84,6 +90,8 @@ Daarnaast:
 - Geen destructieve productieactie zonder expliciete opdracht, rollback en relevante runbook.
 
 ## Runbooks
+
+Alle runbooks hieronder zijn alleen navigatiereferenties en **nooit zelfstandig uitvoerbaar**. Bekende pre-amendementconflicten staan minimaal in `00-START-HIER.md`, `MASTER-BUILD-PLAN.md`, `fase1-postgres.md`, `nuc-readiness.md`, `hybrid-env.md`, `hetzner-migration.md`, `white-label-deploy.md`, `hetzner-phase1.md`, `local-executor-nuc.md`, `motor-test-playbook.md` en `factory-os/docs/QDRANT_RESTORE_RUNBOOK.md`. De conflictwaarschuwing en actuele gates staan in `00-HUIDIGE-STAAT.md` en `DECISIONS.md`.
 
 | Taak | Runbook |
 |---|---|
