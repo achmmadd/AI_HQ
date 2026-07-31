@@ -1,28 +1,39 @@
 # 00 — Huidige staat Motor AI 2.2
 
 > **Eigenaar:** Pietje
-> **Meetdatum:** 2026-07-27
-> **Bron:** PR #9, head `7f89408`
-> **Status:** Stap 1 goedgekeurd op 2026-07-27; live runtimevelden blijven open
+> **Meetdatum:** 2026-07-29
+> **Bron:** PR #10 op `master`, merge `aea1344`; historisch, door de eigenaar geaccepteerd auditrapport van 2026-07-29
+> **Status:** PR #10 gemerged; Golf 0 **niet groen**; alle runtimeclaims wachten op nieuwe read-only validatie
 > **Gerelateerd:** [Master Build Plan](../MASTER-BUILD-PLAN.md) · [ADR-001/002](../DECISIONS.md) · [bindend review-panel](15-review-panel.md)
+
+> **Bewijslimiet:** de ruwe command evidence van het rapport is niet onafhankelijk reproduceerbaar vanuit deze repository. De details hieronder blijven historische, owner-accepted claims en worden read-only opnieuw gevalideerd voordat zij gate-evidence vormen of aan een live actie voorafgaan.
 
 ## Uitkomst in één minuut
 
-De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowledge_documents` en API-auth: `/api/chat/*` en `/api/conversations/*` staan niet meer in `PUBLIC_PATHS` en de routes hebben tenantchecks. De runtime is echter niet aantoonbaar groen. Vanaf deze auditomgeving was geen SSH-toegang tot NUC of Hetzner beschikbaar en `https://motorsai.app` gaf op het meetmoment Cloudflare-fout 1033/HTTP 530. OpenClaw-hardening volgens ADR-106 is niet bewezen en grotendeels niet als serverconfiguratie in de repo aanwezig. ADR-002 loopt achter: het migratiescript en Postgres-schema bestaan, maar `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de applicatierouting niet aan; daardoor is M4 “Postgres SSOT” in de code niet bereikt. Van de nieuwe 2.2-laag bestaan vooral deelstukken: Inngest heeft één geïntegreerde HITL-workflow, maar Kernel, Action Gateway en Playbook-registry bestaan nog niet als 2.2-component.
+PR #10 staat op `master`; PR #9 is daarin volledig opgenomen. De owner-assigned targetidentiteiten zijn NUC **Motor AI 2** (`motorai-server2`) en AI-pc **motorai** (`motorai-server`), beide pending latere live G0-revalidatie. Het historische rapport beschrijft een vrijwel lege NUC en een Ryzen 7/RTX 3090-worker zonder NVIDIA-computedriver; dit is geen actuele runtimeclaim.
+
+Eigenaarbesluit 2026-07-30: de legacy-SSD is defect en permanent uitgesloten. Er volgt geen mount, read, copy, recovery, migratie, rijpariteit, `legacy_sqlite_id`-reconciliatie of SQLite-rollback. Dit is geen geslaagde recovery. De clean start geldt uitsluitend voor legacy SQLite.
+
+Het historische rapport beschrijft bestaande Hetzner PostgreSQL- en Qdrant-stores en ernstige transport-, role-, backup- en restoregaten. Die stores zijn strikt no-touch: niet verwijderen, resetten, overschrijven, leeg veronderstellen of stilzwijgend canoniek hergebruiken. PostgreSQL inventory→gekozen versleutelde off-host backup→geïsoleerde restore en Qdrant inventory→apart goedgekeurde snapshot→versleutelde off-host kopie→geïsoleerde restore→latere afzonderlijke digest-pin blijven toekomstige gates.
+
+Repo-feit blijft dat `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` de belangrijkste SQLite-routes niet sturen en de huidige code SQLite read/write kan openen. Dit blokkeert deployment van de schone runtime tot een latere codewijziging het productiepad verwijdert. Kernel en Action Gateway bestaan nog niet als volledige 2.2-componenten.
 
 ## Meetmethode en bewijslimiet
 
-De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. De mechanische bundel `MOTOR-AI-2.2-COMPLEET.md` is niet als bron gebruikt en in consolidatiestap 3 verwijderd om dubbele waarheid te voorkomen.
+De Git-voorcontrole uit het rapport is reproduceerbaar: remote `master` wees naar mergecommit `aea1344` van PR #10. Aanwezigheid en aanroep van code zijn repo-bewijs, geen runtimebewijs.
 
-De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken.
+De eigenaar kent de targetidentiteiten **Motor AI 2** / `motorai-server2` en **motorai** / `motorai-server` toe. Zij gelden niet als live bewezen identiteit vóór G0-revalidatie. De oude namen `openclaw-nuc` en `nuc` zijn geen bewijs voor een actieve tweede machine.
 
-| Bron | Gemeten resultaat |
+Het rapport stelt dat hostmetingen en PostgreSQL-catalogusqueries strikt read-only waren en geen secretwaarden of modellen lazen. Omdat de ruwe output niet in deze repository reproduceerbaar is, zijn methode en resultaten historische attributie, geen actuele acceptatie.
+
+| Bron | Bewijsstatus |
 |---|---|
-| Git/repository | Statische inspectie van PR #9 op `7f89408`; aanwezigheid en aanroep van code is wel bewijs, een bestand of checklist is geen runtimebewijs. |
-| Auditomgeving | `USE_POSTGRES`, `POSTGRES_PRIMARY`, `SQLITE_FALLBACK` en `DATABASE_URL` zijn hier unset; `$HOME/AI_HQ/data/ai-motor.db` ontbreekt. Deze VM is niet de NUC. |
-| NUC/Hetzner | Geen SSH-configuratie, sleutel, agent of resolveerbare hostalias beschikbaar. Daarom: **onbekend, meten door eigenaar op NUC/Hetzner**. |
-| Publieke ingress | `GET https://motorsai.app/api/health` gaf `error code: 1033`; unauthenticated probes op `/api/chat`, `/api/chat/stream` en `/api/conversations` gaven HTTP 530. Dit bewijst een niet-beschikbare Cloudflare-route op het meetmoment, niet dat de interne NUC-processen uitstaan. |
-| Tests en scripts | Niet uitgevoerd. Alleen aanwezigheid en inhoud zijn geïnspecteerd; er is geen groen resultaat verondersteld. |
+| Git/repository | Statische inspectie van PR #10 op remote `master`/`aea1344`; aanwezigheid en aanroep van code is bewijs van repo-status, niet van live werking. |
+| Motor AI 2 — NUC | Historisch owner-accepted rapport; alle host-, service-, netwerk- en privilegeclaims opnieuw read-only meten. |
+| motorai — AI-pc | Historisch owner-accepted rapport; hardware, driver, disk en runtime opnieuw read-only meten zonder model te laden. |
+| Hetzner | Historisch owner-accepted rapport; services, stores, roles, listeners en backupstatus opnieuw read-only meten. |
+| Publieke ingress en tenanttests | Niet herhaald op 2026-07-29. De Cloudflare 1033/HTTP 530-resultaten van 2026-07-27 blijven historische context, geen actueel bewijs. Live 401/403 en health blijven open gates. |
+| Privileged en externe control planes | Tailscale-ACL's/tags, Hetzner-accountbackups, root-only UFW/LVM-data op NUC/AI-pc en externe secretmanagers zijn niet uit de hostsnapshot bewijsbaar: **onbekend, meten door eigenaar/infra-operator**. |
 
 Statussen hieronder betekenen:
 
@@ -31,23 +42,104 @@ Statussen hieronder betekenen:
 - **Niet aangetroffen:** gezocht in de huidige branch, zonder passend artefact.
 - **Runtime onbekend:** **onbekend, meten door de genoemde eigenaar/operator**.
 
+## Historisch Golf 0-auditrapport — 2026-07-29
+
+### Caller-routebewijs: Motor → PostgreSQL
+
+Het rapport vermeldt drie passieve `pg_stat_activity`-snapshots zonder andere client-backends en geen established TCP/5432-sessie. Deze details blijven historische claims en moeten read-only worden herhaald vóór zij caller-routebewijs vormen.
+
+| Mogelijk pad | Bewijs op 2026-07-29 | Classificatie |
+|---|---|---|
+| Motor AI 2 → PostgreSQL | Geen Motor/Node/PM2/container/config en geen actieve 5432-sessie | Uitgesloten voor de gemeten staat |
+| AI-pc → PostgreSQL | Geen Motor-, database- of inference-runtime en geen actieve 5432-sessie | Uitgesloten voor de gemeten staat |
+| Hetzner Docker-internal | `motor-postgres` is de enige container in `motor-hetzner_default` | Geen interne Motor-caller |
+| Hetzner-hostruntime/loopback | Geen Motor-service/proces en geen actieve sessie | Niet waargenomen; hoog vertrouwen voor meetmoment |
+| Tailscale | Hetzner `NeedsLogin`, zonder Tailscale-IP | Niet operationeel |
+| Publiek IPv4 | PostgreSQL bindt breed, maar `DOCKER-USER` dropt nieuw `eth0`-verkeer naar 5432 | Geen huidig pad; gevaarlijke latente configuratie |
+| Andere externe client | Buiten scope | Onbekend; geen sessie gezien in het meetvenster |
+
+**Historische conclusie:** tijdens het gerapporteerde meetvenster was geen Motor→PostgreSQL-route aangetoond. Dit is geen actuele gate; intermitterende of externe callers blijven onbekend.
+
+### Node- en runtimeoverzicht
+
+| Rol | Owner-assigned / historisch gerapporteerd | Historisch gerapporteerde staat | Belangrijkste grens |
+|---|---|---|---|
+| NUC / edge-orchestrator | **Motor AI 2**; host `motorai-server2`; Ubuntu 24.04.4; i5-5250U; 7,6 GiB RAM; 98 GiB rootdisk | Tailscale 1.98.9 en Tailscale SSH actief; geen failed units; alleen SSH en een Tailscale-listener. Docker, Podman, Node, npm, PM2, OpenClaw, Ollama en Motor-processen ontbreken. `/home/motorai2/motorai` is een lege gitwerkboom zonder commits of tracked files. | Geen OpenClaw-, Motor-, Gateway-, policy- of auth-runtime. UFW-regels en volledige sshd-effectieve config vereisen nog goedgekeurde verhoogde read-only verificatie. |
+| Always-on kern | **Hetzner** (owner-target, pending revalidatie); host `Motor2`; Ubuntu 24.04.4; 15 GiB RAM; 301 GiB rootdisk | Docker, PostgreSQL 16.14, Qdrant, Dify en Bokas-services draaien; Ollama draait als systemd-service. Geen failed units. | Tailscale staat `NeedsLogin`. Engine, Kernel, Gateway en een bewezen private beheerroute ontbreken. Meerdere kernservices binden breder dan Tailscale/loopback-first. |
+| Stateless inference-worker | **motorai**; host `motorai-server`; Ubuntu 24.04; Ryzen 7 5800X; 31 GiB RAM; Palit RTX 3090; Samsung 9100 PRO 2 TB | Tailscale SSH actief; geen gewone SSH-, app-, DB- of inference-listener. Geen Docker/Podman/Ollama/vLLM/SGLang of autostart. | RTX 3090 gebruikt `nouveau`; NVIDIA-computedriver, `nvidia-smi` en CUDA ontbreken. Slechts 100 GiB is als root-LV zichtbaar; resterende LVM-capaciteit is zonder verhoogde read-only controle niet bewezen. |
+| Legacybron | Oude namen `openclaw-nuc` / `nuc` | Geen actieve identiteit vastgesteld; legacy-SSD defect en uitgesloten | Geen toegang, recovery, migratie, pariteit of rollback; geen bewijs voor Motor AI 2. |
+
+### PostgreSQL, backups, SQLite en secrets
+
+| Controle | Historisch gerapporteerd | Oordeel / toekomstige gate |
+|---|---|---|
+| PostgreSQL | `motor-postgres`, PostgreSQL 16.14, twee databases, extensies en 7 Drizzle-regels gerapporteerd | Strikt no-touch; read-only inventory, gekozen off-host backup, geïsoleerde restore en expliciete ownerbeslissing vóór reuse. |
+| Tenantisolatie | Acht applicatietabellen hebben RLS én `FORCE RLS`, met 2–5 policies per tabel | **Niet effectief voor de huidige app-login:** rol `motor` is `SUPERUSER`, `REPLICATION` en `BYPASSRLS` en bezit de tabellen. Een `NOLOGIN` owner, aparte migrator en tenantgebonden least-privilege app-roles/pools ontbreken; policies vertrouwen bovendien op appcontext die nog niet als niet-forgeerbaar is bewezen. |
+| Backup/restore | `/opt/motor/infra/postgres/backup.sh` bestaat; geen Motor-systemd-timer of cronverwijzing gevonden; `archive_mode=off`; geen restore-testbewijs | PG RPO ≤ 24 u / RTO ≤ 4 u en Qdrant RPO ≤ 24 u / RTO ≤ 8 u (doc 06 §27, onafhankelijk) niet groen. Externe Hetzner-backups zijn **onbekend, meten door infra-operator**. |
+| SQLite | Repo bevat twee lege placeholderbestanden; de legacy-SSD is defect | Permanent uitgesloten: geen mount/read/copy/recovery/migratie/pariteit/rollback. Huidig productie-writepad in code blijft een deploymentblocker. |
+| Secretlocaties | `/opt/motor/infra/hetzner/.env` en `/opt/dify/docker/.env`, beide `root:root` mode `0644`; waarden niet gelezen | **Urgente hardening-gap:** lokaal world-readable. Motor-config onder `/opt/motor/infra` heeft bovendien grotendeels verweesd numeriek ownership `1000:1000` en ruime `0775`/`0664` modes. |
+| NUC/AI-pc secrets | Geen `.env`, credential-, secret-, PEM- of keybestanden onder de exacte zichtbare Motor-roots; waarden en root-only paden niet gelezen | Geen zichtbare productie-side-effectcredentials op de worker. Volledige afwezigheid blijft zonder root-only inventaris onbewezen. |
+
+### Geprioriteerde blockers
+
+| Prioriteit | Blocker | Eigenaar | Exitbewijs vóór volgende fase |
+|---|---|---|---|
+| P0 — stap 1 | Geen bewezen PostgreSQL-herstelpad | Infra-operator | Read-only inventory; gekozen versleutelde off-host backup; geïsoleerde restore op passende PG/pgvector-versie; schema-, RLS- en geredigeerde inhoudscontrole. |
+| P0 — stap 1 | Geen bewezen Qdrant-herstelpad | Infra-operator | Read-only inventory; later apart goedgekeurde snapshot; versleutelde off-host kopie; geïsoleerde restore; exact het dan actuele digest pas daarna in een afzonderlijke wijziging pinnen. |
+| P0 — stap 1 | Off-host bestemming, retentie en key-ownership onbeslist | Pietje + infra-operator | Expliciet gekozen bestemming buiten productie-Hetzner en buiten de stateless AI-pc. Blokkeert live G0/cutover, niet deze documentcorrectie. |
+| P0 — stap 2 | Hetzner Tailscale uitgelogd; PostgreSQL bindt `0.0.0.0:5432` met `ssl=off` | Infra-operator + tailnet-eigenaar | Juiste node-identiteit en least-privilege ACL/tag hersteld; PostgreSQL uitsluitend op het Hetzner-Tailscale-IP gepubliceerd; `ssl=on`, `hostssl`, certificaatnaam passend bij de gebruikte tailnet-hostnaam en client `sslmode=verify-full`; NUC-connectie groen; publiek-IP en non-TLS-connectie falen; reboot/Tailscale-late-start faalt gesloten. |
+| P0 — stap 3/4 | Huidige PostgreSQL-login omzeilt RLS en de tenantcontext is vrij forgeerbaar | Infra-operator + app-eigenaar | `NOLOGIN` owner, aparte migrator en per workspace een tenantgebonden least-privilege app-role/pool; RLS vertrouwt `current_user` of een gelijkwaardig niet-client-schrijfbaar kenmerk, nooit alleen vrij `SET app.workspace_id`; same-tenant succes, unauth 401, cross-tenant 403; op dezelfde verbinding midden in transactie adversariële context-switch met herhaalde negatieve SELECT/INSERT na elke SET/set_config/SET ROLE/reset-poging; pool-reuse groen. |
+| P0 — stap 3 | Motor- en Dify-`.env` zijn mode `0644` | Infra-operator | Goedgekeurd rotatie-/permissieplan, minimale modes/ownership en bewijs zonder waarden te loggen; oude appcredential pas intrekken na stap-4-canary. |
+| P0 — stap 4 | Huidige code kan productie-SQLite openen/schrijven; Motor/OpenClaw/Gateway/policy/auth zijn niet live bewezen | Eigenaar + platform | Latere codewijziging verwijdert productie-`better-sqlite3`-import/load/open/create/read/write/fallback; canary bewijst geen `.db`/`.db-wal`/`.db-shm`; versiepin, bind/auth/origins/allowlist, fail-closed policy, integration-readiness en volledige M5-suite. |
+| P1 | SSH/privileges zijn ruimer dan doelontwerp | Infra-operator + eigenaar | Root-SSH/forwarding op Hetzner herzien; `lxd`/`sudo`/`adm`, X11 en tailnet-ACL's op NUC/worker expliciet beargumenteren of beperken. |
+| Deferred — stap 5 | AI-pc gebruikt `nouveau`; opslag- en privileged netwerkbewijs ontbreken | Eigenaar + infra-operator | Bewuste veilige ruststand tot Gateway/policy. Daarna afzonderlijk goedgekeurde driver/reboot, `nvidia-smi`, computetest, modelvolume, firewall/listeners en worker-runbook. Geen voorwaarde voor Golf 0. |
+
+### Vastgestelde volgorde — geen stap is voor uitvoering goedgekeurd
+
+Deze documenten **authoriseren geen enkele live actie**. Zelfs read-only SSH of control-plane-export vereist aparte, command-specifieke Pietje-goedkeuring vóór uitvoering.
+
+| Gate | Risico | Eigenaar | Doel / precondities | Goedkeuring | Evidence | Stop-gedrag |
+|---|---|---|---|---|---|---|
+| **PG-INVENTORY** | R0 | Infra-operator | Read-only inventaris gerapporteerde PostgreSQL-store | Pietje, command-specifiek | Geredigeerd schema-, RLS- en versie-overzicht | Stop; store blijft no-touch |
+| **PG-BACKUP** | R2 live write | Infra-operator | Gekozen versleutelde off-host backup van productie-PG | Pietje, command-specifiek | Manifest/checksum, retentie, RPO ≤ 24 u | Stop; geen restore/cutover |
+| **PG-RESTORE** | R2 scratch | Infra-operator | Geïsoleerde restore op scratch-omgeving | Pietje, command-specifiek | Schema/RLS/inhoudscontrole; RTO ≤ 4 u (doc 06 §27) | Stop; scratch blijft; productie no-touch |
+| **QD-INVENTORY** | R0 | Infra-operator | Read-only Qdrant-inventaris | Pietje, command-specifiek | Collecties, counts, digest-overzicht | Stop; store blijft no-touch |
+| **QD-SNAPSHOT** | R2 live write | Infra-operator | Apart goedgekeurde snapshot van productie-Qdrant | Pietje, command-specifiek | Snapshot-ID, checksum; RPO ≤ 24 u | Stop; geen restore |
+| **QD-RESTORE** | R2 scratch | Infra-operator | Geïsoleerde restore op scratch-omgeving | Pietje, command-specifiek | Point-count/digest-match; RTO ≤ 8 u (doc 06 §27) | Stop; scratch blijft; productie no-touch |
+| **QD-PIN** | R2 later | Infra-operator | Exact actueel digest pinnen | Pietje, command-specifiek | Digest-pin evidence | Aparte wijziging; geen stilzwijgende reuse |
+| **SCRATCH-DELETE** | R2 | Infra-operator | Verwijderen scratch na restore-test | Pietje, command-specifiek | Verwijderbewijs | Productie blijft no-touch |
+
+PostgreSQL- en Qdrant-RPO/RTO zijn **onafhankelijk** (doc 06 §27): PG RPO ≤ 24 u / RTO ≤ 4 u; Qdrant RPO ≤ 24 u / RTO ≤ 8 u.
+
+| Stap | Werk en eigenaar | Acceptance gate | Stop-/rollbackgedrag |
+|---|---|---|---|
+| **0 — revalidatie** | Infra/Security valideert owner-assigned nodes, runtime en caller-route opnieuw read-only | Nieuwe gesaniteerde evidence; historisch rapport is geen actuele gate | Geen netwerkpad of runtimefeit aannemen op basis van het oude meetvenster |
+| **2 — private transport** | Infra-operator + tailnet-eigenaar herstellen Hetzner-Tailscale, least-privilege ACL's, private PostgreSQL-bind en TLS | NUC→PostgreSQL werkt met `sslmode=verify-full`; alleen noodzakelijke private paden werken; publiek, non-TLS en AI-pc→data-plane falen | Bij Tailscale-, bind- of certificaatfalen blijft Motor unavailable/degraded; nooit publieke 5432 of TLS-uit als rollback |
+| **3 — identities & secrets voorbereiden** | Infra-operator + app-eigenaar maken owner/migrator/tenant-app-roles naast de oude role en herstellen/roteren secretlocaties | Role flags, ownership, grants en synthetische SQL-isolatie groen; nieuwe secrets alleen in canaryscope; oude credential nog niet ingetrokken | Bij grant/credentialfout geen app-cutover; minimale grants herstellen, nooit een nieuwe Motor-runtime op de superusercredential zetten |
+| **4 — clean canary en Golf 0 sluiten** | Pietje beslist eerst reuse/quarantaine/decommissioning van gerapporteerde stores; platform gebruikt daarna productie-SQLite-vrije code en tenantpools | Same-tenant 2xx; unauth 401; cross-tenant 403; directe SQL-isolatie; transactiegebonden context; adversariële context-switch op dezelfde verbinding midden in transactie met herhaalde negatieve SELECT/INSERT; pool-reuse; geen `.db`/WAL/SHM; OpenClaw- en readinessbewijs | Mislukte canary sluit G0 niet; stores blijven no-touch en herstel loopt alleen via bewezen off-host paden |
+| **5 — inference-worker** | AI/Infra activeren de stateless AI-pc pas na eigen runbook en Gateway/policy | Driver/compute/failover/monitoring groen; 2 TB alleen model/cache/scratch; geen direct DB/Qdrant-pad | Worker uitregistreren; control/data-plane blijft functioneren |
+
+**Golf 0 blijft rood tijdens stap 1–3 en kan niet vóór volledige acceptatie van stap 4 worden gesloten.** De open 401/403-, cross-tenant-, integration-readiness- en OpenClaw-bewijzen vereisen immers een draaiende Motor-runtime. De AI-pc is een afzonderlijke deferred worker-gate en blokkeert Golf 0 niet.
+
+**Historische auditverklaring:** volgens het owner-accepted rapport zijn geen host-, service-, database-, credential- of modelwijzigingen uitgevoerd. Ook deze verklaring vereist revalidatie voordat zij als gate-evidence wordt gebruikt.
+
 ## Golf 0 en Fase 0
 
 | Item | Plan zegt | Repo zegt | Draait | Verschil / conclusie |
 |---|---|---|---|---|
-| 0.1.1 Qdrant dual-search | Ingest- en scrape-collecties via één naamlogica doorzoeken | **Repo-af:** `lib/qdrant-collection.ts` is de naam-SSOT; `lib/knowledge-service.ts` zoekt beide collecties en mergeert op score | **onbekend, meten door eigenaar op NUC/Hetzner**: collectie- en hit-counts | Code is klaar; data-aanwezigheid en een echte chat-treffer zijn niet bewezen |
+| 0.1.1 Qdrant dual-search | Ingest- en scrape-collecties via één naamlogica doorzoeken | **Repo-af:** `lib/qdrant-collection.ts` is de naam-SSOT; `lib/knowledge-service.ts` zoekt beide collecties en mergeert op score | Qdrant draait op Hetzner; collectie- en hit-counts zijn **onbekend, meten door infra-operator** | Code en service bestaan; data-aanwezigheid en een echte chat-treffer zijn niet bewezen |
 | 0.1.2 Qdrant-migratie | Legacy vectors naar scoped buckets migreren | **Repo-af:** `scripts/qdrant-migrate-collections.mjs` bestaat met dry-run en expliciete delete-optie | **onbekend, meten door eigenaar op Hetzner** | Geen log, marker of snapshot gevonden die bewijst dat het script is gedraaid |
 | 0.1.3 UI-labels | Actuele collectienamen tonen, niet hardcoden | **Repo-af:** `kennisbank-file-ingest.tsx` haalt `qdrant_collections` uit de catalog-API; alleen de foutfallback is generiek | **onbekend, meten door eigenaar op NUC** | Live catalog-response en rendering niet gezien |
 | 0.1.4 Qdrant-env | Canonieke env-vars documenteren | **Repo-af:** `.env.example`, `docs/model-config.md` en ADR-001 bevatten prefix/scoped configuratie | N.v.t. | Geen afwijking in de repo |
-| 0.2.1 `knowledge_documents` | Persistente, querybare tabel | **Repo-af:** SQLite-schema in `lib/db/platform-schema.ts`, PG-schema/migratie en catalog/ingest-routes aanwezig | **onbekend, meten door eigenaar op NUC en Hetzner** | Schema is geen bewijs dat de productietabellen bestaan of gevuld zijn |
-| 0.2.2 chat/conversations-auth | Niet publiek; zonder sessie 401 | **Repo-af:** beide families ontbreken in `PUBLIC_PATHS`; middleware geeft 401; routes gebruiken daarnaast `requireApiAuthForKlant` | Publieke test geblokkeerd door Cloudflare 530; **onbekend, meten door eigenaar op NUC** | De claim in doc 01 dat deze paden nog publiek zijn is verouderd. Bewuste uitzondering: `/api/chat/bridge/*` |
+| 0.2.1 `knowledge_documents` | Persistente, querybare tabel | **Repo-af:** SQLite-schema in `lib/db/platform-schema.ts`, PG-schema/migratie en catalog/ingest-routes aanwezig | PostgreSQL-schema en 7 migratieregels zijn live; Motor-app op de NUC ontbreekt; tabelinhoud/querybaarheid is **onbekend, meten door eigenaar/infra-operator** | Schema en migratieregister zijn geen bewijs van gevulde, end-to-end querybare kennis |
+| 0.2.2 chat/conversations-auth | Niet publiek; zonder sessie 401 | **Repo-af:** beide families ontbreken in `PUBLIC_PATHS`; middleware geeft 401; routes gebruiken daarnaast `requireApiAuthForKlant` | Motor-app staat niet op Motor AI 2; live 401 niet herhaald | De claim in doc 01 dat deze paden nog publiek zijn is verouderd. Bewuste uitzondering: `/api/chat/bridge/*`; runtimegate blijft rood |
 | 0.2.3 server-side scope | Cross-tenant verzoek wordt 403 | **Repo-af:** `assertScopeAccess` en `requireApiAuthForKlant` worden door relevante routes gebruikt | **onbekend, meten door eigenaar op NUC** met fumero→bokas-test | Geen opgeslagen groen cross-tenant testresultaat |
 | 0.2.4 scope in chatrequest | `klant` tegen sessiescope valideren | **Repo-af:** `/api/chat/stream` valideert vóór uitvoering | **onbekend, meten door eigenaar op NUC** | Code aanwezig; productiegedrag niet bewezen |
 | 0.3.1 approvals-inbox | Cowork-inbox en health/status beschikbaar | **Repo-af:** redirect, inbox-count en approvals-route aanwezig | **onbekend, meten door eigenaar op NUC** | UI- en Telegram-keten niet live gemeten |
 | 0.3.2 bookkeeping-degradatie | Bij `:8001` down geen lege crash | **Repo-af:** `lib/bookkeeping-bot.ts` retourneert expliciete offline-status/fallback | **onbekend, meten door eigenaar op NUC** | Faalproef met bookkeeping-bot uit is niet vastgelegd |
-| 0.3.3 healthdashboard | Qdrant, bookkeeping en OpenClaw op één pagina | **Repo-af:** integration-readiness API en devpagina bevatten de probes | Publieke healthroute is niet bereikbaar; **onbekend, meten door eigenaar op NUC** | Probe-code bestaat, maar “groen” is niet aangetoond |
+| 0.3.3 healthdashboard | Qdrant, bookkeeping en OpenClaw op één pagina | **Repo-af:** integration-readiness API en devpagina bevatten de probes | Motor-app en OpenClaw staan niet op Motor AI 2; publieke health niet herhaald | Probe-code bestaat, maar er is nog geen deployde NUC-runtime om groen te meten |
 | 0.3.4 smoke/verify | Reproduceerbare live verificatie | **Repo-af:** `smoke-quality.mjs`, `verify-live.sh` en `e2e-hybrid.mjs` bestaan | **onbekend, meten door eigenaar op NUC** | Geen recente uitvoer aangetroffen |
-| Secrets-inventaris | Weten waar credentials leven; verweesde keys weg | **Niet aangetroffen:** geen actuele inventaris of aftekenbewijs | **onbekend, meten door eigenaar op NUC/Hetzner** | Golf 0-item staat open |
+| Secrets-inventaris | Weten waar credentials leven; verweesde keys weg | Geen actuele registry in de repo | **Historisch gerapporteerd:** twee Hetzner-`.env`-locaties met mode `0644`; geen zichtbare Motor-secrets onder de genoemde NUC/worker-roots; waarden niet gelezen | Locaties, ownership en permissies opnieuw read-only valideren; rotatie en secrets-manager-migratie staan open |
 
 ### Specifieke controle: `PUBLIC_PATHS`
 
@@ -62,15 +154,15 @@ Statussen hieronder betekenen:
 
 | Vereiste uit ADR-106 | Repo zegt | Draait | Oordeel |
 |---|---|---|---|
-| Versie met CVE-fixes | Geen serverversie-pin of actuele versie-uitvoer gevonden | **onbekend, meten door eigenaar op NUC** | Niet bewezen |
-| Token-auth | Motor-client ondersteunt `OPENCLAW_GATEWAY_TOKEN`, maar een lege token blijft toegestaan | **onbekend, meten door eigenaar op NUC** | Deels; clientondersteuning is geen serverhardening |
-| Loopback + Tailscale-only | Clientdefault is `127.0.0.1:18789`; geen bind-/firewallconfig van de Gateway gevonden | **onbekend, meten door eigenaar op NUC** | Niet bewezen |
-| WebSocket-originvalidatie | Geen OpenClaw-serverconfig gevonden | **onbekend, meten door eigenaar op NUC** | Niet bewezen |
-| Skills-allowlist uit eigen git | Geen complete, actieve allowlistconfig aangetroffen | **onbekend, meten door eigenaar op NUC** | Niet bewezen |
+| Versie met CVE-fixes | Geen serverversie-pin of actuele versie-uitvoer gevonden | OpenClaw is niet geïnstalleerd op Motor AI 2 | Niet operationeel; versiepin is een pre-deploygate |
+| Token-auth | Motor-client ondersteunt `OPENCLAW_GATEWAY_TOKEN`, maar een lege token blijft toegestaan | Geen OpenClaw-server of Motor-clientruntime op Motor AI 2 | Niet operationeel; fail-closed tokencheck moet vóór deployment worden ontworpen en getest |
+| Loopback + Tailscale-only | Clientdefault is `127.0.0.1:18789`; geen bind-/firewallconfig van de Gateway gevonden | Geen listener op 18789; alleen SSH/Tailscale-listeners | Momenteel niet blootgesteld, maar de vereiste bind is nog niet als deploymentconfig aanwezig |
+| WebSocket-originvalidatie | Geen OpenClaw-serverconfig gevonden | Geen OpenClaw-server op Motor AI 2 | Niet operationeel; pre-deploygate |
+| Skills-allowlist uit eigen git | Geen complete, actieve allowlistconfig aangetroffen | Geen skills of OpenClaw-root op Motor AI 2 | Niet operationeel; pre-deploygate |
 | Side effects via Action Gateway | Action Gateway bestaat nog niet als component | Nee in repo | Niet geïmplementeerd |
 | Canonieke ADR | ADR-101–109 staan in `DECISIONS.md`; doc 07 §30 is index-only | N.v.t. | Gespiegeld; runtimebewijs voor ADR-101/106 blijft open |
 
-**Golf 0-eindoordeel:** de repo-items voor kennisbank, schema en auth zijn grotendeels af. Golf 0 als geheel is **niet af**, omdat OpenClaw-hardening, secrets-inventaris en de live 401/403-/healthbewijzen ontbreken.
+**Golf 0-eindoordeel:** de repo-items voor kennisbank, schema en auth zijn grotendeels aanwezig. Golf 0 is **niet af**: runtimeclaims moeten opnieuw worden gemeten, store-herstelpaden en M5 zijn niet bewezen, het productie-SQLite-codepad staat nog open en live 401/403-/healthbewijs ontbreekt. De AI-pc blijft een afzonderlijke deferred gate.
 
 ## ADR-002 — SQLite naar Postgres
 
@@ -87,138 +179,126 @@ Statussen hieronder betekenen:
 
 ### Milestones
 
-| Milestone | Plan zegt | Repo zegt | Draait | Verschil / status op 2026-07-27 |
+| Milestone | Plan zegt | Repo zegt | Draait | Verschil / status op 2026-07-29 |
 |---|---|---|---|---|
-| M0 — geen nieuwe SQLite-only tabellen | Vanaf 2026-06-20 | Voor kerndata bestaan PG-schema’s, maar er is geen gate die nieuwe SQLite-only tabellen voorkomt | **onbekend, meten door eigenaar/reviewer via historie** | Niet aantoonbaar afgerond uit alleen deze snapshot |
-| M1 — Postgres live | 2026-06-28 | Compose, init en backupscript bestaan | **onbekend, meten door infra-operator op Hetzner** | Config aanwezig; container, bereikbaarheid en backup ontbreken als bewijs |
-| M2 — dual-write aan | 2026-07-05 | Gedeeltelijk geïmplementeerd; template staat standaard uit | **onbekend, meten door eigenaar op NUC/Hetzner** | Geen bewijs van effectieve flag of rijpariteit |
-| M3 — migratie gedraaid | 2026-07-19 | `migrate-sqlite-to-postgres.mjs` migreert auth, chat, approvals en knowledge; readiness-checklist staat open | **onbekend, meten door eigenaar op NUC/Hetzner** | Script aanwezig, uitvoering niet bewezen |
-| M4 — Postgres SSOT | 2026-07-26 | Primary/fallback-flags zijn niet aan de SQLite-routes gekoppeld | Niet mogelijk conform ADR met deze code | **Niet gehaald in code; deadline verstreken** |
-| M5 — RLS productie | 2026-08-02 | RLS-migraties en workspace-contextcode bestaan | **onbekend, meten door eigenaar op NUC/Hetzner** | Schema gereed; toegepaste migraties en cross-tenant test onbekend |
-| M6 — SQLite uit productie | 2026-08-09 | Uitschakelflag heeft geen caller; SQLite blijft read/write openen | Nog niet meetbaar | Nog niet verschuldigd, maar huidige code kan het criterium niet afdwingen |
+| M0 — geen nieuwe SQLite-only tabellen | Vanaf 2026-06-20 | Voor kerndata bestaan PG-schema's, maar er is geen gate die nieuwe SQLite-only tabellen voorkomt | **onbekend, meten door eigenaar/reviewer via historie** | **Niet bewezen.** Toekomstige regel blijft: nieuwe schema's PostgreSQL-ready; geen nieuwe SQLite-only tabellen vanaf acceptatie |
+| M1 — Postgres live | 2026-06-28 | Compose, init en backupscript bestaan | `motor-postgres` is gezond; Tailscale is uitgelogd; geen geplande Motor-backup of restore-test bewezen | **Deels, niet gehaald:** proces live, maar private bereikbaarheid en backup/restore ontbreken |
+| M2 — dual-write aan | 2026-07-05 | Gedeeltelijk geïmplementeerd; template staat standaard uit | Niet uitvoeren | **Geannuleerd; nooit gehaald** |
+| M3 — legacy-SQLite migreren | 2026-07-19 | Migratiescript bestaat in de repo | Niet uitvoeren | **Geannuleerd; nooit gehaald; geen parity of legacy-ID-reconciliatie** |
+| M4 — PostgreSQL canonieke store | 2026-07-26 | Primary/fallback-flags sturen SQLite-routes niet; productie-SQLite blijft mogelijk | Toekomstige gate na inventory/restore en ownerbesluit | **Niet gehaald; clean runtime vereist latere codewijziging** |
+| M5 — RLS productie | 2026-08-02 | RLS-migraties en workspace-contextcode bestaan | Acht app-tabellen hebben RLS + `FORCE RLS`, maar login `motor` is owner/superuser/`BYPASSRLS`; tenant-GUC is niet als niet-forgeerbaar bewezen; API-, directe SQL-, context-switch- en pooltests ontbreken | **Niet gehaald:** policies bestaan, maar runtime-identiteit en tenantbinding maken ze niet effectief; context-switchtests op dezelfde verbinding midden in transactie met herhaalde negatieve SELECT/INSERT na elke SET/set_config/SET ROLE/reset-poging vereist |
+| M6 — SQLite uit productie | 2026-08-09 | Uitschakelflag heeft geen caller; SQLite blijft read/write openen | Voorwaarde vóór clean deployment | **Niet gehaald:** geen productie-`better-sqlite3`-import/load/open/create/read/write/fallback; canary moet bewijzen dat geen `.db`/`.db-wal`/`.db-shm` wordt aangemaakt |
 
-### Rijtellingen en migratiebewijs
+### Datastores en clean-start-bewijs
 
-| Store | Meting op 2026-07-27 | Conclusie |
+| Store | Repo/historisch rapport | Conclusie |
 |---|---|---|
-| Productie-SQLite `~/AI_HQ/data/ai-motor.db` | Ontbreekt in de audit-VM | **onbekend, meten door eigenaar op NUC** voor `auth_users`, `chat_history`, `approvals`, `knowledge_documents` |
-| Postgres op Hetzner | Geen `DATABASE_URL` of live toegang in auditomgeving | **onbekend, meten door infra-operator op Hetzner** voor `users`, `chat_history`, `approvals`, `knowledge_documents` en gemigreerde `legacy_sqlite_id`-rijen |
+| Legacy-SQLite | SSD defect en door eigenaar permanent uitgesloten | Geen toegang, recovery, migratie, pariteit of rollback; geen geslaagde recovery claimen |
+| PostgreSQL op Hetzner | Bestaande store historisch gerapporteerd; repo bevat schema/config | No-touch tot read-only inventory, gekozen off-host backup, geïsoleerde restore en expliciet ownerbesluit |
+| Qdrant op Hetzner | Bestaande store historisch gerapporteerd; repo bevat clients/config | No-touch tot inventory, snapshot, off-host kopie, geïsoleerde restore; digest-pin later apart |
 | `ai-motor/motor.db` | Getrackt placeholderbestand, 0 bytes | Geen productiegegevens |
 | `ai-motor/lib/db/ai-motor.db` | Getrackt placeholderbestand, 0 bytes | Geen productiegegevens |
-| Migratie-uitvoer | Geen log/rapport met “Migration complete” of bron-/doeltellingen aangetroffen | M3 niet bewijsbaar |
-
-Een kale totaaltelling is niet genoeg voor M3: het script dedupliceert en vertaalt `auth_users` naar `users`/memberships. De eigenaar moet daarom zowel totalen als aantallen met `legacy_sqlite_id` rapporteren.
 
 ## Welke 2.2-componenten bestaan werkelijk?
 
+De kolom “Draait” hieronder citeert het historische rapport en vereist live revalidatie; de repo-kolom blijft statisch bewijs.
+
 | Component | Plan zegt | Repo zegt | Draait | Verschil / conclusie |
 |---|---|---|---|---|
-| Motor Kernel | PG `tasks`, append-only `task_events`, approvals en lifecycle-API | Geen Kernel-module, `/api/kernel`, PG-`tasks` of `task_events`; wel legacy SQLite `automation_tasks`/`automation_runs` en approvals | **onbekend, meten door eigenaar op NUC** voor legacy routes | **2.2-Kernel bestaat niet** |
+| Motor Kernel | PG `tasks`, append-only `task_events`, approvals en lifecycle-API | Geen Kernel-module, `/api/kernel`, PG-`tasks` of `task_events`; wel legacy SQLite `automation_tasks`/`automation_runs` en approvals | Geen Motor-runtime op Motor AI 2 en geen Kernel-service op Hetzner aangetroffen | **2.2-Kernel bestaat niet** |
 | Action Gateway | Centrale policy- en credential-broker vóór side effects | Geen Gateway-route, risicoklassen, argument-hash, reservering/settlement of centrale credential-broker; alleen lokale budget/policy-fragmenten | Nee als 2.2-component | **Bestaat niet** |
 | Playbook-registry | Git-playbooks plus versie/status/tenant | Geen `playbooks/`-registry of PG-register; `motor_skills` is een SQLite prompt-/skilltabel en `motor-test-playbook.md` is een handmatig logboek | Nee als 2.2-component | **Bestaat niet**; bovendien bevroren door AM-1 |
-| Canonieke engine | Eén gekozen engine; n8n alleen adapter | Inngest-dependency, serve-route, events en één `approval-hitl`-functie bestaan; n8n en SQLite-cron blijven feitelijke orchestrators | **onbekend, meten door eigenaar op NUC/Hetzner** | Geen canonieke engine gekozen of bewezen |
-| `lib/inngest/` | Durable enginebasis | Meer dan een lege skeleton: approvals emitten events en één workflow doet `waitForEvent`; zonder keys wordt verzenden bewust no-op. Relay/reminder-events hebben geen eigen handler | **onbekend, meten door eigenaar op NUC/Hetzner** | **Gedeeltelijk geïntegreerde pilot, niet de engine** |
-| Adapters/executors | Achter Kernel/Gateway | OpenClaw-, n8n-, local-executor-, PC-bridge-, browser- en automation-adapters bestaan verspreid | **onbekend, meten door eigenaar op NUC/Hetzner** | Bruikbare code, maar geen centrale dispatch/policy |
-| Evidence/observability | Taskgebonden evidence, traces en audit | Langfuse-chat-tracing, audit- en usagepaden bestaan; geen taskgebonden evidence-model of Gateway-beslislog | **onbekend, meten door eigenaar op NUC/Hetzner** | Deels |
+| Canonieke engine | Eén gekozen engine; n8n alleen adapter | Inngest-dependency, serve-route, events en één `approval-hitl`-functie bestaan; n8n en SQLite-cron blijven feitelijke orchestrators | Geen Motor-engine op Motor AI 2/Hetzner aangetroffen; geen actieve standalone n8n | Geen canonieke engine gekozen of bewezen |
+| `lib/inngest/` | Durable enginebasis | Meer dan een lege skeleton: approvals emitten events en één workflow doet `waitForEvent`; zonder keys wordt verzenden bewust no-op. Relay/reminder-events hebben geen eigen handler | Niet gedeployd op Motor AI 2; externe Inngest-status niet gemeten | **Gedeeltelijk geïntegreerde pilot, niet de engine** |
+| Adapters/executors | Achter Kernel/Gateway | OpenClaw-, n8n-, local-executor-, PC-bridge-, browser- en automation-adapters bestaan verspreid | Niet gedeployd op de nieuwe NUC; AI-pc bewust leeg | Bruikbare code, maar geen centrale dispatch/policy |
+| Evidence/observability | Taskgebonden evidence, traces en audit | Langfuse-chat-tracing, audit- en usagepaden bestaan; geen taskgebonden evidence-model of Gateway-beslislog | Geen Motor-runtime of monitoringhub aangetroffen | Deels in repo, niet live als 2.2-keten |
 | DBOS/Temporal/Restate/Hatchet | Alleen kandidaten/referenties | Geen applicatie-integratie aangetroffen | Nee | Geen verborgen tweede engine in code |
 
 ## State-stores die de repo werkelijk ondersteunt
 
 De repo bevestigt meer dan zes persistentiemechanismen of externe state-eigenaren. Hij bewijst niet dat ze allemaal tegelijk live zijn.
 
-| Store / waarheid | Repo zegt | Live status | SoT-probleem |
+| Store / waarheid | Repo zegt | Historisch gerapporteerde status | SoT-probleem |
 |---|---|---|---|
-| ai-motor SQLite | Altijd geopende read/write database voor chat, conversations, approvals, automation en meer | **onbekend, meten door eigenaar op NUC** | Feitelijke primaire app-state in code |
-| Postgres/Drizzle | Workspace-, tenant-, audit-, usage- en master-contextschema’s; gedeeltelijke dual-write | **onbekend, meten door infra-operator op Hetzner** | Parallel aan SQLite; nog geen volledige SSOT |
-| Qdrant | Kennisbank- en memorycollecties via externe service | **onbekend, meten door infra-operator op Hetzner** | Bedoelde vector-SSOT; live collecties/counts onbekend |
-| Filesystem | Uploads, photo-studio-assets, campaignpacks en projectbestanden onder `$HOME/AI_HQ` | **onbekend, meten door eigenaar op NUC** | Persistente blobs buiten DB; retentie/backup niet als geheel bewezen |
-| Inngest run-state | Externe durable state zodra keys actief zijn | **onbekend, meten door eigenaar op NUC/Hetzner** | Approval-state blijft daarnaast in SQLite |
-| n8n interne state | Veel actieve webhook-/automation-aanroepen in code | **onbekend, meten door infra-operator op Hetzner/NUC** | n8n is in code nog de-facto orchestrator |
-| Dify interne state | Builder/artifact-integratie en deploydocumentatie aanwezig | **onbekend, meten door infra-operator op Hetzner** | Geplande decommissioning; actuele locatie/status onbekend |
+| ai-motor SQLite | Code opent read/write voor chat, conversations, approvals, automation en meer | Niet aangetroffen op de gerapporteerde NUC-root | Starten van huidige code creëert opnieuw SQLite-state; clean deployment blijft geblokkeerd |
+| Postgres/Drizzle | Workspace-, tenant-, audit-, usage- en master-contextschema’s | PostgreSQL 16.14 en 7 Drizzle-regels gerapporteerd | No-touch; geen SSOT-claim vóór inventory, restore, M5 en ownerbesluit |
+| Qdrant | Kennisbank- en memorycollecties via externe service | Losse container op mutable tag en oud volume gerapporteerd | No-touch; ownership, inhoud en herstelbaarheid opnieuw bewijzen |
+| Filesystem | Uploads, assets, campaignpacks en projectbestanden onder `$HOME/AI_HQ` | Nieuwe NUC-root als leeg gerapporteerd | Persistente blobs vereisen een aparte bron- en backupinventaris; geen legacy-SSD-toegang |
+| Inngest run-state | Externe durable state zodra keys actief zijn | Geen Motor-runtime op de NUC; externe control-plane-status niet gemeten | Approval-state blijft in repo daarnaast SQLite-gebaseerd |
+| n8n interne state | Veel actieve webhook-/automation-aanroepen in code | Geen actieve standalone n8n op de drie gemeten nodes aangetroffen | Codeafhankelijkheden moeten vóór enginekeuze worden gereconcilieerd |
+| Dify interne state | Builder/artifact-integratie en deploydocumentatie aanwezig | Dify-stack 1.13.3 live onder `/opt/dify/docker` | Geplande decommissioning; exit/migratie en te ruime `.env`-permissies staan open |
 | Langfuse Cloud | Optionele chat-traces | **onbekend, meten door eigenaar** | Extra observability-store; DPA/retentie niet live bewezen |
 | Browser-localStorage | Zustand-stores voor UI-voorkeuren | Alleen client-side | Geen server-SSOT, wel gebruikersstate |
 | `EXECUTION_BOARD.db` | Getrackt legacybestand: 20.480 bytes, tabellen `projects` en `tasks`, beide 0 rijen | Repo-artifact, runtimegebruik **onbekend, meten door eigenaar** | Leeg in Git, maar code/legacy kan elders een kopie gebruiken |
 | Chroma legacy | `db/chroma.sqlite3`: 2 collecties; `factory_brains/chroma.sqlite3`: 1 collectie | Repo-artifact, runtimegebruik **onbekend, meten door eigenaar** | Tweede/derde vectorwaarheid blijft als legacy aanwezig |
-| `omega_db` | Legacy Python-code verwijst naar eigen DB; productiebestand niet in auditomgeving | **onbekend, meten door eigenaar op NUC** | Nog een mogelijke taakwaarheid |
+| `omega_db` | Legacy Python-code verwijst naar eigen DB | Geen productiebestand onder de exact genoemde Motor AI 2-root; legacylocaties buiten scope blijven **onbekend, meten door eigenaar** | Nog een mogelijke legacy-taakwaarheid, niet actief op de nieuwe NUC aangetroffen |
 
-## Services op NUC, Hetzner en inference-PC
+## Historisch gerapporteerde services op NUC, Hetzner en inference-PC
 
-De laatste gecommitte snapshots zijn te oud om als actuele status te gelden: op 2026-02-13 stond OpenClaw `failed` wegens een ontbrekende token en was `omega-holding` `active (exited)` maar disabled; `factory-os/docs/V3_STATUS.md` markeerde n8n, Qdrant en Ollama op 2026-04-19 als actief. Ze bewijzen alleen dat meerdere topologieën eerder hebben gedraaid.
+Onderstaande tabellen bewaren het owner-accepted rapport van 2026-07-29. Geen regel is actuele gate-evidence zonder nieuwe read-only validatie.
 
-### NUC
+### NUC — Motor AI 2
 
 | Service | Plan/config zegt | Draait | Verschil |
 |---|---|---|---|
-| Motor Next.js | PM2 `ai-motor`, poort 3040, één instance | **onbekend, meten door eigenaar op NUC** | Publieke tunnel gaf fout 1033; intern proces niet meetbaar |
-| local-executor | PM2 `local-executor`, poort 8790 | **onbekend, meten door eigenaar op NUC** | Alleen ecosystemconfig aanwezig |
-| OpenClaw gateway | Poort 18789, gehardened | **onbekend, meten door eigenaar op NUC** | Hardening niet bewezen |
-| bookkeeping-bot | Poort 8001 | **onbekend, meten door eigenaar op NUC** | App degradeert netjes, maar service-status onbekend |
-| Cloudflare Tunnel | `motorsai.app` naar Motor | Publieke route **niet beschikbaar** op meetmoment (1033/530) | Tunnel/origin moet worden gemeten; interne Motor-status volgt hier niet uit |
-| Legacy omega/n8n/Qdrant/Ollama-containers | Oude docs noemen verschillende NUC-stacks | **onbekend, meten door eigenaar op NUC** | Repo bevat tegenstrijdige historische topologieën |
+| Tailscale / beheer | Tailscale-only beheerroute | Tailscale 1.98.9 en Tailscale SSH actief; geen subnetroutes/services geadverteerd | Positieve basis; ACL/tag/device ownership en `ShieldsUp=false` nog beoordelen |
+| Motor Next.js | PM2 `ai-motor`, poort 3040, één instance | Afwezig; Node/npm/PM2 ontbreken | Nog niet gedeployd |
+| local-executor | PM2 `local-executor`, poort 8790 | Afwezig | Nog niet gedeployd |
+| OpenClaw gateway | Poort 18789, gehardened | Afwezig; geen unit, proces, container, root of listener | Nog niet gedeployd; alle ADR-106-gates staan open |
+| bookkeeping-bot | Poort 8001 | Afwezig | Nog niet gedeployd |
+| Cloudflare Tunnel | `motorsai.app` naar Motor | Geen tunnelunit/proces aangetroffen op Motor AI 2; publieke route niet herhaald | Ingressplan en origin moeten vóór deployment expliciet worden vastgesteld |
+| Legacy omega/n8n/Qdrant/Ollama-containers | Geen legacy runtime op de nieuwe NUC | Docker/Podman/Ollama ontbreken; geen legacyprocessen | Positief: schone basis, geen verborgen tweede topologie |
+| SSH/firewall | Headless en alleen via private beheergrens | SSH luistert op alle IPv4/IPv6-interfaces; Tailscale SSH actief; UFW actief, regels zonder sudo niet leesbaar | X11 staat aan; user zit in `sudo` en `lxd`; exacte SSH/UFW-hardening blijft open |
 
 ### Hetzner
 
 | Service | Plan/config zegt | Draait | Verschil |
 |---|---|---|---|
-| Postgres | `motor-postgres`, core, poort 5432 loopback-bind | **onbekend, meten door infra-operator op Hetzner** | Compose is geen live bewijs |
-| Qdrant | `motor-qdrant`, core, poort 6333 | **onbekend, meten door infra-operator op Hetzner** | Collecties/counts onbekend |
-| Ollama embed | `motor-ollama`, core, poort 11434 | **onbekend, meten door infra-operator op Hetzner** | Modelaanwezigheid onbekend |
-| LiteLLM | Optioneel compose-profiel, poort 4000 | **onbekend, meten door infra-operator op Hetzner** | Named routes niet live bewezen |
-| n8n | Optioneel compose-profiel, poort 5678 | **onbekend, meten door infra-operator op Hetzner** | Code gebruikt n8n breed; actuele host onbekend |
-| Dify | Losse stack onder `/opt/dify/docker` | **onbekend, meten door infra-operator op Hetzner** | Niet in unified compose |
-| Engine/Kernel/Gateway | AM-3 plaatst ze hier, co-located met PG | Niet als volledige componenten in repo | Target, geen huidige runtime |
-| Monitoringhub | AM-3: Uptime Kuma/Beszel-hub op Hetzner | **onbekend, meten door infra-operator op Hetzner** | Geen actuele status aangetroffen |
+| Tailscale / beheer | Private mesh en Tailscale-only kernbereikbaarheid | `tailscaled` draait, maar status is `NeedsLogin` en er is geen actuele Tailscale-IP | Harde drift; private beheer- en servicepaden zijn niet groen |
+| Postgres | `motor-postgres`, core, poort 5432 uitsluitend private + TLS | Container gezond; PostgreSQL 16.14; nu `0.0.0.0:5432`, `ssl=off`; publiek `eth0` alleen door `DOCKER-USER` gedropt; geen actieve Motor-client gezien | **Stap-2-blocker:** bind naar het Hetzner-Tailscale-IP, TLS verplicht met `sslmode=verify-full`, non-TLS/public weigeren en negatieve tests opslaan. Bij Tailscale- of certificaatfalen blijft Motor degraded; geen publieke fallback |
+| Qdrant | `motor-qdrant`, core, poort 6333 | Live als losse `qdrant`-container op `6333/6334`, `latest`, root en oud `qdrant_storage`-volume; publiek `eth0` door `DOCKER-USER` gedropt | Stap 1: inventaris + snapshot + geïsoleerde restore op huidig digest, daarna exact dat digest pinnen. Compose-/ownership-/volumemigratie blijft een aparte latere wijziging |
+| Ollama embed | `motor-ollama`, core, poort 11434 | Actieve systemd-service, bind `*:11434`; voorbereid Motor-volume ongebruikt; modelaanwezigheid bewust niet opgevraagd | Buiten unified compose en breder gebonden dan doel |
+| LiteLLM | Optioneel compose-profiel, poort 4000 | Geen actieve service/container in de live inventaris aangetroffen | Named routes en providerfailover niet live |
+| n8n | Optioneel compose-profiel, poort 5678 | Geen actieve standalone n8n-service/container in de live inventaris aangetroffen | Code gebruikt n8n breed; actuele uitvoeringsroute moet worden gereconcilieerd |
+| Dify | Losse stack onder `/opt/dify/docker` | Dify 1.13.3-stack live | Niet in unified compose; `.env` te ruim leesbaar; exitplan blijft open |
+| Engine/Kernel/Gateway | AM-3 plaatst ze hier, co-located met PG (owner-target ADR-108) | Niet als volledige componenten in repo | Owner-target pending revalidatie; geen huidige runtime |
+| Monitoringhub | AM-3: Uptime Kuma/Beszel-hub op Hetzner | Geen Kuma/Beszel-hub in de geïnspecteerde service-/containerlijst aangetroffen | Target, niet bewezen live |
+| SSH/firewall | Key-only en private beheerroute | Publieke key-only root-SSH; password en keyboard-interactive uit; X11 en TCP-forwarding aan | Geen wachtwoordauth is positief; root/forwarding en publieke beheerroute zijn ruimer dan doel |
 
 ### Inference-PC
 
 | Onderdeel | Plan zegt | Huidige staat | Open punt |
 |---|---|---|---|
-| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | In aanbouw; geen runtimebewijs | **onbekend, bevestigen door eigenaar** |
-| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Nog geen taken toegestaan vóór Gateway/policy | Geen afwijking: dit is een harde blokkade |
+| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | Ryzen 7 5800X, 31 GiB RAM, Palit RTX 3090, Ubuntu 24.04 en 2 TB gerapporteerd | Pending live revalidatie |
+| GPU-runtime | Gepinde NVIDIA-computedriver en meetbare 24 GiB VRAM | `nouveau` actief; NVIDIA-driver, `nvidia-smi` en CUDA ontbreken | **Deferred guardrail:** bewust niet inference-klaar; driverwijziging pas in stap 5 apart goedkeuren en na reboot verifiëren |
+| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Tailscale SSH actief; geen apps, containers, modellen, DB of inference-autostart | Correct veilig gehouden; geen taak vóór Gateway/policy |
 | Locatie | Prompt laat dit bewust open | **onbekend, bevestigen door eigenaar** | Vastleggen vóór ingebruikname; bepaalt single-site-risico |
 | Voeding | Doc 12 adviseert ≥850 W en twee aparte PCIe-kabels | **onbekend, bevestigen door eigenaar** | Bevestigen vóór GPU-belasting |
-| Opslag | Doc 12 adviseert 1–2 TB NVMe | **onbekend, bevestigen door eigenaar** | Capaciteit/modelcachebeleid vastleggen |
-| Runbook/monitoring | Tailscale-only, Beszel-agent, failovertest en inference-worker-runbook | Runbookbestand niet aangetroffen | Open punt; geen taken op de box vóór Gateway/policy |
+| Opslag | Doc 12 adviseert 1–2 TB NVMe | 2 TB gerapporteerd; indeling niet actueel bewezen | Alleen model/cache/scratch; nooit de enige of permanente backuplocatie |
+| Netwerk/firewall | Tailscale-only workerverkeer | Tailscale 1.98.9/SSH actief; geen gewone SSH- of applistener; UFW actief maar regels zonder sudo niet leesbaar | ACL/tag en volledige privileged listener/firewallcheck open |
+| Runbook/monitoring | Tailscale-only, Beszel-agent, failovertest en inference-worker-runbook | Geen worker-runtime of Beszel aangetroffen; `systemd-networkd-wait-online` failed | Runbook, boot-health en monitoring vóór registratie vereist |
 
-## Nog uit te voeren live metingen
+## Nog uit te voeren read-only revalidatie en latere live gates
 
-Deze metingen veranderen niets en moeten door de genoemde operator op de echte hosts worden uitgevoerd. Deel uitvoer zonder secrets.
+Alle runtimeclaims worden eerst opnieuw read-only gevalideerd. Latere snapshots, restores, wijzigingen en tests zijn afzonderlijke live acties en vereisen eigen goedkeuring; de legacy-SSD blijft permanent buiten scope.
 
-### Eigenaar op NUC
+| Open meting | Waarom open | Operator / bewijs |
+|---|---|---|
+| Owner-assigned node-identiteiten en runtime | Historisch rapport is niet zelfstandig reproduceerbaar | Eigenaar/infra-operator levert nieuwe gesaniteerde read-only evidence |
+| NUC: effectieve sshd-config en UFW/nft-regels | `sudo -n` vereiste een wachtwoord; er is niet geïnteracteerd | Eigenaar/infra-operator met goedgekeurde verhoogde read-only sessie; alleen gefilterde effectieve properties en regelmetadata |
+| AI-pc: volledige listeners/firewall en vrije LVM-capaciteit | Root-LV is zichtbaar, VG-free en privileged process-attributie niet | Infra-operator met goedgekeurde verhoogde read-only sessie |
+| Tailnet ACL's, tags, device ownership en key expiry | Niet volledig bewijsbaar vanuit nodeprefs | Tailnet-eigenaar via control-plane-export zonder authkeys/tokens |
+| Off-host bestemming, retentie en key-ownership | Niet gekozen | Pietje besluit; blokkeert live G0/cutover, niet deze documentcorrectie |
+| PostgreSQL inventory en herstelpad | Bestaande store alleen historisch gerapporteerd | Eerst read-only inventory; daarna apart goedgekeurde off-host backup en geïsoleerde restore |
+| Qdrant inventory en herstelpad | Bestaande store alleen historisch gerapporteerd | Eerst read-only inventory; daarna apart goedgekeurde snapshot, off-host kopie, restore en latere digest-pin |
+| Motor/OpenClaw-versie, bind, token, origins, pairing, allowlist | Runtime ontbreekt op Motor AI 2 | Pas na goedgekeurd deploymentplan; configuratiemetadata plus negatieve authtests |
+| Live 401/403, health, knowledge-hit, M5 en smoke | Motor-runtime ontbreekt | App-eigenaar in stap 4; machineleesbare testoutput met tenant-negative SQL/API- en context-switchcases |
+| AI-pc locatie, voeding en bekabeling | Niet via SSH te bewijzen | Eigenaar bevestigt fysiek vóór driverbelasting |
 
-```bash
-pm2 list
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-systemctl --user --no-pager status openclaw-gateway.service ai-motor-tunnel.service omega-holding.service
-systemctl --no-pager status ollama.service
+## Uitvoeringsgrens
 
-grep -E '^(USE_POSTGRES|POSTGRES_PRIMARY|SQLITE_FALLBACK)=' ~/AI_HQ/ai-motor/.env.local
+Pietje heeft op 2026-07-30 uitsluitend deze twee-file documentcorrectie geautoriseerd. Geen live stap, merge of ready-for-review is toegestaan. Iedere belangrijke beslissing en live actie krijgt aparte expliciete goedkeuring.
 
-sqlite3 -readonly ~/AI_HQ/data/ai-motor.db "
-SELECT 'auth_users', COUNT(*) FROM auth_users
-UNION ALL SELECT 'chat_history', COUNT(*) FROM chat_history
-UNION ALL SELECT 'approvals', COUNT(*) FROM approvals
-UNION ALL SELECT 'knowledge_documents', COUNT(*) FROM knowledge_documents;"
-```
+De bestaande [`fase1-postgres.md`](../fase1-postgres.md), [`nuc-readiness.md`](../nuc-readiness.md), [`hybrid-env.md`](../hybrid-env.md), [`00-START-HIER.md`](00-START-HIER.md) en [`MASTER-BUILD-PLAN.md`](../MASTER-BUILD-PLAN.md) bevatten nog pre-amendementvoorbeelden met één gedeelde `motor`-credential, verbinding zonder `sslmode=verify-full`, SQLite-rollback of andere achterhaalde uitvoeringsinstructies. Tot een afzonderlijk goedgekeurde doccorrectie zijn die passages **niet uitvoerbaar**; het ADR-002-amendement in [`DECISIONS.md`](../DECISIONS.md) is leidend.
 
-Daarnaast: unauthenticated 401 voor chat/conversations, een fumero→bokas 403-test, OpenClaw-versie/bind/auth/origin/allowlist en de output van de bestaande integration-readiness/smoke-scripts.
-
-### Infra-operator op Hetzner
-
-```bash
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-systemctl --no-pager --type=service --state=running
-cd /opt/motor/infra/hetzner && docker compose ps
-cd /opt/dify/docker && docker compose ps
-```
-
-Rapporteer daarnaast read-only Postgres-tellingen voor `users`, `chat_history`, `approvals` en `knowledge_documents`, inclusief het aantal rijen met een niet-lege `legacy_sqlite_id`; status van Drizzle-migraties; laatste geslaagde backup/restore-test; Qdrant point-counts; en health van LiteLLM/n8n.
-
-## Goedkeuringspunt
-
-Deze nulmeting maakt bewust geen runtime-aannames. Voor stap 2 zijn twee geldige vervolgen mogelijk:
-
-1. de eigenaar vult de live metingen aan en keurt daarna deze tabel goed; of
-2. de eigenaar accepteert alle gemarkeerde runtimevelden voorlopig als onbekend en keurt deze repository-baseline goed.
-
-De eigenaar accepteerde op 2026-07-27 de repository-baseline en gaf opdracht stap 2–4 volledig af te ronden. De gemarkeerde live metingen blijven uitvoerblokkades voor deployment, niet voor documentconsolidatie.
+De repository-baseline van 2026-07-27 en het owner-accepted auditrapport van 2026-07-29 blijven historische context. Documentatie alleen is geen acceptatiebewijs. Een toekomstige Claude-P0 mag alleen na verplichte secret-/PII-redactie in de PR-body worden overgenomen; `[REDACTED]` verlaagt de ernst niet. PR #11 blijft draft en iedere merge vereist Pietjes verse expliciete goedkeuring op de nieuwe head-SHA nadat CI en reviews zijn afgerond.
