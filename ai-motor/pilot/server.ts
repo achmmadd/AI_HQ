@@ -47,6 +47,8 @@ function whoisNode(ip: string): Promise<string | null> {
       {
         socketPath: TAILSCALE_SOCK,
         path: `/localapi/v0/whois?addr=${encodeURIComponent(ip)}`,
+        // tailscaled eist deze Host-header; zonder → 403 "invalid localapi request".
+        headers: { Host: "local-tailscaled.sock" },
       },
       (res) => {
         let data = "";
