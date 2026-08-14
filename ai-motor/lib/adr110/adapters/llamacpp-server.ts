@@ -54,6 +54,12 @@ export interface LlamaCppServerConfig {
   readonly maxTokens?: number;
   /** Sampling temperature. */
   readonly temperature?: number;
+  /**
+   * Qwen3-style thinking mode. Default OFF: with thinking enabled the model
+   * spends the whole token budget on `reasoning_content` and `content` stays
+   * empty — observed live during the pilot validation on 2026-08-14.
+   */
+  readonly enableThinking?: boolean;
 }
 
 interface ChatCompletionResponse {
@@ -143,6 +149,9 @@ export function createLlamaCppServerAdapter(
             model: config.model,
             messages: [{ role: "user", content: request.input }],
             stream: false,
+            chat_template_kwargs: {
+              enable_thinking: config.enableThinking ?? false,
+            },
             ...(config.maxTokens !== undefined
               ? { max_tokens: config.maxTokens }
               : {}),
