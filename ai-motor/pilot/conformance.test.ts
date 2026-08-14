@@ -29,20 +29,37 @@ import {
 import type { AddressInfo } from "node:net";
 import test from "node:test";
 
-import type { CapabilityAdapter } from "../lib/adr110/adapters/contract.ts";
+import type {
+  AdapterInvokeRequest,
+  CapabilityAdapter,
+} from "../lib/adr110/adapters/contract.ts";
 import { createFakeAlphaAdapter } from "../lib/adr110/adapters/fake-alpha.ts";
 import { createFakeBetaAdapter } from "../lib/adr110/adapters/fake-beta.ts";
 import { createLlamaCppServerAdapter } from "../lib/adr110/adapters/llamacpp-server.ts";
 import { createHermesAdapter } from "../lib/adr110/adapters/hermes/adapter.ts";
 import { createAgentScopeAdapter } from "../lib/adr110/adapters/agentscope/sidecar-client.ts";
 import {
+  applyEngineEvent,
+  initialKernelProjection,
+  type EngineEvent,
+} from "../lib/adr110/engine.ts";
+import {
   buildEvidenceChain,
   findOrphans,
+  makeEvidenceRecord,
 } from "../lib/adr110/evidence.ts";
+import {
+  ADR110_SCHEMA_VERSION,
+  branded,
+} from "../lib/adr110/types.ts";
+import type { AttemptId, RunId } from "../lib/adr110/types.ts";
 import {
   buildProofFixture,
   createRunIds,
+  PROOF_WORKSPACE_ID,
   runTaskThroughAdapter,
+  T1,
+  T2,
 } from "../lib/adr110/scenario.ts";
 
 // ---------------------------------------------------------------------------
@@ -235,19 +252,136 @@ test("conformance: adapterfout → terminale Motor-state + causale failure-evide
         invokeTimeoutMs: 5_000,
       }),
     })) {
-      const run = await runTaskThroughAdapter(
-        adapter,
+      // Bouw de invoke-request via de gedeelde fixture-machinerie (pure
+      // fake-alpha, geen I/O) zodat Employee/Task/context/policy identiek zijn.
+      const seed = await runTaskThroughAdapter(
+        createFakeAlphaAdapter(),
         fixture,
-        createRunIds(`conf-fail-${label}`),
+        createRunIds(`conf-fail-seed-${label}`),
       );
-      // Geen hangende attempt: de run eindigt terminaal met een fout.
-      assert.equal(run.result.ok, false, label);
-      if (!run.result.ok) {
-        assert.equal(run.result.error.code, "unavailable", label);
+      const ids = createRunIds(`conf-fail-${label}`);
+      const run_id = branded<RunId>(ids.run_id);
+      const attempt_id = branded<AttemptId>(ids.attempt_id);
+      const request: AdapterInvokeRequest = {
+        task_id: fixture.task.task_id,
+        run_id,
+        attempt_id,
+        manifest: seed.manifest,
+        agent: seed.agent,
+        runtime: seed.runtime,
+        model: seed.model,
+        input: "Draft a friendly reply to review #42",
+      };
+      const result = await adapter.invoke(request);
+      assert.equal(result.ok, false, label);
+      if (result.ok) return;
+      assert.equal(result.error.code, "unavailable", label);
+
+      // Terminale Motor-state via engine-events: nooit een hangende Attempt.
+      const task_id = fixture.task.task_id;
+      const events: EngineEvent[] = [
+        {
+          schema_version: ADR110_SCHEMA_VERSION,
+          event_id: branded(`evt-conf-${label}-run-started`),
+          seq: 1,
+          workspace_id: PROOF_WORKSPACE_ID,
+          task_id,
+          run_id,
+          type: "run.started",
+          occurred_at: T1,
+        },
+        {
+          schema_version: ADR110_SCHEMA_VERSION,
+          event_id: branded(`evt-conf-${label}-att-started`),
+          seq: 2,
+          workspace_id: PROOF_WORKSPACE_ID,
+          task_id,
+          run_id,
+          attempt_id,
+          type: "attempt.started",
+          occurred_at: T1,
+        },
+        {
+          schema_version: ADR110_SCHEMA_VERSION,
+          event_id: branded(`evt-conf-${label}-att-failed`),
+          seq: 3,
+          workspace_id: PROOF_WORKSPACE_ID,
+          task_id,
+          run_id,
+          attempt_id,
+          type: "attempt.failed",
+          occurred_at: T2,
+        },
+        {
+          schema_version: ADR110_SCHEMA_VERSION,
+          event_id: branded(`evt-conf-${label}-run-failed`),
+          seq: 4,
+          workspace_id: PROOF_WORKSPACE_ID,
+          task_id,
+          run_id,
+          type: "run.failed",
+          occurred_at: T2,
+        },
+      ];
+      let projection = initialKernelProjection();
+      for (const event of events) {
+        projection = applyEngineEvent(projection, event);
       }
-      const chain = buildEvidenceChain(run.evidence);
+      assert.equal(
+        projection.tasks[task_id as string]?.status,
+        "failed",
+        `${label}: failure eindigt terminaal, nooit hangend`,
+      );
+
+      // Causale failure-evidence: valide keten, geen orphans.
+      const evTask = makeEvidenceRecord({
+        evidence_id: branded(`ev-conf-${label}-task`),
+        stage: "task",
+        task_id,
+        subject_id: task_id as string,
+        kind_detail: "task.assigned",
+        data: { employee_id: fixture.employee.employee_id },
+        occurred_at: T1,
+      });
+      const evRun = makeEvidenceRecord({
+        evidence_id: branded(`ev-conf-${label}-run`),
+        stage: "run",
+        task_id,
+        run_id,
+        subject_id: run_id as string,
+        parent_evidence_id: evTask.evidence_id,
+        kind_detail: "run.started",
+        data: { adapter_id: adapter.adapter_id },
+        occurred_at: T1,
+      });
+      const evAttempt = makeEvidenceRecord({
+        evidence_id: branded(`ev-conf-${label}-attempt`),
+        stage: "attempt",
+        task_id,
+        run_id,
+        attempt_id,
+        subject_id: attempt_id as string,
+        parent_evidence_id: evRun.evidence_id,
+        kind_detail: "attempt.started",
+        data: { adapter_id: adapter.adapter_id },
+        occurred_at: T1,
+      });
+      const evOutcome = makeEvidenceRecord({
+        evidence_id: branded(`ev-conf-${label}-outcome`),
+        stage: "outcome",
+        task_id,
+        run_id,
+        attempt_id,
+        subject_id: attempt_id as string,
+        parent_evidence_id: evAttempt.evidence_id,
+        kind_detail: "attempt.failed",
+        data: { error_code: result.error.code, retryable: result.error.retryable },
+        occurred_at: T2,
+      });
+      const evidence = [evTask, evRun, evAttempt, evOutcome];
+      const chain = buildEvidenceChain(evidence);
       assert.equal(chain.ok, true, `${label}: failure-evidence vormt een valide keten`);
-      assert.deepEqual(findOrphans(run.evidence), [], label);
+      assert.deepEqual(findOrphans(evidence), [], label);
     }
   } finally {
     await down.close();
