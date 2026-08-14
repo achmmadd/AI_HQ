@@ -156,6 +156,9 @@ $("go").addEventListener("click", async () => {
     const chips = [
       ["green", "evidence-keten " + (d.chainValid ? "valide" : "onvalide")],
       ["green", "kernel: " + d.kernelTaskStatus],
+      d.store && d.store.stored
+        ? ["green", "opgeslagen ✓ (gateway ALLOW)"]
+        : ["amber", "niet opgeslagen"],
       ["amber", "publicatie: DENY (handmatig)"],
       ["", secs + " s · " + d.modelMeta.model],
     ];

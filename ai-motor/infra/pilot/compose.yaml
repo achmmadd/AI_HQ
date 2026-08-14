@@ -23,8 +23,10 @@ services:
     user: "1000:1000"
     working_dir: /app/ai-motor
     volumes:
-      # Repo-checkout read-only; de pilot schrijft niets.
+      # Repo-checkout read-only; de pilot schrijft niets aan code.
       - ${REPO_PATH:-./repo}:/app:ro
+      # Append-only conceptstore (draft.store-adapter achter de gateway).
+      - pilot-data:/data
     environment:
       MODEL_PORT_URL: http://100.118.204.123:8080
       MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
@@ -53,6 +55,7 @@ services:
     working_dir: /app/ai-motor
     volumes:
       - ${REPO_PATH:-./repo}:/app:ro
+      - pilot-data:/data
     environment:
       MODEL_PORT_URL: http://100.118.204.123:8080
       MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
@@ -73,3 +76,7 @@ networks:
   # stacks (motor-postgres, qdrant, dify, bokas, nginx blijven no-touch).
   pilot-net:
     driver: bridge
+
+volumes:
+  # Append-only conceptstore; alleen dit volume is schrijfbaar.
+  pilot-data:

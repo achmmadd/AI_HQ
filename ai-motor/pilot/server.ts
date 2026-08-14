@@ -21,6 +21,7 @@ import {
   SYNTHETIC_REVIEW,
   runDraft,
 } from "./draft-core.ts";
+import { listDrafts } from "./draft-store.ts";
 
 const UI_HTML = new URL("./ui.html", import.meta.url);
 
@@ -85,6 +86,12 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "GET" && req.url === "/health") {
       sendJson(res, 200, { ok: true, model: await modelHealth() });
+      return;
+    }
+    if (req.method === "GET" && req.url?.startsWith("/drafts")) {
+      const limitParam = new URL(req.url, "http://localhost").searchParams.get("limit");
+      const limit = Math.min(Math.max(Number(limitParam ?? "20") || 20, 1), 100);
+      sendJson(res, 200, { ok: true, drafts: await listDrafts(limit) });
       return;
     }
     if (req.method === "POST" && req.url === "/draft") {

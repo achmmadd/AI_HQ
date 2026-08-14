@@ -44,6 +44,7 @@ import type {
   WorkspaceId,
 } from "../lib/adr110/index.ts";
 import { createLlamaCppServerAdapter } from "../lib/adr110/adapters/llamacpp-server.ts";
+import { appendDraft } from "./draft-store.ts";
 
 const MODEL_PORT_URL =
   process.env.MODEL_PORT_URL ?? "http://100.118.204.123:8080";
@@ -134,6 +135,15 @@ export async function runDraft(req: DraftRequest) {
         requires_approval: false,
         budget_cents_max: 100,
         allowed_data_classes: ["public", "internal"],
+        network: "none",
+      },
+      // Eerste echte koppeling: append-only conceptopslag. R0: intern,
+      // geen netwerk, geen kosten — ALLOW zonder approval, mét receipt.
+      "draft.store": {
+        risk: "R0",
+        requires_approval: false,
+        budget_cents_max: 0,
+        allowed_data_classes: ["internal"],
         network: "none",
       },
       "review.reply.publish": {
@@ -303,6 +313,82 @@ export async function runDraft(req: DraftRequest) {
     projection = applyEngineEvent(projection, event);
   }
 
+  // Eerste echte koppeling achter de gateway: draft.store. Alleen bij een
+  // geslaagde draft. De gateway mint een receipt (R0 → ALLOW) en
+  // executeAction levert een settlement — pas dán schrijft de store-adapter.
+  type StoreOutcome =
+    | {
+        decision: "ALLOW";
+        executed: true;
+        stored: boolean;
+        path: string;
+        receipt_id: string;
+        error?: string;
+      }
+    | { decision: "DENY" | "REQUIRE_APPROVAL"; executed: false; stored: false; reason: string };
+  let storeOutcome: StoreOutcome;
+  let storeRequest: ActionRequest | null = null;
+  if (!result.ok) {
+    storeOutcome = {
+      decision: "DENY",
+      executed: false,
+      stored: false,
+      reason: "no draft to store",
+    };
+  } else {
+    storeRequest = deepFreeze({
+      schema_version: ADR110_SCHEMA_VERSION,
+      action_id: branded(`act-${label}-store`),
+      workspace_id,
+      task_id,
+      run_id,
+      attempt_id,
+      capability: "draft.store",
+      tool: "draft.store.local",
+      args: { run_id, draft: result.output },
+      data_class: "internal",
+      estimated_cost_cents: 0,
+      requested_by: employee.employee_id,
+      requested_at: tEnd,
+    });
+    const minted = gateway.mintReceipt(storeRequest, tEnd);
+    if (!minted.ok) {
+      storeOutcome = {
+        decision: minted.decision,
+        executed: false,
+        stored: false,
+        reason: minted.reasons.join("; "),
+      };
+    } else {
+      const settled = gateway.executeAction(storeRequest, minted.receipt, nowIso());
+      if (!settled.executed) {
+        storeOutcome = {
+          decision: "DENY",
+          executed: false,
+          stored: false,
+          reason: settled.reason,
+        };
+      } else {
+        const appended = await appendDraft({
+          stored_at: tEnd,
+          run_id: run_id as string,
+          receipt_id: settled.settlement.receipt_id,
+          synthetic: isSynthetic,
+          review: req.reviewText,
+          draft: result.output,
+        });
+        storeOutcome = {
+          decision: "ALLOW",
+          executed: true,
+          stored: appended.ok,
+          path: appended.path,
+          receipt_id: settled.settlement.receipt_id,
+          ...(appended.ok ? {} : { error: appended.error }),
+        };
+      }
+    }
+  }
+
   // Deny-by-default probe: a publish action without a Gateway receipt is
   // refused. No action tools are registered anywhere in this flow.
   const publishRequest: ActionRequest = deepFreeze({
@@ -408,6 +494,21 @@ export async function runDraft(req: DraftRequest) {
     occurred_at: tEnd,
   });
   evidence.push(evGateway);
+  const evStore = makeEvidenceRecord({
+    evidence_id: branded(`ev-${label}-store`),
+    stage: "action",
+    task_id,
+    run_id,
+    attempt_id,
+    subject_id: storeRequest
+      ? (storeRequest.action_id as string)
+      : `store-${label}`,
+    parent_evidence_id: evArtifact.evidence_id,
+    kind_detail: "gateway.settlement.draft.store",
+    data: storeOutcome,
+    occurred_at: tEnd,
+  });
+  evidence.push(evStore);
   const evOutcome = makeEvidenceRecord({
     evidence_id: branded(`ev-${label}-outcome`),
     stage: "outcome",
@@ -455,6 +556,7 @@ export async function runDraft(req: DraftRequest) {
             reason: publishProbe.reason,
           },
     },
+    store: storeOutcome,
     manifest: {
       total_digest: manifest.total_digest,
       item_count: manifest.items.length,
