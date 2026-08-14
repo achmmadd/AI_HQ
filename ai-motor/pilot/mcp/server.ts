@@ -238,9 +238,9 @@ export function createMcpPilotHandler(deps: McpPilotDeps) {
     });
 
     const raw = await deps.provider.getRunSnapshot(scope);
-    const found = raw !== null;
     const snapshot: SanitizedRunSnapshot | null =
       raw === null ? null : sanitizeSnapshot(raw, scope);
+    const found = snapshot !== null;
 
     const evAction = makeEvidenceRecord({
       evidence_id: nextEvidenceId(),
@@ -263,9 +263,10 @@ export function createMcpPilotHandler(deps: McpPilotDeps) {
       subject_id: request.action_id as string,
       parent_evidence_id: evAction.evidence_id,
       kind_detail: found ? "snapshot.read" : "snapshot.not_found",
-      data: found
-        ? { status: snapshot.status, redactions: [...snapshot.redactions] }
-        : { status: "not_found" },
+      data:
+        snapshot !== null
+          ? { status: snapshot.status, redactions: [...snapshot.redactions] }
+          : { status: "not_found" },
       occurred_at: now(),
     });
     const evidence: readonly EvidenceRecord[] = [
@@ -300,7 +301,7 @@ export function createMcpPilotHandler(deps: McpPilotDeps) {
         reason: "invalid_request",
       });
     }
-    const request = message as JsonRpcRequest;
+    const request = message as unknown as JsonRpcRequest;
     const id: JsonRpcId =
       typeof request.id === "string" || typeof request.id === "number" || request.id === null
         ? request.id
