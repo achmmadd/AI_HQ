@@ -830,7 +830,13 @@ test("7g. mountmatrix: store ziet nooit context, API/CLI lezen hooguit ro", asyn
     assert.ok(start >= 0, `service ${name} ontbreekt`);
     const rest = compose.slice(start + name.length + 3);
     const next = rest.search(/^  \S/m);
-    return next === -1 ? rest : rest.slice(0, next);
+    const block = next === -1 ? rest : rest.slice(0, next);
+    // Commentaarregels doen niet mee: een comment dat een volume NOEMT
+    // ("mount NOOIT pilot-context") is geen mount.
+    return block
+      .split("\n")
+      .map((line) => line.replace(/#.*$/, ""))
+      .join("\n");
   };
   const store = section("motor-pilot-store");
   assert.ok(store.includes("pilot-drafts:/data\n"), "store schrijft drafts rw");
