@@ -60,3 +60,9 @@ holding/data/*.db
 .factory_os_v3_ok
 GEMINI_STACK.md
 PLAK_IN_GEMINI.md
+
+# Motor pilot — runtime-data leeft uitsluitend op het Hetzner-volume,
+# nooit in de (publieke) repo: conceptstore, privé bedrijfscontext, lokaal .env.
+drafts.jsonl
+ondernemer-context*.txt
+ai-motor/infra/pilot/.env

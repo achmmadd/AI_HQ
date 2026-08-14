@@ -1,0 +1,28 @@
+# motor-pilot-llama.service — TEMPLATE voor de systemd-unit op de RTX-pc.
+# Bevat bewust placeholders: echte waarden (gebruiker, paden, tailnet-IP)
+# zijn runtime-configuratie en horen niet in de publieke repo.
+# install-llama-service.sh rendert dit template met env-variabelen:
+#   LLAMA_USER        (linux-user, bijv. de standaard login-user)
+#   LLAMA_HOME        (homedir, bijv. /home/<user>)
+#   RTX_TAILNET_IP    (tailnet-IP van de RTX-pc, bijv. 100.x.y.z)
+#   MODEL_PATH        (volledig pad naar de GGUF, default $LLAMA_HOME/models/<model>.gguf)
+
+[Unit]
+Description=Motor pilot - llama.cpp llama-server (CUDA)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@LLAMA_USER@
+Group=@LLAMA_USER@
+ExecStart=@LLAMA_HOME@/motor-pilot/llama.cpp/build/bin/llama-server -m @MODEL_PATH@ --host @RTX_TAILNET_IP@ --port 8080 -c 32768 -ngl 99 --jinja
+Restart=on-failure
+RestartSec=5
+# Hardening-licht: geen privilege-escalatie, alleen home blijft schrijfbaar.
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
