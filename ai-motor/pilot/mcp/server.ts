@@ -146,10 +146,12 @@ export function createMcpPilotHandler(deps: McpPilotDeps) {
     if (!isObject(args)) {
       return rpcResult(id, toolDeny("invalid_arguments", { detail: "arguments must be an object" }));
     }
-    const keys = Object.keys(args).sort();
+    // Exacte sleutelset: alle allowlisted keys aanwezig, geen enkele extra.
+    // Volgorde van object-keys is irrelevant (JSON-objecten zijn ongeordend).
+    const keys = Object.keys(args);
     if (
       keys.length !== ALLOWED_ARGUMENT_KEYS.length ||
-      !ALLOWED_ARGUMENT_KEYS.every((k, i) => keys[i] === k)
+      !keys.every((k) => (ALLOWED_ARGUMENT_KEYS as readonly string[]).includes(k))
     ) {
       return rpcResult(
         id,
