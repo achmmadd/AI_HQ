@@ -165,7 +165,7 @@ test("conformance: vijf bindingen, één semantiek", async () => {
         timeoutMs: 5_000,
       }),
       hermes: createHermesAdapter({
-        sidecarUrl: sidecar.url,
+        baseUrl: sidecar.url,
         invokeTimeoutMs: 5_000,
       }),
       agentscope: createAgentScopeAdapter({
@@ -229,7 +229,7 @@ test("conformance: adapterfout → terminale Motor-state + causale failure-evide
   try {
     const fixture = buildProofFixture();
     for (const [label, adapter] of Object.entries({
-      hermes: createHermesAdapter({ sidecarUrl: down.url, invokeTimeoutMs: 5_000 }),
+      hermes: createHermesAdapter({ baseUrl: down.url, invokeTimeoutMs: 5_000 }),
       agentscope: createAgentScopeAdapter({
         sidecarUrl: down.url,
         invokeTimeoutMs: 5_000,

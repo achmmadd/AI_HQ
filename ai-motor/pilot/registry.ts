@@ -51,7 +51,7 @@ export function createPilotAdapter(
       if (sidecarUrl === undefined || sidecarUrl === "") {
         throw new Error("HERMES_SIDECAR_URL ontbreekt voor adapter hermes");
       }
-      return createHermesAdapter({ sidecarUrl, invokeTimeoutMs: 120_000 });
+      return createHermesAdapter({ baseUrl: sidecarUrl, invokeTimeoutMs: 120_000 });
     }
     case "agentscope": {
       const sidecarUrl = env.AGENTSCOPE_SIDECAR_URL;
