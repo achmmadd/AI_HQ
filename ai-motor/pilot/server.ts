@@ -29,6 +29,9 @@ import { pathToFileURL } from "node:url";
 import { SYNTHETIC_REVIEW, contextModeFromEnv, runDraft } from "./draft-core.ts";
 import { runDecision } from "./decision-core.ts";
 import { listDecisions, listDrafts } from "./draft-store.ts";
+import { createMcpPilotHandler } from "./mcp/server.ts";
+import { createStoreSnapshotProvider } from "./mcp/store-provider.ts";
+import { adapterFromEnv } from "./registry.ts";
 
 const UI_HTML = new URL("./ui.html", import.meta.url);
 
@@ -255,6 +258,51 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
         });
         return;
       }
+      if (req.method === "POST" && req.url === "/mcp") {
+        // Read-only MCP-pad (spoor D): zelfde identiteits- en workspace-
+        // afdwinging als de rest; MCP is transport, Motor-policy beslist.
+        const params = new URL(req.url, "http://localhost").searchParams;
+        const access = await accessCheck(
+          req,
+          params.get("workspace"),
+          acl,
+          resolveNode,
+        );
+        if (isDeny(access)) {
+          sendJson(res, 403, { ok: false, ...access });
+          return;
+        }
+        const contentType = req.headers["content-type"] ?? "";
+        if (!contentType.startsWith("application/json")) {
+          sendJson(res, 415, { ok: false, error: "content_type_must_be_json" });
+          return;
+        }
+        let message: unknown;
+        try {
+          message = JSON.parse(await readBody(req));
+        } catch {
+          sendJson(res, 400, { ok: false, error: "body must be JSON" });
+          return;
+        }
+        // Per-request handler: de workspace-scope komt uit de server-side
+        // ACL van deze identiteit, nooit uit de MCP-call zelf.
+        const handler = createMcpPilotHandler({
+          workspaceId: access.workspace,
+          provider: createStoreSnapshotProvider({
+            listDrafts: listDraftsImpl,
+            workspaceId: access.workspace,
+          }),
+        });
+        const response = await handler(message);
+        if (response === null) {
+          // MCP notification: bewust geen antwoord-body.
+          res.writeHead(202, { "content-type": "application/json" });
+          res.end();
+          return;
+        }
+        sendJson(res, 200, response);
+        return;
+      }
       if (req.method === "POST" && req.url === "/decision") {
         const params = new URL(req.url, "http://localhost").searchParams;
         const access = await accessCheck(
@@ -386,8 +434,15 @@ if (isMain) {
     process.stderr.write("CONTEXT_MODE is ongeldig (toegestaan: demo|private)\n");
     process.exit(1);
   }
-  const server = createPilotServer();
+  // Adapterselectie via de allowlisted registry (PILOT_ADAPTER env);
+  // endpoints komen uit server-side env, nooit uit userinput.
+  const { id: adapterId, adapter } = adapterFromEnv(process.env);
+  const server = createPilotServer({
+    runDraftImpl: (req) => runDraft(req, { adapter }),
+  });
   server.listen(PORT, HOST, () => {
-    process.stdout.write(`motor-pilot API luistert op ${HOST}:${PORT}\n`);
+    process.stdout.write(
+      `motor-pilot API luistert op ${HOST}:${PORT} (adapter: ${adapterId})\n`,
+    );
   });
 }
