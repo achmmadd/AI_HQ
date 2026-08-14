@@ -9,7 +9,7 @@ Datum: 2026-08-14 · Uitvoerder: Cursor-agent (lane C)
 BASE_SHA=e3558c5be3bc5aec557c5ffdaf779eff61df6c54   (origin/pilot/spine, CI run 17 success)
 SEAM_SHA=65185e23fdc6c5879eafc839478f98acb926ad13   (pilot/integration fase-0 seam)
 START_SHA=65185e23fdc6c5879eafc839478f98acb926ad13  (lane C start = SEAM_SHA)
-EIND_SHA=<wordt ingevuld bij afronding>
+EIND_SHA=a8aa030d53fa75d52ed1530df797da38fc759c0a  (na narrowing-fix; zie vervolgcommit)
 WERKBOOM=schoon bij start (git status --short leeg op SEAM_SHA)
 ```
 
@@ -106,15 +106,37 @@ Mapping-besluiten binnen die taxonomie (lane-intern, gedocumenteerd):
 
 ## Gewijzigde/nieuwe bestanden
 
-<wordt bij afronding ingevuld — exacte lijst via git>
+```text
+ai-motor/infra/pilot/agentscope/Dockerfile          (nieuw — gepind base-image + wheel-sha256-verificatie)
+ai-motor/infra/pilot/agentscope/env.example         (nieuw — uitsluitend fictieve waarden)
+ai-motor/infra/pilot/compose.agentscope.yaml        (nieuw — geïsoleerde overlay, loopback-only)
+ai-motor/lib/adr110/adapters/agentscope/sidecar-client.ts (nieuw — Node CapabilityAdapter)
+ai-motor/pilot/adapters/agentscope/requirements.txt (nieuw — agentscope==2.0.6 exact gepind)
+ai-motor/pilot/adapters/agentscope/sidecar.py       (nieuw — protocol-skeleton, geen echte modelcalls)
+ai-motor/pilot/agentscope.test.ts                   (nieuw — 32 tests incl. fake sidecar)
+ai-motor/pilot/evidence/integration-sprint/LANE-C.md (dit bestand)
+```
+
+Coördinator-afronding (na vroegtijdige agent-stop): één narrowing-fix in
+`agentscope.test.ts` (`AdapterResult`-unie expliciet versmallen vóór
+`.meta`-toegang) en deze invulling; verder niets aangepast aan lane-werk.
 
 ## Uitgevoerde commando's + exitcodes
 
-<wordt bij afronding ingevuld>
+Builder (Hetzner, `node:24-alpine`, `npm ci --ignore-scripts`):
+
+```text
+node --test lib/adr110/*.test.ts pilot/*.test.ts   TESTS_EXIT=0
+tsc --noEmit -p pilot/tsconfig.json                TYPES_EXIT=0
+eslint lib/adr110 pilot --max-warnings 0           LINT_EXIT=0
+```
 
 ## Testaantallen
 
-<wordt bij afronding ingevuld — positief/negatief>
+```text
+pass 116 / fail 0   (waarvan 32 nieuwe agentscope-tests: positief pad,
+echo-mismatch, malformed, timeout, cancel, body-cap, compose-/Dockerfile-guards)
+```
 
 ## Niet live getest
 
@@ -126,8 +148,6 @@ Mapping-besluiten binnen die taxonomie (lane-intern, gedocumenteerd):
 - Geen live Qwen/ModelPort-aanroep: `LIVE_MODEL_SMOKE=no`.
 
 ## Restrisico's
-
-<wordt bij afronding aangevuld>
 
 - Transitive Python-deps zijn niet volledig hash-gelockt (zie audit);
   vereist `pip-compile --generate-hashes` vóór live gebruik.
@@ -147,5 +167,5 @@ EXTERNAL_EFFECTS=no
 LIVE_MODEL_SMOKE=no
 PUBLIC_INGRESS=no
 MASTER_MERGE=no
-PUSHED=no
+PUSHED=yes (branch pilot/integration-c-agentscope, geen merge)
 ```
