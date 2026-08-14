@@ -6,9 +6,11 @@
  * echoes the causal ids (task_id, run_id, attempt_id) it was invoked with.
  *
  * An adapter owns nothing: no durable task state, no employee identity, no
- * policy truth, no credentials. health()/invoke() may return their result
- * synchronously (the pure fake adapters) or as a Promise (a real I/O
- * adapter); simulated latency/cost are metadata only.
+ * policy truth, no credentials. health()/invoke()/cancel() may return their
+ * result synchronously (the pure fake adapters) or as a Promise (a real I/O
+ * adapter; a remote sidecar cancel is demonstrably async — phase-0 seam
+ * decision of the integration sprint, 2026-08-14). Simulated latency/cost
+ * are metadata only.
  */
 
 import type {
@@ -93,5 +95,8 @@ export interface CapabilityAdapter {
   readonly requirements: AdapterRequirements;
   health(now: IsoTimestamp): AdapterHealth | Promise<AdapterHealth>;
   invoke(request: AdapterInvokeRequest): AdapterResult | Promise<AdapterResult>;
-  cancel(attempt_id: AttemptId, now: IsoTimestamp): AdapterCancelResult;
+  cancel(
+    attempt_id: AttemptId,
+    now: IsoTimestamp,
+  ): AdapterCancelResult | Promise<AdapterCancelResult>;
 }

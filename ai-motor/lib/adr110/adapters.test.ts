@@ -100,8 +100,8 @@ for (const [name, adapter] of [
       assert.equal(result.error.attempt_id, request.attempt_id);
     });
 
-    it("cancel() acknowledges the attempt", () => {
-      const result = adapter.cancel(branded("att-x"), T1);
+    it("cancel() acknowledges the attempt", async () => {
+      const result = await adapter.cancel(branded("att-x"), T1);
       assert.equal(result.cancelled, true);
       assert.equal(result.attempt_id, branded("att-x"));
     });
