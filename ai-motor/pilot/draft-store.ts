@@ -26,11 +26,19 @@ export interface DraftStoreRecord {
   readonly draft: string;
 }
 
+/**
+ * Het ondertekende schrijfbewijs (zie pilot/settlement.ts). Naast de
+ * gateway-velden: expires_at (tijdelijk), record_sha256 (payload-binding)
+ * en signature (HMAC-SHA256 met het gedeelde runtime-secret).
+ */
 export interface StoreSettlementProof {
   readonly receipt_id: string;
   readonly action_id: string;
   readonly argument_hash: string;
   readonly executed_at: string;
+  readonly expires_at: string;
+  readonly record_sha256: string;
+  readonly signature: string;
 }
 
 export interface StoreResult {

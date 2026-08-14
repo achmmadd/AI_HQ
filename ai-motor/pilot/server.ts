@@ -165,12 +165,12 @@ const MAX_BODY_BYTES = 64 * 1024;
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   const payload = JSON.stringify(body);
+  // Bewust GEEN CORS-headers: de UI is same-origin (geserveerd door deze
+  // server). Zonder Access-Control-Allow-Origin blokkeert iedere browser
+  // cross-origin lezen én de preflight voor application/json — een vreemde
+  // website kan de pilot niet vanuit een geautoriseerde browser aanroepen.
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
-    // Tailnet-only dienst; de UI draait op een andere node.
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
   });
   res.end(payload);
 }
@@ -214,10 +214,6 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
 
   return createServer(async (req, res) => {
     try {
-      if (req.method === "OPTIONS") {
-        sendJson(res, 204, null);
-        return;
-      }
       if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
         const html = await readFile(UI_HTML);
         res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
@@ -265,12 +261,29 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
           sendJson(res, 403, { ok: false, ...access });
           return;
         }
+        // Alleen application/json: een "simple request" (text/plain) zou
+        // zonder preflight door een vreemde site verstuurd kunnen worden.
+        const contentType = req.headers["content-type"] ?? "";
+        if (!contentType.startsWith("application/json")) {
+          sendJson(res, 415, { ok: false, error: "content_type_must_be_json" });
+          return;
+        }
         const raw = await readBody(req);
         let body: { review?: unknown; context?: unknown };
         try {
           body = JSON.parse(raw) as typeof body;
         } catch {
           sendJson(res, 400, { ok: false, error: "body must be JSON" });
+          return;
+        }
+        // Context komt NOOIT uit het request: alleen CONTEXT_MODE (demo of
+        // privé-volume) bepaalt de bedrijfscontext. Een meegestuurde
+        // context-sleutel wordt expliciet geweigerd, niet genegeerd.
+        if (body !== null && typeof body === "object" && "context" in body) {
+          sendJson(res, 400, {
+            ok: false,
+            error: "context_via_request_not_allowed",
+          });
           return;
         }
         const review =
@@ -282,15 +295,8 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
           });
           return;
         }
-        // Context komt uit de body, het privé-volume, of de demo-fallback —
-        // de resolutie (en bron-aanduiding) zit in draft-core.
-        const context =
-          typeof body.context === "string" && body.context.trim()
-            ? body.context
-            : undefined;
         const output = await runDraftImpl({
           reviewText: review,
-          contextText: context,
           isSynthetic: review === SYNTHETIC_REVIEW,
         });
         sendJson(res, output.ok ? 200 : 502, output);

@@ -48,6 +48,8 @@ import type {
 import { createLlamaCppServerAdapter } from "../lib/adr110/adapters/llamacpp-server.ts";
 import type { CapabilityAdapter } from "../lib/adr110/adapters/contract.ts";
 import { storeDraftViaService } from "./draft-store.ts";
+import type { DraftStoreRecord } from "./draft-store.ts";
+import { signSettlement } from "./settlement.ts";
 
 // Geen echte endpoints in de repo: de default is localhost, de echte
 // tailnet-URL leeft uitsluitend als runtime-env op Hetzner (.env, gitignored).
@@ -71,19 +73,21 @@ over het nachtelijke verkeerslawaai. Reageer namens de eigenaar.`;
 
 export interface DraftRequest {
   readonly reviewText: string;
-  /**
-   * Optioneel. Zonder expliciete context wordt tijdens runtime geprobeerd het
-   * privé contextvolume te lezen (CONTEXT_FILE, default
-   * /data/ondernemer-context.txt op het Hetzner-volume); zonder dat volume
-   * valt de pilot terug op de expliciete demodata (DEFAULT_CONTEXT, "De
-   * Linde"). Echte bedrijfscontext komt dus nooit uit de repo — alleen uit
-   * het privé-volume of een bewuste runtime-aanroep.
-   */
-  readonly contextText?: string;
   readonly isSynthetic: boolean;
 }
 
-export type ContextSource = "request" | "volume" | "demo";
+/**
+ * Context komt NOOIT uit het request (de browser kan geen context injecteren).
+ * De modus is expliciete runtime-configuratie:
+ * - demo:    altijd de fictieve demodata ("De Linde") — de enige inhoud die
+ *            in de publieke repo staat;
+ * - private: uitsluitend het privé contextvolume (CONTEXT_FILE op het
+ *            Hetzner-volume). Ontbreekt of is het onleesbaar/leeg, dan FAALT
+ *            de run expliciet — nooit stil terugvallen op demodata.
+ */
+export type ContextMode = "demo" | "private";
+
+export type ContextSource = "volume" | "demo";
 
 export interface ResolvedContext {
   readonly text: string;
@@ -91,38 +95,44 @@ export interface ResolvedContext {
 }
 
 export const CONTEXT_FILE =
-  process.env.CONTEXT_FILE ?? "/data/ondernemer-context.txt";
+  process.env.CONTEXT_FILE ?? "/context/ondernemer-context.txt";
+
+export function contextModeFromEnv(
+  value: string | undefined = process.env.CONTEXT_MODE,
+): ContextMode {
+  return value === "private" ? "private" : "demo";
+}
 
 /**
  * Context-resolutie. De inhoud wordt nooit gelogd en nooit opgenomen in
- * evidence — alleen de bron ("request" | "volume" | "demo") is zichtbaar.
+ * evidence — alleen de bron ("volume" | "demo") is zichtbaar.
  */
 export async function resolveContext(
-  req: Pick<DraftRequest, "contextText">,
-  contextFile: string | false = CONTEXT_FILE,
+  mode: ContextMode,
+  contextFile: string = CONTEXT_FILE,
 ): Promise<ResolvedContext> {
-  if (typeof req.contextText === "string" && req.contextText.trim()) {
-    return { text: req.contextText, source: "request" };
+  if (mode === "demo") {
+    return { text: DEFAULT_CONTEXT, source: "demo" };
   }
-  if (contextFile !== false) {
-    try {
-      const text = await readFile(contextFile, "utf8");
-      if (text.trim()) {
-        return { text, source: "volume" };
-      }
-    } catch {
-      // Geen privé-volume (of niet leesbaar) → expliciete demo-fallback.
-    }
+  let text: string;
+  try {
+    text = await readFile(contextFile, "utf8");
+  } catch {
+    throw new Error("context_unavailable_private_mode");
   }
-  return { text: DEFAULT_CONTEXT, source: "demo" };
+  if (!text.trim()) {
+    throw new Error("context_empty_private_mode");
+  }
+  return { text, source: "volume" };
 }
 
 /** Test-/vervangingspunten; productie gebruikt de defaults. */
 export interface DraftDeps {
   readonly adapter?: CapabilityAdapter;
   readonly storeFn?: typeof storeDraftViaService;
-  /** false = contextvolume nooit lezen (tests, CI). */
-  readonly contextFile?: string | false;
+  readonly contextMode?: ContextMode;
+  readonly contextFile?: string;
+  readonly storeSecret?: string;
 }
 
 function sha256(text: string): string {
@@ -134,14 +144,15 @@ function nowIso() {
 }
 
 async function renderPrompt(
-  req: DraftRequest & { contextText: string },
+  reviewText: string,
+  contextText: string,
 ): Promise<string> {
   const url = new URL("./prompts/review-draft.md", import.meta.url);
   const raw = await readFile(url, "utf8");
   const body = raw.replace(/^\s*<!--[\s\S]*?-->/, "").trim();
   const filled = body
-    .replaceAll("{{REVIEW_TEKST}}", req.reviewText)
-    .replaceAll("{{ONDERNEMER_CONTEXT}}", req.contextText);
+    .replaceAll("{{REVIEW_TEKST}}", reviewText)
+    .replaceAll("{{ONDERNEMER_CONTEXT}}", contextText);
   if (filled.includes("{{")) {
     throw new Error("prompt template has unfilled variables");
   }
@@ -150,8 +161,11 @@ async function renderPrompt(
 
 export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
   const { isSynthetic } = req;
-  const context = await resolveContext(req, deps.contextFile ?? CONTEXT_FILE);
-  const effectiveReq = { ...req, contextText: context.text };
+  const contextMode = deps.contextMode ?? contextModeFromEnv();
+  const context = await resolveContext(
+    contextMode,
+    deps.contextFile ?? CONTEXT_FILE,
+  );
   const t0 = nowIso();
   const label = `shadow-${Date.parse(t0)}`;
   const workspace_id = branded<WorkspaceId>("ws-motor");
@@ -310,7 +324,7 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
   const storeFn = deps.storeFn ?? storeDraftViaService;
 
   const health = await adapter.health(t0);
-  const prompt = await renderPrompt(effectiveReq);
+  const prompt = await renderPrompt(req.reviewText, context.text);
 
   const engine_events: EngineEvent[] = [
     {
@@ -434,27 +448,39 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
           reason: settled.reason,
         };
       } else {
-        // Alleen de store-service schrijft; wij dienen de opdracht in met
-        // het settlement-bewijs van de gateway.
-        const stored = await storeFn(
-          {
-            stored_at: tEnd,
-            run_id: run_id as string,
-            receipt_id: settled.settlement.receipt_id,
-            synthetic: isSynthetic,
-            review: req.reviewText,
-            draft: result.output,
-          },
-          settled.settlement,
-        );
-        storeOutcome = {
-          decision: "ALLOW",
-          executed: true,
-          stored: stored.ok,
-          path: "/data/drafts.jsonl (via store-service)",
+        // Alleen de store-service schrijft; wij dienen de opdracht in met een
+        // ONDERTEKEND settlement (HMAC, payload-gebonden, 60 s geldig). Zonder
+        // runtime-secret kunnen we niet ondertekenen → expliciet niet opslaan.
+        const storeSecret = deps.storeSecret ?? process.env.PILOT_STORE_SECRET;
+        const record: DraftStoreRecord = {
+          stored_at: tEnd,
+          run_id: run_id as string,
           receipt_id: settled.settlement.receipt_id,
-          ...(stored.ok ? {} : { error: stored.error }),
+          synthetic: isSynthetic,
+          review: req.reviewText,
+          draft: result.output,
         };
+        if (!storeSecret) {
+          storeOutcome = {
+            decision: "ALLOW",
+            executed: true,
+            stored: false,
+            path: "/data/drafts.jsonl (via store-service)",
+            receipt_id: settled.settlement.receipt_id,
+            error: "store_secret_not_configured",
+          };
+        } else {
+          const signed = signSettlement(storeSecret, settled.settlement, record);
+          const stored = await storeFn(record, signed);
+          storeOutcome = {
+            decision: "ALLOW",
+            executed: true,
+            stored: stored.ok,
+            path: "/data/drafts.jsonl (via store-service)",
+            receipt_id: settled.settlement.receipt_id,
+            ...(stored.ok ? {} : { error: stored.error }),
+          };
+        }
       }
     }
   }

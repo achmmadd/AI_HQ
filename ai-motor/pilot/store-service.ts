@@ -10,10 +10,13 @@
  * principieel niet geschreven, ook al is de aanroeper intern.
  */
 
-import { appendFile, mkdir } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+
+import { verifySettlement } from "./settlement.ts";
+import type { SignedSettlement } from "./settlement.ts";
 
 const PORT = Number(process.env.STORE_PORT ?? "4401");
 const STORE_PATH = process.env.DRAFT_STORE_PATH ?? "/data/drafts.jsonl";
@@ -41,7 +44,35 @@ async function readBody(
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export function createStoreServer(storePath: string = STORE_PATH) {
+export interface StoreServerOptions {
+  readonly secret?: string;
+  readonly usedPath?: string;
+}
+
+export function createStoreServer(
+  storePath: string = STORE_PATH,
+  options: StoreServerOptions = {},
+) {
+  // Fail-closed: zonder gedeeld secret kan geen enkel bewijs geverifieerd
+  // worden en schrijft de store principieel niets.
+  const secret = options.secret ?? process.env.PILOT_STORE_SECRET ?? "";
+  const usedPath =
+    options.usedPath ?? join(dirname(storePath), "used-settlements.jsonl");
+
+  // Replay-registratie gebeurt op de HANDTEKENING, niet op receipt_id: de
+  // gateway nummert receipts per verse instantie (rcpt-1, rcpt-2, …), dus
+  // receipt_id's zijn niet uniek over runs heen. De HMAC over het volledige
+  // payload-gebonden bewijs is dat wél; een exacte replay heeft dezelfde
+  // handtekening en wordt geweigerd.
+  async function hasUsedSignature(signature: string): Promise<boolean> {
+    try {
+      const raw = await readFile(usedPath, "utf8");
+      return raw.split("\n").includes(signature);
+    } catch {
+      return false;
+    }
+  }
+
   return createServer(async (req, res) => {
     try {
       if (req.method === "GET" && req.url === "/health") {
@@ -49,14 +80,13 @@ export function createStoreServer(storePath: string = STORE_PATH) {
         return;
       }
       if (req.method === "POST" && req.url === "/store") {
+        if (!secret) {
+          sendJson(res, 503, { ok: false, error: "store_not_configured" });
+          return;
+        }
         const body = JSON.parse(await readBody(req)) as {
           record?: { run_id?: unknown; draft?: unknown; review?: unknown };
-          settlement?: {
-            receipt_id?: unknown;
-            action_id?: unknown;
-            argument_hash?: unknown;
-            executed_at?: unknown;
-          };
+          settlement?: Partial<SignedSettlement>;
         };
         const s = body.settlement;
         if (
@@ -64,7 +94,10 @@ export function createStoreServer(storePath: string = STORE_PATH) {
           typeof s.receipt_id !== "string" ||
           typeof s.action_id !== "string" ||
           typeof s.argument_hash !== "string" ||
-          typeof s.executed_at !== "string"
+          typeof s.executed_at !== "string" ||
+          typeof s.expires_at !== "string" ||
+          typeof s.record_sha256 !== "string" ||
+          typeof s.signature !== "string"
         ) {
           sendJson(res, 403, { ok: false, error: "settlement_required" });
           return;
@@ -74,9 +107,25 @@ export function createStoreServer(storePath: string = STORE_PATH) {
           sendJson(res, 400, { ok: false, error: "invalid record" });
           return;
         }
+        // Authentiek bewijs: geldige HMAC, payload-gebonden, niet verlopen.
+        const verification = verifySettlement(
+          secret,
+          s as SignedSettlement,
+          body.record,
+        );
+        if (!verification.ok) {
+          sendJson(res, 403, { ok: false, error: verification.reason });
+          return;
+        }
+        // Eenmalig: dezelfde ondertekening mag nooit twee keer schrijven.
+        if (await hasUsedSignature(s.signature)) {
+          sendJson(res, 403, { ok: false, error: "settlement_replayed" });
+          return;
+        }
         await mkdir(dirname(storePath), { recursive: true });
         const line = `${JSON.stringify(body.record)}\n`;
         await appendFile(storePath, line, "utf8");
+        await appendFile(usedPath, `${s.signature}\n`, "utf8");
         sendJson(res, 200, { ok: true, bytes: Buffer.byteLength(line, "utf8") });
         return;
       }

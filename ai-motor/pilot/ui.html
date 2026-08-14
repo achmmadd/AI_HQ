@@ -91,11 +91,9 @@
   <div class="panel">
     <label for="review">Review van de gast</label>
     <textarea id="review" placeholder="Plak hier de review, bijv. ★★★★☆ — Fijne B&B …"></textarea>
-
-    <details>
-      <summary>Ondernemer-context aanpassen (optioneel)</summary>
-      <textarea id="context"></textarea>
-    </details>
+    <!-- Bewust géén contextveld: bedrijfscontext komt uitsluitend uit de
+         server-side CONTEXT_MODE (demo of het privé-volume), nooit uit de
+         browser. -->
 
     <div class="row">
       <button class="primary" id="go">Genereer concept</button>
@@ -123,11 +121,6 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-const DEFAULT_CONTEXT = `B&B "De Linde", familiebedrijf in het centrum.
-Het ontbijt wordt elke ochtend vers bereid door de mede-eigenaar.
-De kamers aan de straatzijde hebben dubbel glas; de gemeente is aangeschreven
-over het nachtelijke verkeerslawaai. Reageer namens de eigenaar.`;
-$("context").value = DEFAULT_CONTEXT;
 
 async function health() {
   try {
@@ -175,7 +168,7 @@ $("go").addEventListener("click", async () => {
     const r = await fetch("/draft", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ review, context: $("context").value }),
+      body: JSON.stringify({ review }),
     });
     const d = await r.json();
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
@@ -185,6 +178,7 @@ $("go").addEventListener("click", async () => {
     const chips = [
       ["green", "evidence-keten " + (d.chainValid ? "valide" : "onvalide")],
       ["green", "kernel: " + d.kernelTaskStatus],
+      ["", "context: " + (d.contextSource === "volume" ? "privé-volume" : "demo")],
       d.store && d.store.stored
         ? ["green", "opgeslagen ✓ (gateway ALLOW)"]
         : ["amber", "niet opgeslagen"],

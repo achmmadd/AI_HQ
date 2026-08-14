@@ -2,9 +2,9 @@
  * run-shadow.ts — Motor shadow-pilot CLI runner (one-shot).
  *
  * Dunne CLI-wrapper om draft-core.runDraft(): één run, één JSON op stdout.
- * Input is standaard synthetisch (geen echte klantdata); echt via args/env:
+ * De review is standaard synthetisch; echt via args/env:
  *
- *   node pilot/run-shadow.ts --review "★★★★☆ ..." [--context "..."]
+ *   node pilot/run-shadow.ts --review "★★★★☆ ..."
  *   REVIEW_TEXT="..." node pilot/run-shadow.ts
  *
  * De API-variant (server.ts) gebruikt exact dezelfde kern.
@@ -22,15 +22,11 @@ async function main(): Promise<number> {
   const cliReview = argValue("--review");
   const envReview = process.env.REVIEW_TEXT?.trim() || undefined;
   const reviewText = cliReview ?? envReview ?? SYNTHETIC_REVIEW;
-  // Alleen expliciet meegegeven context wordt "request"-context; anders
-  // beslist draft-core: privé contextvolume (indien aanwezig) → demo-fallback.
-  const contextText =
-    argValue("--context") ??
-    (process.env.ONDERNEMER_CONTEXT?.trim() || undefined);
+  // Context komt nooit uit CLI/env: CONTEXT_MODE (demo|private) bepaalt de
+  // bron — demodata of het privé contextvolume. Zie draft-core.ts.
 
   const output = await runDraft({
     reviewText,
-    contextText,
     isSynthetic: !cliReview && !envReview,
   });
 

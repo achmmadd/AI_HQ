@@ -18,16 +18,20 @@
 #   de store alleen op localhost. Geen publieke poorten.
 #
 # Publieke/private grens:
-# - Echte infrastructuurwaarden (tailnet-IP's, ACL met stabiele node-ID's)
-#   staan NOOIT in dit bestand maar in een .env naast dit bestand op Hetzner
-#   (gitignored). Zie .env.example voor de vorm (fictieve waarden).
-# - Echte bedrijfscontext staat nooit in de repo; de API leest die optioneel
-#   uit /data/ondernemer-context.txt (dit privé-volume). Zonder dat bestand
-#   draait de pilot op de expliciete fictieve demodata ("De Linde").
+# - Echte infrastructuurwaarden (tailnet-IP's, ACL met stabiele node-ID's,
+#   store-secret) staan NOOIT in dit bestand maar in een .env naast dit
+#   bestand op Hetzner (gitignored). Zie .env.example voor de vorm.
+# - Twee GESCHEIDEN volumes: pilot-drafts (alleen de store schrijft, de API
+#   leest read-only) en pilot-context (alleen de API leest read-only; de
+#   store heeft er fysiek geen toegang toe). Bedrijfscontext en concepten
+#   delen dus nooit hetzelfde volume.
+# - CONTEXT_MODE=demo|private: demo = fictieve "De Linde"-data; private =
+#   /context/ondernemer-context.txt uit pilot-context (ontbreekt het, dan
+#   faalt de run expliciet — nooit stille fallback).
 #
 # Voorwaarden: repo-checkout onder ${REPO_PATH:-./repo} (read-only gemount),
-# Tailscale op Hetzner, en een .env met MODEL_PORT_URL, PILOT_API_HOST en
-# PILOT_ACL ({"<stableNodeId>": ["ws-motor"]}).
+# Tailscale op Hetzner, en een .env met MODEL_PORT_URL, PILOT_API_HOST,
+# PILOT_ACL ({"<stableNodeId>": ["ws-motor"]}) en PILOT_STORE_SECRET.
 
 name: motor-pilot
 
@@ -36,8 +40,9 @@ services:
     image: alpine:3
     user: "0"
     volumes:
-      - pilot-data:/data
-    command: ["sh", "-c", "mkdir -p /data && chown 1000:1000 /data"]
+      - pilot-drafts:/data
+      - pilot-context:/context
+    command: ["sh", "-c", "chown 1000:1000 /data /context"]
     restart: "no"
 
   motor-pilot:
@@ -54,10 +59,11 @@ services:
       MODEL_NAME: ${MODEL_NAME:-Qwen3.6-35B-A3B-UD-Q4_K_XL}
       MODEL_TIMEOUT_MS: "120000"
       DRAFT_STORE_URL: http://127.0.0.1:4401
-      # Echte input (optioneel; leeg = synthetische stand voor tests/CI):
+      PILOT_STORE_SECRET: ${PILOT_STORE_SECRET:?zet in .env — zie .env.example}
+      CONTEXT_MODE: ${CONTEXT_MODE:-demo}
+      # Echte review-input (optioneel; leeg = synthetische stand):
       #   REVIEW_TEXT="★★★★☆ ..." docker compose run --rm motor-pilot
       REVIEW_TEXT: ${REVIEW_TEXT:-}
-      ONDERNEMER_CONTEXT: ${ONDERNEMER_CONTEXT:-}
     # Node 24 draait .ts native (type stripping, zoals de proof-tests).
     command: ["node", "pilot/run-shadow.ts"]
     depends_on:
@@ -76,10 +82,12 @@ services:
     network_mode: host
     volumes:
       - ${REPO_PATH:-./repo}:/app:ro
-      # Read-only: de API leest de store voor GET /drafts maar kan er
-      # fysiek niet naartoe schrijven. Ook het (optionele) contextbestand
-      # /data/ondernemer-context.txt leeft in dit privé-volume.
-      - pilot-data:/data:ro
+      # Read-only: de API leest de conceptstore voor GET /drafts maar kan er
+      # fysiek niet naartoe schrijven.
+      - pilot-drafts:/data:ro
+      # Privé bedrijfscontext: apart volume, alleen read-only voor de API.
+      # De store-service mount dit volume NOOIT.
+      - pilot-context:/context:ro
       # WhoIs-login: node-identiteit van de aanroeper via de host-tailscaled.
       - /run/tailscale/tailscaled.sock:/run/tailscale/tailscaled.sock:ro
     environment:
@@ -87,6 +95,8 @@ services:
       MODEL_NAME: ${MODEL_NAME:-Qwen3.6-35B-A3B-UD-Q4_K_XL}
       MODEL_TIMEOUT_MS: "120000"
       DRAFT_STORE_URL: http://127.0.0.1:4401
+      PILOT_STORE_SECRET: ${PILOT_STORE_SECRET:?zet in .env — zie .env.example}
+      CONTEXT_MODE: ${CONTEXT_MODE:-demo}
       PILOT_API_HOST: ${PILOT_API_HOST:?zet in .env — tailnet-IP van deze host}
       PILOT_API_PORT: "4400"
       # Fail-closed ACL: {"<stableNodeId>": ["ws-motor"]} — leeg = niemand.
@@ -110,9 +120,12 @@ services:
     network_mode: host
     volumes:
       - ${REPO_PATH:-./repo}:/app:ro
-      - pilot-data:/data
+      # Enige schrijver van de conceptstore. Mount bewust GEEN pilot-context:
+      # wie de store beheert, kan nooit bij de bedrijfscontext schrijven.
+      - pilot-drafts:/data
     environment:
       STORE_PORT: "4401"
+      PILOT_STORE_SECRET: ${PILOT_STORE_SECRET:?zet in .env — zie .env.example}
     command: ["node", "pilot/store-service.ts"]
     depends_on:
       pilot-data-init:
@@ -124,6 +137,8 @@ services:
       - no-new-privileges:true
 
 volumes:
-  # Append-only conceptstore + (optioneel) privé contextbestand; alleen
-  # motor-pilot-store mount hem schrijfbaar.
-  pilot-data:
+  # Append-only conceptstore; alleen motor-pilot-store mount hem schrijfbaar.
+  pilot-drafts:
+  # Privé bedrijfscontext; alleen de API mount hem (read-only). Beheerd
+  # buiten docker om (operator plaatst het bestand), nooit vanuit de repo.
+  pilot-context:
