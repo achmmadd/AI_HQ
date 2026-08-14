@@ -14,7 +14,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { createServer } from "node:http";
+import { createServer, get as httpGet } from "node:http";
 
 import {
   DEFAULT_CONTEXT,
@@ -24,6 +24,69 @@ import {
 import { listDrafts } from "./draft-store.ts";
 
 const UI_HTML = new URL("./ui.html", import.meta.url);
+
+// Identiteit voor lees/schrijf-endpoints: het tailnet is de grens, en binnen
+// het tailnet is de node-identiteit de login. Het bron-IP van de aanroeper
+// wordt via de lokale tailscaled (WhoIs) naar een node-naam vertaald; alleen
+// nodes in PILOT_ALLOWED_NODES mogen lezen/schrijven. Leeg = niemand (fail-closed).
+const TAILSCALE_SOCK =
+  process.env.TAILSCALE_SOCK ?? "/run/tailscale/tailscaled.sock";
+const ALLOWED_NODES = (process.env.PILOT_ALLOWED_NODES ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const PILOT_WORKSPACE = process.env.PILOT_WORKSPACE_ID ?? "ws-motor";
+
+function callerIp(req: import("node:http").IncomingMessage): string {
+  return (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
+}
+
+function whoisNode(ip: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const req = httpGet(
+      {
+        socketPath: TAILSCALE_SOCK,
+        path: `/localapi/v0/whois?addr=${encodeURIComponent(ip)}`,
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          try {
+            const parsed = JSON.parse(data) as { Node?: { Name?: string } };
+            resolve(parsed.Node?.Name ?? null);
+          } catch {
+            resolve(null);
+          }
+        });
+      },
+    );
+    req.on("error", () => resolve(null));
+    req.setTimeout(3000, () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+}
+
+/** null = toegestaan; anders een 403-body. */
+async function accessCheck(
+  req: import("node:http").IncomingMessage,
+  workspace: string,
+): Promise<{ error: string; node: string | null; ip: string } | null> {
+  if (workspace !== PILOT_WORKSPACE) {
+    return { error: "unknown_workspace", node: null, ip: callerIp(req) };
+  }
+  const ip = callerIp(req);
+  const node = await whoisNode(ip);
+  const allowed =
+    node !== null &&
+    ALLOWED_NODES.some((n) => node === n || node.startsWith(`${n}.`));
+  if (!allowed) {
+    return { error: "node_not_allowed", node, ip };
+  }
+  return null;
+}
 
 const PORT = Number(process.env.PILOT_API_PORT ?? "4400");
 const MODEL_PORT_URL =
@@ -89,12 +152,22 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (req.method === "GET" && req.url?.startsWith("/drafts")) {
-      const limitParam = new URL(req.url, "http://localhost").searchParams.get("limit");
-      const limit = Math.min(Math.max(Number(limitParam ?? "20") || 20, 1), 100);
-      sendJson(res, 200, { ok: true, drafts: await listDrafts(limit) });
+      const params = new URL(req.url, "http://localhost").searchParams;
+      const denied = await accessCheck(req, params.get("workspace") ?? PILOT_WORKSPACE);
+      if (denied) {
+        sendJson(res, 403, { ok: false, ...denied });
+        return;
+      }
+      const limit = Math.min(Math.max(Number(params.get("limit") ?? "20") || 20, 1), 100);
+      sendJson(res, 200, { ok: true, workspace: PILOT_WORKSPACE, drafts: await listDrafts(limit) });
       return;
     }
     if (req.method === "POST" && req.url === "/draft") {
+      const denied = await accessCheck(req, PILOT_WORKSPACE);
+      if (denied) {
+        sendJson(res, 403, { ok: false, ...denied });
+        return;
+      }
       const raw = await readBody(req);
       let body: { review?: unknown; context?: unknown };
       try {

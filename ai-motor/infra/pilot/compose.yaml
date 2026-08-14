@@ -1,36 +1,46 @@
 # motor-pilot — geïsoleerde shadow-pilot runtime op Hetzner (Motor2).
 #
-# De runner (ai-motor/pilot/run-shadow.ts) is een ONE-SHOT CLI: hij draait één
-# shadow-run, print één JSON naar stdout en stopt. Er is daarom bewust GEEN
-# poortmapping — de container luistert nergens op, wat de netwerkgrens van
-# plan-stap 5/6 (default-deny, geen publieke poort) direct afdwingt.
-# De eerder geschetste ssh -L 4400-tunnel is daarmee niet nodig; de run gaat via:
+# Diensten:
+# - motor-pilot        one-shot CLI (docker compose run --rm motor-pilot)
+# - motor-pilot-api    HTTP-API + UI, poort ALLEEN op het Tailscale-IP
+# - motor-pilot-store  enige schrijver van /data (append-only conceptstore);
+#                      GEEN host-poort, uitsluitend intern pilot-net
+# - pilot-data-init    eenmalige chown van het named volume (uid 1000)
 #
-#   ssh hetzner 'cd /opt/motor-pilot && docker compose run --rm motor-pilot'
+# Pilot-regels die dit bestand afdwingt:
+# - alleen de store-service (de gateway action-driver) schrijft /data;
+#   de API mount /data read-only en kan fysiek niet schrijven;
+# - de UI leest via de API (GET /drafts), nooit rechtstreeks uit het volume;
+# - shippen = gesloten tailnet: nergens een publieke poort.
 #
-# en het bewijs (draft + evidence-JSON) komt uit stdout/docker logs.
-#
-# Voorwaarden: repo-checkout op de gemergede pilot-commit onder ${REPO_PATH:-./repo}
-# (read-only gemount), en Tailscale op Hetzner (plan-stap 4) zodat
-# MODEL_PORT_URL (het Tailscale-IP van de RTX-pc) bereikbaar is.
+# Voorwaarden: repo-checkout onder ${REPO_PATH:-./repo} (read-only gemount),
+# Tailscale op Hetzner, en PILOT_ALLOWED_NODES met de tailnet-nodes die
+# de API mogen gebruiken (WhoIs-login via de tailscaled-socket).
 
 name: motor-pilot
 
 services:
+  pilot-data-init:
+    image: alpine:3
+    user: "0"
+    volumes:
+      - pilot-data:/data
+    command: ["sh", "-c", "mkdir -p /data && chown 1000:1000 /data"]
+    restart: "no"
+
   motor-pilot:
     image: node:24-alpine
-    # Draai als de niet-root 'node' user (uid/gid 1000 in de image).
     user: "1000:1000"
     working_dir: /app/ai-motor
     volumes:
-      # Repo-checkout read-only; de pilot schrijft niets aan code.
+      # Repo-checkout read-only; de CLI schrijft niets (opslag gaat via de
+      # store-service over het interne netwerk).
       - ${REPO_PATH:-./repo}:/app:ro
-      # Append-only conceptstore (draft.store-adapter achter de gateway).
-      - pilot-data:/data
     environment:
       MODEL_PORT_URL: http://100.118.204.123:8080
       MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
       MODEL_TIMEOUT_MS: "120000"
+      DRAFT_STORE_URL: http://motor-pilot-store:4401
       # Echte input (optioneel; leeg = synthetische stand voor tests/CI):
       #   REVIEW_TEXT="★★★★☆ ..." docker compose run --rm motor-pilot
       REVIEW_TEXT: ${REVIEW_TEXT:-}
@@ -39,32 +49,64 @@ services:
     command: ["node", "pilot/run-shadow.ts"]
     networks:
       - pilot-net
+    depends_on:
+      motor-pilot-store:
+        condition: service_started
     restart: "no"
     read_only: true
     cap_drop: ["ALL"]
     security_opt:
       - no-new-privileges:true
 
-  # Trede 1 naar "live": dezelfde draft-core als HTTP-dienst.
-  # De poort bindt UITSLUITEND aan het Tailscale-IP van Hetzner —
-  # er is dus geen publieke poort; het tailnet is de netwerkgrens.
-  #   POST http://100.97.30.22:4400/draft  {"review": "..."}
   motor-pilot-api:
     image: node:24-alpine
     user: "1000:1000"
     working_dir: /app/ai-motor
     volumes:
       - ${REPO_PATH:-./repo}:/app:ro
-      - pilot-data:/data
+      # Read-only: de API leest de store voor GET /drafts maar kan er
+      # fysiek niet naartoe schrijven.
+      - pilot-data:/data:ro
+      # WhoIs-login: node-identiteit van de aanroeper via de host-tailscaled.
+      - /run/tailscale/tailscaled.sock:/run/tailscale/tailscaled.sock:ro
     environment:
       MODEL_PORT_URL: http://100.118.204.123:8080
       MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
       MODEL_TIMEOUT_MS: "120000"
+      DRAFT_STORE_URL: http://motor-pilot-store:4401
+      PILOT_WORKSPACE_ID: ws-motor
+      PILOT_ALLOWED_NODES: ${PILOT_ALLOWED_NODES:-macbook-pro-van-iliass,iphone171,motorai-nuc,motorai-pc,motor2}
     command: ["node", "pilot/server.ts"]
     ports:
+      # Uitsluitend het Tailscale-IP van Hetzner — geen publieke poort.
       - "100.97.30.22:4400:4400"
     networks:
       - pilot-net
+    depends_on:
+      pilot-data-init:
+        condition: service_completed_successfully
+      motor-pilot-store:
+        condition: service_started
+    restart: unless-stopped
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+
+  motor-pilot-store:
+    image: node:24-alpine
+    user: "1000:1000"
+    working_dir: /app/ai-motor
+    volumes:
+      - ${REPO_PATH:-./repo}:/app:ro
+      - pilot-data:/data
+    command: ["node", "pilot/store-service.ts"]
+    networks:
+      - pilot-net
+    # Bewust GEEN ports: — de action-driver is alleen intern bereikbaar.
+    depends_on:
+      pilot-data-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     read_only: true
     cap_drop: ["ALL"]
@@ -78,5 +120,5 @@ networks:
     driver: bridge
 
 volumes:
-  # Append-only conceptstore; alleen dit volume is schrijfbaar.
+  # Append-only conceptstore; alleen motor-pilot-store mount hem schrijfbaar.
   pilot-data:

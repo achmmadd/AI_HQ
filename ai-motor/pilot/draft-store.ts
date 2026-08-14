@@ -1,18 +1,18 @@
 /**
- * draft-store.ts — eerste echte tool-adapter achter de ADR-110 gateway.
+ * draft-store.ts — client voor de draft.store-koppeling + read-side.
  *
- * Append-only JSONL-opslag voor concepten. De adapter voert alleen uit als
- * de gateway een settlement heeft teruggegeven (executeAction → executed:
- * true); zonder geldige receipt wordt nooit geschreven. Zo is iedere regel
- * in de store causaal terug te leiden naar een gateway-besluit.
- *
- * Pad: DRAFT_STORE_PATH (default /data/drafts.jsonl — in compose een named
- * volume, want de container is verder read-only).
+ * Scheiding volgens de pilot-regels:
+ * - SCHRIJVEN gebeurt uitsluitend door de store-service (pilot/store-service.ts),
+ *   de action-driver binnen de trust boundary van de gateway. Deze module is
+ *   alleen de client die ná een gateway-settlement de schrijfopdracht indient.
+ * - LEZEN (listDrafts) gebeurt door de API via een read-only mount van /data;
+ *   de API kan fysiek niet schrijven (docker :ro).
  */
 
-import { appendFile, mkdir, readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { readFile } from "node:fs/promises";
 
+export const STORE_URL =
+  process.env.DRAFT_STORE_URL ?? "http://motor-pilot-store:4401";
 export const DRAFT_STORE_PATH =
   process.env.DRAFT_STORE_PATH ?? "/data/drafts.jsonl";
 
@@ -25,31 +25,45 @@ export interface DraftStoreRecord {
   readonly draft: string;
 }
 
-export interface AppendResult {
+export interface StoreSettlementProof {
+  readonly receipt_id: string;
+  readonly action_id: string;
+  readonly argument_hash: string;
+  readonly executed_at: string;
+}
+
+export interface StoreResult {
   readonly ok: boolean;
-  readonly path: string;
-  readonly bytes?: number;
   readonly error?: string;
 }
 
-export async function appendDraft(
+/** Dient een schrijfopdracht in bij de store-service; schrijft nooit zelf. */
+export async function storeDraftViaService(
   record: DraftStoreRecord,
-  path: string = DRAFT_STORE_PATH,
-): Promise<AppendResult> {
+  settlement: StoreSettlementProof,
+  baseUrl: string = STORE_URL,
+): Promise<StoreResult> {
   try {
-    await mkdir(dirname(path), { recursive: true });
-    const line = `${JSON.stringify(record)}\n`;
-    await appendFile(path, line, "utf8");
-    return { ok: true, path, bytes: Buffer.byteLength(line, "utf8") };
+    const res = await fetch(`${baseUrl}/store`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ record, settlement }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `store-service ${res.status}: ${text}` };
+    }
+    return { ok: true };
   } catch (error) {
     return {
       ok: false,
-      path,
       error: error instanceof Error ? error.message : String(error),
     };
   }
 }
 
+/** Read-side voor de API; leest de read-only mount. */
 export async function listDrafts(
   limit = 20,
   path: string = DRAFT_STORE_PATH,

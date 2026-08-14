@@ -109,6 +109,11 @@
     <button class="copy" id="copy">Kopieer concept</button>
   </div>
 
+  <div class="panel" id="historyPanel">
+    <label>Recente concepten (via de API, append-only store)</label>
+    <div id="history" style="font-size:14px; line-height:1.6; color:var(--muted)">laden…</div>
+  </div>
+
   <footer>
     Concepten zijn altijd ter goedkeuring aan jou — publiceren doe je handmatig op het platform.
     Elke run legt een evidence-keten vast; de publish-actie wordt bewust geweigerd (DENY).
@@ -134,6 +139,30 @@ async function health() {
   } catch { $("healthBadge").textContent = "API onbereikbaar"; }
 }
 health();
+
+async function loadHistory() {
+  const el = $("history");
+  try {
+    const r = await fetch("/drafts?limit=5");
+    const d = await r.json();
+    if (!d.ok) {
+      el.textContent = d.error === "node_not_allowed"
+        ? "Geen toegang vanaf dit apparaat (node-login)."
+        : "Kon de store niet lezen.";
+      return;
+    }
+    if (!d.drafts.length) { el.textContent = "Nog geen concepten opgeslagen."; return; }
+    el.innerHTML = "";
+    for (const rec of d.drafts) {
+      const div = document.createElement("div");
+      div.style.cssText = "padding:8px 0; border-bottom:1px solid var(--border)";
+      const when = rec.stored_at.replace("T", " ").slice(0, 19);
+      div.textContent = `${when} — ${rec.review.slice(0, 80)}${rec.review.length > 80 ? "…" : ""}`;
+      el.appendChild(div);
+    }
+  } catch { el.textContent = "Store onbereikbaar."; }
+}
+loadHistory();
 
 $("go").addEventListener("click", async () => {
   const review = $("review").value.trim();
@@ -170,6 +199,7 @@ $("go").addEventListener("click", async () => {
     }
     $("resultPanel").classList.remove("hidden");
     $("status").textContent = "";
+    loadHistory();
   } catch (e) {
     $("status").textContent = "Fout: " + e.message;
   } finally {

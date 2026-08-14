@@ -44,7 +44,7 @@ import type {
   WorkspaceId,
 } from "../lib/adr110/index.ts";
 import { createLlamaCppServerAdapter } from "../lib/adr110/adapters/llamacpp-server.ts";
-import { appendDraft } from "./draft-store.ts";
+import { storeDraftViaService } from "./draft-store.ts";
 
 const MODEL_PORT_URL =
   process.env.MODEL_PORT_URL ?? "http://100.118.204.123:8080";
@@ -369,21 +369,26 @@ export async function runDraft(req: DraftRequest) {
           reason: settled.reason,
         };
       } else {
-        const appended = await appendDraft({
-          stored_at: tEnd,
-          run_id: run_id as string,
-          receipt_id: settled.settlement.receipt_id,
-          synthetic: isSynthetic,
-          review: req.reviewText,
-          draft: result.output,
-        });
+        // Alleen de store-service schrijft; wij dienen de opdracht in met
+        // het settlement-bewijs van de gateway.
+        const stored = await storeDraftViaService(
+          {
+            stored_at: tEnd,
+            run_id: run_id as string,
+            receipt_id: settled.settlement.receipt_id,
+            synthetic: isSynthetic,
+            review: req.reviewText,
+            draft: result.output,
+          },
+          settled.settlement,
+        );
         storeOutcome = {
           decision: "ALLOW",
           executed: true,
-          stored: appended.ok,
-          path: appended.path,
+          stored: stored.ok,
+          path: "/data/drafts.jsonl (via store-service)",
           receipt_id: settled.settlement.receipt_id,
-          ...(appended.ok ? {} : { error: appended.error }),
+          ...(stored.ok ? {} : { error: stored.error }),
         };
       }
     }
@@ -503,7 +508,8 @@ export async function runDraft(req: DraftRequest) {
     subject_id: storeRequest
       ? (storeRequest.action_id as string)
       : `store-${label}`,
-    parent_evidence_id: evArtifact.evidence_id,
+    // PREDECESSOR-regel: action-stage parent is altijd de attempt.
+    parent_evidence_id: evAttempt.evidence_id,
     kind_detail: "gateway.settlement.draft.store",
     data: storeOutcome,
     occurred_at: tEnd,
