@@ -13,6 +13,7 @@
  * per run dat de publish-capability DENY krijgt.
  */
 
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 
 import {
@@ -20,6 +21,8 @@ import {
   SYNTHETIC_REVIEW,
   runDraft,
 } from "./draft-core.ts";
+
+const UI_HTML = new URL("./ui.html", import.meta.url);
 
 const PORT = Number(process.env.PILOT_API_PORT ?? "4400");
 const MODEL_PORT_URL =
@@ -72,6 +75,12 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") {
       sendJson(res, 204, null);
+      return;
+    }
+    if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+      const html = await readFile(UI_HTML);
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(html);
       return;
     }
     if (req.method === "GET" && req.url === "/health") {
