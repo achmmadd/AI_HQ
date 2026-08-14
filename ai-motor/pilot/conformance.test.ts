@@ -234,7 +234,7 @@ test("conformance: adapterfout → terminale Motor-state + causale failure-evide
         sidecarUrl: down.url,
         invokeTimeoutMs: 5_000,
       }),
-    }) {
+    })) {
       const run = await runTaskThroughAdapter(
         adapter,
         fixture,
