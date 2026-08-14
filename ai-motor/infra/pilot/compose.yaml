@@ -43,6 +43,31 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Trede 1 naar "live": dezelfde draft-core als HTTP-dienst.
+  # De poort bindt UITSLUITEND aan het Tailscale-IP van Hetzner —
+  # er is dus geen publieke poort; het tailnet is de netwerkgrens.
+  #   POST http://100.97.30.22:4400/draft  {"review": "..."}
+  motor-pilot-api:
+    image: node:24-alpine
+    user: "1000:1000"
+    working_dir: /app/ai-motor
+    volumes:
+      - ${REPO_PATH:-./repo}:/app:ro
+    environment:
+      MODEL_PORT_URL: http://100.118.204.123:8080
+      MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
+      MODEL_TIMEOUT_MS: "120000"
+    command: ["node", "pilot/server.ts"]
+    ports:
+      - "100.97.30.22:4400:4400"
+    networks:
+      - pilot-net
+    restart: unless-stopped
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+
 networks:
   # Eigen docker-netwerk; geen gedeelde netwerken of volumes met bestaande
   # stacks (motor-postgres, qdrant, dify, bokas, nginx blijven no-touch).
