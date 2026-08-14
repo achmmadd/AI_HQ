@@ -8,6 +8,7 @@
  * gedrag is daardoor per definitie identiek.
  */
 
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import {
@@ -41,13 +42,16 @@ import type {
   TaskId,
   AttemptId,
   AgentId,
+  IdentityId,
   WorkspaceId,
 } from "../lib/adr110/index.ts";
 import { createLlamaCppServerAdapter } from "../lib/adr110/adapters/llamacpp-server.ts";
+import type { CapabilityAdapter } from "../lib/adr110/adapters/contract.ts";
 import { storeDraftViaService } from "./draft-store.ts";
 
-const MODEL_PORT_URL =
-  process.env.MODEL_PORT_URL ?? "http://100.118.204.123:8080";
+// Geen echte endpoints in de repo: de default is localhost, de echte
+// tailnet-URL leeft uitsluitend als runtime-env op Hetzner (.env, gitignored).
+const MODEL_PORT_URL = process.env.MODEL_PORT_URL ?? "http://127.0.0.1:8080";
 const MODEL_NAME =
   process.env.MODEL_NAME ?? "Qwen3.6-35B-A3B-UD-Q4_K_XL";
 const MODEL_TIMEOUT_MS = Number(process.env.MODEL_TIMEOUT_MS ?? "120000");
@@ -67,15 +71,71 @@ over het nachtelijke verkeerslawaai. Reageer namens de eigenaar.`;
 
 export interface DraftRequest {
   readonly reviewText: string;
-  readonly contextText: string;
+  /**
+   * Optioneel. Zonder expliciete context wordt tijdens runtime geprobeerd het
+   * privé contextvolume te lezen (CONTEXT_FILE, default
+   * /data/ondernemer-context.txt op het Hetzner-volume); zonder dat volume
+   * valt de pilot terug op de expliciete demodata (DEFAULT_CONTEXT, "De
+   * Linde"). Echte bedrijfscontext komt dus nooit uit de repo — alleen uit
+   * het privé-volume of een bewuste runtime-aanroep.
+   */
+  readonly contextText?: string;
   readonly isSynthetic: boolean;
+}
+
+export type ContextSource = "request" | "volume" | "demo";
+
+export interface ResolvedContext {
+  readonly text: string;
+  readonly source: ContextSource;
+}
+
+export const CONTEXT_FILE =
+  process.env.CONTEXT_FILE ?? "/data/ondernemer-context.txt";
+
+/**
+ * Context-resolutie. De inhoud wordt nooit gelogd en nooit opgenomen in
+ * evidence — alleen de bron ("request" | "volume" | "demo") is zichtbaar.
+ */
+export async function resolveContext(
+  req: Pick<DraftRequest, "contextText">,
+  contextFile: string | false = CONTEXT_FILE,
+): Promise<ResolvedContext> {
+  if (typeof req.contextText === "string" && req.contextText.trim()) {
+    return { text: req.contextText, source: "request" };
+  }
+  if (contextFile !== false) {
+    try {
+      const text = await readFile(contextFile, "utf8");
+      if (text.trim()) {
+        return { text, source: "volume" };
+      }
+    } catch {
+      // Geen privé-volume (of niet leesbaar) → expliciete demo-fallback.
+    }
+  }
+  return { text: DEFAULT_CONTEXT, source: "demo" };
+}
+
+/** Test-/vervangingspunten; productie gebruikt de defaults. */
+export interface DraftDeps {
+  readonly adapter?: CapabilityAdapter;
+  readonly storeFn?: typeof storeDraftViaService;
+  /** false = contextvolume nooit lezen (tests, CI). */
+  readonly contextFile?: string | false;
+}
+
+function sha256(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
 function nowIso() {
   return isoTimestamp(new Date().toISOString());
 }
 
-async function renderPrompt(req: DraftRequest): Promise<string> {
+async function renderPrompt(
+  req: DraftRequest & { contextText: string },
+): Promise<string> {
   const url = new URL("./prompts/review-draft.md", import.meta.url);
   const raw = await readFile(url, "utf8");
   const body = raw.replace(/^\s*<!--[\s\S]*?-->/, "").trim();
@@ -88,8 +148,10 @@ async function renderPrompt(req: DraftRequest): Promise<string> {
   return filled;
 }
 
-export async function runDraft(req: DraftRequest) {
+export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
   const { isSynthetic } = req;
+  const context = await resolveContext(req, deps.contextFile ?? CONTEXT_FILE);
+  const effectiveReq = { ...req, contextText: context.text };
   const t0 = nowIso();
   const label = `shadow-${Date.parse(t0)}`;
   const workspace_id = branded<WorkspaceId>("ws-motor");
@@ -99,7 +161,7 @@ export async function runDraft(req: DraftRequest) {
 
   const identity = deepFreeze({
     schema_version: ADR110_SCHEMA_VERSION,
-    identity_id: branded("identity-owner-pietje"),
+    identity_id: branded<IdentityId>("identity-owner-pietje"),
     kind: "human" as const,
     display_name: "Pietje (eigenaar)",
     workspace_id,
@@ -236,16 +298,19 @@ export async function runDraft(req: DraftRequest) {
     model: MODEL_NAME,
   });
 
-  const adapter = createLlamaCppServerAdapter({
-    baseUrl: MODEL_PORT_URL,
-    model: MODEL_NAME,
-    timeoutMs: MODEL_TIMEOUT_MS,
-    maxTokens: 512,
-    temperature: 0.3,
-  });
+  const adapter =
+    deps.adapter ??
+    createLlamaCppServerAdapter({
+      baseUrl: MODEL_PORT_URL,
+      model: MODEL_NAME,
+      timeoutMs: MODEL_TIMEOUT_MS,
+      maxTokens: 512,
+      temperature: 0.3,
+    });
+  const storeFn = deps.storeFn ?? storeDraftViaService;
 
   const health = await adapter.health(t0);
-  const prompt = await renderPrompt(req);
+  const prompt = await renderPrompt(effectiveReq);
 
   const engine_events: EngineEvent[] = [
     {
@@ -371,7 +436,7 @@ export async function runDraft(req: DraftRequest) {
       } else {
         // Alleen de store-service schrijft; wij dienen de opdracht in met
         // het settlement-bewijs van de gateway.
-        const stored = await storeDraftViaService(
+        const stored = await storeFn(
           {
             stored_at: tEnd,
             run_id: run_id as string,
@@ -468,9 +533,13 @@ export async function runDraft(req: DraftRequest) {
     subject_id: `artifact-${label}`,
     parent_evidence_id: evAttempt.evidence_id,
     kind_detail: "adapter.result",
+    // Bewust géén bedrijfsinhoud in evidence: alleen hash + omvang + status.
+    // De concepttekst zelf leeft in het privé-volume (store) en in het
+    // API-antwoord aan de geautoriseerde aanroeper — nooit in receipts/logs.
     data: result.ok
       ? {
-          output: result.output,
+          output_sha256: sha256(result.output),
+          output_chars: result.output.length,
           cost_cents: result.meta.simulated_cost_cents,
           adapter_id: adapter.adapter_id,
           adapter_version: adapter.adapter_version,
@@ -542,9 +611,10 @@ export async function runDraft(req: DraftRequest) {
     draft: result.ok ? result.output : null,
     ...(result.ok ? {} : { error: result.error }),
     evidence,
+    contextSource: context.source,
     modelMeta: {
       model: MODEL_NAME,
-      baseUrl: MODEL_PORT_URL,
+      // Geen baseUrl: interne endpoints horen niet in API-antwoorden.
       health: health.status,
       latencyMs,
       // Indicatie: ~4 tekens per token, prompt + draft (llama-server usage

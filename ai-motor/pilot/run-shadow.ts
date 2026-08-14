@@ -10,11 +10,7 @@
  * De API-variant (server.ts) gebruikt exact dezelfde kern.
  */
 
-import {
-  DEFAULT_CONTEXT,
-  SYNTHETIC_REVIEW,
-  runDraft,
-} from "./draft-core.ts";
+import { SYNTHETIC_REVIEW, runDraft } from "./draft-core.ts";
 
 function argValue(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);
@@ -26,10 +22,11 @@ async function main(): Promise<number> {
   const cliReview = argValue("--review");
   const envReview = process.env.REVIEW_TEXT?.trim() || undefined;
   const reviewText = cliReview ?? envReview ?? SYNTHETIC_REVIEW;
+  // Alleen expliciet meegegeven context wordt "request"-context; anders
+  // beslist draft-core: privé contextvolume (indien aanwezig) → demo-fallback.
   const contextText =
     argValue("--context") ??
-    (process.env.ONDERNEMER_CONTEXT?.trim() || undefined) ??
-    DEFAULT_CONTEXT;
+    (process.env.ONDERNEMER_CONTEXT?.trim() || undefined);
 
   const output = await runDraft({
     reviewText,

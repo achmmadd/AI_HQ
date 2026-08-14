@@ -44,7 +44,11 @@ export const LLAMACPP_ERROR_CODES = Object.freeze([
 ] as const);
 
 export interface LlamaCppServerConfig {
-  /** Base URL of the llama-server, e.g. http://100.118.204.123:8080 */
+  /**
+   * Base URL of the llama-server. Runtime configuration (env MODEL_PORT_URL);
+   * the repository never contains a real endpoint — e.g. http://100.x.y.z:8080
+   * on the tailnet.
+   */
   readonly baseUrl: string;
   /** Model name sent in the chat/completions request body. */
   readonly model: string;

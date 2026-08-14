@@ -4,44 +4,70 @@
  * Minimale HTTP-dienst om dezelfde draft-core als de CLI te serveren:
  *
  *   GET  /health  → { ok, model bereikbaar? }
+ *   GET  /drafts  → recente concepten uit de append-only store
  *   POST /draft   → body {"review": "...", "context": "..." (optioneel)}
  *                   → dezelfde output als run-shadow.ts (draft + evidence)
  *
  * Netwerkgrens: compose bindt de poort uitsluitend aan het Tailscale-IP van
- * Hetzner; er is geen publieke poort en geen auth-laag — het tailnet ís de
- * grens. Publiceren blijft handmatig: de gateway-probe in runDraft bewijst
- * per run dat de publish-capability DENY krijgt.
+ * Hetzner (runtime-config, nooit in de repo); er is geen publieke poort.
+ * Publiceren blijft handmatig: de gateway-probe in runDraft bewijst per run
+ * dat de publish-capability DENY krijgt.
+ *
+ * Toegang (fail-closed): de aanroeper wordt via de lokale tailscaled (WhoIs)
+ * naar een STABIELE node-identiteit (StableID, geen wijzigbare naam) vertaald.
+ * PILOT_ACL (runtime-env, JSON) koppelt die identiteit server-side aan de
+ * toegestane workspaces: {"<stableId>": ["ws-motor"]}. Een workspace-queryparam
+ * wordt nooit vertrouwd — hij wordt alleen tegen de server-side ACL gelegd.
+ * Lege/ontbrekende ACL = niemand komt binnen.
  */
 
 import { readFile } from "node:fs/promises";
 import { createServer, get as httpGet } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { pathToFileURL } from "node:url";
 
-import {
-  DEFAULT_CONTEXT,
-  SYNTHETIC_REVIEW,
-  runDraft,
-} from "./draft-core.ts";
+import { SYNTHETIC_REVIEW, runDraft } from "./draft-core.ts";
 import { listDrafts } from "./draft-store.ts";
 
 const UI_HTML = new URL("./ui.html", import.meta.url);
 
-// Identiteit voor lees/schrijf-endpoints: het tailnet is de grens, en binnen
-// het tailnet is de node-identiteit de login. Het bron-IP van de aanroeper
-// wordt via de lokale tailscaled (WhoIs) naar een node-naam vertaald; alleen
-// nodes in PILOT_ALLOWED_NODES mogen lezen/schrijven. Leeg = niemand (fail-closed).
 const TAILSCALE_SOCK =
   process.env.TAILSCALE_SOCK ?? "/run/tailscale/tailscaled.sock";
-const ALLOWED_NODES = (process.env.PILOT_ALLOWED_NODES ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-const PILOT_WORKSPACE = process.env.PILOT_WORKSPACE_ID ?? "ws-motor";
 
-function callerIp(req: import("node:http").IncomingMessage): string {
+/** Server-side koppeling identiteit → workspaces. Geen default: fail-closed. */
+export type PilotAcl = Readonly<Record<string, readonly string[]>>;
+
+export function parseAcl(raw: string | undefined): PilotAcl {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const acl: Record<string, readonly string[]> = {};
+    for (const [id, workspaces] of Object.entries(parsed)) {
+      if (Array.isArray(workspaces) && workspaces.every((w) => typeof w === "string")) {
+        acl[id] = workspaces;
+      }
+    }
+    return acl;
+  } catch {
+    // Ongeldige ACL-config → liever niemand binnen dan iemand te veel.
+    return {};
+  }
+}
+
+export interface NodeIdentity {
+  /** Stabiele Tailscale node-identiteit (overleeft hernoeming van de node). */
+  readonly stableId: string;
+  /** Huidige node-naam; alleen voor operator-debugging, nooit voor autorisatie. */
+  readonly name: string | null;
+}
+
+export type ResolveNode = (ip: string) => Promise<NodeIdentity | null>;
+
+function callerIp(req: IncomingMessage): string {
   return (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
 }
 
-function whoisNode(ip: string): Promise<string | null> {
+function whoisNode(ip: string): Promise<NodeIdentity | null> {
   return new Promise((resolve) => {
     const req = httpGet(
       {
@@ -55,8 +81,15 @@ function whoisNode(ip: string): Promise<string | null> {
         res.on("data", (c) => (data += c));
         res.on("end", () => {
           try {
-            const parsed = JSON.parse(data) as { Node?: { Name?: string } };
-            resolve(parsed.Node?.Name ?? null);
+            const parsed = JSON.parse(data) as {
+              Node?: { StableID?: string; Name?: string };
+            };
+            const stableId = parsed.Node?.StableID;
+            if (typeof stableId !== "string" || stableId.length === 0) {
+              resolve(null);
+              return;
+            }
+            resolve({ stableId, name: parsed.Node?.Name ?? null });
           } catch {
             resolve(null);
           }
@@ -71,42 +104,70 @@ function whoisNode(ip: string): Promise<string | null> {
   });
 }
 
-/** null = toegestaan; anders een 403-body. */
-async function accessCheck(
-  req: import("node:http").IncomingMessage,
-  workspace: string,
-): Promise<{ error: string; node: string | null; ip: string } | null> {
-  if (workspace !== PILOT_WORKSPACE) {
-    return { error: "unknown_workspace", node: null, ip: callerIp(req) };
-  }
+export interface AccessDeny {
+  readonly error: string;
+  readonly ip: string;
+}
+
+export interface AccessGrant {
+  /** De effectieve workspace, altijd uit de server-side ACL — nooit blind uit de queryparam. */
+  readonly workspace: string;
+}
+
+/**
+ * Fail-closed toegangscontrole. Volgorde is bewust: eerst identiteit, dan pas
+ * workspace — een onbekende identiteit krijgt nooit te zien welke workspaces
+ * bestaan. Zonder workspace-param en precies één toegestane workspace kiest de
+ * server die zelf (server-side default); een param wordt alleen tegen de ACL
+ * gelegd en nooit vertrouwd.
+ */
+export async function accessCheck(
+  req: IncomingMessage,
+  requestedWorkspace: string | null,
+  acl: PilotAcl,
+  resolveNode: ResolveNode,
+): Promise<AccessDeny | AccessGrant> {
   const ip = callerIp(req);
-  const node = await whoisNode(ip);
-  const allowed =
-    node !== null &&
-    ALLOWED_NODES.some((n) => node === n || node.startsWith(`${n}.`));
-  if (!allowed) {
-    return { error: "node_not_allowed", node, ip };
+  const node = await resolveNode(ip);
+  if (node === null) {
+    return { error: "node_not_allowed", ip };
   }
-  return null;
+  const allowedWorkspaces = acl[node.stableId];
+  if (!allowedWorkspaces || allowedWorkspaces.length === 0) {
+    return { error: "node_not_allowed", ip };
+  }
+  if (requestedWorkspace === null || requestedWorkspace === "") {
+    if (allowedWorkspaces.length === 1) {
+      return { workspace: allowedWorkspaces[0] };
+    }
+    return { error: "workspace_required", ip };
+  }
+  if (!allowedWorkspaces.includes(requestedWorkspace)) {
+    return { error: "unknown_workspace", ip };
+  }
+  return { workspace: requestedWorkspace };
+}
+
+function isDeny(
+  result: AccessDeny | AccessGrant,
+): result is AccessDeny {
+  return "error" in result;
 }
 
 const PORT = Number(process.env.PILOT_API_PORT ?? "4400");
-// De container draait met network_mode: host; bind daarom expliciet op het
-// Tailscale-IP van Hetzner — nooit op 0.0.0.0 (dat zou publiek luisteren).
-const HOST = process.env.PILOT_API_HOST ?? "100.97.30.22";
-const MODEL_PORT_URL =
-  process.env.MODEL_PORT_URL ?? "http://100.118.204.123:8080";
+// De container draait met network_mode: host; bind expliciet op het
+// Tailscale-IP (runtime-env) — nooit op 0.0.0.0 (dat zou publiek luisteren).
+// Default is localhost: zonder bewuste config is de dienst niet van buitenaf
+// bereikbaar.
+const HOST = process.env.PILOT_API_HOST ?? "127.0.0.1";
+const MODEL_PORT_URL = process.env.MODEL_PORT_URL ?? "http://127.0.0.1:8080";
 const MAX_BODY_BYTES = 64 * 1024;
 
-function sendJson(
-  res: import("node:http").ServerResponse,
-  status: number,
-  body: unknown,
-) {
+function sendJson(res: ServerResponse, status: number, body: unknown) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
-    // Tailnet-only dienst; de UI draait op een andere node (NUC).
+    // Tailnet-only dienst; de UI draait op een andere node.
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type",
@@ -114,9 +175,7 @@ function sendJson(
   res.end(payload);
 }
 
-async function readBody(
-  req: import("node:http").IncomingMessage,
-): Promise<string> {
+async function readBody(req: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of req) {
@@ -140,79 +199,120 @@ async function modelHealth(): Promise<boolean> {
   }
 }
 
-const server = createServer(async (req, res) => {
-  try {
-    if (req.method === "OPTIONS") {
-      sendJson(res, 204, null);
-      return;
-    }
-    if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
-      const html = await readFile(UI_HTML);
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(html);
-      return;
-    }
-    if (req.method === "GET" && req.url === "/health") {
-      sendJson(res, 200, { ok: true, model: await modelHealth() });
-      return;
-    }
-    if (req.method === "GET" && req.url?.startsWith("/drafts")) {
-      const params = new URL(req.url, "http://localhost").searchParams;
-      const denied = await accessCheck(req, params.get("workspace") ?? PILOT_WORKSPACE);
-      if (denied) {
-        sendJson(res, 403, { ok: false, ...denied });
+export interface PilotServerDeps {
+  readonly acl?: PilotAcl;
+  readonly resolveNode?: ResolveNode;
+  readonly runDraftImpl?: typeof runDraft;
+  readonly listDraftsImpl?: typeof listDrafts;
+}
+
+export function createPilotServer(deps: PilotServerDeps = {}) {
+  const acl = deps.acl ?? parseAcl(process.env.PILOT_ACL);
+  const resolveNode = deps.resolveNode ?? whoisNode;
+  const runDraftImpl = deps.runDraftImpl ?? runDraft;
+  const listDraftsImpl = deps.listDraftsImpl ?? listDrafts;
+
+  return createServer(async (req, res) => {
+    try {
+      if (req.method === "OPTIONS") {
+        sendJson(res, 204, null);
         return;
       }
-      const limit = Math.min(Math.max(Number(params.get("limit") ?? "20") || 20, 1), 100);
-      sendJson(res, 200, { ok: true, workspace: PILOT_WORKSPACE, drafts: await listDrafts(limit) });
-      return;
-    }
-    if (req.method === "POST" && req.url === "/draft") {
-      const denied = await accessCheck(req, PILOT_WORKSPACE);
-      if (denied) {
-        sendJson(res, 403, { ok: false, ...denied });
+      if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+        const html = await readFile(UI_HTML);
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        res.end(html);
         return;
       }
-      const raw = await readBody(req);
-      let body: { review?: unknown; context?: unknown };
-      try {
-        body = JSON.parse(raw) as typeof body;
-      } catch {
-        sendJson(res, 400, { ok: false, error: "body must be JSON" });
+      if (req.method === "GET" && req.url === "/health") {
+        sendJson(res, 200, { ok: true, model: await modelHealth() });
         return;
       }
-      const review =
-        typeof body.review === "string" ? body.review.trim() : "";
-      if (!review) {
-        sendJson(res, 400, {
-          ok: false,
-          error: 'veld "review" (string) is verplicht',
+      if (req.method === "GET" && req.url?.startsWith("/drafts")) {
+        const params = new URL(req.url, "http://localhost").searchParams;
+        // De queryparam wordt nooit vertrouwd: accessCheck legt hem tegen de
+        // server-side ACL van deze specifieke identiteit.
+        const access = await accessCheck(
+          req,
+          params.get("workspace"),
+          acl,
+          resolveNode,
+        );
+        if (isDeny(access)) {
+          sendJson(res, 403, { ok: false, ...access });
+          return;
+        }
+        const limit = Math.min(
+          Math.max(Number(params.get("limit") ?? "20") || 20, 1),
+          100,
+        );
+        sendJson(res, 200, {
+          ok: true,
+          workspace: access.workspace,
+          drafts: await listDraftsImpl(limit),
         });
         return;
       }
-      const context =
-        typeof body.context === "string" && body.context.trim()
-          ? body.context
-          : DEFAULT_CONTEXT;
-      const output = await runDraft({
-        reviewText: review,
-        contextText: context,
-        isSynthetic: review === SYNTHETIC_REVIEW,
+      if (req.method === "POST" && req.url === "/draft") {
+        const params = new URL(req.url, "http://localhost").searchParams;
+        const access = await accessCheck(
+          req,
+          params.get("workspace"),
+          acl,
+          resolveNode,
+        );
+        if (isDeny(access)) {
+          sendJson(res, 403, { ok: false, ...access });
+          return;
+        }
+        const raw = await readBody(req);
+        let body: { review?: unknown; context?: unknown };
+        try {
+          body = JSON.parse(raw) as typeof body;
+        } catch {
+          sendJson(res, 400, { ok: false, error: "body must be JSON" });
+          return;
+        }
+        const review =
+          typeof body.review === "string" ? body.review.trim() : "";
+        if (!review) {
+          sendJson(res, 400, {
+            ok: false,
+            error: 'veld "review" (string) is verplicht',
+          });
+          return;
+        }
+        // Context komt uit de body, het privé-volume, of de demo-fallback —
+        // de resolutie (en bron-aanduiding) zit in draft-core.
+        const context =
+          typeof body.context === "string" && body.context.trim()
+            ? body.context
+            : undefined;
+        const output = await runDraftImpl({
+          reviewText: review,
+          contextText: context,
+          isSynthetic: review === SYNTHETIC_REVIEW,
+        });
+        sendJson(res, output.ok ? 200 : 502, output);
+        return;
+      }
+      sendJson(res, 404, { ok: false, error: "not found" });
+    } catch (error) {
+      sendJson(res, 500, {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
       });
-      sendJson(res, output.ok ? 200 : 502, output);
-      return;
     }
-    sendJson(res, 404, { ok: false, error: "not found" });
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
+  });
+}
 
-server.listen(PORT, HOST, () => {
-  process.stdout.write(
-    `motor-pilot API luistert op ${HOST}:${PORT} (model: ${MODEL_PORT_URL})\n`,
-  );
-});
+const isMain =
+  typeof process.argv[1] === "string" &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMain) {
+  const server = createPilotServer();
+  server.listen(PORT, HOST, () => {
+    process.stdout.write(`motor-pilot API luistert op ${HOST}:${PORT}\n`);
+  });
+}

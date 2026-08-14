@@ -1,9 +1,9 @@
-# motor-pilot — geïsoleerde shadow-pilot runtime op Hetzner (Motor2).
+# motor-pilot — geïsoleerde shadow-pilot runtime op Hetzner.
 #
 # Diensten:
 # - motor-pilot        one-shot CLI (docker compose run --rm motor-pilot)
 # - motor-pilot-api    HTTP-API + UI; bindt direct op het Tailscale-IP
-#                      (network_mode: host + PILOT_API_HOST) zodat de
+#                      (network_mode: host + PILOT_API_HOST uit .env) zodat de
 #                      WhoIs-login het échte bron-IP van de aanroeper ziet
 # - motor-pilot-store  enige schrijver van /data (append-only conceptstore);
 #                      bindt uitsluitend op 127.0.0.1 — geen enkele poort
@@ -14,12 +14,20 @@
 # - alleen de store-service (de gateway action-driver) schrijft /data;
 #   de API mount /data read-only en kan er fysiek niet naartoe schrijven;
 # - de UI leest via de API (GET /drafts), nooit rechtstreeks uit het volume;
-# - shippen = gesloten tailnet: de API luistert alleen op 100.97.30.22
-#   (tailnet), de store alleen op localhost. Geen publieke poorten.
+# - gesloten tailnet: de API luistert alleen op het tailnet-IP uit .env,
+#   de store alleen op localhost. Geen publieke poorten.
+#
+# Publieke/private grens:
+# - Echte infrastructuurwaarden (tailnet-IP's, ACL met stabiele node-ID's)
+#   staan NOOIT in dit bestand maar in een .env naast dit bestand op Hetzner
+#   (gitignored). Zie .env.example voor de vorm (fictieve waarden).
+# - Echte bedrijfscontext staat nooit in de repo; de API leest die optioneel
+#   uit /data/ondernemer-context.txt (dit privé-volume). Zonder dat bestand
+#   draait de pilot op de expliciete fictieve demodata ("De Linde").
 #
 # Voorwaarden: repo-checkout onder ${REPO_PATH:-./repo} (read-only gemount),
-# Tailscale op Hetzner, en PILOT_ALLOWED_NODES met de tailnet-nodes die
-# de API mogen gebruiken (WhoIs-login via de tailscaled-socket).
+# Tailscale op Hetzner, en een .env met MODEL_PORT_URL, PILOT_API_HOST en
+# PILOT_ACL ({"<stableNodeId>": ["ws-motor"]}).
 
 name: motor-pilot
 
@@ -42,8 +50,8 @@ services:
       # store-service op localhost).
       - ${REPO_PATH:-./repo}:/app:ro
     environment:
-      MODEL_PORT_URL: http://100.118.204.123:8080
-      MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
+      MODEL_PORT_URL: ${MODEL_PORT_URL:?zet in .env — zie .env.example}
+      MODEL_NAME: ${MODEL_NAME:-Qwen3.6-35B-A3B-UD-Q4_K_XL}
       MODEL_TIMEOUT_MS: "120000"
       DRAFT_STORE_URL: http://127.0.0.1:4401
       # Echte input (optioneel; leeg = synthetische stand voor tests/CI):
@@ -69,19 +77,20 @@ services:
     volumes:
       - ${REPO_PATH:-./repo}:/app:ro
       # Read-only: de API leest de store voor GET /drafts maar kan er
-      # fysiek niet naartoe schrijven.
+      # fysiek niet naartoe schrijven. Ook het (optionele) contextbestand
+      # /data/ondernemer-context.txt leeft in dit privé-volume.
       - pilot-data:/data:ro
       # WhoIs-login: node-identiteit van de aanroeper via de host-tailscaled.
       - /run/tailscale/tailscaled.sock:/run/tailscale/tailscaled.sock:ro
     environment:
-      MODEL_PORT_URL: http://100.118.204.123:8080
-      MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
+      MODEL_PORT_URL: ${MODEL_PORT_URL:?zet in .env — zie .env.example}
+      MODEL_NAME: ${MODEL_NAME:-Qwen3.6-35B-A3B-UD-Q4_K_XL}
       MODEL_TIMEOUT_MS: "120000"
       DRAFT_STORE_URL: http://127.0.0.1:4401
-      PILOT_API_HOST: 100.97.30.22
+      PILOT_API_HOST: ${PILOT_API_HOST:?zet in .env — tailnet-IP van deze host}
       PILOT_API_PORT: "4400"
-      PILOT_WORKSPACE_ID: ws-motor
-      PILOT_ALLOWED_NODES: ${PILOT_ALLOWED_NODES:-macbook-pro-van-iliass,iphone171,motorai-nuc,motorai-pc,motor2}
+      # Fail-closed ACL: {"<stableNodeId>": ["ws-motor"]} — leeg = niemand.
+      PILOT_ACL: ${PILOT_ACL:?zet in .env — zie .env.example}
     command: ["node", "pilot/server.ts"]
     depends_on:
       pilot-data-init:
@@ -115,5 +124,6 @@ services:
       - no-new-privileges:true
 
 volumes:
-  # Append-only conceptstore; alleen motor-pilot-store mount hem schrijfbaar.
+  # Append-only conceptstore + (optioneel) privé contextbestand; alleen
+  # motor-pilot-store mount hem schrijfbaar.
   pilot-data:

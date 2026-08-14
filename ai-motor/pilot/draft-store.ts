@@ -11,8 +11,9 @@
 
 import { readFile } from "node:fs/promises";
 
-export const STORE_URL =
-  process.env.DRAFT_STORE_URL ?? "http://motor-pilot-store:4401";
+// Default localhost (de store-service bindt op 127.0.0.1 via host-networking);
+// geen interne hostnames in de repo — afwijkende waarde is runtime-env.
+export const STORE_URL = process.env.DRAFT_STORE_URL ?? "http://127.0.0.1:4401";
 export const DRAFT_STORE_PATH =
   process.env.DRAFT_STORE_PATH ?? "/data/drafts.jsonl";
 

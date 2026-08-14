@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rtx-gpu-setup.sh — eenmalige GPU-setup voor de inference-PC (motorai-server, RTX 3090).
+# rtx-gpu-setup.sh — eenmalige GPU-setup voor de inference-PC (RTX 3090).
 #
 # Doel: NVIDIA-driver + CUDA-toolkit installeren zodat llama-server met CUDA kan draaien.
 # Dit is de enige systeemwijziging van de motor-pilot op deze host. De pilot draait
