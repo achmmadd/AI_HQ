@@ -1,4 +1,4 @@
 {
   "extends": "../lib/adr110/tsconfig.json",
-  "include": ["*.ts", "../lib/adr110/**/*.ts"]
+  "include": ["**/*.ts", "../lib/adr110/**/*.ts"]
 }
