@@ -62,17 +62,35 @@ const MODEL_NAME =
   process.env.MODEL_NAME ?? "Qwen3.6-35B-A3B-UD-Q4_K_XL";
 const MODEL_TIMEOUT_MS = Number(process.env.MODEL_TIMEOUT_MS ?? "120000");
 
-// Synthetic ReviewReceived input (hardcoded; no real customer data).
+// Default input is synthetisch (geen echte klantdata) zodat CI/tests altijd
+// dezelfde keten draaien. Echte input gaat via CLI-args of env, bijv.:
+//   node pilot/run-shadow.ts --review "★★★★☆ ..." [--context "..."]
+//   REVIEW_TEXT="..." docker compose run --rm -e REVIEW_TEXT motor-pilot
 const SYNTHETIC_REVIEW = `★★★★☆ — "Fijne B&B, héérlijk ontbijt, maar lawaaierige straat"
 We sliepen drie nachten in de kamer aan de voorkant. Het ontbijt was uitstekend:
 verse croissants, goede koffie en een gekookt eitje erbij. De ontvangst was hartelijk.
 Minpunt: in de nacht veel geluidsoverlast van verkeer op de straat, ook met het
 raam dicht. Verder niets te klagen. — Gast (3 nachten, kamer aan de straatzijde)`;
 
-const ONDERNEMER_CONTEXT = `B&B "De Linde", familiebedrijf in het centrum.
+const DEFAULT_CONTEXT = `B&B "De Linde", familiebedrijf in het centrum.
 Het ontbijt wordt elke ochtend vers bereid door de mede-eigenaar.
 De kamers aan de straatzijde hebben dubbel glas; de gemeente is aangeschreven
 over het nachtelijke verkeerslawaai. Reageer namens de eigenaar.`;
+
+function argValue(flag: string): string | undefined {
+  const i = process.argv.indexOf(flag);
+  const v = i >= 0 ? process.argv[i + 1] : undefined;
+  return v && v.trim() ? v : undefined;
+}
+
+const cliReview = argValue("--review");
+const envReview = process.env.REVIEW_TEXT?.trim() || undefined;
+const reviewText = cliReview ?? envReview ?? SYNTHETIC_REVIEW;
+const contextText =
+  argValue("--context") ??
+  (process.env.ONDERNEMER_CONTEXT?.trim() || undefined) ??
+  DEFAULT_CONTEXT;
+const isSynthetic = !cliReview && !envReview;
 
 function nowIso() {
   return isoTimestamp(new Date().toISOString());
@@ -83,8 +101,8 @@ async function renderPrompt(): Promise<string> {
   const raw = await readFile(url, "utf8");
   const body = raw.replace(/^\s*<!--[\s\S]*?-->/, "").trim();
   const filled = body
-    .replaceAll("{{REVIEW_TEKST}}", SYNTHETIC_REVIEW)
-    .replaceAll("{{ONDERNEMER_CONTEXT}}", ONDERNEMER_CONTEXT);
+    .replaceAll("{{REVIEW_TEKST}}", reviewText)
+    .replaceAll("{{ONDERNEMER_CONTEXT}}", contextText);
   if (filled.includes("{{")) {
     throw new Error("prompt template has unfilled variables");
   }
@@ -120,7 +138,9 @@ async function main(): Promise<number> {
     task_id,
     workspace_id,
     employee_id: employee.employee_id,
-    title: "Shadow: draft a reply to the synthetic B&B review",
+    title: isSynthetic
+      ? "Shadow: draft a reply to the synthetic B&B review"
+      : "Shadow: draft a reply to an operator-supplied review",
     status: "assigned",
     created_at: t0,
   });
@@ -159,10 +179,14 @@ async function main(): Promise<number> {
       kind: "task",
       data_class: "internal",
       scope: { type: "task", workspace_id, task_id },
-      payload: { title: task.title, source: "ReviewReceived", synthetic: true },
+      payload: {
+        title: task.title,
+        source: "ReviewReceived",
+        synthetic: isSynthetic,
+      },
       created_at: t0,
       produced_by: "pilot:run-shadow",
-      source: "synthetic-review",
+      source: isSynthetic ? "synthetic-review" : "operator-input",
     }),
     makeContextItem({
       item_id: "ctx-shadow-plan",
@@ -172,7 +196,7 @@ async function main(): Promise<number> {
       payload: { steps: ["acknowledge", "address noise point", "thank"] },
       created_at: t0,
       produced_by: "pilot:run-shadow",
-      source: "synthetic-review",
+      source: isSynthetic ? "synthetic-review" : "operator-input",
     }),
     makeContextItem({
       item_id: "ctx-shadow-tone",
@@ -186,7 +210,7 @@ async function main(): Promise<number> {
       payload: { tone: "zakelijk-vriendelijk", language: "nl" },
       created_at: t0,
       produced_by: "pilot:run-shadow",
-      source: "synthetic-review",
+      source: isSynthetic ? "synthetic-review" : "operator-input",
     }),
   ];
 

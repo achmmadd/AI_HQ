@@ -29,6 +29,10 @@ services:
       MODEL_PORT_URL: http://100.118.204.123:8080
       MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
       MODEL_TIMEOUT_MS: "120000"
+      # Echte input (optioneel; leeg = synthetische stand voor tests/CI):
+      #   REVIEW_TEXT="★★★★☆ ..." docker compose run --rm motor-pilot
+      REVIEW_TEXT: ${REVIEW_TEXT:-}
+      ONDERNEMER_CONTEXT: ${ONDERNEMER_CONTEXT:-}
     # Node 24 draait .ts native (type stripping, zoals de proof-tests).
     command: ["node", "pilot/run-shadow.ts"]
     networks:
