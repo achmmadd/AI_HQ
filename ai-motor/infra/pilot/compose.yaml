@@ -1,0 +1,46 @@
+# motor-pilot — geïsoleerde shadow-pilot runtime op Hetzner (Motor2).
+#
+# De runner (ai-motor/pilot/run-shadow.ts) is een ONE-SHOT CLI: hij draait één
+# shadow-run, print één JSON naar stdout en stopt. Er is daarom bewust GEEN
+# poortmapping — de container luistert nergens op, wat de netwerkgrens van
+# plan-stap 5/6 (default-deny, geen publieke poort) direct afdwingt.
+# De eerder geschetste ssh -L 4400-tunnel is daarmee niet nodig; de run gaat via:
+#
+#   ssh hetzner 'cd /opt/motor-pilot && docker compose run --rm motor-pilot'
+#
+# en het bewijs (draft + evidence-JSON) komt uit stdout/docker logs.
+#
+# Voorwaarden: repo-checkout op de gemergede pilot-commit onder ${REPO_PATH:-./repo}
+# (read-only gemount), en Tailscale op Hetzner (plan-stap 4) zodat
+# MODEL_PORT_URL (het Tailscale-IP van de RTX-pc) bereikbaar is.
+
+name: motor-pilot
+
+services:
+  motor-pilot:
+    image: node:24-alpine
+    # Draai als de niet-root 'node' user (uid/gid 1000 in de image).
+    user: "1000:1000"
+    working_dir: /app/ai-motor
+    volumes:
+      # Repo-checkout read-only; de pilot schrijft niets.
+      - ${REPO_PATH:-./repo}:/app:ro
+    environment:
+      MODEL_PORT_URL: http://100.118.204.123:8080
+      MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
+      MODEL_TIMEOUT_MS: "120000"
+    # Node 24 draait .ts native (type stripping, zoals de proof-tests).
+    command: ["node", "pilot/run-shadow.ts"]
+    networks:
+      - pilot-net
+    restart: "no"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  # Eigen docker-netwerk; geen gedeelde netwerken of volumes met bestaande
+  # stacks (motor-postgres, qdrant, dify, bokas, nginx blijven no-touch).
+  pilot-net:
+    driver: bridge

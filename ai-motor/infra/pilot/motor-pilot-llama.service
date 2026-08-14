@@ -1,0 +1,27 @@
+# motor-pilot-llama.service — systemd-unit voor de RTX-pc (motorai-server).
+# Draait llama.cpp llama-server (CUDA-build) met het pilot-model, uitsluitend
+# gebonden aan het Tailscale-IP. Installatie is een operator-actie met sudo
+# (plan-stap 3): kopieer naar /etc/systemd/system/, daarna
+#   sudo systemctl daemon-reload && sudo systemctl enable --now motor-pilot-llama
+# Let op: het -m pad moet overeenkomen met het daadwerkelijk gedownloade
+# GGUF-bestand in /home/motorai/models/ (zie GO-NO-GO-2026-08-14.md sectie 3).
+
+[Unit]
+Description=Motor pilot - llama.cpp llama-server (Qwen3.6-35B-A3B, CUDA)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=motorai
+Group=motorai
+ExecStart=/home/motorai/motor-pilot/llama.cpp/build/bin/llama-server -m /home/motorai/models/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf --host 100.118.204.123 --port 8080 -c 32768 -ngl 99 --jinja
+Restart=on-failure
+RestartSec=5
+# Hardening-licht: geen privilege-escalatie, alleen home blijft schrijfbaar.
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
