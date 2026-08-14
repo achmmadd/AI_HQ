@@ -771,6 +771,10 @@ describe("agentscope adapter: protocol discipline and Motor semantics", () => {
         createRunIds("sem-agentscope"),
       );
       assert.equal(viaAgentScope.result.ok, true);
+      assert.equal(viaFake.result.ok, true);
+      if (!viaAgentScope.result.ok || !viaFake.result.ok) {
+        throw new Error("unreachable: both runs asserted ok");
+      }
       // Same Task, same Employee delegation, same manifest items and policy.
       assert.equal(
         viaAgentScope.agent.delegated_by,
