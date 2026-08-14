@@ -1,0 +1,39 @@
+name: Pilot Spine
+
+# Minimal CI for the ADR-110 spine only: tests, scoped typecheck, scoped lint.
+# No build, no deploy. Activates on push (after explicit owner approval).
+
+on:
+  pull_request:
+    paths:
+      - 'ai-motor/lib/adr110/**'
+      - 'ai-motor/pilot/**'
+      - '.github/workflows/pilot-spine.yml'
+  push:
+    branches: [master, main]
+    paths:
+      - 'ai-motor/lib/adr110/**'
+      - 'ai-motor/pilot/**'
+      - '.github/workflows/pilot-spine.yml'
+
+jobs:
+  spine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-motor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ai-motor/package-lock.json
+      # --ignore-scripts: native builds (e.g. better-sqlite3) are not needed by the spine.
+      - run: npm ci --ignore-scripts
+      - name: Tests (node:test with type stripping)
+        run: node --test 'lib/adr110/*.test.ts'
+      - name: Typecheck (scoped)
+        run: ./node_modules/.bin/tsc -p lib/adr110/tsconfig.json --noEmit
+      - name: Lint (scoped)
+        run: ./node_modules/.bin/eslint lib/adr110
