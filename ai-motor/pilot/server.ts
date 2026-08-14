@@ -26,7 +26,7 @@ import { createServer, get as httpGet } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { pathToFileURL } from "node:url";
 
-import { SYNTHETIC_REVIEW, runDraft } from "./draft-core.ts";
+import { SYNTHETIC_REVIEW, contextModeFromEnv, runDraft } from "./draft-core.ts";
 import { runDecision } from "./decision-core.ts";
 import { listDecisions, listDrafts } from "./draft-store.ts";
 
@@ -378,6 +378,14 @@ const isMain =
   import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isMain) {
+  // Fail-fast bij opstarten: een ongeldige CONTEXT_MODE (typo, verkeerde
+  // waarde) mag nooit stil als demo draaien — liever helemaal niet starten.
+  try {
+    contextModeFromEnv();
+  } catch {
+    process.stderr.write("CONTEXT_MODE is ongeldig (toegestaan: demo|private)\n");
+    process.exit(1);
+  }
   const server = createPilotServer();
   server.listen(PORT, HOST, () => {
     process.stdout.write(`motor-pilot API luistert op ${HOST}:${PORT}\n`);

@@ -1,34 +1,57 @@
 /**
- * settlement.ts — authentieke schrijfbewijzen voor de draft.store-koppeling.
+ * settlement.ts — ondertekening en verificatie van gateway-settlements
+ * voor de pilot-store (koppeling 1: draft.store; koppeling 2: draft.decision).
  *
- * NIEUW GEBOUWD (geen hergebruik, geen legacy-import). Maakt een
- * gateway-settlement geschikt als transportbewijs naar de store-service:
+ * v2 (integratiesprint, spoor A): één gecanonicaliseerde, versiegebonden
+ * HMAC-payload die álle velden dekt die de store vertrouwt:
+ * - receipt-ID + unieke nonce (randomUUID per ondertekening);
+ * - capability/tool en action-ID;
+ * - exacte argumenthash én exacte recordhash;
+ * - workspace, task, run en attempt;
+ * - policy-ID/versie/digest;
+ * - issued_at (receipt-mint), executed_at en expires_at.
  *
- * - ondertekend:  HMAC-SHA256 met een gedeeld runtime-secret (env, nooit in
- *   de repo) — een lokaal proces kan geen geldige handtekening verzinnen;
- * - payload-gebonden: de handtekening dekt sha256 van de exacte record-JSON —
- *   record wijzigen = handtekening ongeldig;
- * - tijdelijk:    expires_at (default 60 s) — een oud bewijs vervalt;
- * - eenmalig:     de store-service markeert gebruikte receipt_id's persistent
- *   en weigert elke herhaling (replay).
- *
- * Het bewijs bevat bewust géén bedrijfsinhoud: alleen id's, hashes en tijden.
+ * Een onbekende versie, een ontbrekend/extra veld, typecoercion, een
+ * gewijzigde payload of record, een verlopen bewijs of een verkeerde sleutel
+ * levert altijd DENY. Het runtime-secret wordt fail-closed gevalideerd:
+ * exact 64 lowercase hex-karakters (32 bytes, `openssl rand -hex 32`).
  */
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 export const SETTLEMENT_TTL_MS = 60_000;
+export const SETTLEMENT_VERSION = "v2";
 
-/** De gateway-settlement zoals executeAction die oplevert. */
+/** Fail-closed secret-eis: 32 willekeurige bytes, lowercase hex-geëncodeerd. */
+export function isValidStoreSecret(secret: string): boolean {
+  return /^[0-9a-f]{64}$/.test(secret);
+}
+
+/**
+ * Alle velden die onder de handtekening vallen. De gateway-settlement levert
+ * receipt_id/action_id/argument_hash/executed_at; de overige causale binding
+ * komt van het gemintte receipt en de actieve policy.
+ */
 export interface SettlementBase {
   readonly receipt_id: string;
   readonly action_id: string;
   readonly argument_hash: string;
   readonly executed_at: string;
+  readonly capability: string;
+  readonly tool: string;
+  readonly workspace_id: string;
+  readonly task_id: string;
+  readonly run_id: string;
+  readonly attempt_id: string;
+  readonly policy_id: string;
+  readonly policy_version: string;
+  readonly policy_digest: string;
+  readonly issued_at: string;
 }
 
-/** SettlementBase + transportbeveiliging voor de store-service. */
 export interface SignedSettlement extends SettlementBase {
+  readonly v: typeof SETTLEMENT_VERSION;
+  readonly nonce: string;
   readonly expires_at: string;
   readonly record_sha256: string;
   readonly signature: string;
@@ -39,6 +62,7 @@ export type SettlementVerification =
   | {
       readonly ok: false;
       readonly reason:
+        | "unsupported_version"
         | "record_mismatch"
         | "settlement_expired"
         | "bad_signature";
@@ -49,18 +73,29 @@ function hmac(secret: string, payload: string): string {
 }
 
 function recordDigest(record: unknown): string {
-  // De store verifiëert over de exacte record-JSON zoals ontvangen; beide
-  // kanten serialiseren hetzelfde object met dezelfde veldvolgorde.
   return createHash("sha256").update(JSON.stringify(record), "utf8").digest("hex");
 }
 
+/** Vaste veldvolgorde = canonieke vorm; geen JSON-ambiguïteit. */
 function payloadOf(s: Omit<SignedSettlement, "signature">): string {
   return [
-    "v1",
+    s.v,
     s.receipt_id,
+    s.nonce,
+    s.capability,
+    s.tool,
     s.action_id,
+    s.workspace_id,
+    s.task_id,
+    s.run_id,
+    s.attempt_id,
+    s.policy_id,
+    s.policy_version,
+    s.policy_digest,
     s.argument_hash,
     s.record_sha256,
+    s.issued_at,
+    s.executed_at,
     s.expires_at,
   ].join("\n");
 }
@@ -71,8 +106,10 @@ export function signSettlement(
   record: unknown,
   now: number = Date.now(),
 ): SignedSettlement {
-  const unsigned = {
+  const unsigned: Omit<SignedSettlement, "signature"> = {
+    v: SETTLEMENT_VERSION,
     ...base,
+    nonce: randomUUID(),
     expires_at: new Date(now + SETTLEMENT_TTL_MS).toISOString(),
     record_sha256: recordDigest(record),
   };
@@ -85,6 +122,12 @@ export function verifySettlement(
   record: unknown,
   now: number = Date.now(),
 ): SettlementVerification {
+  if (proof.v !== SETTLEMENT_VERSION) {
+    return { ok: false, reason: "unsupported_version" };
+  }
+  if (typeof proof.nonce !== "string" || proof.nonce.length === 0) {
+    return { ok: false, reason: "bad_signature" };
+  }
   if (proof.record_sha256 !== recordDigest(record)) {
     return { ok: false, reason: "record_mismatch" };
   }

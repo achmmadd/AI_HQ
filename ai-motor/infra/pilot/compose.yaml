@@ -54,6 +54,10 @@ services:
       # Repo-checkout read-only; de CLI schrijft niets (opslag gaat via de
       # store-service op localhost).
       - ${REPO_PATH:-./repo}:/app:ro
+      # Expliciete CLI-topologie: de one-shot mount het privé-contextvolume
+      # read-only, zodat CONTEXT_MODE=private hier écht werkt en geen
+      # schijnconfiguratie is.
+      - pilot-context:/context:ro
     environment:
       MODEL_PORT_URL: ${MODEL_PORT_URL:?zet in .env — zie .env.example}
       MODEL_NAME: ${MODEL_NAME:-Qwen3.6-35B-A3B-UD-Q4_K_XL}

@@ -49,7 +49,7 @@ import { createLlamaCppServerAdapter } from "../lib/adr110/adapters/llamacpp-ser
 import type { CapabilityAdapter } from "../lib/adr110/adapters/contract.ts";
 import { storeDraftViaService } from "./draft-store.ts";
 import type { DraftStoreRecord } from "./draft-store.ts";
-import { signSettlement } from "./settlement.ts";
+import { isValidStoreSecret, signSettlement } from "./settlement.ts";
 
 // Geen echte endpoints in de repo: de default is localhost, de echte
 // tailnet-URL leeft uitsluitend als runtime-env op Hetzner (.env, gitignored).
@@ -100,7 +100,11 @@ export const CONTEXT_FILE =
 export function contextModeFromEnv(
   value: string | undefined = process.env.CONTEXT_MODE,
 ): ContextMode {
-  return value === "private" ? "private" : "demo";
+  // Ontbrekend/leeg = gedocumenteerde demo-default. Iedere ongeldige
+  // niet-lege waarde faalt gesloten — een typo mag nooit stil demo worden.
+  if (value === undefined || value.trim() === "") return "demo";
+  if (value === "demo" || value === "private") return value;
+  throw new Error("context_mode_invalid");
 }
 
 /**
@@ -468,8 +472,9 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
         };
       } else {
         // Alleen de store-service schrijft; wij dienen de opdracht in met een
-        // ONDERTEKEND settlement (HMAC, payload-gebonden, 60 s geldig). Zonder
-        // runtime-secret kunnen we niet ondertekenen → expliciet niet opslaan.
+        // ONDERTEKEND settlement (HMAC v2: alle causale velden gebonden,
+        // payload-gebonden, 60 s geldig). Zonder geldig runtime-secret
+        // kunnen we niet ondertekenen → expliciet niet opslaan.
         const storeSecret = deps.storeSecret ?? process.env.PILOT_STORE_SECRET;
         const record: DraftStoreRecord = {
           type: "draft",
@@ -480,7 +485,7 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
           review: req.reviewText,
           draft: result.output,
         };
-        if (!storeSecret) {
+        if (!storeSecret || !isValidStoreSecret(storeSecret)) {
           storeOutcome = {
             decision: "ALLOW",
             executed: true,
@@ -490,7 +495,26 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
             error: "store_secret_not_configured",
           };
         } else {
-          const signed = signSettlement(storeSecret, settled.settlement, record);
+          const signed = signSettlement(
+            storeSecret,
+            {
+              receipt_id: settled.settlement.receipt_id,
+              action_id: settled.settlement.action_id,
+              argument_hash: settled.settlement.argument_hash,
+              executed_at: settled.settlement.executed_at,
+              capability: minted.receipt.capability,
+              tool: minted.receipt.tool,
+              workspace_id: workspace_id as string,
+              task_id: task_id as string,
+              run_id: run_id as string,
+              attempt_id: attempt_id as string,
+              policy_id: policy.policy_id as string,
+              policy_version: policy.version,
+              policy_digest: policy.digest,
+              issued_at: minted.receipt.minted_at,
+            },
+            record,
+          );
           const stored = await storeFn(record, signed);
           storeOutcome = {
             decision: "ALLOW",
