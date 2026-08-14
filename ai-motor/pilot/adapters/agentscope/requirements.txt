@@ -1,0 +1,21 @@
+# AgentScope sidecar — exact pin, no `latest`, no extras.
+#
+# Upstream:  https://github.com/agentscope-ai/agentscope
+# Release:   v2.0.6 (2026-08-07), tag commit 29b592358c2e983a0d10dd5227316b7a02d8c23a
+# License:   Apache-2.0 (GitHub API license.spdx_id + PyPI license_expression)
+# Python:    requires_python >=3.11 (image uses 3.12)
+#
+# PyPI artifact hashes (pypi.org/pypi/agentscope/json, fetched 2026-08-14):
+#   agentscope-2.0.6-py3-none-any.whl
+#     sha256:091e7f214eff7fd6f4934d98a7d7c4bb8707a5d4b33d335def7fc31255e7ccb8
+#   agentscope-2.0.6.tar.gz
+#     sha256:5fcf2be7b56dabc2ebb616c8999f8ba299355ba4cbae9ac0d4f777ad04e7e3f6
+#
+# The Dockerfile downloads the wheel with --no-deps and verifies the wheel
+# sha256 before installing. Transitive dependencies (openai, httpx,
+# mcp<2.0.0, opentelemetry-*, anthropic, dashscope, numpy, ...) are resolved
+# by pip at image build time. A full transitive hash-lock
+# (`pip-compile --generate-hashes` for linux/amd64, py3.12) is REQUIRED
+# before any live use and is tracked as a lane-C residual risk; P0 CI never
+# builds this image and tests run against a deterministic fake sidecar.
+agentscope==2.0.6
