@@ -27,7 +27,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { pathToFileURL } from "node:url";
 
 import { SYNTHETIC_REVIEW, runDraft } from "./draft-core.ts";
-import { listDrafts } from "./draft-store.ts";
+import { runDecision } from "./decision-core.ts";
+import { listDecisions, listDrafts } from "./draft-store.ts";
 
 const UI_HTML = new URL("./ui.html", import.meta.url);
 
@@ -204,6 +205,8 @@ export interface PilotServerDeps {
   readonly resolveNode?: ResolveNode;
   readonly runDraftImpl?: typeof runDraft;
   readonly listDraftsImpl?: typeof listDrafts;
+  readonly runDecisionImpl?: typeof runDecision;
+  readonly listDecisionsImpl?: typeof listDecisions;
 }
 
 export function createPilotServer(deps: PilotServerDeps = {}) {
@@ -211,6 +214,8 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
   const resolveNode = deps.resolveNode ?? whoisNode;
   const runDraftImpl = deps.runDraftImpl ?? runDraft;
   const listDraftsImpl = deps.listDraftsImpl ?? listDrafts;
+  const runDecisionImpl = deps.runDecisionImpl ?? runDecision;
+  const listDecisionsImpl = deps.listDecisionsImpl ?? listDecisions;
 
   return createServer(async (req, res) => {
     try {
@@ -246,7 +251,63 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
           ok: true,
           workspace: access.workspace,
           drafts: await listDraftsImpl(limit),
+          decisions: await listDecisionsImpl(500),
         });
+        return;
+      }
+      if (req.method === "POST" && req.url === "/decision") {
+        const params = new URL(req.url, "http://localhost").searchParams;
+        const access = await accessCheck(
+          req,
+          params.get("workspace"),
+          acl,
+          resolveNode,
+        );
+        if (isDeny(access)) {
+          sendJson(res, 403, { ok: false, ...access });
+          return;
+        }
+        const contentType = req.headers["content-type"] ?? "";
+        if (!contentType.startsWith("application/json")) {
+          sendJson(res, 415, { ok: false, error: "content_type_must_be_json" });
+          return;
+        }
+        let body: { draft_run_id?: unknown; decision?: unknown; note?: unknown };
+        try {
+          body = JSON.parse(await readBody(req)) as typeof body;
+        } catch {
+          sendJson(res, 400, { ok: false, error: "body must be JSON" });
+          return;
+        }
+        const draftRunId =
+          typeof body.draft_run_id === "string" ? body.draft_run_id.trim() : "";
+        if (!draftRunId) {
+          sendJson(res, 400, {
+            ok: false,
+            error: 'veld "draft_run_id" (string) is verplicht',
+          });
+          return;
+        }
+        if (body.decision !== "approved" && body.decision !== "rejected") {
+          sendJson(res, 400, {
+            ok: false,
+            error: 'veld "decision" moet "approved" of "rejected" zijn',
+          });
+          return;
+        }
+        const output = await runDecisionImpl({
+          draftRunId,
+          decision: body.decision,
+          note: typeof body.note === "string" ? body.note : undefined,
+        });
+        const status = output.ok
+          ? 200
+          : output.error === "draft_not_found"
+            ? 404
+            : output.error === "already_decided"
+              ? 409
+              : 502;
+        sendJson(res, status, output);
         return;
       }
       if (req.method === "POST" && req.url === "/draft") {

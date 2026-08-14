@@ -13,6 +13,9 @@
  * 5. De store-service accepteert alleen authentieke settlements: HMAC-
  *    ondertekend, payload-gebonden, niet verlopen en eenmalig — en is
  *    fail-closed zonder geconfigureerd secret.
+ * 6. Koppeling 2 (draft.decision): beslissingen vereisen een bestaand
+ *    concept, landen via getekend settlement in decisions.jsonl, zijn
+ *    first-decision-wins, en de operator-notitie komt nooit in evidence.
  */
 
 import assert from "node:assert/strict";
@@ -36,6 +39,7 @@ import {
 } from "./draft-core.ts";
 import type {
   DraftStoreRecord,
+  StoreRecord,
   StoreResult,
   StoreSettlementProof,
 } from "./draft-store.ts";
@@ -44,6 +48,12 @@ import type { NodeIdentity } from "./server.ts";
 import { signSettlement } from "./settlement.ts";
 import type { SettlementBase } from "./settlement.ts";
 import { createStoreServer } from "./store-service.ts";
+import { runDecision } from "./decision-core.ts";
+import {
+  listDecisions,
+  listDrafts,
+  storeDraftViaService,
+} from "./draft-store.ts";
 
 const MARKER_REVIEW = "MARKER-REVIEW-7f3a9c-geheim";
 const MARKER_CONTEXT = "MARKER-CONTEXT-b81d2e-bedrijfsgeheim";
@@ -97,14 +107,14 @@ function createMarkerAdapter(): {
 }
 
 interface CapturedStore {
-  readonly record: DraftStoreRecord;
+  readonly record: StoreRecord;
   readonly settlement: StoreSettlementProof;
 }
 
 function createCapturingStore(): {
   readonly calls: CapturedStore[];
   readonly fn: (
-    record: DraftStoreRecord,
+    record: StoreRecord,
     settlement: StoreSettlementProof,
   ) => Promise<StoreResult>;
 } {
@@ -165,8 +175,10 @@ test("1. evidence en outcomes bevatten nooit bedrijfsinhoud", async () => {
     // De inhoud bereikt wél de privé-store (dat is de bedoeling), mét een
     // ondertekend settlement (signatuur + expiry + payload-binding).
     assert.equal(store.calls.length, 1);
-    assert.equal(store.calls[0].record.review, MARKER_REVIEW);
-    assert.equal(store.calls[0].record.draft, MARKER_DRAFT);
+    const captured = store.calls[0].record;
+    assert.ok("review" in captured && "draft" in captured);
+    assert.equal(captured.review, MARKER_REVIEW);
+    assert.equal(captured.draft, MARKER_DRAFT);
     assert.ok(store.calls[0].settlement.receipt_id.length > 0);
     assert.equal(typeof store.calls[0].settlement.signature, "string");
     assert.equal(typeof store.calls[0].settlement.expires_at, "string");
@@ -520,4 +532,138 @@ test("5d. runDraft slaat expliciet niet op zonder store-secret", async () => {
   }
   // De store is nooit aangeroepen met een onondertekend bewijs.
   assert.equal(store.calls.length, 0);
+});
+
+test("6a. beslissing over onbekend concept wordt geweigerd", async () => {
+  const out = await runDecision(
+    { draftRunId: "run-bestaat-niet", decision: "approved" },
+    {
+      listDraftsImpl: async () => [],
+      listDecisionsImpl: async () => [],
+      storeSecret: SECRET,
+    },
+  );
+  assert.equal(out.ok, false);
+  assert.equal(out.error, "draft_not_found");
+});
+
+test("6b. beslissing landt via getekend settlement in decisions.jsonl; notitie nooit in evidence", async () => {
+  await withStore(SECRET, async (base, dir) => {
+    const storeFn = (record: Parameters<typeof storeDraftViaService>[0], settlement: Parameters<typeof storeDraftViaService>[1]) =>
+      storeDraftViaService(record, settlement, base);
+    const draftsPath = join(dir, "drafts.jsonl");
+    const decisionsPath = join(dir, "decisions.jsonl");
+
+    // Eerst een echt concept via de draft-flow.
+    const { adapter } = createMarkerAdapter();
+    const draftOut = await runDraft(
+      { reviewText: MARKER_REVIEW, isSynthetic: false },
+      {
+        adapter,
+        storeFn,
+        contextMode: "demo",
+        storeSecret: SECRET,
+      },
+    );
+    assert.equal(draftOut.ok, true);
+    const drafts = await listDrafts(20, draftsPath);
+    assert.equal(drafts.length, 1);
+    const runId = drafts[0].run_id;
+
+    // Dan de menselijke beslissing via koppeling 2.
+    const NOTE = "MARKER-NOTITIE-prive-99";
+    const decision = await runDecision(
+      { draftRunId: runId, decision: "approved", note: NOTE },
+      {
+        storeFn,
+        storeSecret: SECRET,
+        listDraftsImpl: (limit?: number) => listDrafts(limit ?? 500, draftsPath),
+        listDecisionsImpl: (limit?: number) => listDecisions(limit ?? 1000, decisionsPath),
+      },
+    );
+    if (!decision.ok) assert.fail(`decision faalde: ${decision.error}`);
+    assert.equal(decision.stored, true);
+    assert.equal(decision.chainValid, true);
+    assert.equal(decision.orphans, 0);
+
+    // De beslissing staat in decisions.jsonl, NIET in drafts.jsonl.
+    const decisionsRaw = await readFile(decisionsPath, "utf8");
+    assert.ok(decisionsRaw.includes(`"draft_run_id":"${runId}"`));
+    assert.ok(decisionsRaw.includes('"decision":"approved"'));
+    const draftsRaw = await readFile(draftsPath, "utf8");
+    assert.ok(!draftsRaw.includes('"type":"decision"'));
+
+    // De notitie leeft in het privé-volume maar nooit in evidence.
+    assert.ok(decisionsRaw.includes(NOTE));
+    assert.ok(!JSON.stringify(decision.evidence).includes(NOTE));
+
+    // First-decision-wins: een tweede beslissing over hetzelfde concept
+    // wordt geweigerd (append-only, geen herschrijven).
+    const second = await runDecision(
+      { draftRunId: runId, decision: "rejected" },
+      {
+        storeFn,
+        storeSecret: SECRET,
+        listDraftsImpl: (limit?: number) => listDrafts(limit ?? 500, draftsPath),
+        listDecisionsImpl: (limit?: number) => listDecisions(limit ?? 1000, decisionsPath),
+      },
+    );
+    assert.equal(second.ok, false);
+    assert.equal(second.error, "already_decided");
+  });
+});
+
+test("6c. store weigert onbekende record-types", async () => {
+  await withStore(SECRET, async (base) => {
+    const record = { type: "exploit", payload: "x" };
+    const settlement = signSettlement(SECRET, baseSettlement(), record);
+    const res = await postStore(base, { record, settlement });
+    assert.equal(res.status, 400);
+    assert.equal(res.json.error, "invalid_record_type");
+  });
+});
+
+test("6d. HTTP: /decision afdwingen van identiteit en content-type", async () => {
+  const denied = createPilotServer({
+    acl: parseAcl('{"nPIETJE123CNTRL":["ws-motor"]}'),
+    resolveNode: async () => null,
+  });
+  await new Promise<void>((resolve) => denied.listen(0, "127.0.0.1", resolve));
+  const deniedAddr = denied.address();
+  assert.ok(deniedAddr !== null && typeof deniedAddr === "object");
+  try {
+    const res = await fetch(`http://127.0.0.1:${deniedAddr.port}/decision`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ draft_run_id: "run-x", decision: "approved" }),
+    });
+    assert.equal(res.status, 403);
+  } finally {
+    denied.close();
+  }
+
+  const server = createPilotServer({
+    acl: parseAcl('{"nPIETJE123CNTRL":["ws-motor"]}'),
+    resolveNode: async () => ({ stableId: "nPIETJE123CNTRL", name: "pietje" }),
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address !== null && typeof address === "object");
+  try {
+    const plain = await fetch(`http://127.0.0.1:${address.port}/decision`, {
+      method: "POST",
+      headers: { "content-type": "text/plain" },
+      body: "draft_run_id=run-x",
+    });
+    assert.equal(plain.status, 415);
+
+    const badDecision = await fetch(`http://127.0.0.1:${address.port}/decision`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ draft_run_id: "run-x", decision: "misschien" }),
+    });
+    assert.equal(badDecision.status, 400);
+  } finally {
+    server.close();
+  }
 });

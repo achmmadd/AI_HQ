@@ -18,6 +18,8 @@ export const DRAFT_STORE_PATH =
   process.env.DRAFT_STORE_PATH ?? "/data/drafts.jsonl";
 
 export interface DraftStoreRecord {
+  /** Routering in de store-service; oude records zonder type = "draft". */
+  readonly type?: "draft";
   readonly stored_at: string;
   readonly run_id: string;
   readonly receipt_id: string;
@@ -25,6 +27,22 @@ export interface DraftStoreRecord {
   readonly review: string;
   readonly draft: string;
 }
+
+/**
+ * Koppeling 2: menselijke beslissing over een opgeslagen concept.
+ * Eén beslissing per concept (first-decision-wins, append-only).
+ */
+export interface DecisionStoreRecord {
+  readonly type: "decision";
+  readonly decided_at: string;
+  readonly draft_run_id: string;
+  readonly decision: "approved" | "rejected";
+  readonly note: string | null;
+  readonly decided_by: string;
+  readonly receipt_id: string;
+}
+
+export type StoreRecord = DraftStoreRecord | DecisionStoreRecord;
 
 /**
  * Het ondertekende schrijfbewijs (zie pilot/settlement.ts). Naast de
@@ -48,7 +66,7 @@ export interface StoreResult {
 
 /** Dient een schrijfopdracht in bij de store-service; schrijft nooit zelf. */
 export async function storeDraftViaService(
-  record: DraftStoreRecord,
+  record: StoreRecord,
   settlement: StoreSettlementProof,
   baseUrl: string = STORE_URL,
 ): Promise<StoreResult> {
@@ -69,6 +87,26 @@ export async function storeDraftViaService(
       ok: false,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+export const DECISION_STORE_PATH =
+  process.env.DECISION_STORE_PATH ?? "/data/decisions.jsonl";
+
+/** Read-side voor beslissingen; zelfde read-only mount als listDrafts. */
+export async function listDecisions(
+  limit = 100,
+  path: string = DECISION_STORE_PATH,
+): Promise<readonly DecisionStoreRecord[]> {
+  try {
+    const raw = await readFile(path, "utf8");
+    const lines = raw.split("\n").filter((l) => l.trim().length > 0);
+    return lines
+      .slice(-limit)
+      .map((l) => JSON.parse(l) as DecisionStoreRecord)
+      .reverse();
+  } catch {
+    return [];
   }
 }
 

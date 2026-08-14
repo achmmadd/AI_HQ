@@ -102,9 +102,37 @@ export function createStoreServer(
           sendJson(res, 403, { ok: false, error: "settlement_required" });
           return;
         }
-        const r = body.record;
-        if (!r || typeof r.run_id !== "string" || typeof r.draft !== "string") {
-          sendJson(res, 400, { ok: false, error: "invalid record" });
+        const r = body.record as
+          | {
+              type?: unknown;
+              run_id?: unknown;
+              draft?: unknown;
+              draft_run_id?: unknown;
+              decision?: unknown;
+            }
+          | undefined;
+        // Routering op record.type met een vaste bestandsmap — de client
+        // kiest nooit zelf een pad. Oude records zonder type = "draft".
+        const kind = r?.type === undefined ? "draft" : r.type;
+        let targetPath: string;
+        if (kind === "draft") {
+          if (!r || typeof r.run_id !== "string" || typeof r.draft !== "string") {
+            sendJson(res, 400, { ok: false, error: "invalid record" });
+            return;
+          }
+          targetPath = storePath;
+        } else if (kind === "decision") {
+          if (
+            !r ||
+            typeof r.draft_run_id !== "string" ||
+            (r.decision !== "approved" && r.decision !== "rejected")
+          ) {
+            sendJson(res, 400, { ok: false, error: "invalid record" });
+            return;
+          }
+          targetPath = join(dirname(storePath), "decisions.jsonl");
+        } else {
+          sendJson(res, 400, { ok: false, error: "invalid_record_type" });
           return;
         }
         // Authentiek bewijs: geldige HMAC, payload-gebonden, niet verlopen.
@@ -122,9 +150,9 @@ export function createStoreServer(
           sendJson(res, 403, { ok: false, error: "settlement_replayed" });
           return;
         }
-        await mkdir(dirname(storePath), { recursive: true });
+        await mkdir(dirname(targetPath), { recursive: true });
         const line = `${JSON.stringify(body.record)}\n`;
-        await appendFile(storePath, line, "utf8");
+        await appendFile(targetPath, line, "utf8");
         await appendFile(usedPath, `${s.signature}\n`, "utf8");
         sendJson(res, 200, { ok: true, bytes: Buffer.byteLength(line, "utf8") });
         return;

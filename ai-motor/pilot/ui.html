@@ -146,14 +146,54 @@ async function loadHistory() {
     }
     if (!d.drafts.length) { el.textContent = "Nog geen concepten opgeslagen."; return; }
     el.innerHTML = "";
+    const decisions = d.decisions ?? [];
     for (const rec of d.drafts) {
       const div = document.createElement("div");
       div.style.cssText = "padding:8px 0; border-bottom:1px solid var(--border)";
       const when = rec.stored_at.replace("T", " ").slice(0, 19);
-      div.textContent = `${when} — ${rec.review.slice(0, 80)}${rec.review.length > 80 ? "…" : ""}`;
+      const decided = decisions.find((x) => x.draft_run_id === rec.run_id);
+      const label = document.createElement("span");
+      label.textContent = `${when} — ${rec.review.slice(0, 80)}${rec.review.length > 80 ? "…" : ""}`;
+      div.appendChild(label);
+      if (decided) {
+        const chip = document.createElement("span");
+        chip.className = "chip " + (decided.decision === "approved" ? "green" : "amber");
+        chip.style.marginLeft = "8px";
+        chip.textContent = decided.decision === "approved" ? "goedgekeurd" : "afgekeurd";
+        div.appendChild(chip);
+      } else {
+        for (const [value, text] of [["approved", "Keur goed"], ["rejected", "Keur af"]]) {
+          const btn = document.createElement("button");
+          btn.textContent = text;
+          btn.style.cssText = "margin-left:8px; padding:2px 10px; font-size:12px";
+          btn.onclick = () => decide(rec.run_id, value, btn);
+          div.appendChild(btn);
+        }
+      }
       el.appendChild(div);
     }
   } catch { el.textContent = "Store onbereikbaar."; }
+}
+
+async function decide(runId, decision, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch("/decision", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ draft_run_id: runId, decision }),
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      btn.disabled = false;
+      alert("Beslissing mislukt: " + (d.error ?? r.status));
+      return;
+    }
+    loadHistory();
+  } catch {
+    btn.disabled = false;
+    alert("Netwerkfout bij beslissing.");
+  }
 }
 loadHistory();
 

@@ -159,6 +159,59 @@ async function renderPrompt(
   return filled;
 }
 
+/**
+ * Gedeelde pilot-policy — één bron voor zowel de draft- als de
+ * decision-flow, zodat de gateway beide met identieke regels beoordeelt.
+ * De ADR-110-proofcode zelf blijft ongemoeid: dit is pilot-configuratie.
+ */
+export function buildPilotPolicy(workspace_id: WorkspaceId): Policy {
+  const policyContent = {
+    schema_version: ADR110_SCHEMA_VERSION,
+    policy_id: branded<PolicyId>("policy-motor-default"),
+    version: "1.1.0",
+    workspace_id,
+    capabilities: {
+      "draft.generate": {
+        risk: "R0",
+        requires_approval: false,
+        budget_cents_max: 100,
+        allowed_data_classes: ["public", "internal"],
+        network: "none",
+      },
+      // Koppeling 1: append-only conceptopslag. R0: intern, geen netwerk,
+      // geen kosten — ALLOW zonder approval, mét receipt.
+      "draft.store": {
+        risk: "R0",
+        requires_approval: false,
+        budget_cents_max: 0,
+        allowed_data_classes: ["internal"],
+        network: "none",
+      },
+      // Koppeling 2: menselijke beslissing over een concept (goedkeuren/
+      // afkeuren). Zelfde R0-profiel: interne append-only write. Publiceren
+      // blijft ook ná goedkeuring geblokkeerd — zie review.reply.publish.
+      "draft.decision": {
+        risk: "R0",
+        requires_approval: false,
+        budget_cents_max: 0,
+        allowed_data_classes: ["internal"],
+        network: "none",
+      },
+      "review.reply.publish": {
+        risk: "R2",
+        requires_approval: true,
+        budget_cents_max: 50,
+        allowed_data_classes: ["public", "internal"],
+        network: "egress",
+      },
+    },
+  } as const;
+  return deepFreeze({
+    ...policyContent,
+    digest: computePolicyDigest(policyContent),
+  });
+}
+
 export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
   const { isSynthetic } = req;
   const contextMode = deps.contextMode ?? contextModeFromEnv();
@@ -200,41 +253,7 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
     created_at: t0,
   });
 
-  const policyContent = {
-    schema_version: ADR110_SCHEMA_VERSION,
-    policy_id: branded<PolicyId>("policy-motor-default"),
-    version: "1.0.0",
-    workspace_id,
-    capabilities: {
-      "draft.generate": {
-        risk: "R0",
-        requires_approval: false,
-        budget_cents_max: 100,
-        allowed_data_classes: ["public", "internal"],
-        network: "none",
-      },
-      // Eerste echte koppeling: append-only conceptopslag. R0: intern,
-      // geen netwerk, geen kosten — ALLOW zonder approval, mét receipt.
-      "draft.store": {
-        risk: "R0",
-        requires_approval: false,
-        budget_cents_max: 0,
-        allowed_data_classes: ["internal"],
-        network: "none",
-      },
-      "review.reply.publish": {
-        risk: "R2",
-        requires_approval: true,
-        budget_cents_max: 50,
-        allowed_data_classes: ["public", "internal"],
-        network: "egress",
-      },
-    },
-  } as const;
-  const policy: Policy = deepFreeze({
-    ...policyContent,
-    digest: computePolicyDigest(policyContent),
-  });
+  const policy = buildPilotPolicy(workspace_id);
   const gateway = createGateway(policy);
 
   const inputSource = isSynthetic ? "synthetic-review" : "operator-input";
@@ -453,6 +472,7 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
         // runtime-secret kunnen we niet ondertekenen → expliciet niet opslaan.
         const storeSecret = deps.storeSecret ?? process.env.PILOT_STORE_SECRET;
         const record: DraftStoreRecord = {
+          type: "draft",
           stored_at: tEnd,
           run_id: run_id as string,
           receipt_id: settled.settlement.receipt_id,
