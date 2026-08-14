@@ -825,8 +825,12 @@ test("7f. approved maakt publish/mail/payment/device-control nooit toegestaan", 
 test("7g. mountmatrix: store ziet nooit context, API/CLI lezen hooguit ro", async () => {
   const url = new URL("../infra/pilot/compose.yaml", import.meta.url);
   const compose = await readFile(url, "utf8");
-  const section = (name: string) => {
-    const start = compose.indexOf(`  ${name}:\n`);
+  const section = (rawName: string) => {
+    const name = rawName.replace(/:$/, "");
+    // Anker op regelbegin: "  motor-pilot-store:" komt ook voor als
+    // depends_on-verwijzing (met 6 spaties inspringing) — een losse
+    // indexOf zou die ten onrechte matchen.
+    const start = compose.search(new RegExp(`^  ${name}:\\n`, "m"));
     assert.ok(start >= 0, `service ${name} ontbreekt`);
     const rest = compose.slice(start + name.length + 3);
     const next = rest.search(/^  \S/m);
