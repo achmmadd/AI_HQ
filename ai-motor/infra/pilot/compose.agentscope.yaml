@@ -1,0 +1,78 @@
+# motor-pilot-agentscope — geïsoleerde AgentScope-sidecar (lane C).
+#
+# Aparte compose naast compose.yaml; de bestaande pilot-stack blijft
+# ongemoeid. Samen draaien:
+#   docker compose -f compose.yaml -f compose.agentscope.yaml up -d
+# of standalone voor een gecontroleerde smoke:
+#   docker compose -f compose.agentscope.yaml up -d --build
+#
+# Isolatie die dit bestand afdwingt (spoor C / PHASE-0):
+# - GEEN network_mode: host. De Motor-facing poort publiceert uitsluitend op
+#   host-loopback (127.0.0.1:4410); het sidecar-proces bindt in de container
+#   0.0.0.0 omdat Docker-portforwarding de container-loopback niet bereikt.
+# - GEEN volumes: geen Motor-, draft- of contextvolume, geen docker.sock,
+#   geen hostpaths. read_only rootfs + kleine tmpfs voor /tmp.
+# - GEEN secrets in de omgeving: MODEL_PORT_URL is configuratie, geen
+#   credential. De sidecar krijgt geen API-key (llama.cpp negeert de
+#   placeholder) en geen PILOT_STORE_SECRET.
+# - Egress: de enige functionele bestemming is MODEL_PORT_URL (Motor
+#   ModelPort). De storepoort (127.0.0.1:4401 op de host) is vanuit een
+#   bridge-netwerk fysiek onbereikbaar. Volledige egress-beperking tot
+#   uitsluitend het ModelPort-IP vereist host-firewallregels (bijv. ufw/
+#   iptables op de docker-bridge) — dat is een operatorhandeling buiten
+#   compose; zie LANE-C.md restrisico's.
+# - Telemetry uit: OTEL_SDK_DISABLED=true en de sidecar roept
+#   agentscope.init nooit aan (geen Studio/OTLP-verbinding).
+# - Lege Toolkit: geen shell/files/code/browser/MCP; de sidecar asserteert
+#   bij opstarten dat er nul tools geregistreerd zijn.
+
+name: motor-pilot-agentscope
+
+services:
+  agentscope-sidecar:
+    build:
+      context: ../..
+      dockerfile: infra/pilot/agentscope/Dockerfile
+    # Image-tag draagt de gepinde AgentScope-versie (zie requirements.txt).
+    image: motor-pilot-agentscope:2.0.6
+    ports:
+      # Loopback-only op de host: de Motor-facing poort verlaat 127.0.0.1
+      # nooit. Geen publieke of tailnet-poort voor de sidecar.
+      - "127.0.0.1:4410:4410"
+    environment:
+      MODEL_PORT_URL: ${MODEL_PORT_URL:?zet in .env — zie agentscope/env.example}
+      MODEL_NAME: ${MODEL_NAME:-Qwen3.6-35B-A3B-UD-Q4_K_XL}
+      # Ruim onder de 120 s invoke-timeout van de Node-adapter, zodat de
+      # sidecar vóór de adapter-timeout een eerlijk modelantwoord of een
+      # eerlijke 502 teruggeeft.
+      MODEL_TIMEOUT_MS: "110000"
+      AGENTSCOPE_SIDECAR_PORT: "4410"
+      # Container-intern 0.0.0.0 (anders bereikt de gepubliceerde poort het
+      # proces niet); de loopback-grens zit in de host-publish hierboven.
+      AGENTSCOPE_SIDECAR_HOST: "0.0.0.0"
+      OTEL_SDK_DISABLED: "true"
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    networks:
+      - sidecar
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:4410/health', timeout=3); sys.exit(0 if r.status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  sidecar:
+    driver: bridge
