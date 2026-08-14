@@ -2,16 +2,20 @@
 #
 # Diensten:
 # - motor-pilot        one-shot CLI (docker compose run --rm motor-pilot)
-# - motor-pilot-api    HTTP-API + UI, poort ALLEEN op het Tailscale-IP
+# - motor-pilot-api    HTTP-API + UI; bindt direct op het Tailscale-IP
+#                      (network_mode: host + PILOT_API_HOST) zodat de
+#                      WhoIs-login het échte bron-IP van de aanroeper ziet
 # - motor-pilot-store  enige schrijver van /data (append-only conceptstore);
-#                      GEEN host-poort, uitsluitend intern pilot-net
+#                      bindt uitsluitend op 127.0.0.1 — geen enkele poort
+#                      naar buiten, ook niet naar het tailnet
 # - pilot-data-init    eenmalige chown van het named volume (uid 1000)
 #
 # Pilot-regels die dit bestand afdwingt:
 # - alleen de store-service (de gateway action-driver) schrijft /data;
-#   de API mount /data read-only en kan fysiek niet schrijven;
+#   de API mount /data read-only en kan er fysiek niet naartoe schrijven;
 # - de UI leest via de API (GET /drafts), nooit rechtstreeks uit het volume;
-# - shippen = gesloten tailnet: nergens een publieke poort.
+# - shippen = gesloten tailnet: de API luistert alleen op 100.97.30.22
+#   (tailnet), de store alleen op localhost. Geen publieke poorten.
 #
 # Voorwaarden: repo-checkout onder ${REPO_PATH:-./repo} (read-only gemount),
 # Tailscale op Hetzner, en PILOT_ALLOWED_NODES met de tailnet-nodes die
@@ -32,23 +36,22 @@ services:
     image: node:24-alpine
     user: "1000:1000"
     working_dir: /app/ai-motor
+    network_mode: host
     volumes:
       # Repo-checkout read-only; de CLI schrijft niets (opslag gaat via de
-      # store-service over het interne netwerk).
+      # store-service op localhost).
       - ${REPO_PATH:-./repo}:/app:ro
     environment:
       MODEL_PORT_URL: http://100.118.204.123:8080
       MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
       MODEL_TIMEOUT_MS: "120000"
-      DRAFT_STORE_URL: http://motor-pilot-store:4401
+      DRAFT_STORE_URL: http://127.0.0.1:4401
       # Echte input (optioneel; leeg = synthetische stand voor tests/CI):
       #   REVIEW_TEXT="★★★★☆ ..." docker compose run --rm motor-pilot
       REVIEW_TEXT: ${REVIEW_TEXT:-}
       ONDERNEMER_CONTEXT: ${ONDERNEMER_CONTEXT:-}
     # Node 24 draait .ts native (type stripping, zoals de proof-tests).
     command: ["node", "pilot/run-shadow.ts"]
-    networks:
-      - pilot-net
     depends_on:
       motor-pilot-store:
         condition: service_started
@@ -62,6 +65,7 @@ services:
     image: node:24-alpine
     user: "1000:1000"
     working_dir: /app/ai-motor
+    network_mode: host
     volumes:
       - ${REPO_PATH:-./repo}:/app:ro
       # Read-only: de API leest de store voor GET /drafts maar kan er
@@ -73,15 +77,12 @@ services:
       MODEL_PORT_URL: http://100.118.204.123:8080
       MODEL_NAME: Qwen3.6-35B-A3B-UD-Q4_K_XL
       MODEL_TIMEOUT_MS: "120000"
-      DRAFT_STORE_URL: http://motor-pilot-store:4401
+      DRAFT_STORE_URL: http://127.0.0.1:4401
+      PILOT_API_HOST: 100.97.30.22
+      PILOT_API_PORT: "4400"
       PILOT_WORKSPACE_ID: ws-motor
       PILOT_ALLOWED_NODES: ${PILOT_ALLOWED_NODES:-macbook-pro-van-iliass,iphone171,motorai-nuc,motorai-pc,motor2}
     command: ["node", "pilot/server.ts"]
-    ports:
-      # Uitsluitend het Tailscale-IP van Hetzner — geen publieke poort.
-      - "100.97.30.22:4400:4400"
-    networks:
-      - pilot-net
     depends_on:
       pilot-data-init:
         condition: service_completed_successfully
@@ -97,13 +98,13 @@ services:
     image: node:24-alpine
     user: "1000:1000"
     working_dir: /app/ai-motor
+    network_mode: host
     volumes:
       - ${REPO_PATH:-./repo}:/app:ro
       - pilot-data:/data
+    environment:
+      STORE_PORT: "4401"
     command: ["node", "pilot/store-service.ts"]
-    networks:
-      - pilot-net
-    # Bewust GEEN ports: — de action-driver is alleen intern bereikbaar.
     depends_on:
       pilot-data-init:
         condition: service_completed_successfully
@@ -112,12 +113,6 @@ services:
     cap_drop: ["ALL"]
     security_opt:
       - no-new-privileges:true
-
-networks:
-  # Eigen docker-netwerk; geen gedeelde netwerken of volumes met bestaande
-  # stacks (motor-postgres, qdrant, dify, bokas, nginx blijven no-touch).
-  pilot-net:
-    driver: bridge
 
 volumes:
   # Append-only conceptstore; alleen motor-pilot-store mount hem schrijfbaar.

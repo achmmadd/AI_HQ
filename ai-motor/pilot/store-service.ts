@@ -87,8 +87,11 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+// Bind uitsluitend op localhost: de container draait met network_mode: host,
+// dus is de store alleen voor host-lokale processen (de API) bereikbaar —
+// niet via het tailnet en zeker niet publiek.
+server.listen(PORT, "127.0.0.1", () => {
   process.stdout.write(
-    `motor-pilot store-service luistert op :${PORT} (intern, schrijft ${STORE_PATH})\n`,
+    `motor-pilot store-service luistert op 127.0.0.1:${PORT} (schrijft ${STORE_PATH})\n`,
   );
 });

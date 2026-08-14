@@ -89,6 +89,9 @@ async function accessCheck(
 }
 
 const PORT = Number(process.env.PILOT_API_PORT ?? "4400");
+// De container draait met network_mode: host; bind daarom expliciet op het
+// Tailscale-IP van Hetzner — nooit op 0.0.0.0 (dat zou publiek luisteren).
+const HOST = process.env.PILOT_API_HOST ?? "100.97.30.22";
 const MODEL_PORT_URL =
   process.env.MODEL_PORT_URL ?? "http://100.118.204.123:8080";
 const MAX_BODY_BYTES = 64 * 1024;
@@ -206,8 +209,8 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   process.stdout.write(
-    `motor-pilot API luistert op :${PORT} (model: ${MODEL_PORT_URL})\n`,
+    `motor-pilot API luistert op ${HOST}:${PORT} (model: ${MODEL_PORT_URL})\n`,
   );
 });
