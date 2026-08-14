@@ -1,0 +1,64 @@
+# motor-pilot — Hermes-sidecar overlay (integratiesprint 2026-08-14, spoor B).
+#
+# Aparte overlay bovenop infra/pilot/compose.yaml:
+#   docker compose -f compose.yaml -f compose.hermes.yaml ...
+#
+# De sidecar is straks het enige aanspreekpunt van de Hermes-runtime en
+# spreekt het fase-0 sidecarprotocol (zie
+# pilot/evidence/integration-sprint/PHASE-0.md): HTTP/JSON, uitsluitend
+# loopback/intern, geen volumes, geen secrets.
+#
+# Dit bestand dwingt af:
+# - read_only rootfs, cap_drop ALL, no-new-privileges, non-root (uid 1000);
+# - GEEN publieke poorten en geen host-netwerkmodus: de sidecar hangt
+#   uitsluitend aan het interne netwerk hermes-net (internal: true → geen
+#   egress naar buiten én geen route naar de storepoort of de
+#   host-loopback van andere diensten). De Motor-API wordt in een aparte
+#   wijziging op haar eigen spoor aan hermes-net gekoppeld — bewust niet
+#   hier;
+# - geen data-volumes: de sidecar is stateless; de repo-checkout mount
+#   read-only en alleen om het stdlib-script te kunnen starten.
+#
+# Configuratie via de .env (gitignored) naast compose.yaml — de repo bevat
+# nooit echte infrastructuurwaarden. Fictieve voorbeeldwaarden:
+#   HERMES_SIDECAR_PORT=4410
+#   REPO_PATH=./repo
+
+name: motor-pilot
+
+services:
+  hermes-sidecar:
+    image: python:3-alpine
+    user: "1000:1000"
+    networks:
+      - hermes-net
+    volumes:
+      # Alleen nodig om het stdlib-script te starten; read-only, geen data.
+      - ${REPO_PATH:-./repo}:/app:ro
+    environment:
+      # Container-interface op het interne netwerk; nooit naar buiten gepubliceerd.
+      HERMES_SIDECAR_HOST: "0.0.0.0"
+      HERMES_SIDECAR_PORT: ${HERMES_SIDECAR_PORT:?zet in .env — fictief voorbeeld: 4410}
+    command: ["python3", "/app/ai-motor/infra/pilot/hermes/sidecar.py"]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.environ['HERMES_SIDECAR_PORT']+'/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  # Intern eiland voor de sidecar: geen egress, geen gepubliceerde poorten.
+  hermes-net:
+    internal: true
