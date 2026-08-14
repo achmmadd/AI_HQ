@@ -39,7 +39,7 @@ import {
   storeDraftViaService,
 } from "./draft-store.ts";
 import type { DecisionStoreRecord } from "./draft-store.ts";
-import { signSettlement } from "./settlement.ts";
+import { isValidStoreSecret, signSettlement } from "./settlement.ts";
 
 export interface DecisionRequest {
   readonly draftRunId: string;
@@ -137,11 +137,35 @@ export async function runDecision(req: DecisionRequest, deps: DecisionDeps = {})
   };
 
   const storeSecret = deps.storeSecret ?? process.env.PILOT_STORE_SECRET;
-  if (!storeSecret) {
+  if (!storeSecret || !isValidStoreSecret(storeSecret)) {
     return { ok: false as const, error: "store_secret_not_configured" };
   }
-  const signed = signSettlement(storeSecret, settled.settlement, record);
+  const signed = signSettlement(
+    storeSecret,
+    {
+      receipt_id: settled.settlement.receipt_id,
+      action_id: settled.settlement.action_id,
+      argument_hash: settled.settlement.argument_hash,
+      executed_at: settled.settlement.executed_at,
+      capability: minted.receipt.capability,
+      tool: minted.receipt.tool,
+      workspace_id: workspace_id as string,
+      task_id: task_id as string,
+      run_id: run_id as string,
+      attempt_id: attempt_id as string,
+      policy_id: policy.policy_id as string,
+      policy_version: policy.version,
+      policy_digest: policy.digest,
+      issued_at: minted.receipt.minted_at,
+    },
+    record,
+  );
   const stored = await storeFn(record, signed);
+  // De store handhaaft één-beslissing-per-concept atomair; map dat hier op
+  // dezelfde fout als de snelle pre-check.
+  if (!stored.ok && stored.error?.includes("already_decided")) {
+    return { ok: false as const, error: "already_decided" };
+  }
 
   // Evidence-keten: task → run → attempt → action → outcome. De notitie en
   // conceptinhoud horen daar bewust NIET in — alleen id's en status.
