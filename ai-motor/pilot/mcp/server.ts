@@ -304,11 +304,16 @@ export function createMcpPilotHandler(deps: McpPilotDeps) {
       });
     }
     const request = message as unknown as JsonRpcRequest;
+    // JSON-RPC 2.0: een bericht zonder id is een notification — die wordt
+    // nooit beantwoord en nooit gedispatcht, ook niet als de methode zelf
+    // bekend is (geen read, geen resultaat, ook niet met id: null).
+    if (request.id === undefined) {
+      return null;
+    }
     const id: JsonRpcId =
       typeof request.id === "string" || typeof request.id === "number" || request.id === null
         ? request.id
         : null;
-    const isNotification = request.id === undefined;
 
     switch (request.method) {
       case "initialize":
@@ -322,7 +327,7 @@ export function createMcpPilotHandler(deps: McpPilotDeps) {
       case "tools/call":
         return callReadSnapshot(id, request.params);
       default:
-        if (isNotification || request.method.startsWith("notifications/")) {
+        if (request.method.startsWith("notifications/")) {
           return null;
         }
         return rpcError(id, -32601, "method not found", {
