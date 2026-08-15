@@ -73,6 +73,16 @@ function volumeEntriesOf(serviceBlock: string): string[] {
     .filter((entry): entry is string => entry !== undefined && entry !== "");
 }
 
+/** Netwerk-entries ("- naam") binnen een serviceblok. */
+function networkEntriesOf(serviceBlock: string): string[] {
+  const match = serviceBlock.match(/^    networks:\n((?:      .*\n?)+)/m);
+  if (!match) return [];
+  return match[1]
+    .split("\n")
+    .map((line) => /^\s+- ([\w.-]+)\s*$/.exec(line)?.[1])
+    .filter((entry): entry is string => entry !== undefined);
+}
+
 const BASE_URL = new URL("../../infra/pilot/compose.yaml", import.meta.url);
 const HERMES_URL = new URL("../../infra/pilot/compose.hermes.yaml", import.meta.url);
 const AGENTSCOPE_URL = new URL("../../infra/pilot/compose.agentscope.yaml", import.meta.url);
@@ -129,18 +139,35 @@ test("S3a. hermes-overlay: geen volumes/secrets, intern netwerk, loopback-discip
 
   const sidecar = anchoredBlock(compose, 2, "hermes-sidecar");
   assertSidecarIsolation(sidecar, "hermes-sidecar", { allowPorts: false });
-  // Precies één mount: de repo-checkout read-only, alleen om het
-  // stdlib-script te starten.
+
+  // De bedraade sidecar mount NIETS: het image (build uit
+  // infra/pilot/hermes, gepinde base-digest) draagt zelf de enige code.
+  // Geen repo-, context-, draft- of host-mount en geen duurzame staat.
+  assert.ok(!/^    volumes:/m.test(sidecar), "hermes-sidecar heeft geen volumes-sectie");
+  assert.deepEqual(volumeEntriesOf(sidecar), [], "hermes-sidecar mount niets");
+
+  // Expliciet non-root: een bekende numerieke uid, nooit 0.
+  const user = /user:\s*"(\d+):\d+"/.exec(sidecar);
+  assert.ok(user !== null, "hermes-sidecar zet een expliciete numerieke non-root user");
+  assert.notEqual(user[1], "0", "hermes-sidecar draait nooit als uid 0");
+
+  // De sidecar hangt uitsluitend aan het interne eiland hermes-net.
   assert.deepEqual(
-    volumeEntriesOf(sidecar).map((entry) => entry.replace(/^\$\{REPO_PATH[^}]*\}/, "$REPO")),
-    ["$REPO:/app:ro"],
+    networkEntriesOf(sidecar),
+    ["hermes-net"],
+    "sidecar hangt alleen aan hermes-net",
   );
-  // Exact de verwachte env-keys — geen enkele Motor-credential.
+
+  // Omgeving: uitsluitend bekende niet-geheime config. De modelendpoint
+  // (MODEL_PORT_URL) is configuratie, geen credential — iedere nieuwe key
+  // is een bewuste, reviewbare wijziging.
   assert.deepEqual(envKeysOf(sidecar).sort(), [
     "HERMES_SIDECAR_HOST",
     "HERMES_SIDECAR_PORT",
+    "MODEL_NAME",
+    "MODEL_PORT_URL",
+    "MODEL_REQUEST_TIMEOUT_S",
   ]);
-  assert.ok(sidecar.includes("hermes-net"), "sidecar hangt alleen aan hermes-net");
 
   // Het overlay-netwerk is echt intern: geen egress, geen route naar de
   // storepoort of host-loopback van andere diensten.
