@@ -1,0 +1,38 @@
+# motor-p2-ui — geïsoleerde P2.0 /motor-console op Hetzner.
+#
+# Overlay bovenop compose.yaml, NOOIT als vervanging:
+#   docker compose -f compose.yaml -f compose.p2-motor.yaml up -d --no-deps motor-p2-ui
+#
+# Harde regels:
+# - alleen deze service starten; nooit een stack-wide down
+# - bind via PILOT_P2_HOST (tailnet-IP) + poort 4420; nooit een wildcard-bind
+# - ACL via PILOT_P2_ACL; nooit PILOT_ACL van de P0-API op :4400 wijzigen
+# - code via P2_REPO_PATH (aparte checkout); nooit de live P0-repo vervangen
+# - geen draft-volume, geen context-volume, geen store-secret, geen ModelPort
+# - geen depends_on op motor-pilot-api of motor-pilot-store
+# - activatie vereist het letterlijke commando ACTIVATE P2.0
+#
+# Rollback: uitsluitend deze service stoppen:
+#   docker compose -f compose.yaml -f compose.p2-motor.yaml stop motor-p2-ui
+
+name: motor-pilot
+
+services:
+  motor-p2-ui:
+    image: node:24-alpine
+    user: "1000:1000"
+    working_dir: /app/ai-motor
+    network_mode: host
+    volumes:
+      - ${P2_REPO_PATH:?zet in .env — aparte P2-checkout, niet de live P0-repo}:/app:ro
+      - /run/tailscale/tailscaled.sock:/run/tailscale/tailscaled.sock:ro
+    environment:
+      PILOT_P2_HOST: ${PILOT_P2_HOST:?zet in .env — tailnet-IP van deze host, nooit wildcard-bind}
+      PILOT_P2_PORT: "4420"
+      PILOT_P2_ACL: ${PILOT_P2_ACL:?zet in .env — P2-only ACL, niet de P0-ACL op :4400}
+    command: ["node", "pilot/p2-motor-server.ts"]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
