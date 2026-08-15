@@ -469,19 +469,19 @@ describe("agentscope runtime: protocol version", () => {
 // ---------------------------------------------------------------------------
 
 const SIDECAR_PY = new URL(
-  "../../../pilot/adapters/agentscope/sidecar.py",
+  "../../../../pilot/adapters/agentscope/sidecar.py",
   import.meta.url,
 );
 const FAKE_MODEL_PY = new URL(
-  "../../../pilot/adapters/agentscope/fake_model.py",
+  "../../../../pilot/adapters/agentscope/fake_model.py",
   import.meta.url,
 );
 const REQUIREMENTS_LOCK = new URL(
-  "../../../pilot/adapters/agentscope/requirements-lock.txt",
+  "../../../../pilot/adapters/agentscope/requirements-lock.txt",
   import.meta.url,
 );
 const DOCKERFILE = new URL(
-  "../../../infra/pilot/agentscope/Dockerfile",
+  "../../../../infra/pilot/agentscope/Dockerfile",
   import.meta.url,
 );
 
