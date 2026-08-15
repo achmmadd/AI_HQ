@@ -184,12 +184,17 @@ curl -fsS http://127.0.0.1:4410/health               # agentscope via loopback-p
 
 ## Validatie (Hetzner-builder)
 
-Wordt na de push ingevuld; eindstatus:
+Eerste gate-run op `47b0aed` (code + tests, dit document nog zonder
+uitkomsten): `TESTS_EXIT=0` (225 pass / 0 fail / 1 geregistreerde skip —
+ongewijzigd de conformance-modus zonder python in alpine), `TYPES_EXIT=0`,
+`LINT_EXIT=0`. Testdelta t.o.v. P0.6 (218): +7 = S11a/S11b/S11c (tenancy,
+store), 8a/8b/8c (tenancy, reads/API/e2e) en S3d (basiscompose-guard).
+
+Eindstatus (dit document ingevuld; alleen doc-delta sinds `47b0aed`):
 
 ```text
-SHA=<wordt ingevuld na finale push>
+SHA=<wordt na deze commit ingevuld — zie tweede run hieronder>
 TESTS_EXIT=…   TYPES_EXIT=…   LINT_EXIT=…
-pass/fail/skipped: …
 ```
 
 REAL_CONTEXT_USED=no · EXTERNAL_EFFECTS=no · PUBLIC_INGRESS=no ·
