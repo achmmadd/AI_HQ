@@ -20,6 +20,10 @@
  *    op het v2-settlement, settlement-race (exactly-once claim), crash na
  *    claim vóór append (at-most-once), beslis-race op hetzelfde concept,
  *    publish blijft gesloten na approval, en de compose-mountmatrix.
+ * 8. P0.8-tenancy: listDrafts/listDecisions filteren fail-closed op
+ *    workspace (legacy-regels zonder workspace_id zijn nergens zichtbaar),
+ *    de API geeft de ACL-workspace overal aan door, en cross-workspace
+ *    onzichtbaarheid geldt ook end-to-end via de echte store.
  */
 
 import assert from "node:assert/strict";
@@ -425,8 +429,10 @@ function baseSettlement(): SettlementBase {
   };
 }
 
-function demoRecord(runId: string): DraftStoreRecord {
+function demoRecord(runId: string, workspaceId = "ws-motor"): DraftStoreRecord {
   return {
+    // Verplichte tenancy (P0.8); de store weigert records zonder dit veld.
+    workspace_id: workspaceId,
     stored_at: new Date().toISOString(),
     run_id: runId,
     receipt_id: "rcpt-x",
@@ -901,4 +907,214 @@ test("6d. HTTP: /decision afdwingen van identiteit en content-type", async () =>
   } finally {
     server.close();
   }
+});
+
+test("8a. listDrafts/listDecisions filteren fail-closed op workspace; legacy nergens zichtbaar", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "pilot-tenancy-"));
+  try {
+    const draftsPath = join(dir, "drafts.jsonl");
+    const decisionsPath = join(dir, "decisions.jsonl");
+    // Legacy-regel: het pre-P0.8 formaat zonder workspace_id (demo-data op
+    // Hetzner). Bewust géén DraftStoreRecord-typing: zo'n regel bestaat
+    // alleen nog op schijf, nieuwe writes krijgen het veld altijd.
+    const legacyDraft = {
+      stored_at: "2026-08-01T00:00:00.000Z",
+      run_id: "run-legacy",
+      receipt_id: "rcpt-oud",
+      synthetic: true,
+      review: "oude demoreview",
+      draft: "oud democoncept",
+    };
+    await writeFile(
+      draftsPath,
+      [
+        JSON.stringify(demoRecord("run-motor-1", "ws-motor")),
+        JSON.stringify(demoRecord("run-anders-1", "ws-anders")),
+        JSON.stringify(legacyDraft),
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const decisionFor = (runId: string, ws: string) =>
+      JSON.stringify({
+        type: "decision",
+        workspace_id: ws,
+        decided_at: "2026-08-15T00:00:00.000Z",
+        draft_run_id: runId,
+        decision: "approved",
+        note: null,
+        decided_by: "identity-owner-pietje",
+        receipt_id: "rcpt-d",
+      });
+    await writeFile(
+      decisionsPath,
+      [decisionFor("run-motor-1", "ws-motor"), decisionFor("run-anders-1", "ws-anders"), ""].join("\n"),
+      "utf8",
+    );
+
+    // Per workspace exact de eigen records — en de legacy-regel hoort
+    // nergens aantoonbaar bij: hij valt onder ieder filter weg.
+    assert.deepEqual(
+      (await listDrafts(50, draftsPath, "ws-motor")).map((d) => d.run_id),
+      ["run-motor-1"],
+    );
+    assert.deepEqual(
+      (await listDrafts(50, draftsPath, "ws-anders")).map((d) => d.run_id),
+      ["run-anders-1"],
+    );
+    assert.deepEqual(await listDrafts(50, draftsPath, "ws-legacy"), []);
+    assert.deepEqual(
+      (await listDecisions(50, decisionsPath, "ws-motor")).map((d) => d.draft_run_id),
+      ["run-motor-1"],
+    );
+    assert.deepEqual(
+      (await listDecisions(50, decisionsPath, "ws-anders")).map((d) => d.draft_run_id),
+      ["run-anders-1"],
+    );
+    // Het ongefilterde pad (zonder workspaceId) blijft bestaan voor interne/
+    // test-doeleinden en toont alles; productiecallers gebruiken het nooit.
+    assert.equal((await listDrafts(50, draftsPath)).length, 3);
+    assert.equal((await listDecisions(50, decisionsPath)).length, 2);
+
+    // De filter geldt vóór de limit: een oudere eigen regel verdwijnt niet
+    // achter nieuwere vreemde regels.
+    assert.deepEqual(
+      (await listDrafts(1, draftsPath, "ws-motor")).map((d) => d.run_id),
+      ["run-motor-1"],
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("8b. API geeft de ACL-vastgestelde workspace door aan reads én flows", async () => {
+  const seen: {
+    drafts?: unknown[];
+    decisions?: unknown[];
+    draft?: unknown;
+    decision?: unknown;
+  } = {};
+  const server = createPilotServer({
+    acl: parseAcl('{"nPIETJE123CNTRL":["ws-motor"]}'),
+    resolveNode: async () => ({ stableId: "nPIETJE123CNTRL", name: "pietje" }),
+    listDraftsImpl: (async (...args: unknown[]) => {
+      seen.drafts = args;
+      return [];
+    }) as never,
+    listDecisionsImpl: (async (...args: unknown[]) => {
+      seen.decisions = args;
+      return [];
+    }) as never,
+    runDraftImpl: (async (req: unknown) => {
+      seen.draft = req;
+      return { ok: true, draft: "x" };
+    }) as never,
+    runDecisionImpl: (async (req: unknown) => {
+      seen.decision = req;
+      return { ok: true, stored: true };
+    }) as never,
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address !== null && typeof address === "object");
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    const list = await fetch(`${base}/drafts`);
+    assert.equal(list.status, 200);
+    // Derde argument is de ACL-workspace; het pad laat de server aan de
+    // store-defaults (undefined).
+    assert.deepEqual(seen.drafts?.slice(2), ["ws-motor"]);
+    assert.deepEqual(seen.decisions?.slice(2), ["ws-motor"]);
+
+    const dec = await fetch(`${base}/decision`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ draft_run_id: "run-x", decision: "approved" }),
+    });
+    assert.equal(dec.status, 200);
+    assert.equal((seen.decision as { workspaceId?: string }).workspaceId, "ws-motor");
+
+    const draft = await fetch(`${base}/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ review: "een review" }),
+    });
+    assert.equal(draft.status, 200);
+    assert.equal((seen.draft as { workspaceId?: string }).workspaceId, "ws-motor");
+  } finally {
+    server.close();
+  }
+});
+
+test("8c. end-to-end via de echte store: cross-workspace onzichtbaarheid in reads", async () => {
+  await withStore(SECRET, async (base, dir) => {
+    const draftsPath = join(dir, "drafts.jsonl");
+    const decisionsPath = join(dir, "decisions.jsonl");
+
+    // Eén concept + beslissing in ws-motor via de beveiligde schrijfroute.
+    const draft = demoRecord("run-tenant", "ws-motor");
+    const draftWrite = await postStore(base, {
+      record: draft,
+      settlement: signSettlement(SECRET, baseSettlement(), draft),
+    });
+    assert.equal(draftWrite.status, 200, "testopstelling: draft-write");
+    const decision = {
+      type: "decision",
+      workspace_id: "ws-motor",
+      decided_at: new Date().toISOString(),
+      draft_run_id: "run-tenant",
+      decision: "approved",
+      note: null,
+      decided_by: "identity-owner-pietje",
+      receipt_id: "rcpt-tenant",
+    };
+    const decisionSettlement = signSettlement(
+      SECRET,
+      {
+        ...baseSettlement(),
+        capability: "draft.decision",
+        tool: "draft.decision.local",
+      },
+      decision,
+    );
+    const decisionWrite = await postStore(base, {
+      record: decision,
+      settlement: decisionSettlement,
+    });
+    assert.equal(decisionWrite.status, 200, "testopstelling: decision-write");
+
+    // De vreemde workspace ziet niets — noch het concept, noch de
+    // beslissing; de eigen workspace ziet beide.
+    assert.deepEqual(await listDrafts(50, draftsPath, "ws-anders"), []);
+    assert.deepEqual(await listDecisions(50, decisionsPath, "ws-anders"), []);
+    assert.deepEqual(
+      (await listDrafts(50, draftsPath, "ws-motor")).map((d) => d.run_id),
+      ["run-tenant"],
+    );
+    assert.deepEqual(
+      (await listDecisions(50, decisionsPath, "ws-motor")).map((d) => d.draft_run_id),
+      ["run-tenant"],
+    );
+
+    // Een legacy-regel die later handmatig naast de store om in het bestand
+    // terechtkomt (bijv. bestaande demo-data), blijft overal onzichtbaar.
+    const existing = await readFile(draftsPath, "utf8");
+    await writeFile(
+      draftsPath,
+      `${existing}${JSON.stringify({
+        stored_at: "2026-08-01T00:00:00.000Z",
+        run_id: "run-legacy",
+        receipt_id: "rcpt-oud",
+        synthetic: true,
+        review: "oude demoreview",
+        draft: "oud democoncept",
+      })}\n`,
+      "utf8",
+    );
+    assert.deepEqual(
+      (await listDrafts(50, draftsPath, "ws-motor")).map((d) => d.run_id),
+      ["run-tenant"],
+      "legacy-regel zonder workspace_id blijft onzichtbaar",
+    );
+  });
 });

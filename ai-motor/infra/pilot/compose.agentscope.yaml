@@ -15,12 +15,16 @@
 # - GEEN secrets in de omgeving: MODEL_PORT_URL is configuratie, geen
 #   credential. De sidecar krijgt geen API-key (llama.cpp negeert de
 #   placeholder) en geen PILOT_STORE_SECRET.
-# - Egress: de enige functionele bestemming is MODEL_PORT_URL (Motor
-#   ModelPort). De storepoort (127.0.0.1:4401 op de host) is vanuit een
-#   bridge-netwerk fysiek onbereikbaar. Volledige egress-beperking tot
-#   uitsluitend het ModelPort-IP vereist host-firewallregels (bijv. ufw/
-#   iptables op de docker-bridge) — dat is een operatorhandeling buiten
-#   compose; zie LANE-C.md restrisico's.
+# - Egress (P0.8): het sidecar-eiland (netwerk "sidecar") is nu internal:
+#   true; de enige weg naar buiten is het dedicated pilot-egress-netwerk,
+#   uitsluitend aan deze sidecar gekoppeld en bedoeld voor MODEL_PORT_URL
+#   (Motor ModelPort op het tailnet). De gepubliceerde Motor-facing poort
+#   op host-loopback blijft ongewijzigd werken via de docker-proxy — die
+#   hangt niet af van de internal-vlag. De storepoort (127.0.0.1:4401 op de
+#   host) blijft vanuit de container fysiek onbereikbaar. Begrensing van de
+#   egress tot uitsluitend het ModelPort-IP vereist host-firewallregels
+#   (bijv. ufw/iptables op de docker-bridge) — dat blijft een
+#   operatorhandeling buiten compose; zie P08-INTEGRATIE.md.
 # - Telemetry uit: OTEL_SDK_DISABLED=true en de sidecar roept
 #   agentscope.init nooit aan (geen Studio/OTLP-verbinding).
 # - Lege Toolkit: geen shell/files/code/browser/MCP; de sidecar asserteert
@@ -54,7 +58,11 @@ services:
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
     networks:
+      # Het interne eiland (Motor-facing via loopback-publish) plus het
+      # dedicated egress-netwerk voor het tailnet-ModelPort (P0.8) —
+      # niets anders, nooit meer.
       - sidecar
+      - pilot-egress
     read_only: true
     cap_drop: ["ALL"]
     security_opt:
@@ -74,5 +82,14 @@ services:
       start_period: 10s
 
 networks:
+  # Intern eiland (P0.8: internal gemaakt — het LANE-C-restrisico van een
+  # open bridge is hiermee gesloten). De loopback-publish blijft werken:
+  # de docker-proxy op 127.0.0.1 hangt niet af van de internal-vlag.
   sidecar:
+    driver: bridge
+    internal: true
+  # P0.8: dedicated egress-bridge richting het tailnet-ModelPort. Bewust
+  # GEEN internal-flag en uitsluitend aan de sidecar gekoppeld; geen
+  # poorten, geen andere diensten.
+  pilot-egress:
     driver: bridge

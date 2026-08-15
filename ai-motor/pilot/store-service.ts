@@ -17,7 +17,14 @@
  * dubbele. Een gebrande-maar-niet-geschreven claim vereist een nieuwe run
  * (nieuwe nonce); dat is de bewuste fail-closed keuze.
  * Beslissingen krijgen bovendien een atomische per-concept-claim
- * (één beslissing per draft_run_id, first-decision-wins).
+ * (één beslissing per draft_run_id per workspace, first-decision-wins).
+ *
+ * Tenancy (P0.8): ieder record draagt verplicht een workspace_id. Records
+ * zonder (of met een lege/niet-string) workspace worden geweigerd (400,
+ * fail-closed) en de tenancy van het record moet exact overeenkomen met de
+ * geauthenticeerde workspace in het settlement (anders 403). De read-side
+ * filtert per workspace (zie draft-store.ts); legacy-regels zonder het veld
+ * zijn daarmee overal onzichtbaar.
  */
 
 import { appendFile, mkdir, open } from "node:fs/promises";
@@ -96,6 +103,7 @@ export function createStoreServer(
         const body = JSON.parse(await readBody(req)) as {
           record?: {
             type?: unknown;
+            workspace_id?: unknown;
             run_id?: unknown;
             draft?: unknown;
             draft_run_id?: unknown;
@@ -154,6 +162,15 @@ export function createStoreServer(
           sendJson(res, 400, { ok: false, error: "invalid_record_type" });
           return;
         }
+        // Verplichte tenancy (P0.8): zonder aantoonbare workspace is er niets
+        // te routeren. Dit is een vormeis aan het record (400), los van het
+        // bewijs — óók voor de legacy-route (records zonder type = "draft").
+        const recordWorkspace = (r as { workspace_id?: unknown } | undefined)
+          ?.workspace_id;
+        if (typeof recordWorkspace !== "string" || recordWorkspace.trim() === "") {
+          sendJson(res, 400, { ok: false, error: "workspace_id_required" });
+          return;
+        }
         // Authentiek bewijs: v2, geldige HMAC, payload-gebonden, niet verlopen.
         const verification = verifySettlement(
           secret,
@@ -164,8 +181,16 @@ export function createStoreServer(
           sendJson(res, 403, { ok: false, error: verification.reason });
           return;
         }
+        // Pas ná verificatie is de settlement-tenancy authentiek: de tenancy
+        // van het record moet er exact mee overeenkomen. Een afwijking is een
+        // bewijsschending (403), geen vormfout.
+        if (recordWorkspace !== s.workspace_id) {
+          sendJson(res, 403, { ok: false, error: "workspace_mismatch" });
+          return;
+        }
         // Atomaire claims VÓÓR de write (at-most-once, fail-closed):
-        // 1. de handtekening zelf (replay), 2. bij beslissingen het concept.
+        // 1. de handtekening zelf (replay), 2. bij beslissingen het concept
+        // binnen de eigen workspace (tenancy-scope, P0.8).
         await mkdir(claimDir, { recursive: true });
         if (!(await claim(claimDir, `sig-${s.signature}`))) {
           sendJson(res, 403, { ok: false, error: "settlement_replayed" });
@@ -173,7 +198,7 @@ export function createStoreServer(
         }
         if (kind === "decision") {
           const draftKey = (r as { draft_run_id: string }).draft_run_id;
-          if (!(await claim(claimDir, `decision-${draftKey}`))) {
+          if (!(await claim(claimDir, `decision-${s.workspace_id}-${draftKey}`))) {
             sendJson(res, 409, { ok: false, error: "already_decided" });
             return;
           }

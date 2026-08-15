@@ -267,11 +267,12 @@ test("S9d. notification zonder id → NOOIT een response en nooit een read (ESCA
 });
 
 test("S9e. run_id van een andere workspace via de store-provider → nooit data over de grens", async () => {
-  // De store bewaart records zonder workspace-kolom; de grens mag een run
-  // van een VREEMDE workspace daarom nooit als eigen snapshot teruggeven.
+  // Sinds P0.8 dragen records verplicht een workspace-kolom; de grens mag
+  // een run van een VREEMDE workspace nooit als eigen snapshot teruggeven.
   const drafts: DraftStoreRecord[] = [
     {
       type: "draft",
+      workspace_id: "ws-motor",
       stored_at: new Date().toISOString(),
       run_id: "run-van-ws-motor",
       receipt_id: "rcpt-x",
@@ -311,6 +312,9 @@ test("S9f. HTTP /mcp: cross-workspace run_id vanaf een andere node → DENY/leeg
   const drafts: DraftStoreRecord[] = [
     {
       type: "draft",
+      // P0.8: verplichte tenancy-kolom; het record hoort aantoonbaar bij
+      // ws-motor en mag dus nooit bij ws-anders opduiken.
+      workspace_id: "ws-motor",
       stored_at: new Date().toISOString(),
       run_id: "run-van-ws-motor",
       receipt_id: "rcpt-x",

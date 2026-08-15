@@ -74,6 +74,12 @@ over het nachtelijke verkeerslawaai. Reageer namens de eigenaar.`;
 export interface DraftRequest {
   readonly reviewText: string;
   readonly isSynthetic: boolean;
+  /**
+   * Tenancy (P0.8): de API geeft hier de ACL-vastgestelde workspace door.
+   * Ontbreekt hij (CLI, oudere testpaden), dan geldt de pilot-default
+   * "ws-motor" — de store weigert records hoe dan ook zonder workspace.
+   */
+  readonly workspaceId?: string;
 }
 
 /**
@@ -225,7 +231,7 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
   );
   const t0 = nowIso();
   const label = `shadow-${Date.parse(t0)}`;
-  const workspace_id = branded<WorkspaceId>("ws-motor");
+  const workspace_id = branded<WorkspaceId>(req.workspaceId ?? "ws-motor");
   const task_id = branded<TaskId>("task-shadow-review-1");
   const run_id = branded<RunId>(`run-${label}`);
   const attempt_id = branded<AttemptId>(`att-${label}`);
@@ -478,6 +484,7 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
         const storeSecret = deps.storeSecret ?? process.env.PILOT_STORE_SECRET;
         const record: DraftStoreRecord = {
           type: "draft",
+          workspace_id: workspace_id as string,
           stored_at: tEnd,
           run_id: run_id as string,
           receipt_id: settled.settlement.receipt_id,
