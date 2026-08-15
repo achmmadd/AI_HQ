@@ -10,7 +10,7 @@ Protocol/taxonomie: [`../integration-sprint/PHASE-0.md`](../integration-sprint/P
 BASE_SHA=725832b4a2db656393080f0d12c540c9f038cdb8  (origin/pilot/runtime-activation bij lane-start;
                                                     bevat de GEREALISEERDE hermes- en agentscope-sidecars)
 CODE_SHA=22015f6b9aa13a29b2400cdde8be43f041a7d748  (conformance.test.ts-uitbreiding; beide validatiepasses hierop groen)
-EIND_SHA=wordt na de finale validatie op de documentatiecommit vastgelegd (vervolgcommit)
+EIND_SHA=f1e7de1a53851561196f63b8dcdbf8d0ded20757  (finale validatie hierop groen; deze invulling is de vervolgcommit)
 WERKBOOM=/tmp/aihq-p06-d (git worktree op pilot/runtime-d-conformance)
 BUILDER=Hetzner (x86_64, Docker 29.3.1); eigen validatiedir /tmp/pv-d (ras-immuun, geen gedeelde checkout)
 ```
