@@ -44,6 +44,8 @@ import { P1InputZone } from "@/components/p1/p1-input-zone";
 import { P1ProjectWorkbench } from "@/components/p1/p1-project-workbench";
 import { P1ReviewPanel } from "@/components/p1/p1-review-panel";
 import { P1Departments } from "@/components/p1/p1-departments";
+import { P1EvidenceRail } from "@/components/p1/p1-evidence-rail";
+import { P1BlockGallery } from "@/components/p1/p1-block-gallery";
 import {
   P1Badge,
   P1Button,
@@ -283,21 +285,27 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
     ) : current === "projects" ? (
       <ProjectsView view={merged} onOpen={(projectId) => openProject(projectId)} />
     ) : current === "departments" ? (
-      <P1Departments
-        view={merged}
-        session={session}
-        onOverlay={appendOverlay}
-        onDepartmentPatch={(patch) => setSession((previous) => appendDepartmentPatch(previous, patch))}
-        onMembershipPatch={(patch) => setSession((previous) => appendMembershipPatch(previous, patch))}
-      />
+      <div className="space-y-8">
+        <P1Departments
+          view={merged}
+          session={session}
+          onOverlay={appendOverlay}
+          onDepartmentPatch={(patch) => setSession((previous) => appendDepartmentPatch(previous, patch))}
+          onMembershipPatch={(patch) => setSession((previous) => appendMembershipPatch(previous, patch))}
+        />
+        <P1BlockGallery view={merged} />
+      </div>
     ) : (
-      <P1Inbox
-        view={merged}
-        filter={inboxFilter}
-        onFilter={setInboxFilter}
-        onOpenItem={openAttention}
-        onOpenDraft={(draftId) => openDraft(draftId, "inbox")}
-      />
+      <div className="space-y-8">
+        <P1Inbox
+          view={merged}
+          filter={inboxFilter}
+          onFilter={setInboxFilter}
+          onOpenItem={openAttention}
+          onOpenDraft={(draftId) => openDraft(draftId, "inbox")}
+        />
+        <P1EvidenceRail view={merged} />
+      </div>
     );
 
   return (
