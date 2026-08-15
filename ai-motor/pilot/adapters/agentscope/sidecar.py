@@ -97,6 +97,13 @@ def build_model():
         stream=False,
         max_retries=0,
         parameters=OpenAIChatModel.Parameters(temperature=0.3, max_tokens=512),
+        # Qwen on llama.cpp defaults to thinking mode: the whole token
+        # budget then goes to reasoning_content and content stays empty
+        # (measured live on 2026-08-15, P0.7). The openai client merges
+        # extra_body into the request JSON body — the same field the
+        # llamacpp Node adapter already sends. A body parameter, not new
+        # egress.
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         client_kwargs={
             "timeout": MODEL_TIMEOUT_MS / 1000.0,
             "max_retries": 0,

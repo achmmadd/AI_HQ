@@ -211,6 +211,23 @@ class TestInvokeHappy(SidecarTestCase):
         self.assertEqual(sent["messages"][0]["content"], "Schrijf een korte opvolgmail")
         self.assertEqual(sent.get("stream"), False)
 
+    def test_invoke_disables_thinking_mode_in_model_body(self) -> None:
+        # P0.7-les: Qwen op llama.cpp denkt standaard "na" in
+        # reasoning_content en laat content leeg. De sidecar MOET
+        # enable_thinking=false in de request-body sturen.
+        model = FakeModel()
+        self.addCleanup(model.stop)
+        self.start_sidecar(self.config_for(model.base_url))
+        status, body = _request(
+            "POST", f"{self.url}/invoke", {**IDS, "input": "x"}
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("output", body)
+        sent = model.requests[0]
+        self.assertEqual(
+            sent.get("chat_template_kwargs"), {"enable_thinking": False}
+        )
+
     def test_protocol_version_on_every_answer_including_404(self) -> None:
         self.start_sidecar(self.config_for(None))
         for method, path, payload in (
