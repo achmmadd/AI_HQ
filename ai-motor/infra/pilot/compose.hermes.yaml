@@ -1,55 +1,70 @@
-# motor-pilot — Hermes-sidecar overlay (integratiesprint 2026-08-14, spoor B).
+# motor-pilot — Hermes-sidecar overlay (runtime-activatie 2026-08-15, spoor A;
+# voortbouwend op integratiesprint spoor B van 2026-08-14).
 #
 # Aparte overlay bovenop infra/pilot/compose.yaml:
 #   docker compose -f compose.yaml -f compose.hermes.yaml ...
 #
-# De sidecar is straks het enige aanspreekpunt van de Hermes-runtime en
-# spreekt het fase-0 sidecarprotocol (zie
+# De sidecar IS de Motor-Hermes-runtime (stdlib-only, geen extern package)
+# en spreekt het fase-0 sidecarprotocol (zie
 # pilot/evidence/integration-sprint/PHASE-0.md): HTTP/JSON, uitsluitend
 # loopback/intern, geen volumes, geen secrets.
 #
 # Dit bestand dwingt af:
-# - read_only rootfs, cap_drop ALL, no-new-privileges, non-root (uid 1000);
+# - image gebouwd uit infra/pilot/hermes/Dockerfile: gepinde base-digest,
+#   nul pip-afhankelijkheden, non-root (uid 10001) — nooit een zwevende tag;
+# - read_only rootfs, cap_drop ALL, no-new-privileges;
+# - GEEN volumes: het image bevat sidecar.py zelf; er is geen repo-mount,
+#   geen context- of draft-mount en geen enkele duurzame staat;
 # - GEEN publieke poorten en geen host-netwerkmodus: de sidecar hangt
 #   uitsluitend aan het interne netwerk hermes-net (internal: true → geen
-#   egress naar buiten én geen route naar de storepoort of de
-#   host-loopback van andere diensten). De Motor-API wordt in een aparte
-#   wijziging op haar eigen spoor aan hermes-net gekoppeld — bewust niet
-#   hier;
-# - geen data-volumes: de sidecar is stateless; de repo-checkout mount
-#   read-only en alleen om het stdlib-script te kunnen starten.
+#   egress én geen route naar de storepoort of de host-loopback van andere
+#   diensten). De Motor-API wordt in een aparte wijziging op haar eigen
+#   spoor aan hermes-net gekoppeld — bewust niet hier;
+# - de modelendpoint komt uit de omgeving (MODEL_PORT_URL). Let op: met
+#   hermes-net als enige netwerk kan de sidecar alleen een endpoint op
+#   hermes-net zelf bereiken — in tests/smokes is dat de fake-modelcontainer.
+#   Egress naar het echte tailnet-model vereist een aparte, bewuste
+#   netwerkwijziging met voorafgaande eigenaarsgoedkeuring en is hier
+#   bewust NIET opengemaakt.
 #
 # Configuratie via de .env (gitignored) naast compose.yaml — de repo bevat
-# nooit echte infrastructuurwaarden. Fictieve voorbeeldwaarden:
+# nooit echte infrastructuurwaarden (zie infra/pilot/hermes/env.example).
+# Fictieve voorbeeldwaarden:
 #   HERMES_SIDECAR_PORT=4410
-#   REPO_PATH=./repo
+#   MODEL_PORT_URL=http://<RTX_TAILNET_IP>:8080/v1
+#   MODEL_NAME=Qwen3.6-35B-A3B-UD-Q4_K_XL
+#   MODEL_REQUEST_TIMEOUT_S=120
 
 name: motor-pilot
 
 services:
   hermes-sidecar:
-    image: python:3-alpine
-    user: "1000:1000"
+    build:
+      context: ./hermes
+    image: motor-pilot-hermes-sidecar:0.2.0
+    user: "10001:10001"
     networks:
       - hermes-net
-    volumes:
-      # Alleen nodig om het stdlib-script te starten; read-only, geen data.
-      - ${REPO_PATH:-./repo}:/app:ro
+    # Geen volumes: stateless; het image draagt de enige code.
     environment:
       # Container-interface op het interne netwerk; nooit naar buiten gepubliceerd.
       HERMES_SIDECAR_HOST: "0.0.0.0"
-      HERMES_SIDECAR_PORT: ${HERMES_SIDECAR_PORT:?zet in .env — fictief voorbeeld: 4410}
-    command: ["python3", "/app/ai-motor/infra/pilot/hermes/sidecar.py"]
+      HERMES_SIDECAR_PORT: ${HERMES_SIDECAR_PORT:?zet in .env — zie hermes/env.example}
+      MODEL_PORT_URL: ${MODEL_PORT_URL:?zet in .env — zie hermes/env.example}
+      MODEL_NAME: ${MODEL_NAME:?zet in .env — zie hermes/env.example}
+      MODEL_REQUEST_TIMEOUT_S: ${MODEL_REQUEST_TIMEOUT_S:-120}
     restart: unless-stopped
     read_only: true
     cap_drop: ["ALL"]
     security_opt:
       - no-new-privileges:true
     healthcheck:
+      # Liveness: het protocolantwoord van /health (HTTP 200) bewijst dat het
+      # proces serveert; de veldwaarde ok/degraded is het readiness-signaal.
       test:
         [
           "CMD",
-          "python3",
+          "python",
           "-c",
           "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.environ['HERMES_SIDECAR_PORT']+'/health', timeout=5)",
         ]
