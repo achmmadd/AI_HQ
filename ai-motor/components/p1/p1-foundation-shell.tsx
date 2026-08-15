@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import {
   Blocks,
   CheckCircle2,
@@ -18,6 +18,14 @@ import type {
 } from "@/pilot/p1-foundation";
 import { evidenceDisplayValue } from "@/pilot/p1-foundation";
 import {
+  EMPTY_OVERLAY,
+  assignEmployee,
+  configureDepartment,
+  mergeShellOverlay,
+  type ShellOverlay,
+} from "@/pilot/p1-shell";
+import { P1InputZone } from "@/components/p1/p1-input-zone";
+import {
   P1Badge,
   P1Button,
   P1Card,
@@ -25,6 +33,7 @@ import {
   P1CardDescription,
   P1CardHeader,
   P1CardTitle,
+  P1Textarea,
 } from "@/components/p1/ui";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +82,25 @@ function NowView({
   showProject: () => void;
 }) {
   const stages: readonly AttentionStage[] = view.now.stages;
+  const priorities = view.now.items.filter((item) => item.stage === "jij_nodig");
+  const openConcepts = view.projects.flatMap((row) =>
+    row.drafts.map((draft) => ({
+      id: draft.id,
+      title: draft.title ?? "Concept",
+      state: draft.state,
+    })),
+  );
+  const reviewRows = view.projects.flatMap((row) =>
+    row.reviews.map((review) => {
+      const publish = row.publishes.find((item) => item.reviewId === review.id);
+      return {
+        id: review.id,
+        projectName: row.project.name,
+        reviewState: review.state,
+        publishDecision: publish?.decision ?? "DENY",
+      };
+    }),
+  );
   return (
     <section className="space-y-6" aria-labelledby="now-heading">
       <header>
@@ -81,9 +109,59 @@ function NowView({
           Wat aandacht nodig heeft
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Vraag → Actief → Jij nodig → Klaar. Goedkeuringen, mislukkingen en uitkomsten; geen technische logs.
+          Prioriteiten, open concepten en reviewstatus. Geen technische logs.
         </p>
       </header>
+      <div className="grid gap-4 md:grid-cols-3">
+        <P1Card>
+          <P1CardHeader>
+            <P1CardTitle>Prioriteiten</P1CardTitle>
+            <P1CardDescription>Waar jij nu nodig bent.</P1CardDescription>
+          </P1CardHeader>
+          <P1CardContent className="space-y-2">
+            {priorities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Niets wacht op jou.</p>
+            ) : (
+              priorities.map((item) => (
+                <p key={item.id} className="text-sm">
+                  {item.title}
+                </p>
+              ))
+            )}
+          </P1CardContent>
+        </P1Card>
+        <P1Card>
+          <P1CardHeader>
+            <P1CardTitle>Open concepten</P1CardTitle>
+            <P1CardDescription>Drafts in deze werkruimte.</P1CardDescription>
+          </P1CardHeader>
+          <P1CardContent className="space-y-2">
+            {openConcepts.map((concept) => (
+              <p key={concept.id} className="flex justify-between gap-3 text-sm">
+                <span>{concept.title}</span>
+                <P1Badge variant="outline">{concept.state}</P1Badge>
+              </p>
+            ))}
+          </P1CardContent>
+        </P1Card>
+        <P1Card>
+          <P1CardHeader>
+            <P1CardTitle>Reviewstatus</P1CardTitle>
+            <P1CardDescription>Goedkeuren is niet publiceren.</P1CardDescription>
+          </P1CardHeader>
+          <P1CardContent className="space-y-2">
+            {reviewRows.map((row) => (
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span>{row.projectName}</span>
+                <span className="flex gap-2">
+                  <P1Badge variant="success">{row.reviewState}</P1Badge>
+                  <P1Badge variant="denied">Publish: {row.publishDecision}</P1Badge>
+                </span>
+              </div>
+            ))}
+          </P1CardContent>
+        </P1Card>
+      </div>
       <div className="grid gap-4 xl:grid-cols-4">
         {stages.map((stage) => {
           const items = view.now.items.filter((item) => item.stage === stage);
@@ -207,7 +285,7 @@ function ProjectCard({ row }: { row: ProjectView }) {
           <P1CardContent className="space-y-3 text-sm">
             {row.drafts.map((draft) => (
               <p key={draft.id} className="flex justify-between gap-3">
-                <span>Concept</span>
+                <span>{draft.title ?? "Concept"}</span>
                 <P1Badge variant="outline">{draft.state}</P1Badge>
               </p>
             ))}
@@ -242,7 +320,7 @@ function ProjectsView({ view }: { view: FoundationViewModel }) {
           Projecten
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Doel, team, contextstatus (alleen digest), taken, artifacts en tijdlijn.
+          Werkruimte {view.tenantId}: doel, team, gekoppelde concepten en contextstatus (alleen digest).
         </p>
       </header>
       {view.projects.map((row) => (
@@ -252,7 +330,64 @@ function ProjectsView({ view }: { view: FoundationViewModel }) {
   );
 }
 
-function DepartmentsView({ view }: { view: FoundationViewModel }) {
+function DepartmentsView({
+  view,
+  onConfigured,
+}: {
+  view: FoundationViewModel;
+  onConfigured: (overlay: Pick<ShellOverlay, "departments" | "assignments">) => void;
+}) {
+  const [deptName, setDeptName] = useState("");
+  const [deptPurpose, setDeptPurpose] = useState("");
+  const [role, setRole] = useState("Meekijker");
+  const [employeeId, setEmployeeId] = useState(view.roster[0]?.employee.id ?? "");
+  const [notice, setNotice] = useState<string | null>(null);
+  const projectId = view.projects[0]?.project.id;
+
+  function addDepartment(event: FormEvent) {
+    event.preventDefault();
+    const result = configureDepartment({
+      authenticated: true,
+      actorTenantId: view.tenantId,
+      workspaceId: view.tenantId,
+      name: deptName,
+      purpose: deptPurpose,
+      capabilities: ["team.configure"],
+      nonce: `${Date.now()}`,
+    });
+    if (!result.ok) {
+      setNotice("Afdeling kon niet worden toegevoegd.");
+      return;
+    }
+    onConfigured({ departments: [result.department], assignments: [] });
+    setDeptName("");
+    setDeptPurpose("");
+    setNotice("Afdeling lokaal toegevoegd binnen deze tenant.");
+  }
+
+  function addAssignment(event: FormEvent) {
+    event.preventDefault();
+    if (!projectId || !employeeId) {
+      setNotice("Kies een medewerker en project.");
+      return;
+    }
+    const result = assignEmployee({
+      authenticated: true,
+      actorTenantId: view.tenantId,
+      workspaceId: view.tenantId,
+      employeeId,
+      projectId,
+      role,
+      nonce: `${Date.now()}`,
+    });
+    if (!result.ok) {
+      setNotice("Toewijzing kon niet worden gemaakt.");
+      return;
+    }
+    onConfigured({ departments: [], assignments: [result.assignment] });
+    setNotice("Toewijzing lokaal toegevoegd binnen deze tenant.");
+  }
+
   return (
     <section className="space-y-6" aria-labelledby="departments-heading">
       <header>
@@ -353,19 +488,84 @@ function DepartmentsView({ view }: { view: FoundationViewModel }) {
           </P1CardContent>
         </P1Card>
       </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <P1Card>
+          <P1CardHeader>
+            <P1CardTitle>Nieuwe afdeling</P1CardTitle>
+            <P1CardDescription>Alleen binnen deze tenant, lokaal in het read-model.</P1CardDescription>
+          </P1CardHeader>
+          <P1CardContent>
+            <form className="space-y-3" onSubmit={addDepartment}>
+              <input
+                value={deptName}
+                onChange={(event) => setDeptName(event.target.value)}
+                placeholder="Naam"
+                className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
+              />
+              <P1Textarea
+                value={deptPurpose}
+                onChange={(event) => setDeptPurpose(event.target.value)}
+                placeholder="Doel van deze afdeling"
+              />
+              <P1Button type="submit">Voeg afdeling toe</P1Button>
+            </form>
+          </P1CardContent>
+        </P1Card>
+        <P1Card>
+          <P1CardHeader>
+            <P1CardTitle>Toewijzing</P1CardTitle>
+            <P1CardDescription>Medewerker koppelen aan het project in deze werkruimte.</P1CardDescription>
+          </P1CardHeader>
+          <P1CardContent>
+            <form className="space-y-3" onSubmit={addAssignment}>
+              <select
+                value={employeeId}
+                onChange={(event) => setEmployeeId(event.target.value)}
+                className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
+              >
+                {view.roster.map((entry) => (
+                  <option key={entry.employee.id} value={entry.employee.id}>
+                    {entry.employee.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={role}
+                onChange={(event) => setRole(event.target.value)}
+                placeholder="Rol"
+                className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
+              />
+              <P1Button type="submit">Wijs toe</P1Button>
+            </form>
+          </P1CardContent>
+        </P1Card>
+      </div>
+      {notice ? <p className="text-xs text-muted-foreground">{notice}</p> : null}
     </section>
   );
 }
 
 export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
   const [current, setCurrent] = useState<View>("now");
+  const [overlay, setOverlay] = useState<ShellOverlay>(EMPTY_OVERLAY);
+  const merged = mergeShellOverlay(view, overlay);
+
+  function appendOverlay(partial: Partial<ShellOverlay>) {
+    setOverlay((previous) => ({
+      drafts: [...previous.drafts, ...(partial.drafts ?? [])],
+      attention: [...previous.attention, ...(partial.attention ?? [])],
+      departments: [...previous.departments, ...(partial.departments ?? [])],
+      assignments: [...previous.assignments, ...(partial.assignments ?? [])],
+    }));
+  }
+
   const body =
     current === "projects" ? (
-      <ProjectsView view={view} />
+      <ProjectsView view={merged} />
     ) : current === "departments" ? (
-      <DepartmentsView view={view} />
+      <DepartmentsView view={merged} onConfigured={appendOverlay} />
     ) : (
-      <NowView view={view} showProject={() => setCurrent("projects")} />
+      <NowView view={merged} showProject={() => setCurrent("projects")} />
     );
 
   return (
@@ -409,19 +609,20 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
             </p>
           </div>
         </aside>
-        <main className="min-w-0 flex-1 px-4 pb-24 pt-6 sm:px-6 md:px-10 md:pb-10 md:pt-10">
-          <div className="mx-auto max-w-5xl">
-            <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+        <main className="min-w-0 flex-1 px-4 pb-56 pt-6 sm:px-6 md:px-10 md:pb-10 md:pt-10">
+          <div className="mx-auto max-w-5xl space-y-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex gap-2">
                 <P1Badge variant="secondary">Synthetische demo</P1Badge>
                 <P1Badge variant="denied">Publish: DENY</P1Badge>
               </div>
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                {view.organizationName}
+                {merged.organizationName}
               </p>
             </div>
             {body}
+            <P1InputZone view={merged} onPrepared={appendOverlay} />
           </div>
         </main>
       </div>

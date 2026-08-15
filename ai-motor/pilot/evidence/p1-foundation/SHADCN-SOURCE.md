@@ -19,6 +19,7 @@ Lokaal aangepast in `ai-motor/components/p1/ui.tsx` aan bestaande Motor-tokens
 | Button | https://ui.shadcn.com/docs/components/button | `components/p1/ui.tsx` (`P1Button`) |
 | Card | https://ui.shadcn.com/docs/components/card | `components/p1/ui.tsx` (`P1Card*`) |
 | Badge | https://ui.shadcn.com/docs/components/badge | `components/p1/ui.tsx` (`P1Badge`) |
+| Textarea | https://ui.shadcn.com/docs/components/textarea | `components/p1/ui.tsx` (`P1Textarea`) |
 
 Button gebruikt `@radix-ui/react-slot` (reeds in `package.json`) en
 `class-variance-authority` (reeds in `package.json`), zoals de officiële

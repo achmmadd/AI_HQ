@@ -93,3 +93,18 @@ export interface P1BadgeProps extends React.HTMLAttributes<HTMLDivElement>, Vari
 export function P1Badge({ className, variant, ...props }: P1BadgeProps) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
+
+export const P1Textarea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+>(({ className, ...props }, ref) => (
+  <textarea
+    ref={ref}
+    className={cn(
+      "min-h-20 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm leading-6 shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+      className,
+    )}
+    {...props}
+  />
+));
+P1Textarea.displayName = "P1Textarea";

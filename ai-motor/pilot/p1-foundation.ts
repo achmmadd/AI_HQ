@@ -170,12 +170,17 @@ export interface P1AttentionItem {
   };
 }
 
+export type DraftState = "draft" | "ready";
+
 export interface P1Draft {
   readonly id: string;
   readonly tenantId: string;
   readonly projectId: string;
   readonly kind: "draft";
-  readonly state: "ready";
+  readonly state: DraftState;
+  /** Present only on locally typed P1.1 concepts; seed drafts omit it. */
+  readonly origin?: "typed";
+  readonly title?: string;
   readonly bodyDigest: string;
 }
 
