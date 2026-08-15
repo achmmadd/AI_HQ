@@ -8,6 +8,8 @@ import { createP2MotorServer } from "./p2-motor-server.ts";
 import {
   designedOrchestratorAcl,
   evaluateOrchestratorProbe,
+  humanUiAllowed,
+  isDesignedOrchestratorId,
   isStableNodeId,
   NUC_ORCHESTRATOR_STABLE_ID,
   orchestratorAllowed,
@@ -42,8 +44,14 @@ test("designed NUC orchestrator id is a StableID and not a hostname", () => {
   assert.equal(isStableNodeId("motorai-nuc"), false);
   assert.equal(isStableNodeId("100.123.185.0"), false);
   assert.deepEqual(designedOrchestratorAcl(), { [NUC_ORCHESTRATOR_STABLE_ID]: ["ws-motor"] });
+  assert.equal(isDesignedOrchestratorId(NUC_ORCHESTRATOR_STABLE_ID), true);
   assert.equal(orchestratorAllowed(NUC_ORCHESTRATOR_STABLE_ID, ORCH_ACL), true);
   assert.equal(orchestratorAllowed("nP2LAPTOP", ORCH_ACL), false);
+  assert.equal(humanUiAllowed("nP2LAPTOP", UI_ACL), true);
+  assert.equal(humanUiAllowed(NUC_ORCHESTRATOR_STABLE_ID, parseAcl(JSON.stringify({
+    [NUC_ORCHESTRATOR_STABLE_ID]: ["ws-motor"],
+    nP2LAPTOP: ["ws-motor"],
+  }))), false);
   assert.equal(whoisStableId({ StableID: "", ID: NUC_ORCHESTRATOR_STABLE_ID }), NUC_ORCHESTRATOR_STABLE_ID);
   assert.equal(whoisStableId({ Name: "motorai-nuc" }), null);
 });
@@ -185,6 +193,42 @@ test("hostname or IP is never an orchestrator grant", () => {
   assert.equal(orchestratorAllowed("motorai-server2", ORCH_ACL), false);
   assert.equal(orchestratorAllowed("100.123.185.0", ORCH_ACL), false);
   assert.equal(whoisStableId({ Name: "motorai-nuc", StableID: "motorai-nuc" }), null);
+});
+
+test("NUC in both ACLs still cannot open UI; only designed NUC gets orchestrator", async () => {
+  const both = parseAcl(JSON.stringify({
+    [NUC_ORCHESTRATOR_STABLE_ID]: ["ws-motor"],
+    nP2LAPTOP: ["ws-motor"],
+  }));
+  const wideOrch = parseAcl(JSON.stringify({
+    [NUC_ORCHESTRATOR_STABLE_ID]: ["ws-motor"],
+    nP2LAPTOP: ["ws-motor"],
+  }));
+  const nuc = createP2MotorServer({
+    acl: both,
+    orchestratorAcl: wideOrch,
+    resolveNode: async () => ({ stableId: NUC_ORCHESTRATOR_STABLE_ID, name: "nuc" }),
+  });
+  const laptop = createP2MotorServer({
+    acl: both,
+    orchestratorAcl: wideOrch,
+    resolveNode: async () => ({ stableId: "nP2LAPTOP", name: "laptop" }),
+  });
+  await new Promise<void>((resolve) => nuc.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => laptop.listen(0, "127.0.0.1", resolve));
+  const nucAddr = nuc.address();
+  const laptopAddr = laptop.address();
+  assert.ok(nucAddr && typeof nucAddr === "object");
+  assert.ok(laptopAddr && typeof laptopAddr === "object");
+  try {
+    assert.equal((await fetch(`http://127.0.0.1:${nucAddr.port}/motor`)).status, 403);
+    assert.equal((await fetch(`http://127.0.0.1:${nucAddr.port}/motor/orchestrator/ready`)).status, 200);
+    assert.equal((await fetch(`http://127.0.0.1:${laptopAddr.port}/motor`)).status, 200);
+    assert.equal((await fetch(`http://127.0.0.1:${laptopAddr.port}/motor/orchestrator/health`)).status, 403);
+  } finally {
+    nuc.close();
+    laptop.close();
+  }
 });
 
 test("P0 :4400 contract files stay on PILOT_ACL and are not the P2 overlay", () => {

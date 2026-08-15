@@ -18,7 +18,7 @@ export const P2_ORCHESTRATOR_ENABLE_ENV = "MOTOR_P2_ORCHESTRATOR";
 export const P2_ORCHESTRATOR_HEALTH_URL = `${P2_PINNED_ORIGIN}/orchestrator/health`;
 export const P2_ORCHESTRATOR_READY_URL = `${P2_PINNED_ORIGIN}/orchestrator/ready`;
 
-const STABLE_ID = /^n[A-Za-z0-9]+CNTRL$/;
+const STABLE_ID = /^n[A-Za-z0-9]+$/;
 
 export function isStableNodeId(value: string): boolean {
   return STABLE_ID.test(value);
@@ -32,8 +32,20 @@ export function parseOrchestratorAcl(raw: string | undefined): PilotAcl {
   return parseAcl(raw);
 }
 
+export function isDesignedOrchestratorId(stableId: string): boolean {
+  return stableId === NUC_ORCHESTRATOR_STABLE_ID;
+}
+
+/** NUC never gets human UI, even if still listed in PILOT_P2_ACL. */
+export function humanUiAllowed(stableId: string, uiAcl: PilotAcl): boolean {
+  if (!isStableNodeId(stableId) || isDesignedOrchestratorId(stableId)) return false;
+  const workspaces = uiAcl[stableId];
+  return Boolean(workspaces && workspaces.includes(HOME_TENANT_ID));
+}
+
+/** Only the designed NUC StableID, and only via PILOT_P2_ORCHESTRATOR_ACL. */
 export function orchestratorAllowed(stableId: string, acl: PilotAcl): boolean {
-  if (!isStableNodeId(stableId)) return false;
+  if (!isDesignedOrchestratorId(stableId)) return false;
   const workspaces = acl[stableId];
   return Boolean(workspaces && workspaces.includes(HOME_TENANT_ID));
 }

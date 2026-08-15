@@ -43,6 +43,7 @@ import { collectWorkspaceEvidence, evidenceRailLeaksContent, openEvidenceRail } 
 import { resolveP2Bind } from "./p2-bind.ts";
 import { renderMotorHtml } from "./p2-motor-ui.ts";
 import {
+  humanUiAllowed,
   orchestratorAllowed,
   orchestratorBody,
   orchestratorBodyLeaks,
@@ -195,7 +196,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
   > {
     const ip = callerIp(req);
     const node = await resolveNode(ip);
-    if (node === null) {
+    if (node === null || !humanUiAllowed(node.stableId, acl)) {
       return { ok: false, status: 403, body: { ok: false, error: "node_not_allowed" } };
     }
     const access = await accessCheck(req, requestedWorkspace, acl, async () => node);
