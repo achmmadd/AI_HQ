@@ -32,7 +32,7 @@ jobs:
       # De pilot-tests draaien zonder netwerk, model of volumes (fakes +
       # tmpdirs); CI leest nooit echte context of runtimevolumes.
       - name: Tests (node:test with type stripping)
-        run: node --test 'lib/adr110/*.test.ts' 'lib/adr110/adapters/**/*.test.ts' 'pilot/*.test.ts'
+        run: node --test 'lib/adr110/*.test.ts' 'lib/adr110/adapters/**/*.test.ts' 'pilot/*.test.ts' 'pilot/security/*.test.ts'
       - name: Typecheck (scoped)
         run: |
           ./node_modules/.bin/tsc -p lib/adr110/tsconfig.json --noEmit
