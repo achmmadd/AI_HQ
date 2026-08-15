@@ -3,7 +3,9 @@
 Runtime-activatie (sprint P0.6, spoor A): dit is geen skeleton meer. De
 sidecar voert de synthetische taak werkelijk uit door de geconfigureerde
 OpenAI-compatible modelendpoint (`POST {MODEL_PORT_URL}/chat/completions`)
-aan te roepen, en spreekt het gedeelde protocol uit
+aan te roepen — met `chat_template_kwargs: {enable_thinking: false}` zodat
+Qwen op llama.cpp geen lege content in thinking mode teruggeeft — en
+spreekt het gedeelde protocol uit
 ai-motor/pilot/evidence/integration-sprint/PHASE-0.md over HTTP/JSON,
 uitsluitend loopback/intern:
 
@@ -308,6 +310,12 @@ def call_model(config: SidecarConfig, attempt: _InFlight, prompt: str) -> str:
             "model": config.model_name,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
+            # Qwen op llama.cpp staat standaard in thinking mode: het hele
+            # tokenbudget gaat dan naar reasoning_content en content blijft
+            # leeg (live gemeten 2026-08-15, P0.7). Dezelfde body-parameter
+            # die de llamacpp-Node-adapter al stuurt; een request-bodyveld,
+            # geen nieuwe egress.
+            "chat_template_kwargs": {"enable_thinking": False},
         }
     ).encode("utf-8")
     conn = _open_connection(url, config.model_timeout_s)
