@@ -6,12 +6,16 @@ on:
     paths:
       - 'ai-motor/lib/adr110/**'
       - 'ai-motor/pilot/**'
+      - 'ai-motor/app/motor/**'
+      - 'ai-motor/components/p1/**'
       - '.github/workflows/pilot-spine.yml'
   push:
-    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation]
+    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation, pilot/p1.1-shell]
     paths:
       - 'ai-motor/lib/adr110/**'
       - 'ai-motor/pilot/**'
+      - 'ai-motor/app/motor/**'
+      - 'ai-motor/components/p1/**'
       - '.github/workflows/pilot-spine.yml'
 
 jobs:
@@ -39,6 +43,10 @@ jobs:
           ./node_modules/.bin/tsc -p pilot/tsconfig.json --noEmit
       - name: Lint (scoped)
         run: ./node_modules/.bin/eslint lib/adr110 pilot
+      - name: Typecheck application (P1 coverage)
+        run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit --allowImportingTsExtensions
+      - name: Lint P1 UI
+        run: ./node_modules/.bin/eslint app/motor components/p1
 
   conformance-real-sidecars:
     # Gecombineerde node+python-run (lane-D-recept, P0.7-bewijs): de
