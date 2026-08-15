@@ -193,9 +193,14 @@ store), 8a/8b/8c (tenancy, reads/API/e2e) en S3d (basiscompose-guard).
 Eindstatus (dit document ingevuld; alleen doc-delta sinds `47b0aed`):
 
 ```text
-SHA=<wordt na deze commit ingevuld — zie tweede run hieronder>
-TESTS_EXIT=…   TYPES_EXIT=…   LINT_EXIT=…
+SHA=b282cd7d2818790a705cc69b2c8771525d0e07a4
+TESTS_EXIT=0   TYPES_EXIT=0   LINT_EXIT=0
+pass/fail/skipped: 225/0/1
 ```
+
+De SHA staat hierboven één commit na de run op de inhoud van deze commit zelf
+(anders onmogelijk: de hash dekt dit bestand). De getoonde exitcodes gelden de
+exacte inhoud van `b282cd7`; de run op `47b0aed` dekt alle code en tests.
 
 REAL_CONTEXT_USED=no · EXTERNAL_EFFECTS=no · PUBLIC_INGRESS=no ·
 MASTER_MERGE=no · LIVE_ACTIVATION=no (aparte stap, aparte goedkeuring)
