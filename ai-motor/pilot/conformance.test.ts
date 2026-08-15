@@ -1,15 +1,27 @@
 /**
- * Gezamenlijke contracttest (coördinator, integratiefase) — dezelfde
- * synthetische fixture draait door alle adapterbindingen:
+ * Gezamenlijke contracttest (coördinator, integratiefase; P0.6 lane D:
+ * runtime-activatie) — dezelfde synthetische fixture draait door alle vijf
+ * adapterbindingen:
  *
  *   fake-alpha, fake-beta, llamacpp (deterministische OpenAI-transportfake),
- *   hermes (fase-0-fakesidecar) en agentscope (fase-0-fakesidecar).
+ *   hermes (het ECHTE sidecar-proces, python stdlib-only) en agentscope
+ *   (het ECHTE sidecar-proces zodra `import agentscope` lukt, anders een
+ *   expliciet geregistreerde terugval op de fase-0-fake).
  *
  * Per adapter blijven gelijk: Employee-ID en mandaat, Task-ID en workspace,
  * policy-ID/versie/digest, ContextManifest-semantiek en -digest, Motor's
  * Run/Attempt-causaliteit, evidenceketen en evaluatiecriteria, en
  * default-deny voor niet-geautoriseerde capabilities. Alleen operationele
  * binding, adaptermetadata, latency en outputartifact mogen verschillen.
+ *
+ * De echte sidecars draaien als python3-subproces op 127.0.0.1 met
+ * MODEL_PORT_URL wijzend naar de OpenAI-fake in dit bestand — nooit naar
+ * een echt model. Python ontbreekt (bv. de node:24-alpine CI-container):
+ * de binding valt terug op de in-proces fase-0-fake en de modustest
+ * hieronder registreert dat expliciet (SKIP met reden). Waar python3 wél
+ * bestaat MOET hermes echt draaien; een startfout is een harde testfailure,
+ * nooit een stille terugval. agentscope is een extra Python-dep: zonder
+ * `import agentscope` is de fake-terugval toegestaan én vastgelegd.
  *
  * Failurecases: unavailable, malformed, timeout en cancel eindigen in een
  * gecontroleerde terminale Motor-state met causale failure-evidence — nooit
@@ -21,13 +33,20 @@
 
 import assert from "node:assert/strict";
 import {
+  spawn,
+  spawnSync,
+  type ChildProcess,
+} from "node:child_process";
+import {
   createServer,
   type IncomingMessage,
   type Server,
   type ServerResponse,
 } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import type {
   AdapterInvokeRequest,
@@ -61,6 +80,58 @@ import {
   T1,
   T2,
 } from "../lib/adr110/scenario.ts";
+
+// ---------------------------------------------------------------------------
+// Omgevingsdetectie (éénmalig, synchroon, fail-closed)
+// ---------------------------------------------------------------------------
+
+const AI_MOTOR_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const HERMES_SIDECAR_PY = join(
+  AI_MOTOR_ROOT,
+  "infra",
+  "pilot",
+  "hermes",
+  "sidecar.py",
+);
+const AGENTSCOPE_SIDECAR_PY = join(
+  AI_MOTOR_ROOT,
+  "pilot",
+  "adapters",
+  "agentscope",
+  "sidecar.py",
+);
+
+/** Waar is python3 nodig: de hermes-sidecar is stdlib-only en MOET echt
+ *  draaien zodra een python3-interpreter bestaat; agentscope vereist
+ *  daarnaast het gepinde agentscope-package (zie requirements-lock.txt). */
+function probePython3(): { readonly ok: boolean; readonly detail: string } {
+  const probe = spawnSync("python3", ["--version"], { encoding: "utf8" });
+  if (probe.error || probe.status !== 0) {
+    return {
+      ok: false,
+      detail: probe.error?.message ?? `exit ${String(probe.status)}`,
+    };
+  }
+  return { ok: true, detail: (probe.stdout || probe.stderr).trim() };
+}
+
+function probeAgentScope(): { readonly ok: boolean; readonly detail: string } {
+  const python = probePython3();
+  if (!python.ok) {
+    return { ok: false, detail: `python3 ontbreekt: ${python.detail}` };
+  }
+  const probe = spawnSync("python3", ["-c", "import agentscope"], {
+    encoding: "utf8",
+  });
+  if (probe.error || probe.status !== 0) {
+    const stderr = (probe.stderr ?? "").trim().split("\n").pop() ?? "";
+    return { ok: false, detail: `import agentscope faalde: ${stderr}` };
+  }
+  return { ok: true, detail: "import agentscope OK" };
+}
+
+const PYTHON3 = probePython3();
+const AGENTSCOPE_IMPORTABLE = probeAgentScope();
 
 // ---------------------------------------------------------------------------
 // Deterministische fakes (loopback only)
@@ -105,7 +176,9 @@ async function startServer(
   };
 }
 
-/** Fase-0-sidecarprotocol: /health, /invoke (met causale echo), /cancel. */
+/** Fase-0-sidecarprotocol-fake: /health, /invoke (met causale echo),
+ *  /cancel — de expliciete terugval waar geen python-runtime beschikbaar
+ *  is (alleen agentscope, of beide bindingen zonder python3). */
 function startPhase0Sidecar(): Promise<FakeServer> {
   return startServer((req, res, body) => {
     const json = (status: number, payload: unknown) => {
@@ -134,7 +207,38 @@ function startPhase0Sidecar(): Promise<FakeServer> {
   });
 }
 
-/** Minimale OpenAI-transportfake voor de llama.cpp-route. */
+/** Laatste user-message als tekst; hermes stuurt een kale string, agentscope
+ *  (via de openai-client) een content-blocklijst — beide zijn toegestaan. */
+function extractPrompt(messages: unknown): string {
+  if (!Array.isArray(messages)) return "";
+  for (const message of [...messages].reverse()) {
+    if (
+      typeof message !== "object" ||
+      message === null ||
+      (message as { role?: unknown }).role !== "user"
+    ) {
+      continue;
+    }
+    const content = (message as { content?: unknown }).content;
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((part: unknown) => {
+          if (typeof part !== "object" || part === null) return "";
+          const block = part as { type?: unknown; text?: unknown };
+          return block.type === "text" && typeof block.text === "string"
+            ? block.text
+            : "";
+        })
+        .join("");
+    }
+  }
+  return "";
+}
+
+/** Minimale OpenAI-transportfake: volledige chat.completion-vorm zodat óók
+ *  de echte agentscope-runtime (openai-client met pydantic-validatie) hem
+ *  accepteert; /v1/models dient als readiness-probedoel. */
 function startOpenAiFake(): Promise<FakeServer> {
   return startServer((req, res, body) => {
     const json = (status: number, payload: unknown) => {
@@ -145,18 +249,42 @@ function startOpenAiFake(): Promise<FakeServer> {
       json(200, { status: "ok" });
       return;
     }
+    if (req.method === "GET" && req.url === "/v1/models") {
+      json(200, {
+        object: "list",
+        data: [
+          {
+            id: "conformance-model",
+            object: "model",
+            created: 0,
+            owned_by: "motor-conformance-fake",
+          },
+        ],
+      });
+      return;
+    }
     if (req.method === "POST" && req.url === "/v1/chat/completions") {
       const parsed = JSON.parse(body) as {
-        messages?: { content?: string }[];
+        model?: string;
+        messages?: unknown;
       };
-      const input = parsed.messages?.[0]?.content ?? "";
+      const input = extractPrompt(parsed.messages);
       json(200, {
+        id: "chatcmpl-conformance-0001",
+        object: "chat.completion",
+        created: 1766000000,
+        model: parsed.model ?? "conformance-model",
         choices: [
           {
-            message: { role: "assistant", content: `conformance draft: ${input}` },
+            index: 0,
+            message: {
+              role: "assistant",
+              content: `conformance draft: ${input}`,
+            },
             finish_reason: "stop",
           },
         ],
+        usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
       });
       return;
     }
@@ -165,13 +293,188 @@ function startOpenAiFake(): Promise<FakeServer> {
 }
 
 // ---------------------------------------------------------------------------
+// Echte sidecar-subprocessen (python3, uitsluitend loopback)
+// ---------------------------------------------------------------------------
+
+type BindingMode = "real" | "fake";
+
+interface SidecarHandle {
+  readonly url: string;
+  readonly mode: BindingMode;
+  readonly stop: () => Promise<void>;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const { port } = probe.address() as AddressInfo;
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+function stopChild(child: ChildProcess): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (child.exitCode !== null || child.killed) {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+    }, 5_000);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    child.kill("SIGTERM");
+  });
+}
+
+/** Start een sidecar.py als echt python3-subproces en wacht tot /health
+ *  serveert (HTTP 200 — de status kan bij een bereikbare fake "ok" zijn).
+ *  Iedere startfout is een harde failure: nooit stilletjes terugvallen. */
+async function startRealSidecar(options: {
+  readonly label: string;
+  readonly scriptPath: string;
+  readonly env: Record<string, string>;
+  readonly portEnvVar: string;
+  readonly readyTimeoutMs?: number;
+}): Promise<SidecarHandle> {
+  const port = await getFreePort();
+  const child = spawn("python3", [options.scriptPath], {
+    env: {
+      PATH: process.env.PATH ?? "",
+      HOME: process.env.HOME ?? "/tmp",
+      PYTHONUNBUFFERED: "1",
+      OTEL_SDK_DISABLED: "true",
+      ...options.env,
+      [options.portEnvVar]: String(port),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let output = "";
+  child.stdout.on("data", (chunk: Buffer) => {
+    output += chunk.toString("utf8");
+  });
+  child.stderr.on("data", (chunk: Buffer) => {
+    output += chunk.toString("utf8");
+  });
+  let exitInfo = "";
+  child.once("exit", (code, signal) => {
+    exitInfo = `exit=${String(code)} signal=${String(signal)}`;
+  });
+
+  const url = `http://127.0.0.1:${port}`;
+  const deadline = Date.now() + (options.readyTimeoutMs ?? 20_000);
+  for (;;) {
+    if (exitInfo !== "") {
+      throw new Error(
+        `${options.label}-sidecar stopte tijdens het opstarten (${exitInfo}): ` +
+          output.trim().slice(-600),
+      );
+    }
+    try {
+      const response = await fetch(`${url}/health`, {
+        signal: AbortSignal.timeout(1_000),
+      });
+      if (response.ok) break;
+    } catch {
+      // proces serveert nog niet — poll verder
+    }
+    if (Date.now() > deadline) {
+      await stopChild(child);
+      throw new Error(
+        `${options.label}-sidecar niet gereed binnen de deadline: ` +
+          output.trim().slice(-600),
+      );
+    }
+    await sleep(100);
+  }
+  return {
+    url,
+    mode: "real",
+    stop: () => stopChild(child),
+  };
+}
+
+function startHermesSidecar(openaiUrl: string): Promise<SidecarHandle> {
+  return startRealSidecar({
+    label: "hermes",
+    scriptPath: HERMES_SIDECAR_PY,
+    portEnvVar: "HERMES_SIDECAR_PORT",
+    env: {
+      HERMES_SIDECAR_HOST: "127.0.0.1",
+      MODEL_PORT_URL: `${openaiUrl}/v1`,
+      MODEL_NAME: "conformance-model",
+      MODEL_REQUEST_TIMEOUT_S: "10",
+    },
+  });
+}
+
+function startAgentScopeSidecar(openaiUrl: string): Promise<SidecarHandle> {
+  return startRealSidecar({
+    label: "agentscope",
+    scriptPath: AGENTSCOPE_SIDECAR_PY,
+    portEnvVar: "AGENTSCOPE_SIDECAR_PORT",
+    readyTimeoutMs: 60_000,
+    env: {
+      AGENTSCOPE_SIDECAR_HOST: "127.0.0.1",
+      MODEL_PORT_URL: `${openaiUrl}/v1`,
+      MODEL_NAME: "conformance-model",
+      MODEL_TIMEOUT_MS: "10000",
+    },
+  });
+}
+
+async function asFakeHandle(server: FakeServer): Promise<SidecarHandle> {
+  return { url: server.url, mode: "fake", stop: server.close };
+}
+
+/** Verifieer dat een echt sidecar-proces het vastgelegde protocol declareert
+ *  (elke respons — ook /health — draagt "protocol": "motor-sidecar/1"). */
+async function assertRealProtocol(handle: SidecarHandle): Promise<void> {
+  const response = await fetch(`${handle.url}/health`, {
+    signal: AbortSignal.timeout(2_000),
+  });
+  assert.equal(response.status, 200, "echte sidecar serveert /health");
+  const payload = (await response.json()) as { protocol?: unknown };
+  assert.equal(
+    payload.protocol,
+    "motor-sidecar/1",
+    "echte sidecar declareert motor-sidecar/1",
+  );
+}
+
+// ---------------------------------------------------------------------------
 // De gezamenlijke run
 // ---------------------------------------------------------------------------
 
-test("conformance: vijf bindingen, één semantiek", async () => {
-  const sidecar = await startPhase0Sidecar();
+const bindingModes: Record<string, BindingMode> = {};
+
+test("conformance: vijf bindingen, één semantiek", async (t) => {
   const openai = await startOpenAiFake();
+  const hermes = PYTHON3.ok
+    ? await startHermesSidecar(openai.url)
+    : await asFakeHandle(await startPhase0Sidecar());
+  const agentscope = AGENTSCOPE_IMPORTABLE.ok
+    ? await startAgentScopeSidecar(openai.url)
+    : await asFakeHandle(await startPhase0Sidecar());
+  bindingModes.hermes = hermes.mode;
+  bindingModes.agentscope = agentscope.mode;
+  t.diagnostic(
+    `sidecar-modi: hermes=${hermes.mode} (python3: ${PYTHON3.detail}); ` +
+      `agentscope=${agentscope.mode} (${AGENTSCOPE_IMPORTABLE.detail})`,
+  );
   try {
+    if (hermes.mode === "real") await assertRealProtocol(hermes);
+    if (agentscope.mode === "real") await assertRealProtocol(agentscope);
+
     const fixture = buildProofFixture();
     const adapters: Record<string, CapabilityAdapter> = {
       "fake-alpha": createFakeAlphaAdapter(),
@@ -182,12 +485,12 @@ test("conformance: vijf bindingen, één semantiek", async () => {
         timeoutMs: 5_000,
       }),
       hermes: createHermesAdapter({
-        baseUrl: sidecar.url,
-        invokeTimeoutMs: 5_000,
+        baseUrl: hermes.url,
+        invokeTimeoutMs: 30_000,
       }),
       agentscope: createAgentScopeAdapter({
-        sidecarUrl: sidecar.url,
-        invokeTimeoutMs: 5_000,
+        sidecarUrl: agentscope.url,
+        invokeTimeoutMs: 30_000,
       }),
     };
 
@@ -226,9 +529,42 @@ test("conformance: vijf bindingen, één semantiek", async () => {
     // Alleen de operationele binding verschilt.
     assert.equal(adapterIds.size, 5, "vijf verschillende adapterbindingen");
   } finally {
-    await sidecar.close();
+    await hermes.stop();
+    await agentscope.stop();
     await openai.close();
   }
+});
+
+test("conformance: echte-sidecar-modus is expliciet vastgelegd", (t) => {
+  t.diagnostic(
+    `gemeten modi: hermes=${bindingModes.hermes ?? "?"}; ` +
+      `agentscope=${bindingModes.agentscope ?? "?"}`,
+  );
+  if (!PYTHON3.ok) {
+    t.skip(
+      `python3 ontbreekt hier (${PYTHON3.detail}); sidecar-bindingen liepen ` +
+        "via de fase-0-fake — de echte-sidecar-conformance draait in de " +
+        "python-forziene builderrun (zie LANE-D-CONFORMANCE.md)",
+    );
+    return;
+  }
+  assert.equal(
+    bindingModes.hermes,
+    "real",
+    "hermes is stdlib-only en MOET echt draaien zodra python3 bestaat",
+  );
+  if (!AGENTSCOPE_IMPORTABLE.ok) {
+    t.skip(
+      `agentscope-runtime ontbreekt (${AGENTSCOPE_IMPORTABLE.detail}); ` +
+        "de agentscope-binding liep expliciet via de fase-0-fake",
+    );
+    return;
+  }
+  assert.equal(
+    bindingModes.agentscope,
+    "real",
+    "agentscope draait echt zodra het package importeerbaar is",
+  );
 });
 
 const adapterDenyList = [
