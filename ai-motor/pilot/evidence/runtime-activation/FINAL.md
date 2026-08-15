@@ -9,7 +9,7 @@
 ```text
 BASE_SHA=50dd65dbe1dd70bd5d58d86221b1e587b4d201d9
 RUNTIME_INTEGRATION_SHA=e53f18bf7b5d4aa3fd3f3e5b5eaee9c12a8a4434
-FINAL_EVIDENCE_SHA=PENDING
+FINAL_EVIDENCE_SHA=9f5996b9def883e1a2ee7c49681da31a4fd18094
 TEST_COUNT=225 pass / 0 fail / 1 geregistreerde skip (conformance-modus zonder python in alpine-gate)
 CI_URLS=https://github.com/achmmadd/AI_HQ/actions/runs/31888935247 (success, 547fb41) + Pilot Spine #23 (success, cc95d1d — incl. pilot/security-glob: volledige 218-test gate in CI). P0.7 python-conformance-job is nog owner-edit: yaml-blok in P07-LIVE-SMOKE.md, plakken via GitHub web-UI in .github/workflows/pilot-spine.yml op deze branch — niet door CI bewezen.
 ```
