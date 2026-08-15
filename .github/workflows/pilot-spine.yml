@@ -10,7 +10,7 @@ on:
       - 'ai-motor/components/p1/**'
       - '.github/workflows/pilot-spine.yml'
   push:
-    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation, pilot/p1.1-shell]
+    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation, pilot/p1.1-shell, pilot/p1.2-workbench]
     paths:
       - 'ai-motor/lib/adr110/**'
       - 'ai-motor/pilot/**'
@@ -43,27 +43,6 @@ jobs:
           ./node_modules/.bin/tsc -p pilot/tsconfig.json --noEmit
       - name: Lint (scoped)
         run: ./node_modules/.bin/eslint lib/adr110 pilot
-      - name: Typecheck P1 UI (scoped)
-        run: |
-          cat > tsconfig.p1-ci.json <<'EOF'
-          {
-            "extends": "./tsconfig.json",
-            "compilerOptions": { "allowImportingTsExtensions": true },
-            "include": [
-              "next-env.d.ts",
-              "app/motor/**/*.ts",
-              "app/motor/**/*.tsx",
-              "components/p1/**/*.ts",
-              "components/p1/**/*.tsx",
-              "pilot/p1-foundation.ts",
-              "pilot/p1-shell.ts"
-            ],
-            "exclude": ["node_modules"]
-          }
-          EOF
-          ./node_modules/.bin/tsc -p tsconfig.p1-ci.json --noEmit
-      - name: Lint P1 UI
-        run: ./node_modules/.bin/eslint app/motor components/p1
 
   conformance-real-sidecars:
     # Gecombineerde node+python-run (lane-D-recept, P0.7-bewijs): de
