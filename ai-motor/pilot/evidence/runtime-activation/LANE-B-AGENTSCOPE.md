@@ -7,7 +7,7 @@ Datum: 2026-08-15 · Uitvoerder: Cursor-agent (Agent B)
 
 ```text
 BASE_SHA=50dd65dbe1dd70bd5d58d86221b1e587b4d201d9  (origin/pilot/runtime-activation bij lane-start)
-EIND_SHA=zie "Verklaringen" onderaan (wordt bij de finale commit vastgelegd)
+EIND_SHA=1bf5f42af4d2ff7c23c47e56ed294995ed97a9e6  (finale validatie hierop groen; deze invulling is de vervolgcommit)
 WERKBOOM=/tmp/aihq-p06-b (git worktree op pilot/runtime-b-agentscope, schoon bij start)
 BUILDER=Hetzner (x86_64, Docker 29.3.1), node:24-alpine voor JS-validatie,
         python:3.12.12-slim@sha256:f3fa41d74a768c2fce8016b98c191ae8c1bacd8f1152870a3f9f87d350920b7c
