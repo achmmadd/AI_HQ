@@ -10,7 +10,7 @@ on:
       - 'ai-motor/components/p1/**'
       - '.github/workflows/pilot-spine.yml'
   push:
-    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation, pilot/p1.1-shell, pilot/p1.2-workbench]
+    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation, pilot/p1.1-shell, pilot/p1.2-workbench, pilot/p1.3-roster]
     paths:
       - 'ai-motor/lib/adr110/**'
       - 'ai-motor/pilot/**'
