@@ -8,7 +8,7 @@ on:
       - 'ai-motor/pilot/**'
       - '.github/workflows/pilot-spine.yml'
   push:
-    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation]
+    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation]
     paths:
       - 'ai-motor/lib/adr110/**'
       - 'ai-motor/pilot/**'
