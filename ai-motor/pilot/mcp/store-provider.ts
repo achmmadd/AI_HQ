@@ -24,11 +24,22 @@ function sha256(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
+/**
+ * Store-record met tenancy-kolom. De gedeelde store is multi-workspace:
+ * alleen een record dat expliciet aan de gevraagde workspace toebehoort
+ * is zichtbaar. Records zonder dit veld (legacy, vóór de tenancy-kolom)
+ * horen nergens aantoonbaar bij en zijn voor elke workspace onzichtbaar
+ * — fail-closed, nooit een snapshot op alleen een run_id-gok.
+ */
+export type StoredDraftRecord = DraftStoreRecord & {
+  readonly workspace_id?: string;
+};
+
 export interface StoreSnapshotProviderDeps {
   /** Read-only store interface (bijv. listDrafts). Nooit een write-functie. */
   readonly listDrafts: (
     limit?: number,
-  ) => Promise<readonly DraftStoreRecord[]>;
+  ) => Promise<readonly StoredDraftRecord[]>;
   readonly workspaceId: string;
 }
 
@@ -41,7 +52,12 @@ export function createStoreSnapshotProvider(
         return null;
       }
       const drafts = await deps.listDrafts(1000);
-      const record = drafts.find((d) => d.run_id === scope.run_id);
+      // Workspace-eigendom gaat vóór de run_id-match: een run van een andere
+      // workspace volgt het bestaande not-found-pad, nooit een snapshot.
+      const record = drafts.find(
+        (d) =>
+          d.workspace_id === scope.workspace_id && d.run_id === scope.run_id,
+      );
       if (record === undefined) {
         return null;
       }
