@@ -157,6 +157,8 @@ export interface P1AttentionItem {
   readonly id: string;
   readonly tenantId: string;
   readonly projectId: string;
+  readonly departmentId: string;
+  readonly ownerId: string;
   readonly stage: AttentionStage;
   readonly kind: AttentionKind;
   readonly title: string;
@@ -294,17 +296,25 @@ function freezeBlock(block: P1BlockManifest): P1BlockManifest {
 function motorTenant(): InternalTenant {
   const tenantId = HOME_TENANT_ID;
   const projectId = "prj-review-keten";
+  const projectIdB = "prj-observatie-keten";
   const departmentId = "dep-reviewkring";
+  const departmentIdB = "dep-koppelingen";
   const humanIdentityId = "id-mira";
   const aiIdentityId = "id-reviewer";
   const humanEmployeeId = "emp-mira";
   const aiEmployeeId = "emp-reviewer";
   const taskId = "task-review-samenvatting";
+  const taskIdB = "task-observatie-refs";
   const runId = "run-review-1";
+  const runIdB = "run-obs-1";
   const attemptId = "att-review-1";
+  const attemptIdB = "atm-obs-1";
   const draftId = "draft-review-1";
+  const draftIdB = "draft-obs-1";
   const reviewId = "review-review-1";
+  const reviewIdB = "review-obs-1";
   const publishId = "publish-review-1";
+  const publishIdB = "publish-obs-1";
 
   return {
     id: tenantId,
@@ -363,6 +373,19 @@ function motorTenant(): InternalTenant {
           status: "ready",
         },
       },
+      {
+        id: projectIdB,
+        tenantId,
+        departmentId: departmentIdB,
+        name: "Observatie-keten",
+        goal: "Adapter-evidence zichtbaar houden zonder live-authority.",
+        state: "actief",
+        context: {
+          manifestId: "ctx-observatie-keten",
+          digest: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          status: "ready",
+        },
+      },
     ],
     tasks: [
       {
@@ -373,30 +396,52 @@ function motorTenant(): InternalTenant {
         title: "Samenvatting van de review-vraag",
         status: "in_progress",
       },
+      {
+        id: taskIdB,
+        tenantId,
+        projectId: projectIdB,
+        employeeId: aiEmployeeId,
+        title: "Verzamel evidence-referenties",
+        status: "assigned",
+      },
     ],
-    runs: [{ id: runId, tenantId, taskId }],
-    attempts: [{ id: attemptId, tenantId, runId, outcome: "succeeded" }],
+    runs: [
+      { id: runId, tenantId, taskId },
+      { id: runIdB, tenantId, taskId: taskIdB },
+    ],
+    attempts: [
+      { id: attemptId, tenantId, runId, outcome: "succeeded" },
+      { id: attemptIdB, tenantId, runId: runIdB, outcome: "running" },
+    ],
     agents: [{ id: "agent-reviewer-binding", tenantId, employeeId: aiEmployeeId, label: "Reviewer-binding" }],
     runtimes: [{ id: "rt-local-worker", tenantId, label: "local-worker-sidecar" }],
     models: [{ id: "mdl-demo-weights", tenantId, label: "demo-weights.bin" }],
     assignments: [
       { id: "asg-mira", tenantId, employeeId: humanEmployeeId, projectId, role: "Goedkeurder" },
       { id: "asg-reviewer", tenantId, employeeId: aiEmployeeId, projectId, role: "Opsteller" },
+      { id: "asg-reviewer-obs", tenantId, employeeId: aiEmployeeId, projectId: projectIdB, role: "Waarnemer" },
+      { id: "asg-mira-obs", tenantId, employeeId: humanEmployeeId, projectId: projectIdB, role: "Meekijker" },
     ],
     artifacts: [
       { id: "art-digest", tenantId, projectId, label: "Contextmanifest", kind: "digest" },
       { id: "art-note", tenantId, projectId, label: "Interne aantekening", kind: "note" },
+      { id: "art-obs-digest", tenantId, projectId: projectIdB, label: "Observatie-digest", kind: "digest" },
+      { id: "art-obs-receipt", tenantId, projectId: projectIdB, label: "Evidence-ontvangstbewijs", kind: "receipt" },
     ],
     timeline: [
       { id: "tl-1", tenantId, projectId, label: "Vraag geopend", at: "2026-08-15T08:00:00Z" },
       { id: "tl-2", tenantId, projectId, label: "Concept klaar voor review", at: "2026-08-15T09:10:00Z" },
       { id: "tl-3", tenantId, projectId, label: "Review goedgekeurd; publiceren DENY", at: "2026-08-15T10:02:00Z" },
+      { id: "tl-obs-1", tenantId, projectId: projectIdB, label: "Observatie geopend", at: "2026-08-15T11:00:00Z" },
+      { id: "tl-obs-2", tenantId, projectId: projectIdB, label: "Evidence-referenties verzameld", at: "2026-08-15T11:20:00Z" },
     ],
     attention: [
       {
         id: "att-vraag",
         tenantId,
         projectId,
+        departmentId,
+        ownerId: humanEmployeeId,
         stage: "vraag",
         kind: "approval",
         title: "Mag deze samenvatting de review in?",
@@ -413,6 +458,8 @@ function motorTenant(): InternalTenant {
         id: "att-actief",
         tenantId,
         projectId,
+        departmentId,
+        ownerId: aiEmployeeId,
         stage: "actief",
         kind: "outcome",
         title: "Motor Reviewer schrijft het concept",
@@ -429,6 +476,8 @@ function motorTenant(): InternalTenant {
         id: "att-failure",
         tenantId,
         projectId,
+        departmentId,
+        ownerId: aiEmployeeId,
         stage: "actief",
         kind: "failure",
         title: "Eén poging strandde",
@@ -445,6 +494,8 @@ function motorTenant(): InternalTenant {
         id: "att-jij",
         tenantId,
         projectId,
+        departmentId,
+        ownerId: humanEmployeeId,
         stage: "jij_nodig",
         kind: "approval",
         title: "Mira Vos: concept beoordelen",
@@ -461,6 +512,8 @@ function motorTenant(): InternalTenant {
         id: "att-klaar",
         tenantId,
         projectId,
+        departmentId,
+        ownerId: humanEmployeeId,
         stage: "klaar",
         kind: "outcome",
         title: "Concept afgerond",
@@ -473,6 +526,60 @@ function motorTenant(): InternalTenant {
           evidenceId: "ev-klaar-1",
         },
       },
+      {
+        id: "att-obs-vraag",
+        tenantId,
+        projectId: projectIdB,
+        departmentId: departmentIdB,
+        ownerId: aiEmployeeId,
+        stage: "vraag",
+        kind: "approval",
+        title: "Nieuwe observatie klaarzetten?",
+        summary: "Alleen een leesbare vraag. Geen contextinhoud.",
+        references: {
+          taskId: taskIdB,
+          runId: null,
+          attemptId: null,
+          approvalId: null,
+          evidenceId: "ev-obs-vraag-1",
+        },
+      },
+      {
+        id: "att-obs-actief",
+        tenantId,
+        projectId: projectIdB,
+        departmentId: departmentIdB,
+        ownerId: aiEmployeeId,
+        stage: "actief",
+        kind: "outcome",
+        title: "Evidence-referenties worden verzameld",
+        summary: "Observatie loopt. Ruwe logs blijven buiten dit overzicht.",
+        references: {
+          taskId: taskIdB,
+          runId: runIdB,
+          attemptId: attemptIdB,
+          approvalId: null,
+          evidenceId: "ev-obs-actief-1",
+        },
+      },
+      {
+        id: "att-obs-jij",
+        tenantId,
+        projectId: projectIdB,
+        departmentId: departmentIdB,
+        ownerId: humanEmployeeId,
+        stage: "jij_nodig",
+        kind: "approval",
+        title: "Mira Vos: observatie-concept beoordelen",
+        summary: "Review van de observatie wacht. Publiceren blijft DENY.",
+        references: {
+          taskId: taskIdB,
+          runId: runIdB,
+          attemptId: attemptIdB,
+          approvalId: "appr-mira-obs-1",
+          evidenceId: "ev-obs-jij-1",
+        },
+      },
     ],
     drafts: [
       {
@@ -483,6 +590,15 @@ function motorTenant(): InternalTenant {
         state: "ready",
         bodyDigest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       },
+      {
+        id: draftIdB,
+        tenantId,
+        projectId: projectIdB,
+        kind: "draft",
+        state: "ready",
+        title: "Observatie-concept",
+        bodyDigest: "sha256:abababababababababababababababababababababababababababababababab",
+      },
     ],
     reviews: [
       {
@@ -490,6 +606,14 @@ function motorTenant(): InternalTenant {
         tenantId,
         projectId,
         draftId,
+        kind: "review",
+        state: "approved",
+      },
+      {
+        id: reviewIdB,
+        tenantId,
+        projectId: projectIdB,
+        draftId: draftIdB,
         kind: "review",
         state: "approved",
       },
@@ -503,6 +627,16 @@ function motorTenant(): InternalTenant {
         kind: "publish",
         decision: "DENY",
         reason: "P1-foundation heeft geen live-authority; publiceren blijft DENY na goedkeuring.",
+        visibleAfterApproved: true,
+      },
+      {
+        id: publishIdB,
+        tenantId,
+        projectId: projectIdB,
+        reviewId: reviewIdB,
+        kind: "publish",
+        decision: "DENY",
+        reason: "Observatie-keten blijft intern; publiceren is DENY na goedkeuring.",
         visibleAfterApproved: true,
       },
     ],

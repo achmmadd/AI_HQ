@@ -10,21 +10,24 @@ import {
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
-import type {
-  AttentionStage,
-  FoundationViewModel,
-  P1AttentionItem,
-  ProjectView,
-} from "@/pilot/p1-foundation";
-import { evidenceDisplayValue } from "@/pilot/p1-foundation";
+import type { FoundationViewModel, P1AttentionItem, ProjectView } from "@/pilot/p1-foundation";
+import { assignEmployee, configureDepartment, type ShellOverlay } from "@/pilot/p1-shell";
 import {
-  EMPTY_OVERLAY,
-  assignEmployee,
-  configureDepartment,
-  mergeShellOverlay,
-  type ShellOverlay,
-} from "@/pilot/p1-shell";
+  EMPTY_WORKBENCH_SESSION,
+  appendAttentionPatch,
+  appendProjectPatch,
+  appendWorkbenchOverlay,
+  mergeWorkbenchSession,
+  resetWorkbenchSession,
+  resolveClientProjectId,
+  type AttentionPatch,
+  type InboxFilter,
+  type ProjectPatch,
+  type WorkbenchSession,
+} from "@/pilot/p1-workbench";
+import { P1Inbox } from "@/components/p1/p1-inbox";
 import { P1InputZone } from "@/components/p1/p1-input-zone";
+import { P1ProjectWorkbench } from "@/components/p1/p1-project-workbench";
 import {
   P1Badge,
   P1Button,
@@ -45,160 +48,7 @@ const navigation: ReadonlyArray<{ id: View; label: string; icon: typeof CircleDo
   { id: "departments", label: "Afdelingen", icon: UsersRound },
 ];
 
-function stageLabel(stage: AttentionStage): string {
-  return { vraag: "Vraag", actief: "Actief", jij_nodig: "Jij nodig", klaar: "Klaar" }[stage];
-}
-
-function kindLabel(kind: P1AttentionItem["kind"]): string {
-  return { approval: "Goedkeuring", failure: "Mislukt", outcome: "Uitkomst" }[kind];
-}
-
-function Trace({ item }: { item: P1AttentionItem }) {
-  const refs = item.references;
-  const cells: ReadonlyArray<readonly [string, string | null]> = [
-    ["Taak", refs.taskId],
-    ["Run", refs.runId],
-    ["Attempt", refs.attemptId],
-    ["Goedkeuring", refs.approvalId],
-    ["Bewijs", refs.evidenceId],
-  ];
-  return (
-    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground sm:grid-cols-3">
-      {cells.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd className="mt-0.5 truncate font-medium text-foreground">{evidenceDisplayValue(value)}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function NowView({
-  view,
-  showProject,
-}: {
-  view: FoundationViewModel;
-  showProject: () => void;
-}) {
-  const stages: readonly AttentionStage[] = view.now.stages;
-  const priorities = view.now.items.filter((item) => item.stage === "jij_nodig");
-  const openConcepts = view.projects.flatMap((row) =>
-    row.drafts.map((draft) => ({
-      id: draft.id,
-      title: draft.title ?? "Concept",
-      state: draft.state,
-    })),
-  );
-  const reviewRows = view.projects.flatMap((row) =>
-    row.reviews.map((review) => {
-      const publish = row.publishes.find((item) => item.reviewId === review.id);
-      return {
-        id: review.id,
-        projectName: row.project.name,
-        reviewState: review.state,
-        publishDecision: publish?.decision ?? "DENY",
-      };
-    }),
-  );
-  return (
-    <section className="space-y-6" aria-labelledby="now-heading">
-      <header>
-        <p className="text-sm font-medium text-accent">Overzicht</p>
-        <h1 id="now-heading" className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-          Wat aandacht nodig heeft
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Prioriteiten, open concepten en reviewstatus. Geen technische logs.
-        </p>
-      </header>
-      <div className="grid gap-4 md:grid-cols-3">
-        <P1Card>
-          <P1CardHeader>
-            <P1CardTitle>Prioriteiten</P1CardTitle>
-            <P1CardDescription>Waar jij nu nodig bent.</P1CardDescription>
-          </P1CardHeader>
-          <P1CardContent className="space-y-2">
-            {priorities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Niets wacht op jou.</p>
-            ) : (
-              priorities.map((item) => (
-                <p key={item.id} className="text-sm">
-                  {item.title}
-                </p>
-              ))
-            )}
-          </P1CardContent>
-        </P1Card>
-        <P1Card>
-          <P1CardHeader>
-            <P1CardTitle>Open concepten</P1CardTitle>
-            <P1CardDescription>Drafts in deze werkruimte.</P1CardDescription>
-          </P1CardHeader>
-          <P1CardContent className="space-y-2">
-            {openConcepts.map((concept) => (
-              <p key={concept.id} className="flex justify-between gap-3 text-sm">
-                <span>{concept.title}</span>
-                <P1Badge variant="outline">{concept.state}</P1Badge>
-              </p>
-            ))}
-          </P1CardContent>
-        </P1Card>
-        <P1Card>
-          <P1CardHeader>
-            <P1CardTitle>Reviewstatus</P1CardTitle>
-            <P1CardDescription>Goedkeuren is niet publiceren.</P1CardDescription>
-          </P1CardHeader>
-          <P1CardContent className="space-y-2">
-            {reviewRows.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span>{row.projectName}</span>
-                <span className="flex gap-2">
-                  <P1Badge variant="success">{row.reviewState}</P1Badge>
-                  <P1Badge variant="denied">Publish: {row.publishDecision}</P1Badge>
-                </span>
-              </div>
-            ))}
-          </P1CardContent>
-        </P1Card>
-      </div>
-      <div className="grid gap-4 xl:grid-cols-4">
-        {stages.map((stage) => {
-          const items = view.now.items.filter((item) => item.stage === stage);
-          const variant = stage === "jij_nodig" ? "warning" : stage === "klaar" ? "success" : "secondary";
-          return (
-            <div key={stage} className="space-y-3">
-              <div className="flex justify-between px-1">
-                <h2 className="text-sm font-semibold">{stageLabel(stage)}</h2>
-                <span className="text-xs text-muted-foreground">{items.length}</span>
-              </div>
-              {items.map((item) => (
-                <P1Card key={item.id} className={stage === "jij_nodig" ? "border-warning/40" : undefined}>
-                  <P1CardHeader>
-                    <div className="flex items-start justify-between gap-3">
-                      <P1CardTitle className="text-sm leading-5">{item.title}</P1CardTitle>
-                      <P1Badge variant={variant}>{stageLabel(stage)}</P1Badge>
-                    </div>
-                    <P1CardDescription>{item.summary}</P1CardDescription>
-                  </P1CardHeader>
-                  <P1CardContent>
-                    <P1Badge variant="outline">{kindLabel(item.kind)}</P1Badge>
-                    <Trace item={item} />
-                    <P1Button variant="ghost" className="mt-3 -ml-3" onClick={showProject}>
-                      Open project
-                    </P1Button>
-                  </P1CardContent>
-                </P1Card>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function ProjectCard({ row }: { row: ProjectView }) {
+function ProjectCard({ row, onOpen }: { row: ProjectView; onOpen: () => void }) {
   const { project } = row;
   return (
     <div className="space-y-4">
@@ -209,9 +59,12 @@ function ProjectCard({ row }: { row: ProjectView }) {
               <P1CardTitle>{project.name}</P1CardTitle>
               <P1CardDescription>{project.goal}</P1CardDescription>
             </div>
-            <P1Badge variant={project.state === "jij_nodig" ? "warning" : "secondary"}>
-              {project.state === "jij_nodig" ? "Jij nodig" : "Actief"}
-            </P1Badge>
+            <div className="flex flex-wrap gap-2">
+              <P1Badge variant={project.state === "jij_nodig" ? "warning" : "secondary"}>
+                {project.state === "jij_nodig" ? "Jij nodig" : "Actief"}
+              </P1Badge>
+              <P1Badge variant="denied">Publish: DENY</P1Badge>
+            </div>
           </div>
         </P1CardHeader>
         <P1CardContent className="grid gap-4 md:grid-cols-3">
@@ -307,11 +160,20 @@ function ProjectCard({ row }: { row: ProjectView }) {
           </P1CardContent>
         </P1Card>
       </div>
+      <P1Button variant="outline" onClick={onOpen}>
+        Open workbench
+      </P1Button>
     </div>
   );
 }
 
-function ProjectsView({ view }: { view: FoundationViewModel }) {
+function ProjectsView({
+  view,
+  onOpen,
+}: {
+  view: FoundationViewModel;
+  onOpen: (projectId: string) => void;
+}) {
   return (
     <section className="space-y-6" aria-labelledby="projects-heading">
       <header>
@@ -324,7 +186,7 @@ function ProjectsView({ view }: { view: FoundationViewModel }) {
         </p>
       </header>
       {view.projects.map((row) => (
-        <ProjectCard key={row.project.id} row={row} />
+        <ProjectCard key={row.project.id} row={row} onOpen={() => onOpen(row.project.id)} />
       ))}
     </section>
   );
@@ -547,25 +409,57 @@ function DepartmentsView({
 
 export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
   const [current, setCurrent] = useState<View>("now");
-  const [overlay, setOverlay] = useState<ShellOverlay>(EMPTY_OVERLAY);
-  const merged = mergeShellOverlay(view, overlay);
+  const [session, setSession] = useState<WorkbenchSession>(EMPTY_WORKBENCH_SESSION);
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>({});
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [openedAttentionId, setOpenedAttentionId] = useState<string | null>(null);
+  const merged = mergeWorkbenchSession(view, session);
 
   function appendOverlay(partial: Partial<ShellOverlay>) {
-    setOverlay((previous) => ({
-      drafts: [...previous.drafts, ...(partial.drafts ?? [])],
-      attention: [...previous.attention, ...(partial.attention ?? [])],
-      departments: [...previous.departments, ...(partial.departments ?? [])],
-      assignments: [...previous.assignments, ...(partial.assignments ?? [])],
-    }));
+    setSession((previous) => appendWorkbenchOverlay(previous, partial));
   }
 
+  function openProject(projectId: string, attentionId?: string) {
+    const allowed = resolveClientProjectId(merged, projectId);
+    if (!allowed) return;
+    setSelectedProjectId(allowed);
+    setOpenedAttentionId(attentionId ?? null);
+    setCurrent("projects");
+  }
+
+  function openAttention(item: P1AttentionItem) {
+    openProject(item.projectId, item.id);
+  }
+
+  function applyPatches(next: { attentionPatch?: AttentionPatch; projectPatch?: ProjectPatch }) {
+    setSession((previous) => {
+      let currentSession = previous;
+      if (next.attentionPatch) currentSession = appendAttentionPatch(currentSession, next.attentionPatch);
+      if (next.projectPatch) currentSession = appendProjectPatch(currentSession, next.projectPatch);
+      return currentSession;
+    });
+  }
+
+  const workbenchId = resolveClientProjectId(merged, selectedProjectId);
   const body =
-    current === "projects" ? (
-      <ProjectsView view={merged} />
+    current === "projects" && workbenchId ? (
+      <P1ProjectWorkbench
+        key={`${workbenchId}:${openedAttentionId ?? ""}`}
+        view={merged}
+        projectId={workbenchId}
+        attentionId={openedAttentionId}
+        onBack={() => {
+          setSelectedProjectId(null);
+          setOpenedAttentionId(null);
+        }}
+        onReassigned={applyPatches}
+      />
+    ) : current === "projects" ? (
+      <ProjectsView view={merged} onOpen={(projectId) => openProject(projectId)} />
     ) : current === "departments" ? (
       <DepartmentsView view={merged} onConfigured={appendOverlay} />
     ) : (
-      <NowView view={merged} showProject={() => setCurrent("projects")} />
+      <P1Inbox view={merged} filter={inboxFilter} onFilter={setInboxFilter} onOpenItem={openAttention} />
     );
 
   return (
@@ -612,9 +506,16 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
         <main className="min-w-0 flex-1 px-4 pb-56 pt-6 sm:px-6 md:px-10 md:pb-10 md:pt-10">
           <div className="mx-auto max-w-5xl space-y-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <P1Badge variant="secondary">Synthetische demo</P1Badge>
                 <P1Badge variant="denied">Publish: DENY</P1Badge>
+                <P1Button
+                  variant="ghost"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => setSession(resetWorkbenchSession())}
+                >
+                  Herstel lokale sessie
+                </P1Button>
               </div>
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-success" />

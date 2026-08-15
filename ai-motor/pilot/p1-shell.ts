@@ -221,6 +221,8 @@ export function prepareTypedDraft(input: {
     id: `att-${id}`,
     tenantId: HOME_TENANT_ID,
     projectId: project.project.id,
+    departmentId: project.project.departmentId,
+    ownerId: project.team[0]?.employee.id ?? access.view.roster[0]?.employee.id ?? "",
     stage: "vraag",
     kind: "approval",
     title,
