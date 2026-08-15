@@ -39,9 +39,11 @@ import {
 import { createFakeAlphaAdapter } from "../../lib/adr110/adapters/fake-alpha.ts";
 import { branded } from "../../lib/adr110/types.ts";
 import type {
+  AttemptId,
   EvidenceId,
   EvidenceRecord,
   RunId,
+  TaskId,
 } from "../../lib/adr110/types.ts";
 
 const fixture = buildProofFixture();
@@ -64,11 +66,11 @@ test("S7a. digest-vervalsing per veld: elke mutatie met oude digest → tampered
   assert.ok(original, "testopstelling: outcome-record aanwezig");
 
   const mutations: readonly { veld: string; muteer: (r: EvidenceRecord) => EvidenceRecord }[] = [
-    { veld: "evidence_id", muteer: (r) => ({ ...r, evidence_id: branded("ev-geponst") }) },
+    { veld: "evidence_id", muteer: (r) => ({ ...r, evidence_id: branded<EvidenceId>("ev-geponst") }) },
     { veld: "stage", muteer: (r) => ({ ...r, stage: "action" }) },
-    { veld: "task_id", muteer: (r) => ({ ...r, task_id: branded("task-geponst") }) },
+    { veld: "task_id", muteer: (r) => ({ ...r, task_id: branded<TaskId>("task-geponst") }) },
     { veld: "run_id", muteer: (r) => ({ ...r, run_id: branded<RunId>("run-geponst") }) },
-    { veld: "attempt_id", muteer: (r) => ({ ...r, attempt_id: branded("attempt-geponst") }) },
+    { veld: "attempt_id", muteer: (r) => ({ ...r, attempt_id: branded<AttemptId>("att-geponst") }) },
     { veld: "subject_id", muteer: (r) => ({ ...r, subject_id: "act-geponst" }) },
     {
       veld: "parent_evidence_id",
