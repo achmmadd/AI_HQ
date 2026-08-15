@@ -39,3 +39,34 @@ jobs:
           ./node_modules/.bin/tsc -p pilot/tsconfig.json --noEmit
       - name: Lint (scoped)
         run: ./node_modules/.bin/eslint lib/adr110 pilot
+
+  conformance-real-sidecars:
+    # Gecombineerde node+python-run (lane-D-recept, P0.7-bewijs): de
+    # conformance-suite start de ECHTE hermes- en agentscope-sidecars als
+    # subprocessen tegen in-test fakes. Uitsluitend 127.0.0.1, --network none:
+    # nooit een echt model, nooit het tailnet, geen secrets.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build agentscope sidecar image (hash-locked install)
+        run: docker build -f ai-motor/infra/pilot/agentscope/Dockerfile -t motor-pilot-agentscope:2.0.6 ai-motor
+      - name: Build combined node+python conformance image
+        run: |
+          printf '%s\n' \
+            'FROM node:24-bookworm-slim AS node' \
+            'FROM motor-pilot-agentscope:2.0.6' \
+            'COPY --from=node /usr/local/bin/node /usr/local/bin/node' \
+            'COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules' \
+            > /tmp/Dockerfile.conformance
+          docker build -f /tmp/Dockerfile.conformance -t pilot-conformance-ci .
+      - name: Full suite, real sidecar subprocesses, no network
+        run: |
+          docker run --rm --network none -e HOME=/tmp \
+            -v "$PWD/ai-motor:/app:ro" -w /app pilot-conformance-ci \
+            sh -c 'node --test "lib/adr110/*.test.ts" "lib/adr110/adapters/**/*.test.ts" "pilot/*.test.ts" "pilot/security/*.test.ts"'
+      - name: Python sidecar unittests (hermes + agentscope body-asserties)
+        run: |
+          docker run --rm --network none -e HOME=/tmp -v "$PWD/ai-motor:/app:ro" \
+            -w /app/infra/pilot/hermes pilot-conformance-ci python3 -m unittest test_sidecar
+          docker run --rm --network none -e HOME=/tmp -v "$PWD/ai-motor:/app:ro" \
+            -w /app/pilot/adapters/agentscope pilot-conformance-ci python3 -m unittest test_sidecar
