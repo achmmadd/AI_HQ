@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import {
   Blocks,
   CheckCircle2,
@@ -11,23 +11,30 @@ import {
   UsersRound,
 } from "lucide-react";
 import type { FoundationViewModel, P1AttentionItem, ProjectView } from "@/pilot/p1-foundation";
-import { assignEmployee, configureDepartment, type ShellOverlay } from "@/pilot/p1-shell";
+import type { ShellOverlay } from "@/pilot/p1-shell";
 import {
-  EMPTY_WORKBENCH_SESSION,
   appendAttentionPatch,
   appendProjectPatch,
-  appendWorkbenchOverlay,
-  mergeWorkbenchSession,
-  resetWorkbenchSession,
   resolveClientProjectId,
   type AttentionPatch,
   type InboxFilter,
   type ProjectPatch,
-  type WorkbenchSession,
 } from "@/pilot/p1-workbench";
+import {
+  EMPTY_ROSTER_SESSION,
+  appendDepartmentPatch,
+  appendMembershipPatch,
+  appendRosterOverlay,
+  asWorkbenchSession,
+  mergeRosterSession,
+  resetRosterSession,
+  withWorkbenchUpdate,
+  type RosterSession,
+} from "@/pilot/p1-roster";
 import { P1Inbox } from "@/components/p1/p1-inbox";
 import { P1InputZone } from "@/components/p1/p1-input-zone";
 import { P1ProjectWorkbench } from "@/components/p1/p1-project-workbench";
+import { P1Departments } from "@/components/p1/p1-departments";
 import {
   P1Badge,
   P1Button,
@@ -36,7 +43,6 @@ import {
   P1CardDescription,
   P1CardHeader,
   P1CardTitle,
-  P1Textarea,
 } from "@/components/p1/ui";
 import { cn } from "@/lib/utils";
 
@@ -192,231 +198,16 @@ function ProjectsView({
   );
 }
 
-function DepartmentsView({
-  view,
-  onConfigured,
-}: {
-  view: FoundationViewModel;
-  onConfigured: (overlay: Pick<ShellOverlay, "departments" | "assignments">) => void;
-}) {
-  const [deptName, setDeptName] = useState("");
-  const [deptPurpose, setDeptPurpose] = useState("");
-  const [role, setRole] = useState("Meekijker");
-  const [employeeId, setEmployeeId] = useState(view.roster[0]?.employee.id ?? "");
-  const [notice, setNotice] = useState<string | null>(null);
-  const projectId = view.projects[0]?.project.id;
-
-  function addDepartment(event: FormEvent) {
-    event.preventDefault();
-    const result = configureDepartment({
-      authenticated: true,
-      actorTenantId: view.tenantId,
-      workspaceId: view.tenantId,
-      name: deptName,
-      purpose: deptPurpose,
-      capabilities: ["team.configure"],
-      nonce: `${Date.now()}`,
-    });
-    if (!result.ok) {
-      setNotice("Afdeling kon niet worden toegevoegd.");
-      return;
-    }
-    onConfigured({ departments: [result.department], assignments: [] });
-    setDeptName("");
-    setDeptPurpose("");
-    setNotice("Afdeling lokaal toegevoegd binnen deze tenant.");
-  }
-
-  function addAssignment(event: FormEvent) {
-    event.preventDefault();
-    if (!projectId || !employeeId) {
-      setNotice("Kies een medewerker en project.");
-      return;
-    }
-    const result = assignEmployee({
-      authenticated: true,
-      actorTenantId: view.tenantId,
-      workspaceId: view.tenantId,
-      employeeId,
-      projectId,
-      role,
-      nonce: `${Date.now()}`,
-    });
-    if (!result.ok) {
-      setNotice("Toewijzing kon niet worden gemaakt.");
-      return;
-    }
-    onConfigured({ departments: [], assignments: [result.assignment] });
-    setNotice("Toewijzing lokaal toegevoegd binnen deze tenant.");
-  }
-
-  return (
-    <section className="space-y-6" aria-labelledby="departments-heading">
-      <header>
-        <p className="text-sm font-medium text-accent">Gedeelde structuur</p>
-        <h1 id="departments-heading" className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-          Afdelingen
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Configureerbare capabilities en teams. Geen vaste legacy-taxonomie.
-        </p>
-      </header>
-      <div className="grid gap-4 md:grid-cols-2">
-        {view.departments.map((department) => (
-          <P1Card key={department.id}>
-            <P1CardHeader>
-              <div className="flex justify-between gap-3">
-                <P1CardTitle>{department.name}</P1CardTitle>
-                <P1Badge variant="outline">Configureerbaar</P1Badge>
-              </div>
-              <P1CardDescription>{department.purpose}</P1CardDescription>
-            </P1CardHeader>
-            <P1CardContent>
-              <p className="text-xs text-muted-foreground">Capabilities</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {department.capabilities.map((capability) => (
-                  <P1Badge key={capability} variant="secondary">
-                    {capability}
-                  </P1Badge>
-                ))}
-              </div>
-            </P1CardContent>
-          </P1Card>
-        ))}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <P1Card>
-          <P1CardHeader>
-            <P1CardTitle>Roster</P1CardTitle>
-            <P1CardDescription>
-              Human en AI Employee zijn aparte Employees. Geen van beiden is een runtime of model.
-            </P1CardDescription>
-          </P1CardHeader>
-          <P1CardContent className="space-y-3">
-            {view.roster.map((entry) => (
-              <div key={entry.employee.id} className="rounded-lg border border-border p-4">
-                <div className="flex justify-between gap-3">
-                  <p className="text-sm font-medium">{entry.employee.name}</p>
-                  <P1Badge variant={entry.employee.kind === "human" ? "outline" : "secondary"}>
-                    {entry.employee.kind === "human" ? "Mens" : "AI Employee"}
-                  </P1Badge>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Identiteit: {entry.identity.displayName} ({entry.identity.kind})
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">{entry.employee.mandate}</p>
-                <p className="mt-2 text-xs text-muted-foreground">{entry.employee.capabilities.join(" · ")}</p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {entry.assignments.map((assignment) => `${assignment.projectName} · ${assignment.role}`).join(" · ")}
-                </p>
-              </div>
-            ))}
-          </P1CardContent>
-        </P1Card>
-        <P1Card>
-          <P1CardHeader>
-            <P1CardTitle>Typed BlockManifest</P1CardTitle>
-            <P1CardDescription>
-              Blocks zijn compositie-data. Ze voeren niets uit, zijn geen SSOT en hebben geen authority.
-            </P1CardDescription>
-          </P1CardHeader>
-          <P1CardContent className="space-y-3">
-            {view.blocks.map((block) => (
-              <div key={block.id} className="rounded-lg border border-border p-4">
-                <div className="flex justify-between gap-3">
-                  <p className="text-sm font-medium">{block.name}</p>
-                  <P1Badge variant="secondary">{block.risk}</P1Badge>
-                </div>
-                <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <dt className="text-muted-foreground">Schema</dt>
-                    <dd>{block.schema.join(", ")}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Scopes</dt>
-                    <dd>{block.scopes.join(", ")}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Effects</dt>
-                    <dd>{block.effects.length ? block.effects.join(", ") : "Geen"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Uitvoerbaar</dt>
-                    <dd>Nee</dd>
-                  </div>
-                </dl>
-              </div>
-            ))}
-          </P1CardContent>
-        </P1Card>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <P1Card>
-          <P1CardHeader>
-            <P1CardTitle>Nieuwe afdeling</P1CardTitle>
-            <P1CardDescription>Alleen binnen deze tenant, lokaal in het read-model.</P1CardDescription>
-          </P1CardHeader>
-          <P1CardContent>
-            <form className="space-y-3" onSubmit={addDepartment}>
-              <input
-                value={deptName}
-                onChange={(event) => setDeptName(event.target.value)}
-                placeholder="Naam"
-                className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
-              />
-              <P1Textarea
-                value={deptPurpose}
-                onChange={(event) => setDeptPurpose(event.target.value)}
-                placeholder="Doel van deze afdeling"
-              />
-              <P1Button type="submit">Voeg afdeling toe</P1Button>
-            </form>
-          </P1CardContent>
-        </P1Card>
-        <P1Card>
-          <P1CardHeader>
-            <P1CardTitle>Toewijzing</P1CardTitle>
-            <P1CardDescription>Medewerker koppelen aan het project in deze werkruimte.</P1CardDescription>
-          </P1CardHeader>
-          <P1CardContent>
-            <form className="space-y-3" onSubmit={addAssignment}>
-              <select
-                value={employeeId}
-                onChange={(event) => setEmployeeId(event.target.value)}
-                className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
-              >
-                {view.roster.map((entry) => (
-                  <option key={entry.employee.id} value={entry.employee.id}>
-                    {entry.employee.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-                placeholder="Rol"
-                className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
-              />
-              <P1Button type="submit">Wijs toe</P1Button>
-            </form>
-          </P1CardContent>
-        </P1Card>
-      </div>
-      {notice ? <p className="text-xs text-muted-foreground">{notice}</p> : null}
-    </section>
-  );
-}
-
 export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
   const [current, setCurrent] = useState<View>("now");
-  const [session, setSession] = useState<WorkbenchSession>(EMPTY_WORKBENCH_SESSION);
+  const [session, setSession] = useState<RosterSession>(EMPTY_ROSTER_SESSION);
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>({});
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [openedAttentionId, setOpenedAttentionId] = useState<string | null>(null);
-  const merged = mergeWorkbenchSession(view, session);
+  const merged = mergeRosterSession(view, session);
 
   function appendOverlay(partial: Partial<ShellOverlay>) {
-    setSession((previous) => appendWorkbenchOverlay(previous, partial));
+    setSession((previous) => appendRosterOverlay(previous, partial));
   }
 
   function openProject(projectId: string, attentionId?: string) {
@@ -433,10 +224,10 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
 
   function applyPatches(next: { attentionPatch?: AttentionPatch; projectPatch?: ProjectPatch }) {
     setSession((previous) => {
-      let currentSession = previous;
-      if (next.attentionPatch) currentSession = appendAttentionPatch(currentSession, next.attentionPatch);
-      if (next.projectPatch) currentSession = appendProjectPatch(currentSession, next.projectPatch);
-      return currentSession;
+      let workbench = asWorkbenchSession(previous);
+      if (next.attentionPatch) workbench = appendAttentionPatch(workbench, next.attentionPatch);
+      if (next.projectPatch) workbench = appendProjectPatch(workbench, next.projectPatch);
+      return withWorkbenchUpdate(previous, workbench);
     });
   }
 
@@ -457,7 +248,13 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
     ) : current === "projects" ? (
       <ProjectsView view={merged} onOpen={(projectId) => openProject(projectId)} />
     ) : current === "departments" ? (
-      <DepartmentsView view={merged} onConfigured={appendOverlay} />
+      <P1Departments
+        view={merged}
+        session={session}
+        onOverlay={appendOverlay}
+        onDepartmentPatch={(patch) => setSession((previous) => appendDepartmentPatch(previous, patch))}
+        onMembershipPatch={(patch) => setSession((previous) => appendMembershipPatch(previous, patch))}
+      />
     ) : (
       <P1Inbox view={merged} filter={inboxFilter} onFilter={setInboxFilter} onOpenItem={openAttention} />
     );
@@ -512,7 +309,7 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
                 <P1Button
                   variant="ghost"
                   className="h-8 px-3 text-xs"
-                  onClick={() => setSession(resetWorkbenchSession())}
+                  onClick={() => setSession(resetRosterSession())}
                 >
                   Herstel lokale sessie
                 </P1Button>
