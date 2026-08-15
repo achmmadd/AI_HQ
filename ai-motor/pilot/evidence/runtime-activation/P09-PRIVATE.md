@@ -238,15 +238,19 @@ vóór je het bestand weghaalt als de API bruikbaar moet blijven.
 
 ## Validatie (eigen dir op Hetzner)
 
-Onafhankelijke clone van `pilot/p09-private` in `/tmp/pv-p09`, daarna
-`node:24-alpine` met dezelfde gate als P0.8 (in te vullen na push):
+Onafhankelijke clone van `pilot/p09-private` @ `83e894b` in `/tmp/pv-p09`,
+daarna `node:24-alpine` met dezelfde gate als P0.8:
 
 ```text
-SHA=(deze commit)
-TESTS_EXIT=?   ℹ pass ?  ℹ fail ?  ℹ skipped ?
-TYPES_EXIT=?
-LINT_EXIT=?
+SHA=83e894b5b6d3492f51c6054a2405c052fbbaa7da
+TESTS_EXIT=0   ℹ pass 225  ℹ fail 0  ℹ skipped 1
+TYPES_EXIT=0   (tsc --noEmit -p pilot/tsconfig.json)
+LINT_EXIT=0    (eslint lib/adr110 pilot --max-warnings 0)
 ```
+
+De skip is de geregistreerde conformance-modustest zonder python in alpine
+(ongewijzigd t.o.v. P0.8). Deze nacommit is alleen dit validatieblok; de
+suite dekt `83e894b` (alleen dit evidence-bestand t.o.v. merge `5264462`).
 
 ```text
 CONTEXT_MODE_PRIVATE_FAIL_CLOSED=yes
