@@ -141,3 +141,61 @@ test("CI trigger includes this P2 branch and P2 infra paths", () => {
   assert.match(workflow, /compose\.p2-motor\.yaml/);
   assert.match(workflow, /pilot\/\*\.test\.ts/);
 });
+
+test("NUC cannot use UI, review or publish; unknown node is denied everywhere gated", async () => {
+  const nuc = await listen(NUC_ORCHESTRATOR_STABLE_ID);
+  const unknown = await listen("nUNKNOWNCNTRL");
+  const originalFetch = globalThis.fetch;
+  let outbound = 0;
+  globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
+    const url = String(args[0]);
+    if (url.startsWith(nuc.base) || url.startsWith(unknown.base)) return originalFetch(...args);
+    outbound += 1;
+    throw new Error(`unexpected outbound: ${url}`);
+  };
+  try {
+    for (const path of ["/motor", "/api/motor/view?workspace=ws-motor", "/api/motor/evidence?workspace=ws-motor"]) {
+      assert.equal((await fetch(`${nuc.base}${path}`)).status, 403);
+    }
+    for (const [path, body] of [
+      ["/api/motor/review/submit", { workspace: "ws-motor", draftId: "draft-x" }],
+      ["/api/motor/review/decide", { workspace: "ws-motor", draftId: "draft-x", decision: "approve" }],
+      ["/api/motor/publish", { workspace: "ws-motor", draftId: "draft-x" }],
+    ] as const) {
+      const res = await fetch(`${nuc.base}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      assert.equal(res.status, 403);
+    }
+    assert.equal((await fetch(`${unknown.base}/motor`)).status, 403);
+    assert.equal((await fetch(`${unknown.base}/motor/orchestrator/health`)).status, 403);
+    assert.equal((await fetch(`${unknown.base}/motor/orchestrator/ready`)).status, 403);
+    assert.equal(outbound, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    nuc.server.close();
+    unknown.server.close();
+  }
+});
+
+test("hostname or IP is never an orchestrator grant", () => {
+  assert.equal(orchestratorAllowed("motorai-nuc", ORCH_ACL), false);
+  assert.equal(orchestratorAllowed("motorai-server2", ORCH_ACL), false);
+  assert.equal(orchestratorAllowed("100.123.185.0", ORCH_ACL), false);
+  assert.equal(whoisStableId({ Name: "motorai-nuc", StableID: "motorai-nuc" }), null);
+});
+
+test("P0 :4400 contract files stay on PILOT_ACL and are not the P2 overlay", () => {
+  const p0 = readFileSync(join(import.meta.dirname, "server.ts"), "utf8");
+  const p0Compose = readFileSync(join(import.meta.dirname, "../infra/pilot/compose.yaml"), "utf8");
+  const p2Compose = readFileSync(join(import.meta.dirname, "../infra/pilot/compose.p2-motor.yaml"), "utf8");
+  assert.match(p0, /PILOT_API_PORT \?\? "4400"/);
+  assert.match(p0, /parseAcl\(process\.env\.PILOT_ACL\)/);
+  assert.match(p0Compose, /PILOT_ACL: \$\{PILOT_ACL:/);
+  assert.match(p0Compose, /PILOT_API_PORT: "4400"/);
+  assert.doesNotMatch(p0Compose, /PILOT_P2_ORCHESTRATOR_ACL/);
+  assert.doesNotMatch(p2Compose, /PILOT_API_PORT: "4400"/);
+  assert.match(p2Compose, /PILOT_P2_ORCHESTRATOR_ACL/);
+});
