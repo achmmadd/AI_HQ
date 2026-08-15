@@ -19,6 +19,10 @@
  * toegestane workspaces: {"<stableId>": ["ws-motor"]}. Een workspace-queryparam
  * wordt nooit vertrouwd — hij wordt alleen tegen de server-side ACL gelegd.
  * Lege/ontbrekende ACL = niemand komt binnen.
+ *
+ * Tenancy (P0.8): de zo vastgestelde workspace wordt overal doorgegeven —
+ * nieuwe concepten/beslissingen dragen haar als verplicht workspace_id en
+ * de read-side filtert erop (legacy-records zonder het veld zijn onzichtbaar).
  */
 
 import { readFile } from "node:fs/promises";
@@ -250,11 +254,13 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
           Math.max(Number(params.get("limit") ?? "20") || 20, 1),
           100,
         );
+        // Tenancy (P0.8): de reads filteren op de server-side vastgestelde
+        // workspace uit de ACL — nooit op een queryparam.
         sendJson(res, 200, {
           ok: true,
           workspace: access.workspace,
-          drafts: await listDraftsImpl(limit),
-          decisions: await listDecisionsImpl(500),
+          drafts: await listDraftsImpl(limit, undefined, access.workspace),
+          decisions: await listDecisionsImpl(500, undefined, access.workspace),
         });
         return;
       }
@@ -347,6 +353,9 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
           draftRunId,
           decision: body.decision,
           note: typeof body.note === "string" ? body.note : undefined,
+          // Tenancy (P0.8): de beslissing werkt uitsluitend binnen de
+          // ACL-vastgestelde workspace van deze identiteit.
+          workspaceId: access.workspace,
         });
         const status = output.ok
           ? 200
@@ -407,6 +416,9 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
         const output = await runDraftImpl({
           reviewText: review,
           isSynthetic: review === SYNTHETIC_REVIEW,
+          // Tenancy (P0.8): het concept wordt opgeslagen onder de
+          // ACL-vastgestelde workspace van deze identiteit.
+          workspaceId: access.workspace,
         });
         sendJson(res, output.ok ? 200 : 502, output);
         return;

@@ -13,6 +13,14 @@
  *
  * Complementair aan boundary-test 7g (mountmatrix basiscompose) en de
  * agentscope-overlay-guard in pilot/agentscope.test.ts.
+ *
+ * P0.8 (compose-integratie): elke sidecar krijgt een tweede attachment aan
+ * het dedicated egress-netwerk pilot-egress (voor het tailnet-ModelPort).
+ * De eis wordt daarmee VERSCHERPT, niet verbreed: de toegestane netwerkset
+ * is gesloten ({eiland, pilot-egress}), het eiland blijft verplicht én
+ * internal: true, pilot-egress mag nooit internal zijn (dat zou egress
+ * blokkeren) en nooit aan een andere dienst hangen, en nergens in een
+ * overlay mag een expliciete `internal: false` staan.
  */
 
 import assert from "node:assert/strict";
@@ -99,6 +107,62 @@ const FORBIDDEN_VOLUME_TOKENS = [
 
 const FORBIDDEN_ENV_PATTERN = /SECRET|TOKEN|PASSWORD|API[-_]?KEY|CREDENTIAL/i;
 
+/**
+ * P0.8 netwerk-invariant per sidecar: exact het eigen eiland plus hooguit
+ * pilot-egress. De set is gesloten — ieder ander netwerk is een overtreding.
+ */
+function assertSidecarNetworks(
+  serviceBlock: string,
+  island: string,
+  label: string,
+): void {
+  const nets = networkEntriesOf(serviceBlock);
+  assert.ok(nets.includes(island), `${label}: eiland ${island} ontbreekt`);
+  for (const net of nets) {
+    assert.ok(
+      net === island || net === "pilot-egress",
+      `${label}: onverwacht netwerk ${net} (toegestaan: ${island}, pilot-egress)`,
+    );
+  }
+  assert.equal(
+    new Set(nets).size,
+    nets.length,
+    `${label}: dubbele netwerk-attachment`,
+  );
+}
+
+/**
+ * P0.8 egress-invariant op bestandsniveau: het eiland is én blijft
+ * internal: true; pilot-egress bestaat, is bewust NIET internal en hangt
+ * aan precies één dienst (de sidecar); `internal: false` komt nergens voor.
+ */
+function assertEgressDesign(
+  compose: string,
+  island: string,
+  label: string,
+): void {
+  const islandBlock = anchoredBlock(compose, 2, island);
+  assert.ok(
+    /internal:\s*true/.test(islandBlock),
+    `${label}: eiland ${island} moet internal: true zijn (en blijven)`,
+  );
+  const egressBlock = anchoredBlock(compose, 2, "pilot-egress");
+  assert.ok(
+    !/internal:\s*true/.test(egressBlock),
+    `${label}: pilot-egress met internal: true zou egress blokkeren`,
+  );
+  assert.ok(
+    !/internal:\s*false/.test(compose),
+    `${label}: expliciete internal: false hoort nergens in een overlay`,
+  );
+  const attachments = compose.match(/^ {6}- pilot-egress\s*$/gm) ?? [];
+  assert.equal(
+    attachments.length,
+    1,
+    `${label}: pilot-egress mag alleen aan de sidecar hangen (1 attachment)`,
+  );
+}
+
 function assertSidecarIsolation(
   serviceBlock: string,
   label: string,
@@ -151,12 +215,13 @@ test("S3a. hermes-overlay: geen volumes/secrets, intern netwerk, loopback-discip
   assert.ok(user !== null, "hermes-sidecar zet een expliciete numerieke non-root user");
   assert.notEqual(user[1], "0", "hermes-sidecar draait nooit als uid 0");
 
-  // De sidecar hangt uitsluitend aan het interne eiland hermes-net.
-  assert.deepEqual(
-    networkEntriesOf(sidecar),
-    ["hermes-net"],
-    "sidecar hangt alleen aan hermes-net",
-  );
+  // P0.8-verbreding van de oude exclusiviteitsassert (was: exact
+  // ["hermes-net"]). Tóen had de sidecar geen enkele egress; nu krijgt hij
+  // precies één dedicated egress-attachment voor het tailnet-ModelPort.
+  // De isolatie-eis is verscherpt tot een gesloten set: hermes-net blijft
+  // verplicht én internal, pilot-egress is de enige toegestane toevoeging,
+  // en ieder ander netwerk faalt hier.
+  assertSidecarNetworks(sidecar, "hermes-net", "hermes-sidecar");
 
   // Omgeving: uitsluitend bekende niet-geheime config. De modelendpoint
   // (MODEL_PORT_URL) is configuratie, geen credential — iedere nieuwe key
@@ -169,10 +234,10 @@ test("S3a. hermes-overlay: geen volumes/secrets, intern netwerk, loopback-discip
     "MODEL_REQUEST_TIMEOUT_S",
   ]);
 
-  // Het overlay-netwerk is echt intern: geen egress, geen route naar de
-  // storepoort of host-loopback van andere diensten.
-  const net = anchoredBlock(compose, 2, "hermes-net");
-  assert.ok(/internal:\s*true/.test(net), "hermes-net moet internal: true zijn");
+  // Het eiland is én blijft echt intern (geen egress, geen route naar de
+  // storepoort of host-loopback van andere diensten); pilot-egress is de
+  // enige, bewust niet-internal opening en hangt alleen aan de sidecar.
+  assertEgressDesign(compose, "hermes-net", "hermes-overlay");
 
   // De overlay declareert zelf geen enkel volume.
   assert.ok(!/^volumes:/m.test(compose), "overlay definieert geen volumes");
@@ -209,13 +274,19 @@ test("S3b. agentscope-overlay: geen volumes/secrets; enige poort is host-loopbac
     );
   }
 
+  // P0.8: het eiland ("sidecar") is nu internal: true; model-egress loopt
+  // alleen via het dedicated pilot-egress-netwerk aan deze sidecar.
+  assertSidecarNetworks(sidecar, "sidecar", "agentscope-sidecar");
+  assertEgressDesign(compose, "sidecar", "agentscope-overlay");
+
   // De overlay declareert zelf geen enkel volume.
   assert.ok(!/^volumes:/m.test(compose), "overlay definieert geen volumes");
 
-  // Gedocumenteerd restrisico (ook in LANE-C.md): het bridge-netwerk is
-  // niet internal; egress-beperking tot het ModelPort is een bewuste
-  // operatorhandeling op de host-firewall. Die verantwoording moet in het
-  // bestand blijft staan — verdwijnt ze, dan faalt deze guard.
+  // Gedocumenteerd restrisico (P0.8-header, opvolger van het LANE-C-
+  // restrisico): egress via pilot-egress is niet fijnmazig beperkt tot het
+  // ModelPort-IP; dat blijft een bewuste operatorhandeling op de
+  // host-firewall. Die verantwoording moet in het bestand blijven staan —
+  // verdwijnt ze, dan faalt deze guard.
   assert.match(raw, /firewall|egress/i, "egress-caveat moet gedocumenteerd blijven");
 });
 
@@ -247,4 +318,33 @@ test("S3c. basiscompose: geen gepubliceerde poorten; store blijft context-vrij",
   const cli = anchoredBlock(compose, 2, "motor-pilot");
   assert.ok(!cli.includes("tailscaled.sock"), "CLI ziet de whois-socket nooit");
   assert.ok(!store.includes("tailscaled.sock"), "store ziet de whois-socket nooit");
+});
+
+test("S3d. P0.8-basiscompose: adapter-env met gedragsneutrale defaults; egress-net hoort niet bij api/store/cli", async () => {
+  const compose = stripComments(await readFile(BASE_URL, "utf8"));
+
+  // De API krijgt PILOT_ADAPTER + sidecar-URL's als env. De defaults
+  // reproduceren het pre-P0.8-gedrag exact (llamacpp direct, sidecar-URL's
+  // leeg), zodat deze compose-wijziging de draaiende stack nooit zelf
+  // wijzigt — activering is een aparte, service-gescopede live-stap.
+  const api = anchoredBlock(compose, 2, "motor-pilot-api");
+  for (const key of [
+    "PILOT_ADAPTER",
+    "HERMES_SIDECAR_URL",
+    "AGENTSCOPE_SIDECAR_URL",
+  ]) {
+    assert.ok(envKeysOf(api).includes(key), `api-env ${key} ontbreekt`);
+  }
+  assert.ok(
+    api.includes("PILOT_ADAPTER: ${PILOT_ADAPTER:-llamacpp}"),
+    "de default-adapter blijft llamacpp (gedragsneutraal)",
+  );
+
+  // Het egress-netwerk is uitsluitend iets van de sidecar-overlays: de
+  // basisdiensten (network_mode: host) kennen het niet en mogen het nooit
+  // krijgen — een egress-attachment op de store zou zijn isolatie breken.
+  assert.ok(
+    !compose.includes("pilot-egress"),
+    "basiscompose verwijst nooit naar pilot-egress",
+  );
 });

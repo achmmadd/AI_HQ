@@ -16,6 +16,11 @@
  *    server blijft leven, er wordt niets geschreven.
  *  - S10e: bewijs van de localhost-aanname — een server op 127.0.0.1 is via
  *    het eerste niet-loopback IPv4-adres van de host niet bereikbaar.
+ *  - S11 (P0.8): verplichte tenancy — records zonder/lege/niet-string
+ *    workspace_id → 400 (ook via de legacy-route zonder type); tenancy van
+ *    het record ≠ tenancy van het (geldig ondertekende) settlement → 403;
+ *    decision-claims gelden per workspace (geen cross-tenant vals conflict),
+ *    binnen de workspace blijft first-decision-wins intact.
  *
  * Alles synthetisch; eigen test-secret, geen echte data.
  */
@@ -65,6 +70,9 @@ async function startStore(
 function draftRecord(runId = "run-s10"): Record<string, unknown> {
   return {
     type: "draft",
+    // Verplichte tenancy (P0.8): het record draagt dezelfde workspace als
+    // het settlement hieronder, anders faalt de write altijd (400/403).
+    workspace_id: "ws-motor",
     // Deterministisch: de recordhash zit onder de handtekening; een klok in
     // het record zou elke aanroep een andere hash geven.
     stored_at: "2026-08-15T00:00:00.000Z",
@@ -74,6 +82,35 @@ function draftRecord(runId = "run-s10"): Record<string, unknown> {
     review: "synthetische review",
     draft: "synthetisch concept",
   };
+}
+
+function decisionRecord(
+  draftRunId = "run-s10",
+  workspaceId = "ws-motor",
+): Record<string, unknown> {
+  return {
+    type: "decision",
+    workspace_id: workspaceId,
+    decided_at: "2026-08-15T00:00:00.000Z",
+    draft_run_id: draftRunId,
+    decision: "approved",
+    note: null,
+    decided_by: "identity-owner-pietje",
+    receipt_id: "rcpt-s10",
+  };
+}
+
+function settlementFor(
+  record: Record<string, unknown>,
+  workspaceId = "ws-motor",
+  capability = "draft.store",
+  tool = "draft.store.local",
+) {
+  return signSettlement(
+    SECRET,
+    { ...settlementBase(), workspace_id: workspaceId, capability, tool },
+    record,
+  );
 }
 
 function settlementBase(runId = "run-s10"): SettlementBase {
@@ -277,6 +314,111 @@ test("S10e. localhost-aanname expliciet: geen bereik via niet-loopback interface
       false,
       `store op 127.0.0.1 mocht niet via ${external.address} bereikbaar zijn`,
     );
+  } finally {
+    await server.close();
+    await rm(server.dir, { recursive: true, force: true });
+  }
+});
+
+test("S11a. verplichte tenancy: records zonder geldige workspace_id → 400, nooit een write", async () => {
+  const server = await startStore();
+  try {
+    // Elk geval krijgt een verder VOLLEDIG geldig settlement: alleen de
+    // tenancy van het record ontbreekt of is ongeldig.
+    const withoutField = draftRecord();
+    delete withoutField.workspace_id;
+    const cases: Array<{ label: string; record: Record<string, unknown> }> = [
+      { label: "draft zonder workspace_id", record: withoutField },
+      { label: "draft met lege workspace_id", record: { ...draftRecord(), workspace_id: "  " } },
+      { label: "draft met niet-string workspace_id", record: { ...draftRecord(), workspace_id: 42 } },
+      {
+        label: "legacy-record (geen type, geen workspace_id)",
+        record: {
+          stored_at: "2026-08-15T00:00:00.000Z",
+          run_id: "run-legacy",
+          receipt_id: "rcpt-legacy",
+          synthetic: true,
+          review: "oude demodata",
+          draft: "oud concept",
+        },
+      },
+      { label: "decision zonder workspace_id", record: (() => { const d = decisionRecord(); delete d.workspace_id; return d; })() },
+    ];
+    for (const { label, record } of cases) {
+      const r = await postStore(server.url, {
+        record,
+        settlement: settlementFor(record),
+      });
+      assert.equal(r.status, 400, label);
+      assert.equal(r.json.error, "workspace_id_required", label);
+    }
+    assert.equal((await storedLines(server.storePath)).length, 0);
+    assert.equal(
+      (await storedLines(join(server.dir, "decisions.jsonl"))).length,
+      0,
+    );
+  } finally {
+    await server.close();
+    await rm(server.dir, { recursive: true, force: true });
+  }
+});
+
+test("S11b. record-tenancy ≠ settlement-tenancy → 403 workspace_mismatch, geen write", async () => {
+  const server = await startStore();
+  try {
+    // Het settlement is volledig geldig over DIT record (payload-binding
+    // klopt), maar het record claimt een andere workspace dan het bewijs.
+    const record = { ...draftRecord(), workspace_id: "ws-anders" };
+    const r = await postStore(server.url, {
+      record,
+      settlement: settlementFor(record, "ws-motor"),
+    });
+    assert.equal(r.status, 403);
+    assert.equal(r.json.error, "workspace_mismatch");
+    assert.equal((await storedLines(server.storePath)).length, 0);
+
+    // Controle: hetzelfde record mét consistente tenancy landt gewoon.
+    const ok = await postStore(server.url, {
+      record,
+      settlement: settlementFor(record, "ws-anders"),
+    });
+    assert.equal(ok.status, 200);
+    assert.equal((await storedLines(server.storePath)).length, 1);
+  } finally {
+    await server.close();
+    await rm(server.dir, { recursive: true, force: true });
+  }
+});
+
+test("S11c. decision-claim is per workspace: gedeelde draft_run_id conflict niet over tenants", async () => {
+  const server = await startStore();
+  const decisionsPath = join(server.dir, "decisions.jsonl");
+  try {
+    // Zelfde draft_run_id in twee workspaces: beide eerste beslissingen
+    // moeten landen (geen cross-tenant vals 'already_decided').
+    for (const ws of ["ws-motor", "ws-anders"]) {
+      const draft = { ...draftRecord("run-gedeeld"), workspace_id: ws };
+      const draftWrite = await postStore(server.url, {
+        record: draft,
+        settlement: settlementFor(draft, ws),
+      });
+      assert.equal(draftWrite.status, 200, `draft-write ${ws}`);
+      const decision = decisionRecord("run-gedeeld", ws);
+      const decisionWrite = await postStore(server.url, {
+        record: decision,
+        settlement: settlementFor(decision, ws, "draft.decision", "draft.decision.local"),
+      });
+      assert.equal(decisionWrite.status, 200, `eerste beslissing ${ws}`);
+    }
+    // Binnen één workspace blijft first-decision-wins exact intact.
+    const dup = decisionRecord("run-gedeeld", "ws-motor");
+    const dupWrite = await postStore(server.url, {
+      record: dup,
+      settlement: settlementFor(dup, "ws-motor", "draft.decision", "draft.decision.local"),
+    });
+    assert.equal(dupWrite.status, 409);
+    assert.equal(dupWrite.json.error, "already_decided");
+    assert.equal((await storedLines(decisionsPath)).length, 2);
   } finally {
     await server.close();
     await rm(server.dir, { recursive: true, force: true });

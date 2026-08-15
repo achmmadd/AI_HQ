@@ -32,6 +32,8 @@
 # Voorwaarden: repo-checkout onder ${REPO_PATH:-./repo} (read-only gemount),
 # Tailscale op Hetzner, en een .env met MODEL_PORT_URL, PILOT_API_HOST,
 # PILOT_ACL ({"<stableNodeId>": ["ws-motor"]}) en PILOT_STORE_SECRET.
+# Optioneel (P0.8): PILOT_ADAPTER + sidecar-URL's — defaults zijn het
+# bestaande llamacpp-gedrag; zie .env.example en P08-INTEGRATIE.md.
 
 name: motor-pilot
 
@@ -105,6 +107,15 @@ services:
       PILOT_API_PORT: "4400"
       # Fail-closed ACL: {"<stableNodeId>": ["ws-motor"]} — leeg = niemand.
       PILOT_ACL: ${PILOT_ACL:?zet in .env — zie .env.example}
+      # P0.8 compose-integratie: adapterkeuze via de allowlisted registry.
+      # De defaults reproduceren het huidige gedrag exact (llamacpp direct,
+      # geen sidecar-URL's), dus deze toevoeging verandert niets aan de
+      # draaiende stack — activering (hermes/agentscope + sidecar-URL) is een
+      # aparte live-stap met eigen goedkeuring; zie
+      # pilot/evidence/runtime-activation/P08-INTEGRATIE.md.
+      PILOT_ADAPTER: ${PILOT_ADAPTER:-llamacpp}
+      HERMES_SIDECAR_URL: ${HERMES_SIDECAR_URL:-}
+      AGENTSCOPE_SIDECAR_URL: ${AGENTSCOPE_SIDECAR_URL:-}
     command: ["node", "pilot/server.ts"]
     depends_on:
       pilot-data-init:

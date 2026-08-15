@@ -15,17 +15,20 @@
 # - read_only rootfs, cap_drop ALL, no-new-privileges;
 # - GEEN volumes: het image bevat sidecar.py zelf; er is geen repo-mount,
 #   geen context- of draft-mount en geen enkele duurzame staat;
-# - GEEN publieke poorten en geen host-netwerkmodus: de sidecar hangt
-#   uitsluitend aan het interne netwerk hermes-net (internal: true → geen
-#   egress én geen route naar de storepoort of de host-loopback van andere
-#   diensten). De Motor-API wordt in een aparte wijziging op haar eigen
-#   spoor aan hermes-net gekoppeld — bewust niet hier;
-# - de modelendpoint komt uit de omgeving (MODEL_PORT_URL). Let op: met
-#   hermes-net als enige netwerk kan de sidecar alleen een endpoint op
-#   hermes-net zelf bereiken — in tests/smokes is dat de fake-modelcontainer.
-#   Egress naar het echte tailnet-model vereist een aparte, bewuste
-#   netwerkwijziging met voorafgaande eigenaarsgoedkeuring en is hier
-#   bewust NIET opengemaakt.
+# - GEEN publieke poorten en geen host-netwerkmodus: de Motor-facing kant
+#   van de sidecar hangt uitsluitend aan het interne netwerk hermes-net
+#   (internal: true → geen egress én geen route naar de storepoort of de
+#   host-loopback van andere diensten). De Motor-API draait met
+#   network_mode: host en bereikt de sidecar op diens container-IP op
+#   hermes-net (de host routeert altijd naar eigen bridges, óók interne);
+# - de modelendpoint komt uit de omgeving (MODEL_PORT_URL). P0.8-opent deze
+#   egress op de minimaal mogelijke manier: een tweede attachment aan
+#   pilot-egress, een gewone bridge ZONDER internal-flag, uitsluitend
+#   gekoppeld aan deze sidecar en nergens anders. Het eiland hermes-net
+#   blijft internal: true; alleen modelverkeer richting het tailnet verlaat
+#   de container. De daadwerkelijke activatie (up-commando's, zonder de
+#   draaiende motor-pilot-api/store te recreaten) is een aparte live-stap —
+#   zie pilot/evidence/runtime-activation/P08-INTEGRATIE.md.
 #
 # Configuratie via de .env (gitignored) naast compose.yaml — de repo bevat
 # nooit echte infrastructuurwaarden (zie infra/pilot/hermes/env.example).
@@ -44,7 +47,10 @@ services:
     image: motor-pilot-hermes-sidecar:0.2.0
     user: "10001:10001"
     networks:
+      # Het interne eiland (Motor-facing) plus het dedicated egress-netwerk
+      # voor het tailnet-ModelPort (P0.8) — niets anders, nooit meer.
       - hermes-net
+      - pilot-egress
     # Geen volumes: stateless; het image draagt de enige code.
     environment:
       # Container-interface op het interne netwerk; nooit naar buiten gepubliceerd.
@@ -77,3 +83,10 @@ networks:
   # Intern eiland voor de sidecar: geen egress, geen gepubliceerde poorten.
   hermes-net:
     internal: true
+  # P0.8: dedicated egress-bridge richting het tailnet-ModelPort. Bewust
+  # GEEN internal-flag (dat zou egress juist blokkeren) en uitsluitend aan
+  # de sidecar gekoppeld; geen poorten, geen andere diensten. Fijnmazige
+  # begrensing tot alleen het ModelPort-IP blijft een operatorhandeling op
+  # de host-firewall (buiten compose).
+  pilot-egress:
+    driver: bridge

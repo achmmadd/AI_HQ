@@ -45,6 +45,12 @@ export interface DecisionRequest {
   readonly draftRunId: string;
   readonly decision: "approved" | "rejected";
   readonly note?: string;
+  /**
+   * Tenancy (P0.8): de API geeft hier de ACL-vastgestelde workspace door;
+   * de concept- en beslissinglookup zijn daarmee per definitie beperkt tot
+   * die workspace. Ontbreekt hij (oudere testpaden), dan geldt "ws-motor".
+   */
+  readonly workspaceId?: string;
 }
 
 export interface DecisionDeps {
@@ -62,21 +68,26 @@ export async function runDecision(req: DecisionRequest, deps: DecisionDeps = {})
   const listDraftsImpl = deps.listDraftsImpl ?? listDrafts;
   const listDecisionsImpl = deps.listDecisionsImpl ?? listDecisions;
   const storeFn = deps.storeFn ?? storeDraftViaService;
+  const workspace = req.workspaceId ?? "ws-motor";
 
-  // De beslissing verwijst naar een bestaand, opgeslagen concept.
-  const drafts = await listDraftsImpl(500);
+  // De beslissing verwijst naar een bestaand, opgeslagen concept — binnen de
+  // eigen workspace (P0.8): een run_id van een andere tenant bestaat hier
+  // niet en volgt het gewone not-found-pad.
+  const drafts = await listDraftsImpl(500, undefined, workspace);
   if (!drafts.some((d) => d.run_id === req.draftRunId)) {
     return { ok: false as const, error: "draft_not_found" };
   }
   // First-decision-wins: append-only betekent geen herschreven beslissingen.
-  const decisions = await listDecisionsImpl(1000);
+  // Ook deze check is per workspace; de store handhaaft de claim atomisch
+  // in dezelfde scope.
+  const decisions = await listDecisionsImpl(1000, undefined, workspace);
   if (decisions.some((d) => d.draft_run_id === req.draftRunId)) {
     return { ok: false as const, error: "already_decided" };
   }
 
   const t0 = nowIso();
   const label = `decision-${Date.parse(t0)}`;
-  const workspace_id = branded<WorkspaceId>("ws-motor");
+  const workspace_id = branded<WorkspaceId>(workspace);
   const task_id = branded<TaskId>(`task-decision-${req.draftRunId}`);
   const run_id = branded<RunId>(`run-${label}`);
   const attempt_id = branded<AttemptId>(`att-${label}`);
@@ -128,6 +139,7 @@ export async function runDecision(req: DecisionRequest, deps: DecisionDeps = {})
 
   const record: DecisionStoreRecord = {
     type: "decision",
+    workspace_id: workspace_id as string,
     decided_at: tEnd,
     draft_run_id: req.draftRunId,
     decision: req.decision,
