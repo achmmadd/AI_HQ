@@ -158,12 +158,29 @@ MASTER_MERGE=no
    resets). Elk `--no-deps --force-recreate` van alleen `motor-pilot-api`;
    store-pid ongewijzigd. Een volgende lane moet die discipline herhalen.
 
+## Validatie (eigen dir op Hetzner)
+
+Onafhankelijke clone van `pilot/p08-live` @ `cbca052` in `/tmp/pv-p08l`,
+daarna `node:24-alpine` met de bestaande gate:
+
+```text
+SHA=cbca05279b88b4e267c391dde9ceb0b92f59a2c1
+TESTS_EXIT=0   ℹ pass 225  ℹ fail 0  ℹ skipped 1
+TYPES_EXIT=0   (tsc --noEmit -p pilot/tsconfig.json)
+LINT_EXIT=0    (eslint lib/adr110 pilot --max-warnings 0)
+```
+
+De skip is de geregistreerde conformance-modustest zonder python in alpine
+(ongewijzigd t.o.v. P0.8-prep). Deze nacommit is alleen dit
+validatieblok; de suite dekt `cbca052`.
+
 ```text
 SIDECARS_HEALTHY=yes
 LLAMACPP_SMOKE=yes
 HERMES_SMOKE=yes
 AGENTSCOPE_SMOKE=yes
 STORE_UPTIME_UNCHANGED=yes
+TESTS_EXIT=0 TYPES_EXIT=0 LINT_EXIT=0
 REAL_CONTEXT_USED=no
 EXTERNAL_EFFECTS=no
 PUBLIC_INGRESS=no
