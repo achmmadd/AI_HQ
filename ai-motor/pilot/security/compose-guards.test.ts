@@ -73,9 +73,9 @@ function volumeEntriesOf(serviceBlock: string): string[] {
     .filter((entry): entry is string => entry !== undefined && entry !== "");
 }
 
-const BASE_URL = new URL("../infra/pilot/compose.yaml", import.meta.url);
-const HERMES_URL = new URL("../infra/pilot/compose.hermes.yaml", import.meta.url);
-const AGENTSCOPE_URL = new URL("../infra/pilot/compose.agentscope.yaml", import.meta.url);
+const BASE_URL = new URL("../../../infra/pilot/compose.yaml", import.meta.url);
+const HERMES_URL = new URL("../../../infra/pilot/compose.hermes.yaml", import.meta.url);
+const AGENTSCOPE_URL = new URL("../../../infra/pilot/compose.agentscope.yaml", import.meta.url);
 
 /** Alles wat een sidecar nooit mag zien: volumenamen, paden en secret-keys. */
 const FORBIDDEN_VOLUME_TOKENS = [

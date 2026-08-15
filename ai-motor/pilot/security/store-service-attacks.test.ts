@@ -65,7 +65,9 @@ async function startStore(
 function draftRecord(runId = "run-s10"): Record<string, unknown> {
   return {
     type: "draft",
-    stored_at: new Date().toISOString(),
+    // Deterministisch: de recordhash zit onder de handtekening; een klok in
+    // het record zou elke aanroep een andere hash geven.
+    stored_at: "2026-08-15T00:00:00.000Z",
     run_id: runId,
     receipt_id: "rcpt-s10",
     synthetic: true,
@@ -75,7 +77,7 @@ function draftRecord(runId = "run-s10"): Record<string, unknown> {
 }
 
 function settlementBase(runId = "run-s10"): SettlementBase {
-  const now = new Date().toISOString();
+  const now = "2026-08-15T00:00:00.000Z";
   return {
     receipt_id: "rcpt-s10",
     action_id: "act-s10",

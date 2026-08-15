@@ -72,7 +72,20 @@ test("S1a. adapterselectie buiten de allowlist gooit altijd (fail-closed)", () =
 
 test("S1b. de registry retourneert nooit een niet-geallowlist object", () => {
   assert.deepEqual([...PILOT_ADAPTER_IDS], ["llamacpp", "hermes", "agentscope"]);
-  assert.ok(Object.isFrozen(PILOT_ADAPTER_IDS), "de allowlist is bevroren");
+  // Structureel: exact deze sleutels, en een brute index met een vijandige
+  // naam (incl. prototype-kandidaten) levert nooit een invokeerbaar object.
+  // (Observatie voor LANE-C: de exports zijn niet Object.frozen — ongevaarlijk
+  // zolang lookups uitsluitend via PILOT_ADAPTER_IDS.includes lopen.)
+  const view = PILOT_ADAPTERS as unknown as Record<string, unknown>;
+  assert.deepEqual(Object.keys(view).sort(), [...PILOT_ADAPTER_IDS].sort());
+  for (const raw of ["evil", "__proto__", "constructor", "prototype", "hasOwnProperty"]) {
+    const hit = view[raw];
+    assert.equal(
+      typeof (hit as CapabilityAdapter | undefined)?.invoke,
+      "undefined",
+      `registry-index ${JSON.stringify(raw)} mag nooit iets invokeerbaars geven`,
+    );
+  }
 
   // Iedere allowlisted naam zonder de bijbehorende server-side env faalt
   // gesloten — de registry fabuleert nooit een default-endpoint.

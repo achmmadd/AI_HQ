@@ -163,7 +163,9 @@ function dangerousRequest(
     capability,
     tool,
     args: { draft: MARKER_DRAFT },
-    data_class: "public",
+    // "internal": toegestaan door élke policy-capability, zodat een DENY hier
+    // nooit aan de dataklasse maar altijd aan de capability zelf ligt.
+    data_class: "internal",
     estimated_cost_cents: 0,
     requested_by: branded<EmployeeId>("employee-owner-operator"),
     requested_at: now,

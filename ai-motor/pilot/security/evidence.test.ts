@@ -76,7 +76,7 @@ test("S7a. digest-vervalsing per veld: elke mutatie met oude digest → tampered
       veld: "parent_evidence_id",
       muteer: (r) => ({ ...r, parent_evidence_id: run.evidence[0]?.evidence_id }),
     },
-    { veld: "kind_detail", muteer: (r) => ({ ...r, kind_detail: "human.review" }) },
+    { veld: "kind_detail", muteer: (r) => ({ ...r, kind_detail: "gateway.decision" }) },
     { veld: "data", muteer: (r) => ({ ...r, data: { status: "success" } }) },
     { veld: "occurred_at", muteer: (r) => ({ ...r, occurred_at: T3 }) },
   ];
