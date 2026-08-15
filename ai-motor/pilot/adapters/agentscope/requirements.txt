@@ -11,11 +11,11 @@
 #   agentscope-2.0.6.tar.gz
 #     sha256:5fcf2be7b56dabc2ebb616c8999f8ba299355ba4cbae9ac0d4f777ad04e7e3f6
 #
-# The Dockerfile downloads the wheel with --no-deps and verifies the wheel
-# sha256 before installing. Transitive dependencies (openai, httpx,
-# mcp<2.0.0, opentelemetry-*, anthropic, dashscope, numpy, ...) are resolved
-# by pip at image build time. A full transitive hash-lock
-# (`pip-compile --generate-hashes` for linux/amd64, py3.12) is REQUIRED
-# before any live use and is tracked as a lane-C residual risk; P0 CI never
-# builds this image and tests run against a deterministic fake sidecar.
+# This file is the INPUT for the full transitive hash-lock in
+# requirements-lock.txt (sprint P0.6, lane B): generated with
+# `pip-compile --generate-hashes` for linux/amd64 py3.12 inside the exact
+# python:3.12.12-slim base image on the builder. The Dockerfile installs
+# ONLY from that lock, with --require-hashes, and asserts the AgentScope
+# wheel sha256 above is the one the lock pins. No extras (`full`, `service`,
+# `workspace-*`, `tools`, `rag`, `vdb-*`, `memory-*`) are ever installed.
 agentscope==2.0.6
