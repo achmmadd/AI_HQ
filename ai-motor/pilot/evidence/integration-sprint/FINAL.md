@@ -39,8 +39,8 @@ INTEGRATION_SHA=91838154c08cd4a8fd4aed474cd396ee1b7d6c7e (+ dit evidencebestand 
 TEST_COUNTS=builder 167 pass / 0 fail (lib/adr110 + adapters/** + pilot)
             tsc --noEmit (lib/adr110 + pilot) = 0 fouten
             eslint lib/adr110 pilot --max-warnings 0 = clean
-PILOT_SPINE_RUN_URL=pending — workflowtrigger voor pilot/integration gaat via
-            web-UI-edit (OAuth-token mist workflow-scope); CI-run volgt op die commit
+PILOT_SPINE_RUN_URL=https://github.com/achmmadd/AI_HQ/actions/runs/31884376349
+            (Pilot Spine #19 op pilot/integration @ 7b1620f: success)
 HOLDING_CHECKS_RUN_URL=n/a — geen holding-checks in deze sprint
 ```
 
@@ -75,13 +75,12 @@ RESIDUAL_RISKS=
   (zichtbaar als 500), nooit dubbel.
 - 4xx (niet-429) mapt op malformed_response in de Hermes-adapter omdat de
   fase-0-taxonomie geen rejected-code kent — vastgelegd, geen blokker.
-- CI-run op pilot/integration wacht op de workflow-trigger via web-UI.
 ```
 
 ## Eindstatus
 
 ```text
-P0_CODE_GATE=GREEN (lokaal/builder; CI-run pending workflow-trigger)
+P0_CODE_GATE=GREEN (builder + CI Pilot Spine #19 success)
 LIVE_AUTHORITY=NONE — live gebruik, echte context en mastermerge vereisen
 een aparte expliciete eigenaarsautorisatie.
 ```
