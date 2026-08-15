@@ -49,7 +49,7 @@ services:
     environment:
       # Container-interface op het interne netwerk; nooit naar buiten gepubliceerd.
       HERMES_SIDECAR_HOST: "0.0.0.0"
-      HERMES_SIDECAR_PORT: ${HERMES_SIDECAR_PORT:?zet in .env — fictief voorbeeld: 4410}
+      HERMES_SIDECAR_PORT: ${HERMES_SIDECAR_PORT:?zet in .env — zie hermes/env.example}
       MODEL_PORT_URL: ${MODEL_PORT_URL:?zet in .env — zie hermes/env.example}
       MODEL_NAME: ${MODEL_NAME:?zet in .env — zie hermes/env.example}
       MODEL_REQUEST_TIMEOUT_S: ${MODEL_REQUEST_TIMEOUT_S:-120}
