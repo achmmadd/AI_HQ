@@ -1,8 +1,6 @@
 name: Pilot Spine
-
 # Minimal CI for the ADR-110 spine only: tests, scoped typecheck, scoped lint.
 # No build, no deploy. Activates on push (after explicit owner approval).
-
 on:
   pull_request:
     paths:
@@ -10,7 +8,7 @@ on:
       - 'ai-motor/pilot/**'
       - '.github/workflows/pilot-spine.yml'
   push:
-    branches: [master, main, pilot/spine]
+    branches: [master, main, pilot/spine, pilot/integration]
     paths:
       - 'ai-motor/lib/adr110/**'
       - 'ai-motor/pilot/**'
@@ -34,7 +32,7 @@ jobs:
       # De pilot-tests draaien zonder netwerk, model of volumes (fakes +
       # tmpdirs); CI leest nooit echte context of runtimevolumes.
       - name: Tests (node:test with type stripping)
-        run: node --test 'lib/adr110/*.test.ts' 'pilot/*.test.ts'
+        run: node --test 'lib/adr110/*.test.ts' 'lib/adr110/adapters/**/*.test.ts' 'pilot/*.test.ts'
       - name: Typecheck (scoped)
         run: |
           ./node_modules/.bin/tsc -p lib/adr110/tsconfig.json --noEmit
