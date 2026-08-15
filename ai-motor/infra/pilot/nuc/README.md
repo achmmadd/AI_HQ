@@ -48,19 +48,17 @@ blijft PENDING tot een exacte ownerdelta.
 - Een reverse proxy die alle gebruikers als de NUC-identiteit laat
   verschijnen (nooit).
 
-## P2.0 — `/motor` kiosk (niet geactiveerd)
+## P2 — headless orchestrator (template, niet live)
 
-Ownerkeuze A: exacte origin `http://100.97.30.22:4420/motor`.
-De NUC blijft browser-only. `motor-p2-kiosk.sh` weigert iedere andere
-origin, publieke IP of verkeerde route, en start niet zonder een
-bereikbare gepinde health-URL.
+De NUC is een headless orchestrator in de kast: geen browser, X, HDMI
+of Docker. Menselijke UI blijft de laptop via Tailscale.
 
 ```sh
-# Alleen na ACTIVATE P2.0, en alleen als PILOT_ACL_DELTA is goedgekeurd:
-./motor-p2-kiosk.sh
+# Default disabled. Alleen na een aparte owner-activatie:
+MOTOR_P2_ORCHESTRATOR=1 ./motor-p2-orchestrator.sh
 ```
 
-`PILOT_ACL_DELTA` is nog `PENDING`. Zonder die exacte delta blijft de
-NUC-node buiten de ACL en krijgt `/motor` 403. SSH via Tailscale is
-geen browserroute.
+Autorisatie: `PILOT_P2_ORCHESTRATOR_ACL` + WhoIs StableID
+`nkcmY58XEw11CNTRL`. Nooit P0 `PILOT_ACL`. Bij latere activatie gaat
+de NUC uit de generieke `PILOT_P2_ACL`.
 

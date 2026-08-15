@@ -44,6 +44,7 @@ test("P2.0 compose overlay is additive and never downs the stack", () => {
   assert.match(compose, /motor-p2-ui/);
   assert.match(compose, /PILOT_P2_HOST/);
   assert.match(compose, /PILOT_P2_ACL/);
+  assert.match(compose, /PILOT_P2_ORCHESTRATOR_ACL/);
   assert.match(compose, /P2_REPO_PATH/);
   assert.match(compose, /p2-motor-server/);
   assert.doesNotMatch(compose.split("services:")[1] ?? "", /PILOT_ACL[^_]/);

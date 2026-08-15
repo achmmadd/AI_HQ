@@ -8,14 +8,18 @@ on:
       - 'ai-motor/pilot/**'
       - 'ai-motor/app/motor/**'
       - 'ai-motor/components/p1/**'
+      - 'ai-motor/infra/pilot/compose.p2-motor.yaml'
+      - 'ai-motor/infra/pilot/nuc/**'
       - '.github/workflows/pilot-spine.yml'
   push:
-    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation, pilot/p1.1-shell, pilot/p1.2-workbench, pilot/p1.3-roster, pilot/p1-continuous]
+    branches: [master, main, pilot/spine, pilot/integration, pilot/runtime-activation, pilot/p1-foundation, pilot/p1.1-shell, pilot/p1.2-workbench, pilot/p1.3-roster, pilot/p1-continuous, pilot/p2.0-motor-kiosk]
     paths:
       - 'ai-motor/lib/adr110/**'
       - 'ai-motor/pilot/**'
       - 'ai-motor/app/motor/**'
       - 'ai-motor/components/p1/**'
+      - 'ai-motor/infra/pilot/compose.p2-motor.yaml'
+      - 'ai-motor/infra/pilot/nuc/**'
       - '.github/workflows/pilot-spine.yml'
 
 jobs:

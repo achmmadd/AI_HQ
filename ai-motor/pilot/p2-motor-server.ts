@@ -2,7 +2,7 @@
  * P2.0 /motor service — isolated from the P0 API on :4400.
  *
  * Serves only /motor and /api/motor/*. Binds loopback or one tailnet address.
- * WhoIs + PILOT_P2_ACL remain the authorization boundary. In-memory P1 state.
+ * WhoIs + PILOT_P2_ACL (human UI) and PILOT_P2_ORCHESTRATOR_ACL (NUC).
  * P0 PILOT_ACL on :4400 is never read or written by this process.
  * No store, ModelPort, drafts-volume, context-volume or external effectors.
  */
@@ -42,6 +42,15 @@ import {
 import { collectWorkspaceEvidence, evidenceRailLeaksContent, openEvidenceRail } from "./p1-evidence.ts";
 import { resolveP2Bind } from "./p2-bind.ts";
 import { renderMotorHtml } from "./p2-motor-ui.ts";
+import {
+  orchestratorAllowed,
+  orchestratorBody,
+  orchestratorBodyLeaks,
+  parseOrchestratorAcl,
+  whoisStableId,
+  P2_ORCHESTRATOR_HEALTH_PATH,
+  P2_ORCHESTRATOR_READY_PATH,
+} from "./p2-orchestrator.ts";
 
 const TAILSCALE_SOCK = process.env.TAILSCALE_SOCK ?? "/run/tailscale/tailscaled.sock";
 const MAX_BODY_BYTES = 64 * 1024;
@@ -71,10 +80,10 @@ function whoisNode(ip: string): Promise<NodeIdentity | null> {
         res.on("end", () => {
           try {
             const parsed = JSON.parse(data) as {
-              Node?: { StableID?: string; Name?: string };
+              Node?: { StableID?: string; ID?: string; Name?: string };
             };
-            const stableId = parsed.Node?.StableID;
-            if (typeof stableId !== "string" || stableId.length === 0) {
+            const stableId = whoisStableId(parsed.Node);
+            if (!stableId) {
               resolve(null);
               return;
             }
@@ -153,11 +162,13 @@ function emptySession(): P2SessionState {
 
 export interface P2MotorServerDeps {
   readonly acl?: PilotAcl;
+  readonly orchestratorAcl?: PilotAcl;
   readonly resolveNode?: ResolveNode;
 }
 
 export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
   const acl = deps.acl ?? parseAcl(process.env.PILOT_P2_ACL);
+  const orchestratorAcl = deps.orchestratorAcl ?? parseOrchestratorAcl(process.env.PILOT_P2_ORCHESTRATOR_ACL);
   const resolveNode = deps.resolveNode ?? whoisNode;
   const sessions = new Map<string, P2SessionState>();
 
@@ -197,6 +208,17 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
     return { ok: true, workspace: access.workspace, node, session: sessionOf(node.stableId) };
   }
 
+  async function authorizeOrchestrator(
+    req: IncomingMessage,
+  ): Promise<{ ok: true } | { ok: false; status: number; body: Record<string, unknown> }> {
+    const ip = callerIp(req);
+    const node = await resolveNode(ip);
+    if (node === null || !orchestratorAllowed(node.stableId, orchestratorAcl)) {
+      return { ok: false, status: 403, body: { ok: false, error: "orchestrator_denied" } };
+    }
+    return { ok: true };
+  }
+
   return createServer(async (req, res) => {
     try {
       const { pathname, searchParams } = pathOf(req);
@@ -212,6 +234,25 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
         return;
       }
 
+      if (pathname.startsWith("/motor/orchestrator")) {
+        const gate = await authorizeOrchestrator(req);
+        if (!gate.ok) {
+          sendJson(res, gate.status, gate.body);
+          return;
+        }
+        if (method === "GET" && (pathname === P2_ORCHESTRATOR_HEALTH_PATH || pathname === P2_ORCHESTRATOR_READY_PATH)) {
+          const body = orchestratorBody();
+          if (orchestratorBodyLeaks(body)) {
+            sendJson(res, 500, { ok: false, error: "health_leak" });
+            return;
+          }
+          sendJson(res, 200, body);
+          return;
+        }
+        sendJson(res, 404, { ok: false, error: "not_found" });
+        return;
+      }
+
       if (pathname === "/draft" || pathname === "/decision" || pathname === "/drafts" || pathname === "/") {
         sendJson(res, 404, { ok: false, error: "not_p2_motor_route" });
         return;
@@ -219,7 +260,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
 
       if (pathname.startsWith("/motor/") && pathname !== "/motor/health" && pathname !== "/motor/ready") {
         const segment = pathname.slice("/motor/".length);
-        if (segment === OTHER_TENANT_ID || segment !== HOME_TENANT_ID) {
+        if (segment === OTHER_TENANT_ID || (segment !== HOME_TENANT_ID && !segment.startsWith("orchestrator"))) {
           sendJson(res, 403, { ok: false, error: "tenant_denied" });
           return;
         }
