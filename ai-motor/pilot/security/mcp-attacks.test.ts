@@ -330,8 +330,10 @@ test("S9f. HTTP /mcp: cross-workspace run_id vanaf een andere node → DENY/leeg
   assert.ok(address !== null && typeof address === "object");
   const base = `http://127.0.0.1:${address.port}`;
   try {
-    // Node B (alleen ws-anders) vraagt de run van ws-motor op.
-    const response = await fetch(`${base}/mcp?workspace=ws-anders`, {
+    // Node B (alleen ws-anders) vraagt de run van ws-motor op. De routes
+    // matchen req.url exact, dus géén querystring: met één ACL-workspace
+    // kent accessCheck automatisch ws-anders toe.
+    const response = await fetch(`${base}/mcp`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
