@@ -334,10 +334,11 @@ test("S4. hermes-sidecar: puur stdlib; invoke is echt bedraad naar uitsluitend h
     /_send_json\(\s*200,\s*\{\s*"output": output, \*\*echo\s*\}\s*\)/.test(code),
     "het enige 200-succesantwoord draagt de modeloutput en de causale echo",
   );
-  // Eerlijke fasen-0-fouttaxonomie in plaats van een gefabuleerd resultaat.
-  for (const status of ["422", "503", "504"]) {
+  // Eerlijke fasen-0-fouttaxonomie in plaats van een gefabuleerd resultaat
+  // (de aanroepen mogen over meerdere regels lopen).
+  for (const status of [422, 503, 504]) {
     assert.ok(
-      code.includes(`_send_json(${status}`),
+      new RegExp(`_send_json\\(\\s*${status}\\s*,`).test(code),
       `de eerlijke ${status}-foutmapping blijft aanwezig`,
     );
   }
