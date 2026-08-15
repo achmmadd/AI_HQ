@@ -173,6 +173,14 @@ export interface P1AttentionItem {
 }
 
 export type DraftState = "draft" | "ready";
+export type ReviewStatus = "draft" | "in_review" | "approved" | "rejected";
+
+export const REVIEW_STATUSES = Object.freeze([
+  "draft",
+  "in_review",
+  "approved",
+  "rejected",
+] as const satisfies readonly ReviewStatus[]);
 
 export interface P1Draft {
   readonly id: string;
@@ -192,7 +200,7 @@ export interface P1Review {
   readonly projectId: string;
   readonly draftId: string;
   readonly kind: "review";
-  readonly state: "approved";
+  readonly state: ReviewStatus;
 }
 
 export interface P1Publish {
@@ -599,6 +607,24 @@ function motorTenant(): InternalTenant {
         title: "Observatie-concept",
         bodyDigest: "sha256:abababababababababababababababababababababababababababababababab",
       },
+      {
+        id: "draft-pending-1",
+        tenantId,
+        projectId,
+        kind: "draft",
+        state: "draft",
+        title: "Wachtend concept",
+        bodyDigest: "sha256:cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1",
+      },
+      {
+        id: "draft-open-1",
+        tenantId,
+        projectId,
+        kind: "draft",
+        state: "ready",
+        title: "Openstaand concept",
+        bodyDigest: "sha256:1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc1cdc",
+      },
     ],
     reviews: [
       {
@@ -616,6 +642,14 @@ function motorTenant(): InternalTenant {
         draftId: draftIdB,
         kind: "review",
         state: "approved",
+      },
+      {
+        id: "review-open-1",
+        tenantId,
+        projectId,
+        draftId: "draft-open-1",
+        kind: "review",
+        state: "in_review",
       },
     ],
     publishes: [

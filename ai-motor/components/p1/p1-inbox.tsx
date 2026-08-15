@@ -8,6 +8,7 @@ import {
   inboxFilterOptions,
   type InboxFilter,
 } from "@/pilot/p1-workbench";
+import { reviewStatusBadgeVariant, reviewStatusForDraft } from "@/pilot/p1-review";
 import {
   P1Badge,
   P1Button,
@@ -53,11 +54,13 @@ export function P1Inbox({
   filter,
   onFilter,
   onOpenItem,
+  onOpenDraft,
 }: {
   view: FoundationViewModel;
   filter: InboxFilter;
   onFilter: (next: InboxFilter) => void;
   onOpenItem: (item: P1AttentionItem) => void;
+  onOpenDraft: (draftId: string) => void;
 }) {
   const options = inboxFilterOptions(view);
   const items = filterInboxItems(view, filter);
@@ -67,16 +70,20 @@ export function P1Inbox({
     row.drafts.map((draft) => ({
       id: draft.id,
       title: draft.title ?? "Concept",
-      state: draft.state,
+      state: reviewStatusForDraft(draft, row.reviews),
     })),
   );
   const reviewRows = view.projects.flatMap((row) =>
-    row.reviews.map((review) => {
-      const publish = row.publishes.find((item) => item.reviewId === review.id);
+    row.drafts.map((draft) => {
+      const status = reviewStatusForDraft(draft, row.reviews);
+      const review = row.reviews.find((item) => item.draftId === draft.id);
+      const publish = review
+        ? row.publishes.find((item) => item.reviewId === review.id)
+        : row.publishes[0];
       return {
-        id: review.id,
+        id: draft.id,
         projectName: row.project.name,
-        reviewState: review.state,
+        reviewState: status,
         publishDecision: publish?.decision ?? "DENY",
       };
     }),
@@ -171,10 +178,15 @@ export function P1Inbox({
           </P1CardHeader>
           <P1CardContent className="space-y-2">
             {openConcepts.map((concept) => (
-              <p key={concept.id} className="flex justify-between gap-3 text-sm">
+              <P1Button
+                key={concept.id}
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 px-0 text-sm font-normal"
+                onClick={() => onOpenDraft(concept.id)}
+              >
                 <span>{concept.title}</span>
-                <P1Badge variant="outline">{concept.state}</P1Badge>
-              </p>
+                <P1Badge variant={reviewStatusBadgeVariant(concept.state)}>{concept.state}</P1Badge>
+              </P1Button>
             ))}
           </P1CardContent>
         </P1Card>
@@ -185,13 +197,18 @@ export function P1Inbox({
           </P1CardHeader>
           <P1CardContent className="space-y-2">
             {reviewRows.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <P1Button
+                key={row.id}
+                variant="ghost"
+                className="h-auto w-full flex-wrap justify-between gap-2 px-0 text-sm font-normal"
+                onClick={() => onOpenDraft(row.id)}
+              >
                 <span>{row.projectName}</span>
                 <span className="flex gap-2">
-                  <P1Badge variant="success">{row.reviewState}</P1Badge>
+                  <P1Badge variant={reviewStatusBadgeVariant(row.reviewState)}>{row.reviewState}</P1Badge>
                   <P1Badge variant="denied">Publish: {row.publishDecision}</P1Badge>
                 </span>
-              </div>
+              </P1Button>
             ))}
           </P1CardContent>
         </P1Card>
@@ -224,9 +241,25 @@ export function P1Inbox({
                         <P1Badge variant="outline">{labels.owner}</P1Badge>
                       </div>
                       <Trace item={item} />
-                      <P1Button variant="ghost" className="mt-3 -ml-3" onClick={() => onOpenItem(item)}>
-                        Open project
-                      </P1Button>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <P1Button variant="ghost" className="-ml-3" onClick={() => onOpenItem(item)}>
+                          Open project
+                        </P1Button>
+                        {view.projects
+                          .find((row) => row.project.id === item.projectId)
+                          ?.drafts[0] ? (
+                          <P1Button
+                            variant="ghost"
+                            onClick={() => {
+                              const draft = view.projects.find((row) => row.project.id === item.projectId)
+                                ?.drafts[0];
+                              if (draft) onOpenDraft(draft.id);
+                            }}
+                          >
+                            Open review
+                          </P1Button>
+                        ) : null}
+                      </div>
                     </P1CardContent>
                   </P1Card>
                 );

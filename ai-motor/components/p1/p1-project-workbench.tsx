@@ -12,6 +12,7 @@ import {
   type ProjectPatch,
   type ProjectWorkbench,
 } from "@/pilot/p1-workbench";
+import { reviewStatusBadgeVariant, reviewStatusForDraft } from "@/pilot/p1-review";
 import {
   P1Badge,
   P1Button,
@@ -23,7 +24,13 @@ import {
   P1Select,
 } from "@/components/p1/ui";
 
-function WorkbenchBody({ workbench }: { workbench: ProjectWorkbench }) {
+function WorkbenchBody({
+  workbench,
+  onOpenDraft,
+}: {
+  workbench: ProjectWorkbench;
+  onOpenDraft: (draftId: string) => void;
+}) {
   const publish = workbench.publishes[0];
   const review = workbench.reviews[0];
   return (
@@ -123,16 +130,24 @@ function WorkbenchBody({ workbench }: { workbench: ProjectWorkbench }) {
             <P1CardDescription>Review/approved is zichtbaar. Publiceren blijft DENY.</P1CardDescription>
           </P1CardHeader>
           <P1CardContent className="space-y-3 text-sm">
-            {workbench.drafts.map((draft) => (
-              <p key={draft.id} className="flex justify-between gap-3">
-                <span>{draft.title ?? "Concept"}</span>
-                <P1Badge variant="outline">{draft.state}</P1Badge>
-              </p>
-            ))}
+            {workbench.drafts.map((draft) => {
+              const status = reviewStatusForDraft(draft, workbench.reviews);
+              return (
+                <P1Button
+                  key={draft.id}
+                  variant="ghost"
+                  className="h-auto w-full justify-between gap-3 px-0 font-normal"
+                  onClick={() => onOpenDraft(draft.id)}
+                >
+                  <span>{draft.title ?? "Concept"}</span>
+                  <P1Badge variant={reviewStatusBadgeVariant(status)}>{status}</P1Badge>
+                </P1Button>
+              );
+            })}
             {workbench.reviews.map((item) => (
               <p key={item.id} className="flex justify-between gap-3">
                 <span>Review</span>
-                <P1Badge variant="success">{item.state}</P1Badge>
+                <P1Badge variant={reviewStatusBadgeVariant(item.state)}>{item.state}</P1Badge>
               </p>
             ))}
             {workbench.publishes.map((item) => (
@@ -171,12 +186,14 @@ export function P1ProjectWorkbench({
   attentionId,
   onBack,
   onReassigned,
+  onOpenDraft,
 }: {
   view: FoundationViewModel;
   projectId: string;
   attentionId: string | null;
   onBack: () => void;
   onReassigned: (next: { attentionPatch?: AttentionPatch; projectPatch?: ProjectPatch }) => void;
+  onOpenDraft: (draftId: string) => void;
 }) {
   const opened = openProjectWorkbench({
     authenticated: true,
@@ -265,7 +282,7 @@ export function P1ProjectWorkbench({
           Alle projecten
         </P1Button>
       </header>
-      <WorkbenchBody workbench={opened.workbench} />
+      <WorkbenchBody workbench={opened.workbench} onOpenDraft={onOpenDraft} />
       <div className="grid gap-4 lg:grid-cols-2">
         <P1Card>
           <P1CardHeader>

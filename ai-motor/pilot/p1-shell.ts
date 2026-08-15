@@ -44,7 +44,8 @@ export type ShellWriteReason =
   | "not_found"
   | "placeholder_disabled"
   | "publish_denied"
-  | "legacy_taxonomy";
+  | "legacy_taxonomy"
+  | "invalid_transition";
 
 export type RequestedScope = {
   readonly workspace?: string | null;

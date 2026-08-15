@@ -26,14 +26,23 @@ import {
   appendMembershipPatch,
   appendRosterOverlay,
   asWorkbenchSession,
-  mergeRosterSession,
   resetRosterSession,
   withWorkbenchUpdate,
   type RosterSession,
 } from "@/pilot/p1-roster";
+import {
+  appendReviewPatch,
+  mergeReviewSession,
+  resetReviewPatches,
+  resolveClientDraftId,
+  reviewStatusBadgeVariant,
+  reviewStatusForDraft,
+  type ReviewPatch,
+} from "@/pilot/p1-review";
 import { P1Inbox } from "@/components/p1/p1-inbox";
 import { P1InputZone } from "@/components/p1/p1-input-zone";
 import { P1ProjectWorkbench } from "@/components/p1/p1-project-workbench";
+import { P1ReviewPanel } from "@/components/p1/p1-review-panel";
 import { P1Departments } from "@/components/p1/p1-departments";
 import {
   P1Badge,
@@ -142,16 +151,19 @@ function ProjectCard({ row, onOpen }: { row: ProjectView; onOpen: () => void }) 
             <P1CardDescription>Drie aparte objecten. Publiceren blijft DENY.</P1CardDescription>
           </P1CardHeader>
           <P1CardContent className="space-y-3 text-sm">
-            {row.drafts.map((draft) => (
-              <p key={draft.id} className="flex justify-between gap-3">
-                <span>{draft.title ?? "Concept"}</span>
-                <P1Badge variant="outline">{draft.state}</P1Badge>
-              </p>
-            ))}
+            {row.drafts.map((draft) => {
+              const status = reviewStatusForDraft(draft, row.reviews);
+              return (
+                <p key={draft.id} className="flex justify-between gap-3">
+                  <span>{draft.title ?? "Concept"}</span>
+                  <P1Badge variant={reviewStatusBadgeVariant(status)}>{status}</P1Badge>
+                </p>
+              );
+            })}
             {row.reviews.map((review) => (
               <p key={review.id} className="flex justify-between gap-3">
                 <span>Review</span>
-                <P1Badge variant="success">{review.state}</P1Badge>
+                <P1Badge variant={reviewStatusBadgeVariant(review.state)}>{review.state}</P1Badge>
               </p>
             ))}
             {row.publishes.map((publish) => (
@@ -201,10 +213,15 @@ function ProjectsView({
 export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
   const [current, setCurrent] = useState<View>("now");
   const [session, setSession] = useState<RosterSession>(EMPTY_ROSTER_SESSION);
+  const [reviewPatches, setReviewPatches] = useState<readonly ReviewPatch[]>(resetReviewPatches());
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>({});
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [openedAttentionId, setOpenedAttentionId] = useState<string | null>(null);
-  const merged = mergeRosterSession(view, session);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [reviewOpenedFrom, setReviewOpenedFrom] = useState<"inbox" | "workbench" | "attention">(
+    "workbench",
+  );
+  const merged = mergeReviewSession(view, session, reviewPatches);
 
   function appendOverlay(partial: Partial<ShellOverlay>) {
     setSession((previous) => appendRosterOverlay(previous, partial));
@@ -222,6 +239,13 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
     openProject(item.projectId, item.id);
   }
 
+  function openDraft(draftId: string, from: "inbox" | "workbench" | "attention" = "workbench") {
+    const allowed = resolveClientDraftId(merged, draftId);
+    if (!allowed) return;
+    setSelectedDraftId(allowed);
+    setReviewOpenedFrom(from);
+  }
+
   function applyPatches(next: { attentionPatch?: AttentionPatch; projectPatch?: ProjectPatch }) {
     setSession((previous) => {
       let workbench = asWorkbenchSession(previous);
@@ -232,8 +256,18 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
   }
 
   const workbenchId = resolveClientProjectId(merged, selectedProjectId);
+  const reviewId = resolveClientDraftId(merged, selectedDraftId);
   const body =
-    current === "projects" && workbenchId ? (
+    reviewId ? (
+      <P1ReviewPanel
+        key={reviewId}
+        view={merged}
+        draftId={reviewId}
+        openedFrom={reviewOpenedFrom}
+        onBack={() => setSelectedDraftId(null)}
+        onDecided={(patch) => setReviewPatches((previous) => appendReviewPatch(previous, patch))}
+      />
+    ) : current === "projects" && workbenchId ? (
       <P1ProjectWorkbench
         key={`${workbenchId}:${openedAttentionId ?? ""}`}
         view={merged}
@@ -244,6 +278,7 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
           setOpenedAttentionId(null);
         }}
         onReassigned={applyPatches}
+        onOpenDraft={(draftId) => openDraft(draftId, "workbench")}
       />
     ) : current === "projects" ? (
       <ProjectsView view={merged} onOpen={(projectId) => openProject(projectId)} />
@@ -256,7 +291,13 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
         onMembershipPatch={(patch) => setSession((previous) => appendMembershipPatch(previous, patch))}
       />
     ) : (
-      <P1Inbox view={merged} filter={inboxFilter} onFilter={setInboxFilter} onOpenItem={openAttention} />
+      <P1Inbox
+        view={merged}
+        filter={inboxFilter}
+        onFilter={setInboxFilter}
+        onOpenItem={openAttention}
+        onOpenDraft={(draftId) => openDraft(draftId, "inbox")}
+      />
     );
 
   return (
@@ -281,7 +322,10 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
                   key={item.id}
                   variant={active ? "default" : "ghost"}
                   className="w-full justify-start"
-                  onClick={() => setCurrent(item.id)}
+                  onClick={() => {
+                    setCurrent(item.id);
+                    setSelectedDraftId(null);
+                  }}
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon className="h-4 w-4" />
@@ -309,7 +353,11 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
                 <P1Button
                   variant="ghost"
                   className="h-8 px-3 text-xs"
-                  onClick={() => setSession(resetRosterSession())}
+                  onClick={() => {
+                    setSession(resetRosterSession());
+                    setReviewPatches(resetReviewPatches());
+                    setSelectedDraftId(null);
+                  }}
                 >
                   Herstel lokale sessie
                 </P1Button>
@@ -338,7 +386,10 @@ export function P1FoundationShell({ view }: { view: FoundationViewModel }) {
                 "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-xs",
                 active ? "bg-primary text-primary-foreground" : "text-muted-foreground",
               )}
-              onClick={() => setCurrent(item.id)}
+              onClick={() => {
+                setCurrent(item.id);
+                setSelectedDraftId(null);
+              }}
               aria-current={active ? "page" : undefined}
             >
               <Icon className="h-4 w-4" />
