@@ -1,9 +1,10 @@
 /**
- * P2.0 /motor service — isolated from the P0 API on :4400.
+ * P2 /motor service — isolated from the P0 API on :4400.
  *
  * Serves only /motor and /api/motor/*. Binds loopback or one tailnet address.
  * WhoIs + PILOT_P2_ACL (human UI) and PILOT_P2_ORCHESTRATOR_ACL (NUC).
  * P0 PILOT_ACL on :4400 is never read or written by this process.
+ * P2.1: append-only synthetic outcome-review journal at /p2-review.
  * No store, ModelPort, drafts-volume, context-volume or external effectors.
  */
 
@@ -24,21 +25,9 @@ import {
   OTHER_TENANT_ID,
   serializeFoundationView,
 } from "./p1-foundation.ts";
-import {
-  EMPTY_OVERLAY,
-  prepareTypedDraft,
-  resolveMotorShell,
-  tryPublish,
-  type ShellOverlay,
-} from "./p1-shell.ts";
+import { EMPTY_OVERLAY, resolveMotorShell, tryPublish } from "./p1-shell.ts";
 import { EMPTY_ROSTER_SESSION, type RosterSession } from "./p1-roster.ts";
-import {
-  appendReviewPatch,
-  decideReview,
-  mergeReviewSession,
-  submitDraftForReview,
-  type ReviewPatch,
-} from "./p1-review.ts";
+import { mergeReviewSession, type ReviewPatch } from "./p1-review.ts";
 import { collectWorkspaceEvidence, evidenceRailLeaksContent, openEvidenceRail } from "./p1-evidence.ts";
 import { resolveP2Bind } from "./p2-bind.ts";
 import { renderMotorHtml } from "./p2-motor-ui.ts";
@@ -52,6 +41,13 @@ import {
   P2_ORCHESTRATOR_HEALTH_PATH,
   P2_ORCHESTRATOR_READY_PATH,
 } from "./p2-orchestrator.ts";
+import { p2ContextWriteError, resolveP2ContextGate } from "./p2-context-gate.ts";
+import {
+  buildDraftCreatedEvent,
+  buildTransitionEvent,
+  ReviewJournal,
+  P2_JOURNAL_DIR_DEFAULT,
+} from "./p2-review-journal.ts";
 
 const TAILSCALE_SOCK = process.env.TAILSCALE_SOCK ?? "/run/tailscale/tailscaled.sock";
 const MAX_BODY_BYTES = 64 * 1024;
@@ -165,12 +161,20 @@ export interface P2MotorServerDeps {
   readonly acl?: PilotAcl;
   readonly orchestratorAcl?: PilotAcl;
   readonly resolveNode?: ResolveNode;
+  readonly journalDir?: string;
+  readonly journal?: ReviewJournal;
+  readonly contextEnv?: Record<string, string | undefined>;
 }
 
 export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
   const acl = deps.acl ?? parseAcl(process.env.PILOT_P2_ACL);
   const orchestratorAcl = deps.orchestratorAcl ?? parseOrchestratorAcl(process.env.PILOT_P2_ORCHESTRATOR_ACL);
   const resolveNode = deps.resolveNode ?? whoisNode;
+  const journal =
+    deps.journal ??
+    new ReviewJournal(deps.journalDir ?? process.env.PILOT_P2_JOURNAL_DIR ?? P2_JOURNAL_DIR_DEFAULT);
+  journal.load();
+  const contextEnv = deps.contextEnv ?? process.env;
   const sessions = new Map<string, P2SessionState>();
 
   function sessionOf(stableId: string): P2SessionState {
@@ -184,7 +188,20 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
   function viewFor(session: P2SessionState) {
     const base = serializeFoundationView(HOME_TENANT_ID);
     if (!base) throw new Error("home_view_missing");
-    return mergeReviewSession(base, session.roster, session.patches);
+    const projected = journal.projection();
+    const roster = {
+      ...session.roster,
+      overlay: {
+        ...session.roster.overlay,
+        drafts: projected.drafts,
+        attention: projected.attention,
+      },
+    };
+    return mergeReviewSession(base, roster, projected.patches);
+  }
+
+  function contextDenied(): string | null {
+    return p2ContextWriteError(resolveP2ContextGate(contextEnv));
   }
 
   async function authorize(
@@ -371,69 +388,95 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
         return;
       }
 
+      const contextError = contextDenied();
+      if (contextError && pathname !== "/api/motor/publish") {
+        sendJson(res, 400, { ok: false, error: contextError });
+        return;
+      }
+
       if (pathname === "/api/motor/draft") {
-        const prepared = prepareTypedDraft({
-          authenticated: true,
-          actorTenantId: access.workspace,
-          workspaceId: access.workspace,
-          projectId: String(body.projectId ?? ""),
-          title: String(body.title ?? ""),
-          body: typeof body.body === "string" ? body.body : undefined,
-          nonce: typeof body.nonce === "string" ? body.nonce : undefined,
-        });
-        if (!prepared.ok) {
-          sendJson(res, 400, { ok: false, error: prepared.reason });
+        if ("title" in body || "body" in body) {
+          sendJson(res, 400, { ok: false, error: "free_draft_body_not_allowed" });
           return;
         }
-        const overlay: ShellOverlay = {
-          ...access.session.roster.overlay,
-          drafts: [...access.session.roster.overlay.drafts, prepared.draft],
-          attention: [...access.session.roster.overlay.attention, prepared.attention],
-        };
-        access.session.roster = { ...access.session.roster, overlay };
-        sendJson(res, 200, { ok: true, draftId: prepared.draft.id, state: prepared.draft.state });
+        const built = buildDraftCreatedEvent({
+          actorStableId: access.node.stableId,
+          templateId: String(body.synthetic_template_id ?? ""),
+        });
+        if (!built.ok) {
+          sendJson(res, 400, { ok: false, error: built.reason });
+          return;
+        }
+        const committed = await journal.commit(built.event);
+        if (!committed.ok) {
+          sendJson(res, 400, { ok: false, error: committed.reason });
+          return;
+        }
+        sendJson(res, 200, {
+          ok: true,
+          draftId: committed.event.draft_id,
+          state: committed.event.to_status,
+          synthetic_template_id: committed.event.synthetic_template_id,
+        });
         return;
       }
 
       if (pathname === "/api/motor/review/submit") {
-        const view = viewFor(access.session);
-        const submitted = submitDraftForReview({
-          authenticated: true,
-          actorTenantId: access.workspace,
-          workspaceId: access.workspace,
-          draftId: String(body.draftId ?? ""),
-          view,
-        });
-        if (!submitted.ok) {
-          sendJson(res, 400, { ok: false, error: submitted.reason });
+        const draftId = String(body.draftId ?? "");
+        const record = journal.projection().records.get(draftId);
+        if (!record) {
+          sendJson(res, 400, { ok: false, error: "not_found" });
           return;
         }
-        access.session.patches = appendReviewPatch(access.session.patches, submitted.patch);
-        sendJson(res, 200, { ok: true, status: submitted.patch.status, draftId: submitted.patch.draftId });
+        const built = buildTransitionEvent({
+          type: "review_submitted",
+          actorStableId: access.node.stableId,
+          draftId,
+          templateId: record.templateId,
+          toStatus: "in_review",
+        });
+        if (!built.ok) {
+          sendJson(res, 400, { ok: false, error: built.reason });
+          return;
+        }
+        const committed = await journal.commit(built.event);
+        if (!committed.ok) {
+          sendJson(res, 400, { ok: false, error: committed.reason });
+          return;
+        }
+        sendJson(res, 200, { ok: true, status: committed.event.to_status, draftId: committed.event.draft_id });
         return;
       }
 
       if (pathname === "/api/motor/review/decide") {
-        const view = viewFor(access.session);
-        const decision = body.decision === "reject" ? "reject" : body.decision === "approve" ? "approve" : null;
+        const decision = body.decision === "reject" ? "rejected" : body.decision === "approve" ? "approved" : null;
         if (!decision) {
           sendJson(res, 400, { ok: false, error: "invalid_transition" });
           return;
         }
-        const decided = decideReview({
-          authenticated: true,
-          actorTenantId: access.workspace,
-          workspaceId: access.workspace,
-          draftId: String(body.draftId ?? ""),
-          decision,
-          view,
-        });
-        if (!decided.ok) {
-          sendJson(res, 400, { ok: false, error: decided.reason });
+        const draftId = String(body.draftId ?? "");
+        const record = journal.projection().records.get(draftId);
+        if (!record) {
+          sendJson(res, 400, { ok: false, error: "not_found" });
           return;
         }
-        access.session.patches = appendReviewPatch(access.session.patches, decided.patch);
-        sendJson(res, 200, { ok: true, status: decided.patch.status, draftId: decided.patch.draftId });
+        const built = buildTransitionEvent({
+          type: "review_decided",
+          actorStableId: access.node.stableId,
+          draftId,
+          templateId: record.templateId,
+          toStatus: decision,
+        });
+        if (!built.ok) {
+          sendJson(res, 400, { ok: false, error: built.reason });
+          return;
+        }
+        const committed = await journal.commit(built.event);
+        if (!committed.ok) {
+          sendJson(res, 400, { ok: false, error: committed.reason });
+          return;
+        }
+        sendJson(res, 200, { ok: true, status: committed.event.to_status, draftId: committed.event.draft_id });
         return;
       }
 

@@ -72,7 +72,14 @@ export function renderMotorHtml(view: FoundationViewModel): string {
   <p id="status"></p>
 </header>
 <section id="now"><h2>Nu</h2><ul>${now}</ul></section>
-<section id="projects"><h2>Projecten</h2>${projects}</section>
+<section id="projects">
+  <h2>Projecten</h2>
+  <p>
+    <button data-act="create" data-template="tpl-p21-review-reply">Nieuw synthetisch reviewantwoord</button>
+    <button data-act="create" data-template="tpl-p21-observation-note">Nieuwe synthetische observatienoot</button>
+  </p>
+  ${projects}
+</section>
 <section id="departments"><h2>Afdelingen</h2><ul>${departments}</ul></section>
 <section id="evidence"><h2>Evidence</h2><ul>${evidence}</ul></section>
 <script>
@@ -91,6 +98,13 @@ document.addEventListener("click", (event) => {
   if (!btn) return;
   const draftId = btn.getAttribute("data-draft");
   const act = btn.getAttribute("data-act");
+  if (act === "create") {
+    post("/api/motor/draft", {
+      workspace: "ws-motor",
+      synthetic_template_id: btn.getAttribute("data-template"),
+    });
+    return;
+  }
   if (act === "submit") post("/api/motor/review/submit", { draftId, workspace: "ws-motor" });
   if (act === "approve") post("/api/motor/review/decide", { draftId, decision: "approve", workspace: "ws-motor" });
   if (act === "reject") post("/api/motor/review/decide", { draftId, decision: "reject", workspace: "ws-motor" });

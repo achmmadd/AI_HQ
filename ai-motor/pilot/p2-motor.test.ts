@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { IncomingMessage } from "node:http";
@@ -11,9 +12,14 @@ import { createP2MotorServer } from "./p2-motor-server.ts";
 
 const ACL = parseAcl('{"nP2MOTOR":["ws-motor"],"nP2ANDERS":["ws-anders"]}');
 
-async function listen() {
+function tempJournalDir(): string {
+  return mkdtempSync(join(tmpdir(), "p21-journal-"));
+}
+
+async function listen(journalDir = tempJournalDir()) {
   const server = createP2MotorServer({
     acl: ACL,
+    journalDir,
     resolveNode: async (ip) => {
       if (ip.endsWith("2")) return { stableId: "nP2ANDERS", name: "anders" };
       return { stableId: "nP2MOTOR", name: "motor" };
@@ -52,6 +58,10 @@ test("P2.0 compose overlay is additive and never downs the stack", () => {
   assert.doesNotMatch(services, /["']0\.0\.0\.0["']/);
   assert.doesNotMatch(services, /pilot-drafts|pilot-context|PILOT_STORE_SECRET|MODEL_PORT_URL/);
   assert.doesNotMatch(services, /depends_on:/);
+  assert.match(compose, /p2-review:\/p2-review/);
+  assert.match(compose, /PILOT_P2_JOURNAL_DIR: \/p2-review/);
+  assert.match(compose, /motor-pilot_pilot-p2-review/);
+  assert.doesNotMatch(compose, /sqlite|SQLITE|better-sqlite3|postgres:\/\/|POSTGRES_|drizzle/i);
 });
 
 test("P2.0 health/readiness has no context, drafts, secrets or ACL", async () => {
@@ -137,16 +147,13 @@ test("P2.0 review machine draft → in_review → approved|rejected, publish DEN
   };
   try {
     const viewRes = await fetch(`${base}/api/motor/view?workspace=ws-motor`);
-    const view = await json(viewRes);
-    const projects = view.projects as Array<{ id: string }>;
+    await json(viewRes);
     const created = await fetch(`${base}/api/motor/draft`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         workspace: "ws-motor",
-        projectId: projects[0]?.id,
-        title: "P2 synthetisch concept",
-        nonce: "p2-review",
+        synthetic_template_id: "tpl-p21-review-reply",
       }),
     });
     assert.equal(created.status, 200);
@@ -186,9 +193,7 @@ test("P2.0 review machine draft → in_review → approved|rejected, publish DEN
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         workspace: "ws-motor",
-        projectId: projects[0]?.id,
-        title: "P2 tweede concept",
-        nonce: "p2-reject",
+        synthetic_template_id: "tpl-p21-observation-note",
       }),
     });
     const draft2 = await json(second);
@@ -233,6 +238,7 @@ test("P2.0 evidence rail has no content or secrets", async () => {
 test("P2.0 unknown node is denied and context bodies are rejected", async () => {
   const server = createP2MotorServer({
     acl: ACL,
+    journalDir: tempJournalDir(),
     resolveNode: async () => null,
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

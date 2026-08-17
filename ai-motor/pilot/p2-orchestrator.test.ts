@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
@@ -27,10 +28,15 @@ const script = readFileSync(
 );
 const workflow = readFileSync(join(import.meta.dirname, "../../.github/workflows/pilot-spine.yml"), "utf8");
 
+function tempJournalDir(): string {
+  return mkdtempSync(join(tmpdir(), "p21-orch-journal-"));
+}
+
 async function listen(resolveId: string) {
   const server = createP2MotorServer({
     acl: UI_ACL,
     orchestratorAcl: ORCH_ACL,
+    journalDir: tempJournalDir(),
     resolveNode: async () => ({ stableId: resolveId, name: "test" }),
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -98,6 +104,7 @@ test("empty orchestrator ACL is fail-closed even for the designed NUC id", async
   const server = createP2MotorServer({
     acl: UI_ACL,
     orchestratorAcl: parseAcl("{}"),
+    journalDir: tempJournalDir(),
     resolveNode: async () => ({ stableId: NUC_ORCHESTRATOR_STABLE_ID, name: "nuc" }),
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -116,6 +123,7 @@ test("forwarded headers do not change WhoIs identity", async () => {
   const server = createP2MotorServer({
     acl: UI_ACL,
     orchestratorAcl: ORCH_ACL,
+    journalDir: tempJournalDir(),
     resolveNode: async (ip) => {
       seen.push(ip);
       return { stableId: "nP2LAPTOP", name: "laptop" };
@@ -166,6 +174,7 @@ test("NUC cannot use UI, review or publish; unknown node is denied everywhere ga
       assert.equal((await fetch(`${nuc.base}${path}`)).status, 403);
     }
     for (const [path, body] of [
+      ["/api/motor/draft", { workspace: "ws-motor", synthetic_template_id: "tpl-p21-review-reply" }],
       ["/api/motor/review/submit", { workspace: "ws-motor", draftId: "draft-x" }],
       ["/api/motor/review/decide", { workspace: "ws-motor", draftId: "draft-x", decision: "approve" }],
       ["/api/motor/publish", { workspace: "ws-motor", draftId: "draft-x" }],
@@ -207,11 +216,13 @@ test("NUC in both ACLs still cannot open UI; only designed NUC gets orchestrator
   const nuc = createP2MotorServer({
     acl: both,
     orchestratorAcl: wideOrch,
+    journalDir: tempJournalDir(),
     resolveNode: async () => ({ stableId: NUC_ORCHESTRATOR_STABLE_ID, name: "nuc" }),
   });
   const laptop = createP2MotorServer({
     acl: both,
     orchestratorAcl: wideOrch,
+    journalDir: tempJournalDir(),
     resolveNode: async () => ({ stableId: "nP2LAPTOP", name: "laptop" }),
   });
   await new Promise<void>((resolve) => nuc.listen(0, "127.0.0.1", resolve));

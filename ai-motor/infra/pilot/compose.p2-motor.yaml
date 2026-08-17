@@ -9,9 +9,11 @@
 # - ACL via PILOT_P2_ACL (mens) en PILOT_P2_ORCHESTRATOR_ACL (NUC)
 # - nooit PILOT_ACL van de P0-API op :4400 wijzigen
 # - code via P2_REPO_PATH (aparte checkout); nooit de live P0-repo vervangen
-# - geen draft-volume, geen context-volume, geen store-secret, geen ModelPort
+# - P2.1 journalvolume p2-review → /p2-review; geen P0-store, geen context-volume
+# - geen store-secret, geen ModelPort, geen application database
 # - geen depends_on op motor-pilot-api of motor-pilot-store
-# - activatie vereist het letterlijke commando ACTIVATE P2.0
+# - console-activatie was ACTIVATE P2.0; journalvolume pas bij ACTIVATE P2.1
+# - deze overlay wijzigt geen .env/ACL; geen deploy vanuit deze commit
 #
 # Rollback: uitsluitend deze service stoppen:
 #   docker compose -f compose.yaml -f compose.p2-motor.yaml stop motor-p2-ui
@@ -27,14 +29,22 @@ services:
     volumes:
       - ${P2_REPO_PATH:?zet in .env — aparte P2-checkout, niet de live P0-repo}:/app:ro
       - /run/tailscale/tailscaled.sock:/run/tailscale/tailscaled.sock:ro
+      - p2-review:/p2-review
     environment:
       PILOT_P2_HOST: ${PILOT_P2_HOST:?zet in .env — tailnet-IP van deze host, nooit wildcard-bind}
       PILOT_P2_PORT: "4420"
       PILOT_P2_ACL: ${PILOT_P2_ACL:?zet in .env — P2 UI-ACL, niet de P0-ACL op :4400}
       PILOT_P2_ORCHESTRATOR_ACL: ${PILOT_P2_ORCHESTRATOR_ACL:-{}}
+      PILOT_P2_JOURNAL_DIR: /p2-review
     command: ["node", "pilot/p2-motor-server.ts"]
     restart: unless-stopped
     read_only: true
     cap_drop: ["ALL"]
     security_opt:
       - no-new-privileges:true
+
+volumes:
+  # P2.1 synthetic outcome-review journal. Only motor-p2-ui mounts this.
+  # Not a P0 store or context mount. Not an application database.
+  p2-review:
+    name: motor-pilot_pilot-p2-review
