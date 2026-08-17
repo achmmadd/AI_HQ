@@ -62,14 +62,20 @@ test("designed NUC orchestrator id is a StableID and not a hostname", () => {
   assert.equal(whoisStableId({ Name: "motorai-nuc" }), null);
 });
 
+function probeDenyReason(raw: string, enabled: boolean): string {
+  const decision = evaluateOrchestratorProbe(raw, enabled);
+  if (decision.ok) throw new Error(`expected deny for ${raw}`);
+  return decision.reason;
+}
+
 test("orchestrator probe is disabled by default and pins the health URL", () => {
-  assert.equal(evaluateOrchestratorProbe(P2_ORCHESTRATOR_HEALTH_URL, false).reason, "disabled");
+  assert.equal(probeDenyReason(P2_ORCHESTRATOR_HEALTH_URL, false), "disabled");
   assert.deepEqual(evaluateOrchestratorProbe(P2_ORCHESTRATOR_HEALTH_URL, true), {
     ok: true,
     url: P2_ORCHESTRATOR_HEALTH_URL,
   });
-  assert.equal(evaluateOrchestratorProbe("http://100.97.30.22:4420/motor", true).reason, "wrong_route");
-  assert.equal(evaluateOrchestratorProbe("http://100.97.30.22:4420/motor/health", true).reason, "wrong_route");
+  assert.equal(probeDenyReason("http://100.97.30.22:4420/motor", true), "wrong_route");
+  assert.equal(probeDenyReason("http://100.97.30.22:4420/motor/health", true), "wrong_route");
 });
 
 test("NUC StableID may read orchestrator health; laptop may not", async () => {

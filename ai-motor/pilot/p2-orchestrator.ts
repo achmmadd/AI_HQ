@@ -50,7 +50,9 @@ export function orchestratorAllowed(stableId: string, acl: PilotAcl): boolean {
   return Boolean(workspaces && workspaces.includes(HOME_TENANT_ID));
 }
 
-export function whoisStableId(node: { StableID?: string; ID?: string } | undefined): string | null {
+export function whoisStableId(
+  node: { StableID?: string; ID?: string; Name?: string } | undefined,
+): string | null {
   const stable = node?.StableID;
   if (typeof stable === "string" && isStableNodeId(stable)) return stable;
   const id = node?.ID;

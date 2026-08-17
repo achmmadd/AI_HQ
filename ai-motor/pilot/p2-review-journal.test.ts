@@ -156,7 +156,10 @@ test("P2.1 duplicate event_id is a no-op and does not apply a second transition"
   });
   assert.equal(created.ok, true);
   if (!created.ok) return;
-  assert.equal((await journal.commit(created.event)).outcome, "appended");
+  const createdCommit = await journal.commit(created.event);
+  assert.equal(createdCommit.ok, true);
+  if (!createdCommit.ok) return;
+  assert.equal(createdCommit.outcome, "appended");
   const submitted = buildTransitionEvent({
     type: "review_submitted",
     actorStableId: LAPTOP,
@@ -167,7 +170,10 @@ test("P2.1 duplicate event_id is a no-op and does not apply a second transition"
   });
   assert.equal(submitted.ok, true);
   if (!submitted.ok) return;
-  assert.equal((await journal.commit(submitted.event)).outcome, "appended");
+  const submittedCommit = await journal.commit(submitted.event);
+  assert.equal(submittedCommit.ok, true);
+  if (!submittedCommit.ok) return;
+  assert.equal(submittedCommit.outcome, "appended");
   const decided = buildTransitionEvent({
     type: "review_decided",
     actorStableId: LAPTOP,
@@ -178,7 +184,10 @@ test("P2.1 duplicate event_id is a no-op and does not apply a second transition"
   });
   assert.equal(decided.ok, true);
   if (!decided.ok) return;
-  assert.equal((await journal.commit(decided.event)).outcome, "appended");
+  const decidedCommit = await journal.commit(decided.event);
+  assert.equal(decidedCommit.ok, true);
+  if (!decidedCommit.ok) return;
+  assert.equal(decidedCommit.outcome, "appended");
   const dup = await journal.commit(decided.event);
   assert.equal(dup.ok, true);
   if (!dup.ok) return;

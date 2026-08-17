@@ -70,7 +70,7 @@ jobs:
       - name: Full suite, real sidecar subprocesses, no network
         run: |
           docker run --rm --network none -e HOME=/tmp \
-            -v "$PWD/ai-motor:/app:ro" -w /app pilot-conformance-ci \
+            -v "$PWD:/repo:ro" -w /repo/ai-motor pilot-conformance-ci \
             sh -c 'node --test "lib/adr110/*.test.ts" "lib/adr110/adapters/**/*.test.ts" "pilot/*.test.ts" "pilot/security/*.test.ts"'
       - name: Python sidecar unittests (hermes + agentscope body-asserties)
         run: |

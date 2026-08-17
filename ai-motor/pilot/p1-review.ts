@@ -25,6 +25,7 @@ import {
 import { mergeRosterSession, type RosterSession } from "./p1-roster.ts";
 import { walkAttentionProjectConcept } from "./p1-workbench.ts";
 
+export type { ReviewStatus };
 export type ReviewDecision = "approve" | "reject";
 
 export type ReviewPatch = {

@@ -8,14 +8,20 @@ import { evaluateKioskOrigin, healthUrlForPinnedOrigin } from "./p2-kiosk-policy
 
 const script = readFileSync(join(import.meta.dirname, "../infra/pilot/nuc/motor-p2-kiosk.sh"), "utf8");
 
+function kioskDenyReason(raw: string): string {
+  const decision = evaluateKioskOrigin(raw);
+  if (decision.ok) throw new Error(`expected deny for ${raw}`);
+  return decision.reason;
+}
+
 test("P2.0 kiosk accepts only the pinned tailnet /motor origin", () => {
   assert.deepEqual(evaluateKioskOrigin(P2_PINNED_ORIGIN), { ok: true, origin: P2_PINNED_ORIGIN });
   assert.deepEqual(evaluateKioskOrigin(`${P2_PINNED_ORIGIN}/`), { ok: true, origin: P2_PINNED_ORIGIN });
-  assert.equal(evaluateKioskOrigin("http://100.97.30.22:4420/").reason, "wrong_route");
-  assert.equal(evaluateKioskOrigin("http://100.97.30.22:4400/motor").reason, "not_pinned");
-  assert.equal(evaluateKioskOrigin("http://203.0.113.10:4420/motor").reason, "public_ip");
-  assert.equal(evaluateKioskOrigin("http://192.168.1.10:4420/motor").reason, "not_tailnet");
-  assert.equal(evaluateKioskOrigin("http://127.0.0.1:4420/motor").reason, "not_tailnet");
+  assert.equal(kioskDenyReason("http://100.97.30.22:4420/"), "wrong_route");
+  assert.equal(kioskDenyReason("http://100.97.30.22:4400/motor"), "not_pinned");
+  assert.equal(kioskDenyReason("http://203.0.113.10:4420/motor"), "public_ip");
+  assert.equal(kioskDenyReason("http://192.168.1.10:4420/motor"), "not_tailnet");
+  assert.equal(kioskDenyReason("http://127.0.0.1:4420/motor"), "not_tailnet");
   assert.equal(healthUrlForPinnedOrigin(), "http://100.97.30.22:4420/motor/health");
 });
 
