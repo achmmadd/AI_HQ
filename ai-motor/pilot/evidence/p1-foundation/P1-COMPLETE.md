@@ -26,11 +26,12 @@ Bruikbare synthetische `/motor`-ervaring:
 - Tenant `ws-anders` fail-closed
 - NUC-kiosk alleen voorbereid, niet geactiveerd
 
-## P2-blockers (niet gebouwd)
+## P2-blockers (niet gebouwd in P1; P2.1 dekt de live console)
 
 - Echte bedrijfscontext (`CONTEXT_MODE=private` is P0-gate, vullen is eigenaar)
-- Live `/motor` op Hetzner/NUC (deploy)
-- Duurzame persistence (geen SQLite/nieuwe PG-migratie in P1)
+- Duurzame persistence in Postgres (P2.1 = JSONL-journal, geen PG-cutover)
 - Eerste echte koppeling met extern effect
 - Master-merge
 - Publieke ingress
+
+Live `/motor` op Hetzner `:4420` is P2.1, niet P1.
