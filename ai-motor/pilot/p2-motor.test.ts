@@ -272,3 +272,60 @@ test("P2.0 listen helper typecheck: IncomingMessage stays request-scoped", () =>
   assert.equal(probe, undefined);
   assert.equal(P2_PINNED_ORIGIN, "http://100.97.30.22:4420/motor");
 });
+
+test("POST /api/motor/draft uses the ReviewReceived seam with WhoIs/ACL authority", async () => {
+  const serverSrc = readFileSync(join(import.meta.dirname, "p2-motor-server.ts"), "utf8");
+  assert.match(serverSrc, /receiveSyntheticReview/);
+  assert.match(serverSrc, /workspaceId: access\.workspace/);
+  assert.match(serverSrc, /stableId: access\.node\.stableId/);
+  assert.doesNotMatch(serverSrc, /body\.actor|body\.stableId|body\.actor_stable_id/);
+  assert.doesNotMatch(serverSrc, /n42QGiXouB21CNTRL/);
+
+  const deniedServer = createP2MotorServer({
+    acl: ACL,
+    journalDir: tempJournalDir(),
+    resolveNode: async () => null,
+  });
+  await new Promise<void>((resolve) => deniedServer.listen(0, "127.0.0.1", resolve));
+  const deniedAddress = deniedServer.address();
+  assert.ok(deniedAddress !== null && typeof deniedAddress === "object");
+  const deniedBase = `http://127.0.0.1:${deniedAddress.port}`;
+  try {
+    const denied = await fetch(`${deniedBase}/api/motor/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspace: "ws-motor",
+        synthetic_template_id: "tpl-p21-review-reply",
+      }),
+    });
+    assert.equal(denied.status, 403);
+    assert.equal((await json(denied)).error, "node_not_allowed");
+  } finally {
+    deniedServer.close();
+  }
+
+  const journalDir = tempJournalDir();
+  const { server, base } = await listen(journalDir);
+  try {
+    const created = await fetch(`${base}/api/motor/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspace: "ws-motor",
+        synthetic_template_id: "tpl-p21-review-reply",
+        actor_stable_id: "nFAKEACTOR",
+      }),
+    });
+    assert.equal(created.status, 200);
+    const draft = await json(created);
+    assert.equal(draft.state, "draft");
+    const journalText = readFileSync(join(journalDir, "outcome-review.jsonl"), "utf8");
+    assert.match(journalText, /"actor_stable_id":"nP2MOTOR"/);
+    assert.doesNotMatch(journalText, /nFAKEACTOR/);
+    assert.doesNotMatch(journalText, /ReviewReceived/);
+    assert.match(journalText, /"type":"draft_created"/);
+  } finally {
+    server.close();
+  }
+});

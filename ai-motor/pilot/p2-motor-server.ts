@@ -42,8 +42,8 @@ import {
   P2_ORCHESTRATOR_READY_PATH,
 } from "./p2-orchestrator.ts";
 import { p2ContextWriteError, resolveP2ContextGate } from "./p2-context-gate.ts";
+import { receiveSyntheticReview } from "./p2-review-received-seam.ts";
 import {
-  buildDraftCreatedEvent,
   buildTransitionEvent,
   ReviewJournal,
   P2_JOURNAL_DIR_DEFAULT,
@@ -399,24 +399,26 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           sendJson(res, 400, { ok: false, error: "free_draft_body_not_allowed" });
           return;
         }
-        const built = buildDraftCreatedEvent({
-          actorStableId: access.node.stableId,
-          templateId: String(body.synthetic_template_id ?? ""),
-        });
-        if (!built.ok) {
-          sendJson(res, 400, { ok: false, error: built.reason });
-          return;
-        }
-        const committed = await journal.commit(built.event);
-        if (!committed.ok) {
-          sendJson(res, 400, { ok: false, error: committed.reason });
+        const received = await receiveSyntheticReview(
+          { synthetic_template_id: body.synthetic_template_id },
+          {
+            verifiedActor: {
+              workspaceId: access.workspace,
+              stableId: access.node.stableId,
+            },
+            journal,
+            contextEnv,
+          },
+        );
+        if (!received.ok) {
+          sendJson(res, 400, { ok: false, error: received.reason });
           return;
         }
         sendJson(res, 200, {
           ok: true,
-          draftId: committed.event.draft_id,
-          state: committed.event.to_status,
-          synthetic_template_id: committed.event.synthetic_template_id,
+          draftId: received.event.draft_id,
+          state: received.event.to_status,
+          synthetic_template_id: received.event.synthetic_template_id,
         });
         return;
       }
