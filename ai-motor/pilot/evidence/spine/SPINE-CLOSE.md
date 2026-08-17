@@ -1,9 +1,11 @@
 # SPINE-CLOSE — synthetische Motor-spine (P0→P1→P2.1)
 
 ```text
-SPINE_STATUS=READY_TO_SIGN
+SPINE_STATUS=CLOSED_SYNTHETIC
 CLOSED_AS=CLOSED_SYNTHETIC
-OWNER_SIGN=pending
+OWNER_SIGN=SIGNED
+SIGNED_AT=2026-08-17
+SIGNED_FROM_CLOSE_REF=ada1b0bbb78e3cce352252d0f3dc00db3f1a0144
 SIGN_COMMAND=SIGN SPINE CLOSED_SYNTHETIC
 DATE=2026-08-17
 BRANCH=pilot/p2.0-motor-kiosk
@@ -14,6 +16,7 @@ P0_LIVE_SHA=fc37d90c853b4e1760aae7770b14020cf2d9b18e
 P0_LISTEN=100.97.30.22:4400
 P2_LISTEN=100.97.30.22:4420
 CI_URL=https://github.com/achmmadd/AI_HQ/actions/runs/32025912144
+CLOSE_EVIDENCE_CI=https://github.com/achmmadd/AI_HQ/actions/runs/32026184453
 TEST_COUNTS=295 pass / 0 fail / 1 skip
 TYPES=0
 JOURNAL_EVENTS=draft_created=23 review_submitted=1 review_decided=1
@@ -33,9 +36,13 @@ SQLITE=no
 P0_UNCHANGED=yes
 ```
 
-Dit sluit de **pilot-spine**, niet Motor 2.2. Geen Kernel, geen Action
-Gateway, geen Playbook #1, geen private context. Publish/mail/pay/device
-blijven DENY tot een latere eigenaarszet.
+Eigenaar Pietje tekende **SIGNED** `SIGN SPINE CLOSED_SYNTHETIC` op
+2026-08-17 vanaf `ada1b0bbb78e3cce352252d0f3dc00db3f1a0144`. Dit sluit de
+**pilot-spine**, niet Motor 2.2. Geen Kernel, geen Action Gateway, geen
+Playbook #1, geen private context. Publish/mail/pay/device blijven DENY
+tot een latere eigenaarszet. Synthetic, tailnet-only, P0 ongemoeid,
+journal P2-only, NUC is geen reviewer, geen public ingress, geen
+master-merge.
 
 ## Ketting (gemeten)
 
@@ -48,10 +55,11 @@ blijven DENY tot een latere eigenaarszet.
 | Journal | live JSONL | `/p2-review/outcome-review.jsonl`; geen SQLite/PG |
 | Eén goedgekeurde keten | live | draft→in_review→approved; publish DENY |
 | Pilot Spine CI | groen | [run 32025912144](https://github.com/achmmadd/AI_HQ/actions/runs/32025912144) |
+| Close-evidence CI | groen | [run 32026184453](https://github.com/achmmadd/AI_HQ/actions/runs/32026184453) |
+| Eigenaarstekening | SIGNED | `SIGN SPINE CLOSED_SYNTHETIC` @ 2026-08-17 |
 
 ## Grenzen die open blijven ( expresse )
 
-- Eigenaarstekening: letterlijk `SIGN SPINE CLOSED_SYNTHETIC`.
 - P1-handtekening zit in dezelfde zet (geen tweede product).
 - K2/n8n Playbook #1, private context-volume, NUC-orchestrator-script,
   Hermes/AgentScope live-wiring, Kernel/Gateway, master-merge.
