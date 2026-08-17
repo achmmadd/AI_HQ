@@ -96,6 +96,10 @@ test("P2.0 opens /motor for the home workspace and lists Nu/Projecten/Afdelingen
     assert.match(html, /Projecten/);
     assert.match(html, /Afdelingen/);
     assert.match(html, /Publiceren blijft DENY/);
+    assert.match(html, /type="button"/);
+    assert.match(html, /location\.reload/);
+    assert.match(html, /vast voorbeeld/);
+    assert.doesNotMatch(html, /data-act="submit"/);
 
     const view = await fetch(`${base}/api/motor/view?workspace=ws-motor`);
     assert.equal(view.status, 200);
@@ -159,6 +163,9 @@ test("P2.0 review machine draft → in_review → approved|rejected, publish DEN
     assert.equal(created.status, 200);
     const draft = await json(created);
     assert.equal(draft.state, "draft");
+    const afterCreate = await (await fetch(`${base}/motor`)).text();
+    assert.match(afterCreate, new RegExp(`data-act="submit" data-draft="${draft.draftId}"`));
+    assert.doesNotMatch(afterCreate, new RegExp(`data-act="approve" data-draft="${draft.draftId}"`));
 
     const submitted = await fetch(`${base}/api/motor/review/submit`, {
       method: "POST",
