@@ -101,6 +101,8 @@ export type JournalDraftRecord = {
   readonly actorStableId: string;
   readonly status: ReviewStatus;
   readonly reviewId: string;
+  readonly lastEventType: P2JournalEventType;
+  readonly occurredAt: string;
 };
 
 export type JournalProjection = {
@@ -109,6 +111,59 @@ export type JournalProjection = {
   readonly patches: readonly ReviewPatch[];
   readonly records: ReadonlyMap<string, JournalDraftRecord>;
 };
+
+export type JournalOverviewItem = {
+  readonly draft_id: string;
+  readonly status: ReviewStatus;
+  readonly type: P2JournalEventType;
+  readonly synthetic_template_id: string;
+  readonly digest: string;
+  readonly occurred_at: string;
+  readonly actor_stable_id: string;
+};
+
+export type JournalOverview = {
+  readonly counts: {
+    readonly open: number;
+    readonly in_review: number;
+    readonly done: number;
+  };
+  readonly items: readonly JournalOverviewItem[];
+};
+
+export const EMPTY_JOURNAL_OVERVIEW: JournalOverview = Object.freeze({
+  counts: Object.freeze({ open: 0, in_review: 0, done: 0 }),
+  items: Object.freeze([]),
+});
+
+/** Reconstruct the helper overview from journal events. Not a second inbox. */
+export function summarizeJournal(projection: JournalProjection): JournalOverview {
+  const items: JournalOverviewItem[] = [];
+  let open = 0;
+  let inReview = 0;
+  let done = 0;
+  for (const record of projection.records.values()) {
+    if (!record.draftId.startsWith("draft-p21-")) continue;
+    if (record.status === "draft") open += 1;
+    else if (record.status === "in_review") inReview += 1;
+    else done += 1;
+    items.push(
+      Object.freeze({
+        draft_id: record.draftId,
+        status: record.status,
+        type: record.lastEventType,
+        synthetic_template_id: record.templateId,
+        digest: record.digest,
+        occurred_at: record.occurredAt,
+        actor_stable_id: record.actorStableId,
+      }),
+    );
+  }
+  return Object.freeze({
+    counts: Object.freeze({ open, in_review: inReview, done }),
+    items: Object.freeze(items),
+  });
+}
 
 class Mutex {
   private chain: Promise<void> = Promise.resolve();
@@ -256,6 +311,8 @@ export function projectJournalEvents(events: readonly P2JournalEvent[]): Journal
         actorStableId: event.actor_stable_id,
         status: "draft",
         reviewId: `review-p21-${event.draft_id}`,
+        lastEventType: event.type,
+        occurredAt: event.occurred_at,
       });
       drafts.push(draft);
       attention.push(attentionFor(draft));
@@ -268,6 +325,8 @@ export function projectJournalEvents(events: readonly P2JournalEvent[]): Journal
     const next: JournalDraftRecord = {
       ...current,
       status: event.to_status,
+      lastEventType: event.type,
+      occurredAt: event.occurred_at,
     };
     records.set(event.draft_id, next);
     patches.push(

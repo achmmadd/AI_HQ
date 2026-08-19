@@ -6,6 +6,7 @@
 import { PRIMARY_NAV, type FoundationViewModel, type P1Draft } from "./p1-foundation.ts";
 import { reviewStatusForDraft, type ReviewStatus } from "./p1-review.ts";
 import { collectWorkspaceEvidence } from "./p1-evidence.ts";
+import { EMPTY_JOURNAL_OVERVIEW, type JournalOverview } from "./p2-review-journal.ts";
 
 function escapeHtml(value: string | number | null | undefined): string {
   return String(value ?? "")
@@ -31,7 +32,16 @@ function actionButtons(draft: P1Draft, status: ReviewStatus): string {
   return btn("publish", "Publiceren");
 }
 
-export function renderMotorHtml(view: FoundationViewModel): string {
+function journalRowMeta(overview: JournalOverview, draftId: string): string {
+  const item = overview.items.find((row) => row.draft_id === draftId);
+  if (!item) return "";
+  return `<span class="muted">${escapeHtml(item.synthetic_template_id)} ${escapeHtml(item.digest)} ${escapeHtml(item.occurred_at)}</span>`;
+}
+
+export function renderMotorHtml(
+  view: FoundationViewModel,
+  overview: JournalOverview = EMPTY_JOURNAL_OVERVIEW,
+): string {
   const nav = PRIMARY_NAV.map((item) => `<a href="#${item.id}">${escapeHtml(item.label)}</a>`).join("");
   const journalNow = view.now.items.filter((item) => item.id.startsWith("att-draft-p21-"));
   const seedNow = view.now.items.filter((item) => !item.id.startsWith("att-draft-p21-"));
@@ -43,12 +53,25 @@ export function renderMotorHtml(view: FoundationViewModel): string {
       ? ""
       : `<li><strong>${journalNow.length} synthetische P2.1-concepten</strong> — staan onder Projecten. Publiceren blijft DENY.</li>`;
   const now = nowItems + nowJournal;
+  const counts = overview.counts;
+  const journalCounts = `<p id="journal-overview" class="muted">Synthetisch journal: open ${counts.open} · in review ${counts.in_review} · afgehandeld ${counts.done}</p>`;
   const projects = view.projects
     .map((row) => {
-      const drafts = row.drafts
+      const journalDrafts = row.drafts.filter((draft) => isJournalDraftId(draft.id));
+      const seedDrafts = row.drafts.filter((draft) => !isJournalDraftId(draft.id));
+      const journalList = journalDrafts
         .map((draft) => {
           const status = reviewStatusForDraft(draft, row.reviews);
-          return `<li data-draft="${escapeHtml(draft.id)}">${escapeHtml(draft.title)} <em>${escapeHtml(status)}</em>
+          return `<li data-draft="${escapeHtml(draft.id)}" data-journal="1">${escapeHtml(draft.title)} <em>${escapeHtml(status)}</em>
+            ${journalRowMeta(overview, draft.id)}
+            ${actionButtons(draft, status)}
+          </li>`;
+        })
+        .join("");
+      const seedList = seedDrafts
+        .map((draft) => {
+          const status = reviewStatusForDraft(draft, row.reviews);
+          return `<li data-draft="${escapeHtml(draft.id)}" data-seed="1">${escapeHtml(draft.title)} <em>${escapeHtml(status)}</em>
             ${actionButtons(draft, status)}
           </li>`;
         })
@@ -56,7 +79,13 @@ export function renderMotorHtml(view: FoundationViewModel): string {
       const publishes = row.publishes
         .map((pub) => `<span class="deny">publish ${escapeHtml(pub.decision)}</span>`)
         .join(" ");
-      return `<article><h3>${escapeHtml(row.project.name)}</h3><ul>${drafts}</ul>${publishes}</article>`;
+      const journalBlock =
+        journalList.length > 0 ? `<ul data-list="journal">${journalList}</ul>` : "";
+      const seedBlock =
+        seedList.length > 0
+          ? `<p class="muted">Vast voorbeeld</p><ul data-list="seed">${seedList}</ul>`
+          : "";
+      return `<article><h3>${escapeHtml(row.project.name)}</h3>${journalBlock}${seedBlock}${publishes}</article>`;
     })
     .join("");
   const departments = view.departments
@@ -99,6 +128,7 @@ export function renderMotorHtml(view: FoundationViewModel): string {
     <button type="button" data-act="create" data-template="tpl-p21-review-reply">Nieuw synthetisch reviewantwoord</button>
     <button type="button" data-act="create" data-template="tpl-p21-observation-note">Nieuwe synthetische observatienoot</button>
   </p>
+  ${journalCounts}
   ${projects}
 </section>
 <section id="departments"><h2>Afdelingen</h2><ul>${departments}</ul></section>

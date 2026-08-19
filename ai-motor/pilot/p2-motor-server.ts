@@ -27,7 +27,7 @@ import {
 } from "./p1-foundation.ts";
 import { EMPTY_OVERLAY, resolveMotorShell, tryPublish } from "./p1-shell.ts";
 import { EMPTY_ROSTER_SESSION, type RosterSession } from "./p1-roster.ts";
-import { mergeReviewSession, type ReviewPatch } from "./p1-review.ts";
+import { mergeReviewSession, reviewStatusForDraft, type ReviewPatch } from "./p1-review.ts";
 import { collectWorkspaceEvidence, evidenceRailLeaksContent, openEvidenceRail } from "./p1-evidence.ts";
 import { resolveP2Bind } from "./p2-bind.ts";
 import { renderMotorHtml } from "./p2-motor-ui.ts";
@@ -47,6 +47,7 @@ import {
   buildTransitionEvent,
   ReviewJournal,
   P2_JOURNAL_DIR_DEFAULT,
+  summarizeJournal,
 } from "./p2-review-journal.ts";
 
 const TAILSCALE_SOCK = process.env.TAILSCALE_SOCK ?? "/run/tailscale/tailscaled.sock";
@@ -185,6 +186,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
     return created;
   }
 
+  // GET /motor and GET /api/motor/view reconstruct via projection() only. Never commit.
   function viewFor(session: P2SessionState) {
     const base = serializeFoundationView(HOME_TENANT_ID);
     if (!base) throw new Error("home_view_missing");
@@ -197,7 +199,10 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
         attention: projected.attention,
       },
     };
-    return mergeReviewSession(base, roster, projected.patches);
+    return {
+      view: mergeReviewSession(base, roster, projected.patches),
+      overview: summarizeJournal(projected),
+    };
   }
 
   function contextDenied(): string | null {
@@ -308,7 +313,8 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           sendJson(res, 403, { ok: false, error: shell.reason });
           return;
         }
-        sendHtml(res, 200, renderMotorHtml(viewFor(access.session)));
+        const { view, overview } = viewFor(access.session);
+        sendHtml(res, 200, renderMotorHtml(view, overview));
         return;
       }
 
@@ -318,7 +324,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           sendJson(res, access.status, access.body);
           return;
         }
-        const view = viewFor(access.session);
+        const { view, overview } = viewFor(access.session);
         sendJson(res, 200, {
           ok: true,
           workspace: access.workspace,
@@ -327,8 +333,14 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           projects: view.projects.map((row) => ({
             id: row.project.id,
             name: row.project.name,
-            drafts: row.drafts.map((draft) => ({ id: draft.id, title: draft.title, state: draft.state })),
+            drafts: row.drafts.map((draft) => ({
+              id: draft.id,
+              title: draft.title,
+              state: draft.state,
+              status: reviewStatusForDraft(draft, row.reviews),
+            })),
           })),
+          journal: overview,
           departments: view.departments.map((dep) => ({ id: dep.id, name: dep.name })),
         });
         return;
@@ -340,7 +352,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           sendJson(res, access.status, access.body);
           return;
         }
-        const view = viewFor(access.session);
+        const { view } = viewFor(access.session);
         const rail = openEvidenceRail({
           authenticated: true,
           workspace: access.workspace,

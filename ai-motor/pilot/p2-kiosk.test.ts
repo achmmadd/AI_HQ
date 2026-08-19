@@ -33,3 +33,16 @@ test("P2.0 kiosk script pins the origin, probes health, and has no secrets", () 
   assert.doesNotMatch(script, /docker compose down|0\.0\.0\.0|Access-Control-Allow-Origin/);
   assert.doesNotMatch(script, /ssh |systemctl /);
 });
+
+test("P2.2 overview stays on the pinned GET /motor origin", () => {
+  assert.doesNotMatch(script, /\/motor\/overview|\/api\/motor\/overview/);
+  assert.doesNotMatch(script, /n42QGiXouB21CNTRL/);
+  const server = readFileSync(join(import.meta.dirname, "p2-motor-server.ts"), "utf8");
+  const ui = readFileSync(join(import.meta.dirname, "p2-motor-ui.ts"), "utf8");
+  assert.doesNotMatch(server, /n42QGiXouB21CNTRL/);
+  assert.doesNotMatch(ui, /n42QGiXouB21CNTRL/);
+  assert.doesNotMatch(server, /pathname === "\/api\/motor\/overview"|pathname === "\/motor\/overview"/);
+  assert.match(ui, /journal-overview/);
+  assert.match(ui, /data-list="journal"/);
+  assert.match(ui, /data-list="seed"/);
+});
