@@ -336,6 +336,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
             drafts: row.drafts.map((draft) => ({
               id: draft.id,
               title: draft.title,
+              digest: draft.bodyDigest,
               state: draft.state,
               status: reviewStatusForDraft(draft, row.reviews),
             })),

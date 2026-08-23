@@ -114,6 +114,7 @@ export type JournalProjection = {
 
 export type JournalOverviewItem = {
   readonly draft_id: string;
+  readonly title: string;
   readonly status: ReviewStatus;
   readonly type: P2JournalEventType;
   readonly synthetic_template_id: string;
@@ -150,6 +151,7 @@ export function summarizeJournal(projection: JournalProjection): JournalOverview
     items.push(
       Object.freeze({
         draft_id: record.draftId,
+        title: record.title,
         status: record.status,
         type: record.lastEventType,
         synthetic_template_id: record.templateId,

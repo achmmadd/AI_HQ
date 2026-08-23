@@ -10,7 +10,7 @@ import { parseAcl } from "./server.ts";
 import { assertSafeBindHost, P2_PINNED_ORIGIN, resolveP2Bind } from "./p2-bind.ts";
 import { createP2MotorServer } from "./p2-motor-server.ts";
 import { NUC_ORCHESTRATOR_STABLE_ID } from "./p2-orchestrator.ts";
-import { P2_JOURNAL_EVENT_TYPES } from "./p2-review-journal.ts";
+import { P2_JOURNAL_EVENT_TYPES, P2_SYNTHETIC_TEMPLATES } from "./p2-review-journal.ts";
 
 const ACL = parseAcl('{"nP2MOTOR":["ws-motor"],"nP2ANDERS":["ws-anders"]}');
 
@@ -441,6 +441,15 @@ test("P2.2 overview reconstructs journal status on existing GET without a second
     assert.equal(html.includes(FORBIDDEN_VIEW_MARKERS.secret), false);
     assert.equal(html.includes(FORBIDDEN_VIEW_MARKERS.contextBody), false);
     assert.doesNotMatch(html, /FULL_CONTEXT_BODY|p1-demo-secret|BEGIN [A-Z ]*PRIVATE KEY/);
+    const reply = P2_SYNTHETIC_TEMPLATES["tpl-p21-review-reply"];
+    const note = P2_SYNTHETIC_TEMPLATES["tpl-p21-observation-note"];
+    assert.match(html, new RegExp(`data-draft="${openDraft.draftId}"[\\s\\S]*?data-title="1">${reply.title}`));
+    assert.match(html, new RegExp(`data-draft="${openDraft.draftId}"[\\s\\S]*?data-digest="${reply.digest}"`));
+    assert.match(html, new RegExp(`data-draft="${reviewing.draftId}"[\\s\\S]*?data-title="1">${note.title}`));
+    assert.match(html, new RegExp(`data-draft="${reviewing.draftId}"[\\s\\S]*?data-digest="${note.digest}"`));
+    assert.doesNotMatch(html, new RegExp(reply.body.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.doesNotMatch(html, new RegExp(note.body.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.doesNotMatch(html, /<textarea|<input[^>]+name="body"|P0-body|draft_body[^_]/);
 
     const viewRes = await fetch(`${base}/api/motor/view?workspace=ws-motor`);
     assert.equal(viewRes.status, 200);
@@ -453,12 +462,14 @@ test("P2.2 overview reconstructs journal status on existing GET without a second
     assert.equal(journal.items.length, 3);
     for (const item of journal.items) {
       assert.equal(String(item.draft_id).startsWith("draft-p21-"), true);
+      assert.equal(typeof item.title, "string");
       assert.equal(typeof item.status, "string");
       assert.equal(["draft_created", "review_submitted", "review_decided"].includes(String(item.type)), true);
       assert.equal(typeof item.synthetic_template_id, "string");
       assert.equal(String(item.digest).startsWith("sha256:"), true);
       assert.equal(typeof item.occurred_at, "string");
       assert.equal(item.actor_stable_id, "nP2MOTOR");
+      assert.equal("body" in item, false);
     }
     const byId = Object.fromEntries(journal.items.map((item) => [item.draft_id, item]));
     assert.equal(byId[String(openDraft.draftId)]?.status, "draft");
@@ -471,12 +482,17 @@ test("P2.2 overview reconstructs journal status on existing GET without a second
     assert.equal(journalBlob.includes(FORBIDDEN_VIEW_MARKERS.secret), false);
     assert.equal(journalBlob.includes(FORBIDDEN_VIEW_MARKERS.contextBody), false);
 
-    const projects = view.projects as Array<{ drafts: Array<{ id: string; state: string; status: string }> }>;
+    const projects = view.projects as Array<{
+      drafts: Array<{ id: string; title?: string; digest?: string; state: string; status: string; body?: unknown }>;
+    }>;
     const allDrafts = projects.flatMap((row) => row.drafts);
     const journalDraft = allDrafts.find((draft) => draft.id === openDraft.draftId);
     const seedDraft = allDrafts.find((draft) => draft.id === "draft-pending-1");
     assert.equal(journalDraft?.state, "draft");
     assert.equal(journalDraft?.status, "draft");
+    assert.equal(journalDraft?.title, reply.title);
+    assert.equal(journalDraft?.digest, reply.digest);
+    assert.equal("body" in (journalDraft ?? {}), false);
     assert.equal(allDrafts.find((draft) => draft.id === reviewing.draftId)?.status, "in_review");
     assert.equal(allDrafts.find((draft) => draft.id === doneDraft.draftId)?.status, "approved");
     assert.ok(seedDraft);

@@ -1,6 +1,7 @@
 /**
  * Minimal same-origin HTML for the P2.0 /motor console.
- * Synthetic P1 view only. No secrets, no context body, no P0 draft/decision UI.
+ * Synthetic P1 view only. Journal drafts render as title + digest.
+ * No secrets, no context/P0 body, no P0 draft/decision UI.
  */
 
 import { PRIMARY_NAV, type FoundationViewModel, type P1Draft } from "./p1-foundation.ts";
@@ -32,10 +33,11 @@ function actionButtons(draft: P1Draft, status: ReviewStatus): string {
   return btn("publish", "Publiceren");
 }
 
-function journalRowMeta(overview: JournalOverview, draftId: string): string {
-  const item = overview.items.find((row) => row.draft_id === draftId);
-  if (!item) return "";
-  return `<span class="muted">${escapeHtml(item.synthetic_template_id)} ${escapeHtml(item.digest)} ${escapeHtml(item.occurred_at)}</span>`;
+function journalRowMeta(overview: JournalOverview, draft: P1Draft): string {
+  const item = overview.items.find((row) => row.draft_id === draft.id);
+  const digest = item?.digest ?? draft.bodyDigest;
+  if (!digest) return "";
+  return `<span class="muted" data-digest="${escapeHtml(digest)}">${escapeHtml(digest)}</span>`;
 }
 
 export function renderMotorHtml(
@@ -62,8 +64,8 @@ export function renderMotorHtml(
       const journalList = journalDrafts
         .map((draft) => {
           const status = reviewStatusForDraft(draft, row.reviews);
-          return `<li data-draft="${escapeHtml(draft.id)}" data-journal="1">${escapeHtml(draft.title)} <em>${escapeHtml(status)}</em>
-            ${journalRowMeta(overview, draft.id)}
+          return `<li data-draft="${escapeHtml(draft.id)}" data-journal="1"><strong data-title="1">${escapeHtml(draft.title)}</strong> <em>${escapeHtml(status)}</em>
+            ${journalRowMeta(overview, draft)}
             ${actionButtons(draft, status)}
           </li>`;
         })
