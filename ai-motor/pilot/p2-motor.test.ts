@@ -342,6 +342,7 @@ test("P2.2 overview reconstructs journal status on existing GET without a second
     "p2-orchestrator.ts",
     "p2-context-gate.ts",
     "p2-kiosk-policy.ts",
+    "p2-p0-reference.ts",
   ];
   for (const file of productFiles) {
     const src = readFileSync(join(import.meta.dirname, file), "utf8");

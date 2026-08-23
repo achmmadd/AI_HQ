@@ -45,6 +45,7 @@ import { p2ContextWriteError, resolveP2ContextGate } from "./p2-context-gate.ts"
 import { receiveSyntheticReview } from "./p2-review-received-seam.ts";
 import {
   buildTransitionEvent,
+  isP0JournalEvent,
   ReviewJournal,
   P2_JOURNAL_DIR_DEFAULT,
   summarizeJournal,
@@ -412,19 +413,37 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           sendJson(res, 400, { ok: false, error: "free_draft_body_not_allowed" });
           return;
         }
-        const received = await receiveSyntheticReview(
-          { synthetic_template_id: body.synthetic_template_id },
-          {
-            verifiedActor: {
-              workspaceId: access.workspace,
-              stableId: access.node.stableId,
-            },
-            journal,
-            contextEnv,
+        const draftKeys = Object.keys(body).filter((key) => key !== "workspace");
+        const intake =
+          draftKeys.includes("source_kind") || draftKeys.includes("source_id")
+            ? draftKeys.length === 2 && draftKeys.includes("source_kind") && draftKeys.includes("source_id")
+              ? { source_kind: body.source_kind, source_id: body.source_id }
+              : null
+            : { synthetic_template_id: body.synthetic_template_id };
+        if (intake === null) {
+          sendJson(res, 400, { ok: false, error: "free_intake_not_allowed" });
+          return;
+        }
+        const received = await receiveSyntheticReview(intake, {
+          verifiedActor: {
+            workspaceId: access.workspace,
+            stableId: access.node.stableId,
           },
-        );
+          journal,
+          contextEnv,
+        });
         if (!received.ok) {
           sendJson(res, 400, { ok: false, error: received.reason });
+          return;
+        }
+        if (isP0JournalEvent(received.event)) {
+          sendJson(res, 200, {
+            ok: true,
+            draftId: received.event.draft_id,
+            state: received.event.to_status,
+            source_kind: received.event.source_kind,
+            source_id: received.event.source_id,
+          });
           return;
         }
         sendJson(res, 200, {
@@ -447,7 +466,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           type: "review_submitted",
           actorStableId: access.node.stableId,
           draftId,
-          templateId: record.templateId,
+          ...(record.sourceId ? { sourceId: record.sourceId } : { templateId: record.templateId ?? undefined }),
           toStatus: "in_review",
         });
         if (!built.ok) {
@@ -479,7 +498,7 @@ export function createP2MotorServer(deps: P2MotorServerDeps = {}) {
           type: "review_decided",
           actorStableId: access.node.stableId,
           draftId,
-          templateId: record.templateId,
+          ...(record.sourceId ? { sourceId: record.sourceId } : { templateId: record.templateId ?? undefined }),
           toStatus: decision,
         });
         if (!built.ok) {

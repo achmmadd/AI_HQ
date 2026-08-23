@@ -1,8 +1,9 @@
 /**
- * P2.1 synthetic outcome-review journal.
+ * P2.1 outcome-review journal.
  *
  * Append-only JSONL on a P2-only volume. Not Kernel, not Postgres, not SQLite,
- * not the P0 store. Reconstruction is template-id + digest only — no free body.
+ * not the P0 store. Two closed event shapes: synthetic template-id + digest, or
+ * one pinned P0 reference (source_id + bounded title + digest). No free body.
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -19,6 +20,12 @@ import { join } from "node:path";
 
 import { FORBIDDEN_VIEW_MARKERS, HOME_TENANT_ID, type P1AttentionItem, type P1Draft } from "./p1-foundation.ts";
 import type { ReviewPatch, ReviewStatus } from "./p1-review.ts";
+import {
+  P2_P0_SOURCE_KIND,
+  isBoundedP0Title,
+  resolvePinnedP0Reference,
+  type PinnedP0Reference,
+} from "./p2-p0-reference.ts";
 import { NUC_ORCHESTRATOR_STABLE_ID, isStableNodeId } from "./p2-orchestrator.ts";
 
 export const P2_JOURNAL_DIR_DEFAULT = "/p2-review";
@@ -30,7 +37,7 @@ export type P2JournalEventType = (typeof P2_JOURNAL_EVENT_TYPES)[number];
 const REVIEW_STATUSES: readonly ReviewStatus[] = ["draft", "in_review", "approved", "rejected"];
 const TERMINAL: ReadonlySet<ReviewStatus> = new Set(["approved", "rejected"]);
 
-const EVENT_KEYS = [
+const SHARED_EVENT_KEYS = [
   "event_id",
   "type",
   "workspace_id",
@@ -38,10 +45,12 @@ const EVENT_KEYS = [
   "draft_id",
   "from_status",
   "to_status",
-  "synthetic_template_id",
   "draft_body_digest",
   "occurred_at",
 ] as const;
+
+const SYNTHETIC_EVENT_KEYS = [...SHARED_EVENT_KEYS, "synthetic_template_id"] as const;
+const P0_EVENT_KEYS = [...SHARED_EVENT_KEYS, "source_kind", "source_id", "title"] as const;
 
 export type P2SyntheticTemplate = {
   readonly id: string;
@@ -75,7 +84,7 @@ export const P2_SYNTHETIC_TEMPLATES: Readonly<Record<string, P2SyntheticTemplate
   }),
 });
 
-export type P2JournalEvent = {
+type P2JournalEventBase = {
   readonly event_id: string;
   readonly type: P2JournalEventType;
   readonly workspace_id: typeof HOME_TENANT_ID;
@@ -83,10 +92,25 @@ export type P2JournalEvent = {
   readonly draft_id: string;
   readonly from_status: ReviewStatus | null;
   readonly to_status: ReviewStatus;
-  readonly synthetic_template_id: string;
   readonly draft_body_digest: string;
   readonly occurred_at: string;
 };
+
+export type P2SyntheticJournalEvent = P2JournalEventBase & {
+  readonly synthetic_template_id: string;
+};
+
+export type P2P0JournalEvent = P2JournalEventBase & {
+  readonly source_kind: typeof P2_P0_SOURCE_KIND;
+  readonly source_id: string;
+  readonly title: string;
+};
+
+export type P2JournalEvent = P2SyntheticJournalEvent | P2P0JournalEvent;
+
+export function isP0JournalEvent(event: P2JournalEvent): event is P2P0JournalEvent {
+  return "source_kind" in event;
+}
 
 export type JournalCommitResult =
   | { readonly ok: true; readonly outcome: "appended" | "duplicate_noop"; readonly event: P2JournalEvent }
@@ -94,7 +118,8 @@ export type JournalCommitResult =
 
 export type JournalDraftRecord = {
   readonly draftId: string;
-  readonly templateId: string;
+  readonly templateId: string | null;
+  readonly sourceId: string | null;
   readonly projectId: string;
   readonly title: string;
   readonly digest: string;
@@ -117,7 +142,9 @@ export type JournalOverviewItem = {
   readonly title: string;
   readonly status: ReviewStatus;
   readonly type: P2JournalEventType;
-  readonly synthetic_template_id: string;
+  readonly synthetic_template_id?: string;
+  readonly source_kind?: typeof P2_P0_SOURCE_KIND;
+  readonly source_id?: string;
   readonly digest: string;
   readonly occurred_at: string;
   readonly actor_stable_id: string;
@@ -154,7 +181,9 @@ export function summarizeJournal(projection: JournalProjection): JournalOverview
         title: record.title,
         status: record.status,
         type: record.lastEventType,
-        synthetic_template_id: record.templateId,
+        ...(record.sourceId
+          ? { source_kind: P2_P0_SOURCE_KIND, source_id: record.sourceId }
+          : { synthetic_template_id: record.templateId ?? undefined }),
         digest: record.digest,
         occurred_at: record.occurredAt,
         actor_stable_id: record.actorStableId,
@@ -197,6 +226,11 @@ export function newJournalDraftId(templateId: string): string {
   return `draft-p21-${templateId}-${randomUUID().slice(0, 8)}`;
 }
 
+function exactKeys(row: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(row);
+  return actual.length === keys.length && keys.every((key) => actual.includes(key));
+}
+
 function eventBlobForbidden(event: P2JournalEvent): boolean {
   const blob = JSON.stringify(event);
   if (blob.includes(NUC_ORCHESTRATOR_STABLE_ID)) return true;
@@ -207,12 +241,17 @@ function eventBlobForbidden(event: P2JournalEvent): boolean {
   return false;
 }
 
-export function parseJournalEvent(raw: unknown): P2JournalEvent | null {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const row = raw as Record<string, unknown>;
-  for (const key of Object.keys(row)) {
-    if (!(EVENT_KEYS as readonly string[]).includes(key)) return null;
-  }
+type SharedParsedFields = {
+  readonly event_id: string;
+  readonly type: P2JournalEventType;
+  readonly actor_stable_id: string;
+  readonly draft_id: string;
+  readonly from_status: ReviewStatus | null;
+  readonly to_status: ReviewStatus;
+  readonly occurred_at: string;
+};
+
+function parseSharedFields(row: Record<string, unknown>): SharedParsedFields | null {
   if (typeof row.event_id !== "string" || row.event_id.length === 0) return null;
   if (!(P2_JOURNAL_EVENT_TYPES as readonly string[]).includes(String(row.type))) return null;
   if (row.workspace_id !== HOME_TENANT_ID) return null;
@@ -221,25 +260,60 @@ export function parseJournalEvent(raw: unknown): P2JournalEvent | null {
   if (typeof row.draft_id !== "string" || !row.draft_id.startsWith("draft-p21-")) return null;
   if (row.from_status !== null && !isReviewStatus(row.from_status)) return null;
   if (!isReviewStatus(row.to_status)) return null;
-  const template = resolveSyntheticTemplate(row.synthetic_template_id);
-  if (!template) return null;
-  if (row.draft_body_digest !== template.digest) return null;
   if (typeof row.occurred_at !== "string" || Number.isNaN(Date.parse(row.occurred_at))) return null;
-
-  const event: P2JournalEvent = Object.freeze({
+  return {
     event_id: row.event_id,
     type: row.type as P2JournalEventType,
-    workspace_id: HOME_TENANT_ID,
     actor_stable_id: row.actor_stable_id,
     draft_id: row.draft_id,
     from_status: row.from_status,
     to_status: row.to_status,
+    occurred_at: row.occurred_at,
+  };
+}
+
+function parseSyntheticJournalEvent(row: Record<string, unknown>): P2SyntheticJournalEvent | null {
+  const shared = parseSharedFields(row);
+  if (!shared) return null;
+  const template = resolveSyntheticTemplate(row.synthetic_template_id);
+  if (!template) return null;
+  if (row.draft_body_digest !== template.digest) return null;
+  const event: P2SyntheticJournalEvent = Object.freeze({
+    ...shared,
+    workspace_id: HOME_TENANT_ID,
     synthetic_template_id: template.id,
     draft_body_digest: template.digest,
-    occurred_at: row.occurred_at,
   });
   if (eventBlobForbidden(event)) return null;
   return event;
+}
+
+function parseP0JournalEvent(row: Record<string, unknown>): P2P0JournalEvent | null {
+  const shared = parseSharedFields(row);
+  if (!shared) return null;
+  if (row.source_kind !== P2_P0_SOURCE_KIND) return null;
+  const pin = resolvePinnedP0Reference(row.source_id);
+  if (!pin) return null;
+  if (!isBoundedP0Title(row.title) || row.title !== pin.title) return null;
+  if (row.draft_body_digest !== pin.digest) return null;
+  const event: P2P0JournalEvent = Object.freeze({
+    ...shared,
+    workspace_id: HOME_TENANT_ID,
+    source_kind: P2_P0_SOURCE_KIND,
+    source_id: pin.source_id,
+    title: row.title,
+    draft_body_digest: pin.digest,
+  });
+  if (eventBlobForbidden(event)) return null;
+  return event;
+}
+
+export function parseJournalEvent(raw: unknown): P2JournalEvent | null {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const row = raw as Record<string, unknown>;
+  if (exactKeys(row, SYNTHETIC_EVENT_KEYS)) return parseSyntheticJournalEvent(row);
+  if (exactKeys(row, P0_EVENT_KEYS)) return parseP0JournalEvent(row);
+  return null;
 }
 
 function expectedTransition(type: P2JournalEventType, to: ReviewStatus): { from: ReviewStatus | null; to: ReviewStatus } | null {
@@ -261,6 +335,19 @@ function draftFromTemplate(draftId: string, template: P2SyntheticTemplate): P1Dr
     origin: "typed",
     title: template.title,
     bodyDigest: template.digest,
+  });
+}
+
+function draftFromP0(draftId: string, pin: PinnedP0Reference, title: string, digest: string): P1Draft {
+  return Object.freeze({
+    id: draftId,
+    tenantId: HOME_TENANT_ID,
+    projectId: pin.projectId,
+    kind: "draft",
+    state: "draft",
+    origin: "typed",
+    title,
+    bodyDigest: digest,
   });
 }
 
@@ -298,15 +385,37 @@ export function projectJournalEvents(events: readonly P2JournalEvent[]): Journal
     const expected = expectedTransition(event.type, event.to_status);
     if (!expected) continue;
     if (event.from_status !== expected.from || event.to_status !== expected.to) continue;
-    const template = resolveSyntheticTemplate(event.synthetic_template_id);
-    if (!template) continue;
 
     if (event.type === "draft_created") {
       if (records.has(event.draft_id)) continue;
+      if (isP0JournalEvent(event)) {
+        const pin = resolvePinnedP0Reference(event.source_id);
+        if (!pin) continue;
+        const draft = draftFromP0(event.draft_id, pin, event.title, event.draft_body_digest);
+        records.set(event.draft_id, {
+          draftId: event.draft_id,
+          templateId: null,
+          sourceId: event.source_id,
+          projectId: pin.projectId,
+          title: event.title,
+          digest: event.draft_body_digest,
+          actorStableId: event.actor_stable_id,
+          status: "draft",
+          reviewId: `review-p21-${event.draft_id}`,
+          lastEventType: event.type,
+          occurredAt: event.occurred_at,
+        });
+        drafts.push(draft);
+        attention.push(attentionFor(draft));
+        continue;
+      }
+      const template = resolveSyntheticTemplate(event.synthetic_template_id);
+      if (!template) continue;
       const draft = draftFromTemplate(event.draft_id, template);
       records.set(event.draft_id, {
         draftId: event.draft_id,
         templateId: template.id,
+        sourceId: null,
         projectId: template.projectId,
         title: template.title,
         digest: template.digest,
@@ -440,17 +549,42 @@ export class ReviewJournal {
 
 export function buildDraftCreatedEvent(input: {
   readonly actorStableId: string;
-  readonly templateId: string;
+  readonly templateId?: string;
+  readonly sourceId?: string;
   readonly eventId?: string;
   readonly draftId?: string;
   readonly occurredAt?: string;
 }): JournalCommitResult {
-  const template = resolveSyntheticTemplate(input.templateId);
-  if (!template) return { ok: false, reason: "unknown_template" };
   if (!isStableNodeId(input.actorStableId) || input.actorStableId === NUC_ORCHESTRATOR_STABLE_ID) {
     return { ok: false, reason: "actor_denied" };
   }
-  const event: P2JournalEvent = {
+  if (input.sourceId !== undefined && input.templateId !== undefined) {
+    return { ok: false, reason: "invalid_event" };
+  }
+  if (input.sourceId !== undefined) {
+    const pin = resolvePinnedP0Reference(input.sourceId);
+    if (!pin) return { ok: false, reason: "unknown_source_id" };
+    const event: P2P0JournalEvent = {
+      event_id: input.eventId ?? newJournalEventId(),
+      type: "draft_created",
+      workspace_id: HOME_TENANT_ID,
+      actor_stable_id: input.actorStableId,
+      draft_id: input.draftId ?? newJournalDraftId("p0"),
+      from_status: null,
+      to_status: "draft",
+      source_kind: P2_P0_SOURCE_KIND,
+      source_id: pin.source_id,
+      title: pin.title,
+      draft_body_digest: pin.digest,
+      occurred_at: input.occurredAt ?? new Date().toISOString(),
+    };
+    const parsed = parseJournalEvent(event);
+    if (!parsed) return { ok: false, reason: "invalid_event" };
+    return { ok: true, outcome: "appended", event: parsed };
+  }
+  const template = resolveSyntheticTemplate(input.templateId);
+  if (!template) return { ok: false, reason: "unknown_template" };
+  const event: P2SyntheticJournalEvent = {
     event_id: input.eventId ?? newJournalEventId(),
     type: "draft_created",
     workspace_id: HOME_TENANT_ID,
@@ -471,18 +605,43 @@ export function buildTransitionEvent(input: {
   readonly type: Exclude<P2JournalEventType, "draft_created">;
   readonly actorStableId: string;
   readonly draftId: string;
-  readonly templateId: string;
   readonly toStatus: ReviewStatus;
+  readonly templateId?: string;
+  readonly sourceId?: string;
   readonly eventId?: string;
   readonly occurredAt?: string;
 }): JournalCommitResult {
-  const template = resolveSyntheticTemplate(input.templateId);
-  if (!template) return { ok: false, reason: "unknown_template" };
   if (!isStableNodeId(input.actorStableId) || input.actorStableId === NUC_ORCHESTRATOR_STABLE_ID) {
     return { ok: false, reason: "actor_denied" };
   }
+  if (input.sourceId !== undefined && input.templateId !== undefined) {
+    return { ok: false, reason: "invalid_event" };
+  }
   const from = input.type === "review_submitted" ? "draft" : "in_review";
-  const event: P2JournalEvent = {
+  if (input.sourceId !== undefined) {
+    const pin = resolvePinnedP0Reference(input.sourceId);
+    if (!pin) return { ok: false, reason: "unknown_source_id" };
+    const event: P2P0JournalEvent = {
+      event_id: input.eventId ?? newJournalEventId(),
+      type: input.type,
+      workspace_id: HOME_TENANT_ID,
+      actor_stable_id: input.actorStableId,
+      draft_id: input.draftId,
+      from_status: from,
+      to_status: input.toStatus,
+      source_kind: P2_P0_SOURCE_KIND,
+      source_id: pin.source_id,
+      title: pin.title,
+      draft_body_digest: pin.digest,
+      occurred_at: input.occurredAt ?? new Date().toISOString(),
+    };
+    const parsed = parseJournalEvent(event);
+    if (!parsed) return { ok: false, reason: "invalid_event" };
+    return { ok: true, outcome: "appended", event: parsed };
+  }
+  const template = resolveSyntheticTemplate(input.templateId);
+  if (!template) return { ok: false, reason: "unknown_template" };
+  const event: P2SyntheticJournalEvent = {
     event_id: input.eventId ?? newJournalEventId(),
     type: input.type,
     workspace_id: HOME_TENANT_ID,

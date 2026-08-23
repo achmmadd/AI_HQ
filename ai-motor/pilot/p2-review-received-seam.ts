@@ -31,12 +31,21 @@ export type ReviewReceivedResult =
   | { readonly ok: true; readonly event: P2JournalEvent }
   | { readonly ok: false; readonly reason: string };
 
-function intakeDenied(intake: Record<string, unknown>): string | null {
+function closedIntake(
+  intake: Record<string, unknown>,
+):
+  | { ok: true; kind: "synthetic"; templateId: unknown }
+  | { ok: true; kind: "p0"; sourceId: unknown }
+  | { ok: false; reason: string } {
   const keys = Object.keys(intake);
-  if (keys.length !== 1 || keys[0] !== "synthetic_template_id") {
-    return "free_intake_not_allowed";
+  if (keys.length === 1 && keys[0] === "synthetic_template_id") {
+    return { ok: true, kind: "synthetic", templateId: intake.synthetic_template_id };
   }
-  return null;
+  if (keys.length === 2 && keys.includes("source_kind") && keys.includes("source_id")) {
+    if (intake.source_kind !== "p0") return { ok: false, reason: "unknown_source_kind" };
+    return { ok: true, kind: "p0", sourceId: intake.source_id };
+  }
+  return { ok: false, reason: "free_intake_not_allowed" };
 }
 
 function actorDenied(actor: VerifiedReviewActor): string | null {
@@ -48,11 +57,11 @@ function actorDenied(actor: VerifiedReviewActor): string | null {
 }
 
 export async function receiveSyntheticReview(
-  intake: Record<string, unknown>,
+  intakeRaw: Record<string, unknown>,
   deps: ReviewReceivedDeps,
 ): Promise<ReviewReceivedResult> {
-  const intakeError = intakeDenied(intake);
-  if (intakeError) return { ok: false, reason: intakeError };
+  const intake = closedIntake(intakeRaw);
+  if (!intake.ok) return { ok: false, reason: intake.reason };
 
   const actorError = actorDenied(deps.verifiedActor);
   if (actorError) return { ok: false, reason: actorError };
@@ -60,10 +69,11 @@ export async function receiveSyntheticReview(
   const contextError = p2ContextWriteError(resolveP2ContextGate(deps.contextEnv));
   if (contextError) return { ok: false, reason: contextError };
 
-  const built = buildDraftCreatedEvent({
-    actorStableId: deps.verifiedActor.stableId,
-    templateId: String(intake.synthetic_template_id ?? ""),
-  });
+  const built = buildDraftCreatedEvent(
+    intake.kind === "p0"
+      ? { actorStableId: deps.verifiedActor.stableId, sourceId: String(intake.sourceId ?? "") }
+      : { actorStableId: deps.verifiedActor.stableId, templateId: String(intake.templateId ?? "") },
+  );
   if (!built.ok) return { ok: false, reason: built.reason };
 
   const committed = await deps.journal.commit(built.event);

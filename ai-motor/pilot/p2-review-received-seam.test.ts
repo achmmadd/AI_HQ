@@ -12,7 +12,8 @@ import { test } from "node:test";
 import { HOME_TENANT_ID } from "./p1-foundation.ts";
 import { NUC_ORCHESTRATOR_STABLE_ID } from "./p2-orchestrator.ts";
 import { receiveSyntheticReview } from "./p2-review-received-seam.ts";
-import { ReviewJournal } from "./p2-review-journal.ts";
+import { isP0JournalEvent, ReviewJournal } from "./p2-review-journal.ts";
+import { P2_PINNED_P0_REFERENCE } from "./p2-p0-reference.ts";
 
 const LAPTOP = "nP2LAPTOP";
 const TEMPLATES = ["tpl-p21-review-reply", "tpl-p21-observation-note"] as const;
@@ -73,6 +74,8 @@ test("allowlisted templates via verified laptop actor each create one journal dr
     assert.equal(result.event.type, "draft_created");
     assert.equal(result.event.actor_stable_id, LAPTOP);
     assert.equal(result.event.workspace_id, HOME_TENANT_ID);
+    assert.equal(isP0JournalEvent(result.event), false);
+    if (isP0JournalEvent(result.event)) return;
     assert.equal(result.event.synthetic_template_id, templateId);
     assert.equal(result.event.to_status, "draft");
     assert.equal(JSON.stringify(result.event).includes("ReviewReceived"), false);
@@ -134,6 +137,14 @@ test("private / context-volume / model / Qdrant env is DENY with no write", asyn
       { synthetic_template_id: "tpl-p21-review-reply" },
       { contextEnv: row.env },
     );
+    const p0 = await receive(
+      { source_kind: "p0", source_id: P2_PINNED_P0_REFERENCE.source_id },
+      { contextEnv: row.env },
+    );
+    assert.equal(p0.result.ok, false, `p0 ${JSON.stringify(row.env)}`);
+    if (p0.result.ok) return;
+    assert.equal(p0.result.reason, row.reason);
+    assertNoWrite(p0.journal);
     assert.equal(result.ok, false, JSON.stringify(row.env));
     if (result.ok) return;
     assert.equal(result.reason, row.reason);
@@ -146,6 +157,33 @@ test("production seam and server never hardcode the laptop StableID", () => {
   const server = readFileSync(join(import.meta.dirname, "p2-motor-server.ts"), "utf8");
   assert.doesNotMatch(seam, /n42QGiXouB21CNTRL/);
   assert.doesNotMatch(server, /n42QGiXouB21CNTRL/);
+});
+
+test("pinned P0 intake creates one draft; unknown kind or id writes nothing", async () => {
+  const { result, journal } = await receive({
+    source_kind: "p0",
+    source_id: P2_PINNED_P0_REFERENCE.source_id,
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(isP0JournalEvent(result.event), true);
+  if (!isP0JournalEvent(result.event)) return;
+  assert.equal(result.event.source_id, P2_PINNED_P0_REFERENCE.source_id);
+  assert.equal(result.event.title, P2_PINNED_P0_REFERENCE.title);
+  assert.equal(result.event.draft_body_digest, P2_PINNED_P0_REFERENCE.digest);
+  assert.equal(journal.projection().records.get(result.event.draft_id)?.sourceId, P2_PINNED_P0_REFERENCE.source_id);
+
+  const unknownKind = await receive({ source_kind: "qdrant", source_id: P2_PINNED_P0_REFERENCE.source_id });
+  assert.equal(unknownKind.result.ok, false);
+  if (unknownKind.result.ok) return;
+  assert.equal(unknownKind.result.reason, "unknown_source_kind");
+  assertNoWrite(unknownKind.journal);
+
+  const unknownId = await receive({ source_kind: "p0", source_id: "p0-unknown" });
+  assert.equal(unknownId.result.ok, false);
+  if (unknownId.result.ok) return;
+  assert.equal(unknownId.result.reason, "unknown_source_id");
+  assertNoWrite(unknownId.journal);
 });
 
 test("seam has no outbound calls, HTTP listener, webhook, queue or second store", () => {

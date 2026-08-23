@@ -19,8 +19,10 @@ import {
   P2_SYNTHETIC_TEMPLATES,
   buildDraftCreatedEvent,
   buildTransitionEvent,
+  isP0JournalEvent,
   parseJournalEvent,
 } from "./p2-review-journal.ts";
+import { P2_PINNED_P0_REFERENCE } from "./p2-p0-reference.ts";
 
 const LAPTOP = "nP2LAPTOP";
 const ACL = parseAcl(`{"${LAPTOP}":["ws-motor"]}`);
@@ -400,4 +402,187 @@ test("P2.1 parser rejects foreign workspace, NUC actor and extra keys", () => {
   assert.equal(parseJournalEvent({ ...base, actor_stable_id: NUC_ORCHESTRATOR_STABLE_ID }), null);
   assert.equal(parseJournalEvent({ ...base, context: "nope" }), null);
   assert.equal(parseJournalEvent({ ...base, actor_stable_id: "100.123.185.0" }), null);
+});
+
+test("P0 pin rides the same review lifecycle and reloads title from journal", async () => {
+  const journalDir = tempJournalDir();
+  const first = await listen({ journalDir, resolveId: LAPTOP });
+  let draftId = "";
+  try {
+    const created = await json(
+      await fetch(`${first.base}/api/motor/draft`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspace: HOME_TENANT_ID,
+          source_kind: "p0",
+          source_id: P2_PINNED_P0_REFERENCE.source_id,
+        }),
+      }),
+    );
+    assert.equal(created.ok, true);
+    assert.equal(created.source_kind, "p0");
+    assert.equal(created.source_id, P2_PINNED_P0_REFERENCE.source_id);
+    assert.equal("synthetic_template_id" in created, false);
+    draftId = String(created.draftId);
+    assert.match(draftId, /^draft-p21-p0-/);
+
+    const submitted = await json(
+      await fetch(`${first.base}/api/motor/review/submit`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspace: HOME_TENANT_ID, draftId }),
+      }),
+    );
+    assert.equal(submitted.status, "in_review");
+
+    const decided = await json(
+      await fetch(`${first.base}/api/motor/review/decide`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspace: HOME_TENANT_ID, draftId, decision: "approve" }),
+      }),
+    );
+    assert.equal(decided.status, "approved");
+
+    const publish = await json(
+      await fetch(`${first.base}/api/motor/publish`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspace: HOME_TENANT_ID, draftId }),
+      }),
+    );
+    assert.equal(publish.decision, "DENY");
+  } finally {
+    first.server.close();
+  }
+
+  const journalText = readFileSync(join(journalDir, "outcome-review.jsonl"), "utf8");
+  const lines = journalText.trim().split("\n");
+  assert.equal(lines.length, 3);
+  for (const line of lines) {
+    const parsed = parseJournalEvent(JSON.parse(line));
+    assert.ok(parsed);
+    assert.equal(isP0JournalEvent(parsed!), true);
+    if (!parsed || !isP0JournalEvent(parsed)) return;
+    assert.equal(parsed.source_id, P2_PINNED_P0_REFERENCE.source_id);
+    assert.equal(parsed.title, P2_PINNED_P0_REFERENCE.title);
+    assert.equal(parsed.draft_body_digest, P2_PINNED_P0_REFERENCE.digest);
+    assert.equal("synthetic_template_id" in parsed, false);
+    assert.equal("body" in parsed, false);
+  }
+
+  const second = await listen({ journalDir, resolveId: LAPTOP });
+  try {
+    const html = await (await fetch(`${second.base}/motor`)).text();
+    assert.match(html, new RegExp(`data-title="1">${P2_PINNED_P0_REFERENCE.title}`));
+    assert.match(html, new RegExp(`data-digest="${P2_PINNED_P0_REFERENCE.digest}"`));
+    assert.match(html, /approved/);
+    assert.doesNotMatch(html, /FULL_CONTEXT_BODY|p1-demo-secret/);
+
+    const view = await json(await fetch(`${second.base}/api/motor/view`));
+    const items = (view.journal as { items: Array<Record<string, unknown>> }).items;
+    const item = items.find((row) => row.draft_id === draftId);
+    assert.equal(item?.title, P2_PINNED_P0_REFERENCE.title);
+    assert.equal(item?.digest, P2_PINNED_P0_REFERENCE.digest);
+    assert.equal(item?.source_kind, "p0");
+    assert.equal(item?.source_id, P2_PINNED_P0_REFERENCE.source_id);
+    assert.equal("synthetic_template_id" in (item ?? {}), false);
+    assert.equal("body" in (item ?? {}), false);
+  } finally {
+    second.server.close();
+  }
+});
+
+test("P0 HTTP rejects free title/body, unknown kind, and extra keys", async () => {
+  const { server, base } = await listen({ resolveId: LAPTOP });
+  try {
+    const freeTitle = await json(
+      await fetch(`${base}/api/motor/draft`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspace: HOME_TENANT_ID,
+          source_kind: "p0",
+          source_id: P2_PINNED_P0_REFERENCE.source_id,
+          title: "vrije titel",
+        }),
+      }),
+    );
+    assert.equal(freeTitle.error, "free_draft_body_not_allowed");
+
+    const unknownKind = await json(
+      await fetch(`${base}/api/motor/draft`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspace: HOME_TENANT_ID,
+          source_kind: "qdrant",
+          source_id: P2_PINNED_P0_REFERENCE.source_id,
+        }),
+      }),
+    );
+    assert.equal(unknownKind.error, "unknown_source_kind");
+
+    const extra = await json(
+      await fetch(`${base}/api/motor/draft`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspace: HOME_TENANT_ID,
+          source_kind: "p0",
+          source_id: P2_PINNED_P0_REFERENCE.source_id,
+          evidence_ids: ["ev-1"],
+        }),
+      }),
+    );
+    assert.equal(extra.error, "free_intake_not_allowed");
+  } finally {
+    server.close();
+  }
+});
+
+test("hybrid journal events do not parse; old synthetic lines still do", () => {
+  const template = P2_SYNTHETIC_TEMPLATES["tpl-p21-review-reply"];
+  assert.ok(template);
+  const synthetic = {
+    event_id: "55555555-5555-4555-8555-555555555555",
+    type: "draft_created",
+    workspace_id: HOME_TENANT_ID,
+    actor_stable_id: LAPTOP,
+    draft_id: "draft-p21-tpl-p21-review-reply-old",
+    from_status: null,
+    to_status: "draft",
+    synthetic_template_id: template.id,
+    draft_body_digest: template.digest,
+    occurred_at: "2026-08-17T00:00:00.000Z",
+  };
+  assert.ok(parseJournalEvent(synthetic));
+  assert.equal(
+    parseJournalEvent({
+      ...synthetic,
+      source_kind: "p0",
+      source_id: P2_PINNED_P0_REFERENCE.source_id,
+      title: P2_PINNED_P0_REFERENCE.title,
+    }),
+    null,
+  );
+  assert.equal(
+    parseJournalEvent({
+      event_id: "66666666-6666-4666-8666-666666666666",
+      type: "draft_created",
+      workspace_id: HOME_TENANT_ID,
+      actor_stable_id: LAPTOP,
+      draft_id: "draft-p21-p0-hybrid",
+      from_status: null,
+      to_status: "draft",
+      source_kind: "p0",
+      source_id: P2_PINNED_P0_REFERENCE.source_id,
+      title: P2_PINNED_P0_REFERENCE.title,
+      draft_body_digest: P2_PINNED_P0_REFERENCE.digest,
+      synthetic_template_id: template.id,
+      occurred_at: "2026-08-23T00:00:00.000Z",
+    }),
+    null,
+  );
 });
