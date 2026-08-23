@@ -10,6 +10,7 @@
 import { HOME_TENANT_ID } from "./p1-foundation.ts";
 import { p2ContextWriteError, resolveP2ContextGate } from "./p2-context-gate.ts";
 import { NUC_ORCHESTRATOR_STABLE_ID, isStableNodeId } from "./p2-orchestrator.ts";
+import type { P0ReferenceResolver } from "./p2-p0-reference.ts";
 import {
   buildDraftCreatedEvent,
   type P2JournalEvent,
@@ -25,6 +26,7 @@ export type ReviewReceivedDeps = {
   readonly verifiedActor: VerifiedReviewActor;
   readonly journal: ReviewJournal;
   readonly contextEnv: Record<string, string | undefined>;
+  readonly resolveP0Reference?: P0ReferenceResolver;
 };
 
 export type ReviewReceivedResult =
@@ -73,6 +75,7 @@ export async function receiveSyntheticReview(
     intake.kind === "p0"
       ? { actorStableId: deps.verifiedActor.stableId, sourceId: String(intake.sourceId ?? "") }
       : { actorStableId: deps.verifiedActor.stableId, templateId: String(intake.templateId ?? "") },
+    deps.resolveP0Reference,
   );
   if (!built.ok) return { ok: false, reason: built.reason };
 

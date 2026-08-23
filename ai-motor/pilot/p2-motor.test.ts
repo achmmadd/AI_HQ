@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -310,7 +310,7 @@ test("POST /api/motor/draft uses the ReviewReceived seam with WhoIs/ACL authorit
   const journalDir = tempJournalDir();
   const { server, base } = await listen(journalDir);
   try {
-    const created = await fetch(`${base}/api/motor/draft`, {
+    const bodyActor = await fetch(`${base}/api/motor/draft`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -319,10 +319,23 @@ test("POST /api/motor/draft uses the ReviewReceived seam with WhoIs/ACL authorit
         actor_stable_id: "nFAKEACTOR",
       }),
     });
+    assert.equal(bodyActor.status, 400);
+    assert.equal((await json(bodyActor)).error, "free_intake_not_allowed");
+    const journalFile = join(journalDir, "outcome-review.jsonl");
+    assert.equal(existsSync(journalFile), false);
+
+    const created = await fetch(`${base}/api/motor/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspace: "ws-motor",
+        synthetic_template_id: "tpl-p21-review-reply",
+      }),
+    });
     assert.equal(created.status, 200);
     const draft = await json(created);
     assert.equal(draft.state, "draft");
-    const journalText = readFileSync(join(journalDir, "outcome-review.jsonl"), "utf8");
+    const journalText = readFileSync(journalFile, "utf8");
     assert.match(journalText, /"actor_stable_id":"nP2MOTOR"/);
     assert.doesNotMatch(journalText, /nFAKEACTOR/);
     assert.doesNotMatch(journalText, /ReviewReceived/);
@@ -526,6 +539,17 @@ test("P2.2 overview reconstructs journal status on existing GET without a second
     });
     assert.equal(extraKeys.status, 400);
     assert.equal((await json(extraKeys)).error, "free_draft_body_not_allowed");
+    const syntheticExtraKey = await fetch(`${base}/api/motor/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspace: "ws-motor",
+        synthetic_template_id: "tpl-p21-review-reply",
+        evidence_ids: ["ev-1"],
+      }),
+    });
+    assert.equal(syntheticExtraKey.status, 400);
+    assert.equal((await json(syntheticExtraKey)).error, "free_intake_not_allowed");
     const unknownTemplate = await fetch(`${base}/api/motor/draft`, {
       method: "POST",
       headers: { "content-type": "application/json" },

@@ -15,6 +15,11 @@ import {
 } from "./p2-p0-reference.ts";
 
 test("resolver knows exactly one pin and rejects every other id", () => {
+  assert.equal(P2_PINNED_P0_REFERENCE.source_id, "run-shadow-1786711414803");
+  assert.equal(
+    P2_PINNED_P0_REFERENCE.digest,
+    "sha256:d6c6fe34d63790c3eb8f99cb394f2846accc0f88169479ecdc2ed17923f7e7f3",
+  );
   assert.equal(resolvePinnedP0Reference(P2_PINNED_P0_REFERENCE.source_id), P2_PINNED_P0_REFERENCE);
   assert.equal(resolvePinnedP0Reference("p0-unknown"), null);
   assert.equal(resolvePinnedP0Reference(""), null);
@@ -32,5 +37,9 @@ test("pinned title stays inside the display bound", () => {
   assert.equal(isBoundedP0Title(""), false);
   assert.equal(isBoundedP0Title(`${"x".repeat(P2_P0_TITLE_MAX + 1)}`), false);
   assert.equal(isBoundedP0Title("line\nbreak"), false);
+  assert.equal(isBoundedP0Title("control-\u0001-character"), false);
+  assert.equal(isBoundedP0Title("control-\u0007-bell"), false);
+  assert.equal(isBoundedP0Title("control-\u007f-delete"), false);
+  assert.equal(isBoundedP0Title("control-\u0085-next-line"), false);
   assert.equal(isBoundedP0Title(P2_PINNED_P0_REFERENCE.digest), false);
 });

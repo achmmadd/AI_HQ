@@ -4,7 +4,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -21,6 +21,10 @@ import {
   buildTransitionEvent,
   isP0JournalEvent,
   parseJournalEvent,
+  projectJournalEvents,
+  type JournalDraftRecord,
+  type P2JournalEvent,
+  type P2P0JournalEvent,
 } from "./p2-review-journal.ts";
 import { P2_PINNED_P0_REFERENCE } from "./p2-p0-reference.ts";
 
@@ -30,6 +34,71 @@ const ORCH = parseAcl(JSON.stringify({ [NUC_ORCHESTRATOR_STABLE_ID]: ["ws-motor"
 
 function tempJournalDir(): string {
   return mkdtempSync(join(tmpdir(), "p21-journal-"));
+}
+
+function recordFor(journal: ReviewJournal, draftId: string): JournalDraftRecord {
+  const record = journal.projection().records.get(draftId);
+  assert.ok(record);
+  return record;
+}
+
+function syntheticSubmitEvent(draftId: string, templateId: string, eventId: string): P2JournalEvent {
+  const template = P2_SYNTHETIC_TEMPLATES[templateId];
+  assert.ok(template);
+  return {
+    event_id: eventId,
+    type: "review_submitted",
+    workspace_id: HOME_TENANT_ID,
+    actor_stable_id: LAPTOP,
+    draft_id: draftId,
+    from_status: "draft",
+    to_status: "in_review",
+    synthetic_template_id: template.id,
+    draft_body_digest: template.digest,
+    occurred_at: "2026-08-24T10:00:00.000Z",
+  };
+}
+
+function p0SubmitEvent(
+  draftId: string,
+  eventId: string,
+  identity: { readonly sourceId: string; readonly title: string; readonly digest: string } = {
+    sourceId: P2_PINNED_P0_REFERENCE.source_id,
+    title: P2_PINNED_P0_REFERENCE.title,
+    digest: P2_PINNED_P0_REFERENCE.digest,
+  },
+): P2P0JournalEvent {
+  return {
+    event_id: eventId,
+    type: "review_submitted",
+    workspace_id: HOME_TENANT_ID,
+    actor_stable_id: LAPTOP,
+    draft_id: draftId,
+    from_status: "draft",
+    to_status: "in_review",
+    source_kind: "p0",
+    source_id: identity.sourceId,
+    title: identity.title,
+    draft_body_digest: identity.digest,
+    occurred_at: "2026-08-24T10:00:00.000Z",
+  };
+}
+
+async function assertIdentityTransitionRejected(
+  journal: ReviewJournal,
+  created: P2JournalEvent,
+  transition: P2JournalEvent,
+): Promise<void> {
+  assert.ok(parseJournalEvent(transition), "attack event must be structurally valid");
+  const before = readFileSync(journal.file, "utf8");
+  const committed = await journal.commit(transition);
+  assert.deepEqual(committed, { ok: false, reason: "identity_mismatch" });
+  assert.equal(readFileSync(journal.file, "utf8"), before);
+  assert.equal(journal.projection().records.get(created.draft_id)?.status, "draft");
+
+  const replay = projectJournalEvents([created, transition]);
+  assert.equal(replay.records.get(created.draft_id)?.status, "draft");
+  assert.equal(replay.patches.length, 0);
 }
 
 async function listen(input: {
@@ -165,8 +234,7 @@ test("P2.1 duplicate event_id is a no-op and does not apply a second transition"
   const submitted = buildTransitionEvent({
     type: "review_submitted",
     actorStableId: LAPTOP,
-    draftId: created.event.draft_id,
-    templateId: "tpl-p21-review-reply",
+    record: recordFor(journal, created.event.draft_id),
     toStatus: "in_review",
     eventId: "22222222-2222-4222-8222-222222222222",
   });
@@ -176,16 +244,25 @@ test("P2.1 duplicate event_id is a no-op and does not apply a second transition"
   assert.equal(submittedCommit.ok, true);
   if (!submittedCommit.ok) return;
   assert.equal(submittedCommit.outcome, "appended");
+  const inReviewRecord = recordFor(journal, created.event.draft_id);
   const decided = buildTransitionEvent({
     type: "review_decided",
     actorStableId: LAPTOP,
-    draftId: created.event.draft_id,
-    templateId: "tpl-p21-review-reply",
+    record: inReviewRecord,
     toStatus: "approved",
     eventId: "33333333-3333-4333-8333-333333333333",
   });
   assert.equal(decided.ok, true);
   if (!decided.ok) return;
+  const rejectSameId = buildTransitionEvent({
+    type: "review_decided",
+    actorStableId: LAPTOP,
+    record: inReviewRecord,
+    toStatus: "rejected",
+    eventId: decided.event.event_id,
+  });
+  assert.equal(rejectSameId.ok, true);
+  if (!rejectSameId.ok) return;
   const decidedCommit = await journal.commit(decided.event);
   assert.equal(decidedCommit.ok, true);
   if (!decidedCommit.ok) return;
@@ -194,16 +271,6 @@ test("P2.1 duplicate event_id is a no-op and does not apply a second transition"
   assert.equal(dup.ok, true);
   if (!dup.ok) return;
   assert.equal(dup.outcome, "duplicate_noop");
-  const rejectSameId = buildTransitionEvent({
-    type: "review_decided",
-    actorStableId: LAPTOP,
-    draftId: created.event.draft_id,
-    templateId: "tpl-p21-review-reply",
-    toStatus: "rejected",
-    eventId: decided.event.event_id,
-  });
-  assert.equal(rejectSameId.ok, true);
-  if (!rejectSameId.ok) return;
   const skipped = await journal.commit(rejectSameId.event);
   assert.equal(skipped.ok, true);
   if (!skipped.ok) return;
@@ -402,6 +469,210 @@ test("P2.1 parser rejects foreign workspace, NUC actor and extra keys", () => {
   assert.equal(parseJournalEvent({ ...base, actor_stable_id: NUC_ORCHESTRATOR_STABLE_ID }), null);
   assert.equal(parseJournalEvent({ ...base, context: "nope" }), null);
   assert.equal(parseJournalEvent({ ...base, actor_stable_id: "100.123.185.0" }), null);
+});
+
+test("P0 draft rejects a synthetic transition in commit and projection", async () => {
+  const journal = new ReviewJournal(tempJournalDir());
+  journal.load();
+  const created = buildDraftCreatedEvent({
+    actorStableId: LAPTOP,
+    sourceId: P2_PINNED_P0_REFERENCE.source_id,
+    draftId: "draft-p21-p0-cross-to-synthetic",
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  assert.equal((await journal.commit(created.event)).ok, true);
+
+  await assertIdentityTransitionRejected(
+    journal,
+    created.event,
+    syntheticSubmitEvent(
+      created.event.draft_id,
+      "tpl-p21-review-reply",
+      "70000000-0000-4000-8000-000000000001",
+    ),
+  );
+});
+
+test("synthetic draft rejects a P0 transition in commit and projection", async () => {
+  const journal = new ReviewJournal(tempJournalDir());
+  journal.load();
+  const created = buildDraftCreatedEvent({
+    actorStableId: LAPTOP,
+    templateId: "tpl-p21-review-reply",
+    draftId: "draft-p21-synthetic-cross-to-p0",
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  assert.equal((await journal.commit(created.event)).ok, true);
+
+  await assertIdentityTransitionRejected(
+    journal,
+    created.event,
+    p0SubmitEvent(created.event.draft_id, "70000000-0000-4000-8000-000000000002"),
+  );
+});
+
+test("synthetic draft rejects a different template in commit and projection", async () => {
+  const journal = new ReviewJournal(tempJournalDir());
+  journal.load();
+  const created = buildDraftCreatedEvent({
+    actorStableId: LAPTOP,
+    templateId: "tpl-p21-review-reply",
+    draftId: "draft-p21-synthetic-template-mismatch",
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  assert.equal((await journal.commit(created.event)).ok, true);
+
+  await assertIdentityTransitionRejected(
+    journal,
+    created.event,
+    syntheticSubmitEvent(
+      created.event.draft_id,
+      "tpl-p21-observation-note",
+      "70000000-0000-4000-8000-000000000003",
+    ),
+  );
+});
+
+test("P0 lifecycle rejects changed source, title, or digest in commit and projection", async () => {
+  const journal = new ReviewJournal(tempJournalDir());
+  journal.load();
+  const created = buildDraftCreatedEvent({
+    actorStableId: LAPTOP,
+    sourceId: P2_PINNED_P0_REFERENCE.source_id,
+    draftId: "draft-p21-p0-identity-mismatch",
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  assert.equal((await journal.commit(created.event)).ok, true);
+
+  const mutations = [
+    {
+      sourceId: "run-shadow-1786711414804",
+      title: P2_PINNED_P0_REFERENCE.title,
+      digest: P2_PINNED_P0_REFERENCE.digest,
+    },
+    {
+      sourceId: P2_PINNED_P0_REFERENCE.source_id,
+      title: "Gewijzigde P0-titel",
+      digest: P2_PINNED_P0_REFERENCE.digest,
+    },
+    {
+      sourceId: P2_PINNED_P0_REFERENCE.source_id,
+      title: P2_PINNED_P0_REFERENCE.title,
+      digest: `sha256:${"a".repeat(64)}`,
+    },
+  ] as const;
+  for (const [index, identity] of mutations.entries()) {
+    await assertIdentityTransitionRejected(
+      journal,
+      created.event,
+      p0SubmitEvent(
+        created.event.draft_id,
+        `70000000-0000-4000-8000-00000000001${index}`,
+        identity,
+      ),
+    );
+  }
+});
+
+test("P0 restart and transitions are journal-only and never consult the current resolver", async () => {
+  const historicalIdentity = {
+    sourceId: "run-shadow-1700000000000",
+    title: "Historisch P0-resultaat",
+    digest: `sha256:${"b".repeat(64)}`,
+  } as const;
+  const created: P2P0JournalEvent = {
+    event_id: "71000000-0000-4000-8000-000000000001",
+    type: "draft_created",
+    workspace_id: HOME_TENANT_ID,
+    actor_stable_id: LAPTOP,
+    draft_id: "draft-p21-p0-historical-restart",
+    from_status: null,
+    to_status: "draft",
+    source_kind: "p0",
+    source_id: historicalIdentity.sourceId,
+    title: historicalIdentity.title,
+    draft_body_digest: historicalIdentity.digest,
+    occurred_at: "2026-08-20T08:00:00.000Z",
+  };
+  assert.ok(parseJournalEvent(created));
+
+  const draftRecord = projectJournalEvents([created]).records.get(created.draft_id);
+  assert.ok(draftRecord);
+  const submitted = buildTransitionEvent({
+    type: "review_submitted",
+    actorStableId: LAPTOP,
+    record: draftRecord,
+    toStatus: "in_review",
+    eventId: "71000000-0000-4000-8000-000000000002",
+    occurredAt: "2026-08-20T08:01:00.000Z",
+  });
+  assert.equal(submitted.ok, true);
+  if (!submitted.ok || !isP0JournalEvent(submitted.event)) return;
+  assert.equal(submitted.event.source_id, historicalIdentity.sourceId);
+  assert.equal(submitted.event.title, historicalIdentity.title);
+  assert.equal(submitted.event.draft_body_digest, historicalIdentity.digest);
+
+  const inReviewRecord = projectJournalEvents([created, submitted.event]).records.get(created.draft_id);
+  assert.ok(inReviewRecord);
+  const decided = buildTransitionEvent({
+    type: "review_decided",
+    actorStableId: LAPTOP,
+    record: inReviewRecord,
+    toStatus: "approved",
+    eventId: "71000000-0000-4000-8000-000000000003",
+    occurredAt: "2026-08-20T08:02:00.000Z",
+  });
+  assert.equal(decided.ok, true);
+  if (!decided.ok) return;
+
+  const dir = tempJournalDir();
+  writeFileSync(
+    join(dir, "outcome-review.jsonl"),
+    `${[created, submitted.event, decided.event].map((event) => JSON.stringify(event)).join("\n")}\n`,
+  );
+  let resolverCalls = 0;
+  const journal = new ReviewJournal(dir, () => {
+    resolverCalls += 1;
+    throw new Error("resolver_must_not_run_during_restart");
+  });
+  const projection = journal.load();
+  assert.equal(resolverCalls, 0);
+  const restored = projection.records.get(created.draft_id);
+  assert.equal(restored?.status, "approved");
+  assert.equal(restored?.sourceId, historicalIdentity.sourceId);
+  assert.equal(restored?.title, historicalIdentity.title);
+  assert.equal(restored?.digest, historicalIdentity.digest);
+  assert.equal(journal.projection().records.get(created.draft_id)?.status, "approved");
+  assert.equal(resolverCalls, 0);
+
+  const transitionDir = tempJournalDir();
+  writeFileSync(join(transitionDir, "outcome-review.jsonl"), `${JSON.stringify(created)}\n`);
+  let transitionResolverCalls = 0;
+  const transitionJournal = new ReviewJournal(transitionDir, () => {
+    transitionResolverCalls += 1;
+    throw new Error("resolver_must_not_run_during_transition");
+  });
+  const transitionProjection = transitionJournal.load();
+  const restoredDraft = transitionProjection.records.get(created.draft_id);
+  assert.ok(restoredDraft);
+  const transition = buildTransitionEvent({
+    type: "review_submitted",
+    actorStableId: LAPTOP,
+    record: restoredDraft,
+    toStatus: "in_review",
+    eventId: "71000000-0000-4000-8000-000000000004",
+    occurredAt: "2026-08-20T08:03:00.000Z",
+  });
+  assert.equal(transition.ok, true);
+  if (!transition.ok) return;
+  const transitionCommit = await transitionJournal.commit(transition.event);
+  assert.equal(transitionCommit.ok, true);
+  assert.equal(transitionJournal.projection().records.get(created.draft_id)?.status, "in_review");
+  assert.equal(transitionResolverCalls, 0);
 });
 
 test("P0 pin rides the same review lifecycle and reloads title from journal", async () => {
