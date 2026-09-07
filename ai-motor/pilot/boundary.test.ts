@@ -16,6 +16,10 @@
  * 6. Koppeling 2 (draft.decision): beslissingen vereisen een bestaand
  *    concept, landen via getekend settlement in decisions.jsonl, zijn
  *    first-decision-wins, en de operator-notitie komt nooit in evidence.
+ * 7. Koppeling 3 (evidence.store): de gevalideerde keten van elke run wordt
+ *    via getekend settlement in evidence.jsonl bewaard — nog steeds zonder
+ *    één letter bedrijfsinhoud — en de vijf actieve meetcriteria worden uit
+ *    die opgeslagen ketens berekend; gemanipuleerde regels vallen eruit.
  */
 
 import assert from "node:assert/strict";
@@ -49,6 +53,7 @@ import { signSettlement } from "./settlement.ts";
 import type { SettlementBase } from "./settlement.ts";
 import { createStoreServer } from "./store-service.ts";
 import { runDecision } from "./decision-core.ts";
+import { computeStoredEvaluation } from "./evaluation-core.ts";
 import {
   listDecisions,
   listDrafts,
@@ -174,7 +179,9 @@ test("1. evidence en outcomes bevatten nooit bedrijfsinhoud", async () => {
     assert.equal(data.output_chars, MARKER_DRAFT.length);
     // De inhoud bereikt wél de privé-store (dat is de bedoeling), mét een
     // ondertekend settlement (signatuur + expiry + payload-binding).
-    assert.equal(store.calls.length, 1);
+    // Twee writes: het concept (koppeling 1) én de evidence-keten
+    // (koppeling 3) — alleen de eerste bevat bedrijfsinhoud.
+    assert.equal(store.calls.length, 2);
     const captured = store.calls[0].record;
     assert.ok("review" in captured && "draft" in captured);
     assert.equal(captured.review, MARKER_REVIEW);
@@ -183,6 +190,12 @@ test("1. evidence en outcomes bevatten nooit bedrijfsinhoud", async () => {
     assert.equal(typeof store.calls[0].settlement.signature, "string");
     assert.equal(typeof store.calls[0].settlement.expires_at, "string");
     assert.equal(typeof store.calls[0].settlement.record_sha256, "string");
+    // De tweede write is de evidence-keten: ook die mag geen inhoud bevatten.
+    const evidenceCall = store.calls[1].record;
+    assert.ok("records" in evidenceCall && evidenceCall.type === "evidence");
+    assert.ok(!JSON.stringify(evidenceCall).includes(MARKER_REVIEW));
+    assert.ok(!JSON.stringify(evidenceCall).includes(MARKER_CONTEXT));
+    assert.ok(!JSON.stringify(evidenceCall).includes(MARKER_DRAFT));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -666,4 +679,230 @@ test("6d. HTTP: /decision afdwingen van identiteit en content-type", async () =>
   } finally {
     server.close();
   }
+});
+
+test("7a. evidence-keten wordt via getekend settlement bewaard, zonder bedrijfsinhoud", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "pilot-ctx-"));
+  try {
+    const contextFile = join(dir, "ondernemer-context.txt");
+    await writeFile(contextFile, MARKER_CONTEXT, "utf8");
+    await withStore(SECRET, async (base, storeDir) => {
+      const storeFn = (
+        record: Parameters<typeof storeDraftViaService>[0],
+        settlement: Parameters<typeof storeDraftViaService>[1],
+      ) => storeDraftViaService(record, settlement, base);
+      const { adapter } = createMarkerAdapter();
+      const output = await runDraft(
+        { reviewText: MARKER_REVIEW, isSynthetic: false },
+        {
+          adapter,
+          storeFn,
+          contextMode: "private",
+          contextFile,
+          storeSecret: SECRET,
+        },
+      );
+      assert.equal(output.ok, true);
+      // De keten is bewaard via de gateway (ALLOW + settlement + store).
+      assert.equal(output.evidenceStore.decision, "ALLOW");
+      assert.equal(output.evidenceStore.stored, true);
+
+      const evidencePath = join(storeDir, "evidence.jsonl");
+      const raw = await readFile(evidencePath, "utf8");
+      // De redaction-regel geldt ook op schijf: geen letter bedrijfsinhoud.
+      for (const marker of [MARKER_REVIEW, MARKER_CONTEXT, MARKER_DRAFT]) {
+        assert.ok(
+          !raw.includes(marker),
+          `evidence.jsonl mag geen inhoud bevatten (${marker.slice(0, 18)}…)`,
+        );
+      }
+      const lines = raw.split("\n").filter((l) => l.trim().length > 0);
+      assert.equal(lines.length, 1);
+      const stored = JSON.parse(lines[0]) as {
+        type: string;
+        run_id: string;
+        receipt_id: string;
+        chain_digest: string;
+        record_count: number;
+        records: unknown[];
+      };
+      assert.equal(stored.type, "evidence");
+      assert.ok(stored.receipt_id.length > 0);
+      assert.ok(stored.chain_digest.startsWith("sha256:"));
+      // De opgeslagen keten is exact de teruggegeven (gevalideerde) keten.
+      assert.equal(stored.record_count, output.evidence.length);
+      assert.equal(stored.records.length, output.evidence.length);
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("7b. vijf meetcriteria uit opgeslagen ketens: concept + goedkeuring + afkeuring", async () => {
+  await withStore(SECRET, async (base, dir) => {
+    const storeFn = (
+      record: Parameters<typeof storeDraftViaService>[0],
+      settlement: Parameters<typeof storeDraftViaService>[1],
+    ) => storeDraftViaService(record, settlement, base);
+    const draftsPath = join(dir, "drafts.jsonl");
+    const decisionsPath = join(dir, "decisions.jsonl");
+    const evidencePath = join(dir, "evidence.jsonl");
+    const decisionDeps = {
+      storeFn,
+      storeSecret: SECRET,
+      listDraftsImpl: (limit?: number) => listDrafts(limit ?? 500, draftsPath),
+      listDecisionsImpl: (limit?: number) =>
+        listDecisions(limit ?? 1000, decisionsPath),
+    };
+
+    // Run 1: geslaagd concept + goedkeuring.
+    const first = await runDraft(
+      { reviewText: MARKER_REVIEW, isSynthetic: false },
+      {
+        adapter: createMarkerAdapter().adapter,
+        storeFn,
+        contextMode: "demo",
+        storeSecret: SECRET,
+      },
+    );
+    assert.equal(first.ok, true);
+    const drafts = await listDrafts(20, draftsPath);
+    const approved = await runDecision(
+      { draftRunId: drafts[0].run_id, decision: "approved" },
+      decisionDeps,
+    );
+    assert.ok(approved.ok);
+
+    // Run 2: geslaagd concept + afkeuring (= één correctie).
+    const second = await runDraft(
+      { reviewText: MARKER_REVIEW, isSynthetic: false },
+      {
+        adapter: createMarkerAdapter().adapter,
+        storeFn,
+        contextMode: "demo",
+        storeSecret: SECRET,
+      },
+    );
+    assert.equal(second.ok, true);
+    const drafts2 = await listDrafts(20, draftsPath);
+    const rejected = await runDecision(
+      { draftRunId: drafts2[0].run_id, decision: "rejected" },
+      decisionDeps,
+    );
+    assert.ok(rejected.ok);
+
+    const evaluation = await computeStoredEvaluation({}, evidencePath);
+    // Vier ketens: 2 concept-runs + 2 beslissings-runs, allemaal valide.
+    assert.equal(evaluation.chains_stored, 4);
+    assert.equal(evaluation.chains_used, 4);
+    assert.equal(evaluation.chains_skipped_invalid, 0);
+    // Alle vier de outcomes zijn "success" → 100%.
+    assert.equal(evaluation.criteria.task_success_rate, 1);
+    // Eén afkeuring over vier voltooide taken → 2,5 correcties per 10.
+    assert.equal(evaluation.criteria.human_corrections_per_10_tasks, 2.5);
+    // Geen ongeautoriseerde pogingen (de publish-probe is een policy-check).
+    assert.equal(evaluation.criteria.unauthorized_actions, 0);
+    // Marker-adapter rapporteert 0 cent → 0 per succesvolle taak.
+    assert.equal(evaluation.criteria.cost_per_successful_task_cents, 0);
+    // Reviews: approved (1) + rejected (0) → vertrouwen 0,5.
+    assert.equal(evaluation.criteria.operator_trust_score, 0.5);
+  });
+});
+
+test("7c. store weigert ongeldige evidence-records", async () => {
+  await withStore(SECRET, async (base) => {
+    const record = { type: "evidence", run_id: "run-x" }; // records ontbreekt
+    const settlement = signSettlement(SECRET, baseSettlement(), record);
+    const res = await postStore(base, { record, settlement });
+    assert.equal(res.status, 400);
+    assert.equal(res.json.error, "invalid record");
+  });
+});
+
+test("7d. HTTP: /evaluation afdwingen van identiteit", async () => {
+  const denied = createPilotServer({
+    acl: parseAcl('{"nPIETJE123CNTRL":["ws-motor"]}'),
+    resolveNode: async () => null,
+  });
+  await new Promise<void>((resolve) => denied.listen(0, "127.0.0.1", resolve));
+  const deniedAddr = denied.address();
+  assert.ok(deniedAddr !== null && typeof deniedAddr === "object");
+  try {
+    const res = await fetch(`http://127.0.0.1:${deniedAddr.port}/evaluation`);
+    assert.equal(res.status, 403);
+  } finally {
+    denied.close();
+  }
+
+  const server = createPilotServer({
+    acl: parseAcl('{"nPIETJE123CNTRL":["ws-motor"]}'),
+    resolveNode: async () => ({ stableId: "nPIETJE123CNTRL", name: "pietje" }),
+    computeEvaluationImpl: async () => ({
+      ok: true as const,
+      chains_stored: 0,
+      chains_used: 0,
+      chains_skipped_invalid: 0,
+      records_used: 0,
+      criteria: {
+        task_success_rate: 0,
+        human_corrections_per_10_tasks: 0,
+        unauthorized_actions: 0,
+        cost_per_successful_task_cents: 0,
+        operator_trust_score: 0,
+      },
+    }),
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address !== null && typeof address === "object");
+  try {
+    const res = await fetch(`http://127.0.0.1:${address.port}/evaluation`);
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      workspace: string;
+      evaluation: { criteria: { unauthorized_actions: number } };
+    };
+    assert.equal(body.ok, true);
+    assert.equal(body.workspace, "ws-motor");
+    assert.equal(body.evaluation.criteria.unauthorized_actions, 0);
+  } finally {
+    server.close();
+  }
+});
+
+test("7e. gemanipuleerde evidence-regel valt uit de meting", async () => {
+  await withStore(SECRET, async (base, dir) => {
+    const storeFn = (
+      record: Parameters<typeof storeDraftViaService>[0],
+      settlement: Parameters<typeof storeDraftViaService>[1],
+    ) => storeDraftViaService(record, settlement, base);
+    const output = await runDraft(
+      { reviewText: MARKER_REVIEW, isSynthetic: false },
+      {
+        adapter: createMarkerAdapter().adapter,
+        storeFn,
+        contextMode: "demo",
+        storeSecret: SECRET,
+      },
+    );
+    assert.equal(output.ok, true);
+    assert.equal(output.evidenceStore.stored, true);
+
+    const evidencePath = join(dir, "evidence.jsonl");
+    const raw = await readFile(evidencePath, "utf8");
+    const line = JSON.parse(raw.trim()) as {
+      records: { data: unknown }[];
+    };
+    // Tamper: wijzig record-inhoud zonder de digest bij te werken.
+    line.records[0].data = { tampered: true };
+    await writeFile(evidencePath, `${JSON.stringify(line)}\n`, "utf8");
+
+    const evaluation = await computeStoredEvaluation({}, evidencePath);
+    // De keten is niet meer valide → telt niet mee, maar wél zichtbaar.
+    assert.equal(evaluation.chains_stored, 1);
+    assert.equal(evaluation.chains_used, 0);
+    assert.equal(evaluation.chains_skipped_invalid, 1);
+    assert.equal(evaluation.records_used, 0);
+  });
 });

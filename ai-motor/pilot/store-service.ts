@@ -109,6 +109,7 @@ export function createStoreServer(
               draft?: unknown;
               draft_run_id?: unknown;
               decision?: unknown;
+              records?: unknown;
             }
           | undefined;
         // Routering op record.type met een vaste bestandsmap — de client
@@ -131,6 +132,12 @@ export function createStoreServer(
             return;
           }
           targetPath = join(dirname(storePath), "decisions.jsonl");
+        } else if (kind === "evidence") {
+          if (!r || typeof r.run_id !== "string" || !Array.isArray(r.records)) {
+            sendJson(res, 400, { ok: false, error: "invalid record" });
+            return;
+          }
+          targetPath = join(dirname(storePath), "evidence.jsonl");
         } else {
           sendJson(res, 400, { ok: false, error: "invalid_record_type" });
           return;

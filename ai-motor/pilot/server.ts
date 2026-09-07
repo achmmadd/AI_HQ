@@ -29,6 +29,7 @@ import { pathToFileURL } from "node:url";
 import { SYNTHETIC_REVIEW, runDraft } from "./draft-core.ts";
 import { runDecision } from "./decision-core.ts";
 import { listDecisions, listDrafts } from "./draft-store.ts";
+import { computeStoredEvaluation } from "./evaluation-core.ts";
 
 const UI_HTML = new URL("./ui.html", import.meta.url);
 
@@ -207,6 +208,7 @@ export interface PilotServerDeps {
   readonly listDraftsImpl?: typeof listDrafts;
   readonly runDecisionImpl?: typeof runDecision;
   readonly listDecisionsImpl?: typeof listDecisions;
+  readonly computeEvaluationImpl?: typeof computeStoredEvaluation;
 }
 
 export function createPilotServer(deps: PilotServerDeps = {}) {
@@ -216,6 +218,8 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
   const listDraftsImpl = deps.listDraftsImpl ?? listDrafts;
   const runDecisionImpl = deps.runDecisionImpl ?? runDecision;
   const listDecisionsImpl = deps.listDecisionsImpl ?? listDecisions;
+  const computeEvaluationImpl =
+    deps.computeEvaluationImpl ?? computeStoredEvaluation;
 
   return createServer(async (req, res) => {
     try {
@@ -253,6 +257,24 @@ export function createPilotServer(deps: PilotServerDeps = {}) {
           drafts: await listDraftsImpl(limit),
           decisions: await listDecisionsImpl(500),
         });
+        return;
+      }
+      if (req.method === "GET" && req.url?.startsWith("/evaluation")) {
+        const params = new URL(req.url, "http://localhost").searchParams;
+        // Zelfde fail-closed toegang als /drafts: de vijf meetcriteria zijn
+        // alleen zichtbaar voor een geautoriseerde node + workspace.
+        const access = await accessCheck(
+          req,
+          params.get("workspace"),
+          acl,
+          resolveNode,
+        );
+        if (isDeny(access)) {
+          sendJson(res, 403, { ok: false, ...access });
+          return;
+        }
+        const evaluation = await computeEvaluationImpl();
+        sendJson(res, 200, { ok: true, workspace: access.workspace, evaluation });
         return;
       }
       if (req.method === "POST" && req.url === "/decision") {

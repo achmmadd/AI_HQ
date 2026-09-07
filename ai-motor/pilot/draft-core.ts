@@ -8,7 +8,7 @@
  * gedrag is daardoor per definitie identiek.
  */
 
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import {
@@ -49,6 +49,8 @@ import { createLlamaCppServerAdapter } from "../lib/adr110/adapters/llamacpp-ser
 import type { CapabilityAdapter } from "../lib/adr110/adapters/contract.ts";
 import { storeDraftViaService } from "./draft-store.ts";
 import type { DraftStoreRecord } from "./draft-store.ts";
+import { storeEvidenceChain } from "./evidence-store.ts";
+import type { EvidenceStoreOutcome } from "./evidence-store.ts";
 import { signSettlement } from "./settlement.ts";
 
 // Geen echte endpoints in de repo: de default is localhost, de echte
@@ -168,7 +170,7 @@ export function buildPilotPolicy(workspace_id: WorkspaceId): Policy {
   const policyContent = {
     schema_version: ADR110_SCHEMA_VERSION,
     policy_id: branded<PolicyId>("policy-motor-default"),
-    version: "1.1.0",
+    version: "1.2.0",
     workspace_id,
     capabilities: {
       "draft.generate": {
@@ -191,6 +193,16 @@ export function buildPilotPolicy(workspace_id: WorkspaceId): Policy {
       // afkeuren). Zelfde R0-profiel: interne append-only write. Publiceren
       // blijft ook ná goedkeuring geblokkeerd — zie review.reply.publish.
       "draft.decision": {
+        risk: "R0",
+        requires_approval: false,
+        budget_cents_max: 0,
+        allowed_data_classes: ["internal"],
+        network: "none",
+      },
+      // Koppeling 3: de gevalideerde evidence-keten van een run bewaren,
+      // zodat de vijf actieve meetcriteria uit opgeslagen evidence berekend
+      // kunnen worden. Zelfde R0-profiel: interne append-only write.
+      "evidence.store": {
         risk: "R0",
         requires_approval: false,
         budget_cents_max: 0,
@@ -220,7 +232,10 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
     deps.contextFile ?? CONTEXT_FILE,
   );
   const t0 = nowIso();
-  const label = `shadow-${Date.parse(t0)}`;
+  // Willekeurig achtervoegsel: twee runs binnen dezelfde milliseconde mogen
+  // nooit dezelfde run_id krijgen (store, beslissingen en evidence-dedupe
+  // vertrouwen op unieke run-id's).
+  const label = `shadow-${Date.parse(t0)}-${randomBytes(3).toString("hex")}`;
   const workspace_id = branded<WorkspaceId>("ws-motor");
   const task_id = branded<TaskId>("task-shadow-review-1");
   const run_id = branded<RunId>(`run-${label}`);
@@ -651,12 +666,42 @@ export async function runDraft(req: DraftRequest, deps: DraftDeps = {}) {
   const chain = buildEvidenceChain(evidence);
   const orphans = findOrphans(evidence);
 
+  // Koppeling 3: bewaar de gevalideerde keten zelf via de gateway, zodat de
+  // vijf actieve meetcriteria uit opgeslagen evidence berekend kunnen worden
+  // (zie evaluation-core.ts). Een gebroken keten wordt principieel niet
+  // opgeslagen. De evidence.store-actie staat bewust NIET in de keten die
+  // hij opslaat — dat zou recursief zijn; haar receipt_id staat in het
+  // store-record en de uitkomst hieronder.
+  let evidenceStore: EvidenceStoreOutcome;
+  if (!chain.ok || orphans.length > 0) {
+    evidenceStore = {
+      decision: "DENY",
+      executed: false,
+      stored: false,
+      reason: "chain_invalid_not_stored",
+    };
+  } else {
+    evidenceStore = await storeEvidenceChain({
+      gateway,
+      workspace_id,
+      task_id,
+      run_id,
+      attempt_id,
+      requested_by: employee.employee_id,
+      evidence,
+      label,
+      storeFn,
+      storeSecret: deps.storeSecret,
+    });
+  }
+
   const latencyMs = result.ok ? result.meta.simulated_latency_ms : null;
   return {
     ok: result.ok && chain.ok && orphans.length === 0,
     draft: result.ok ? result.output : null,
     ...(result.ok ? {} : { error: result.error }),
     evidence,
+    evidenceStore,
     contextSource: context.source,
     modelMeta: {
       model: MODEL_NAME,
