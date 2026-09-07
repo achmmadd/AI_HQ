@@ -12,6 +12,8 @@
  * evidence of logs (zelfde redaction-regel als review-/concepttekst).
  */
 
+import { randomBytes } from "node:crypto";
+
 import {
   ADR110_SCHEMA_VERSION,
   branded,
@@ -39,6 +41,8 @@ import {
   storeDraftViaService,
 } from "./draft-store.ts";
 import type { DecisionStoreRecord } from "./draft-store.ts";
+import { storeEvidenceChain } from "./evidence-store.ts";
+import type { EvidenceStoreOutcome } from "./evidence-store.ts";
 import { signSettlement } from "./settlement.ts";
 
 export interface DecisionRequest {
@@ -75,7 +79,9 @@ export async function runDecision(req: DecisionRequest, deps: DecisionDeps = {})
   }
 
   const t0 = nowIso();
-  const label = `decision-${Date.parse(t0)}`;
+  // Zelfde unieke-labelregel als de draft-flow: run-id's moeten uniek zijn,
+  // ook bij twee beslissingen binnen dezelfde milliseconde.
+  const label = `decision-${Date.parse(t0)}-${randomBytes(3).toString("hex")}`;
   const workspace_id = branded<WorkspaceId>("ws-motor");
   const task_id = branded<TaskId>(`task-decision-${req.draftRunId}`);
   const run_id = branded<RunId>(`run-${label}`);
@@ -213,6 +219,17 @@ export async function runDecision(req: DecisionRequest, deps: DecisionDeps = {})
       draft_run_id: req.draftRunId,
       decision: req.decision,
       stored: stored.ok,
+      // De beslissing IS de menselijke review in de zin van
+      // adr110/evaluation.ts: zo rekenen operatorvertrouwen (criterium 16)
+      // en correcties (criterium 2) uit opgeslagen evidence. Pilot-
+      // operationalisering: een afkeuring telt als één correctie (de
+      // operator maakt de tekst dan zelf), een goedkeuring telt niet.
+      status: stored.ok ? ("success" as const) : ("failure" as const),
+      human_review: {
+        rating: req.decision,
+        corrections: req.decision === "rejected" ? 1 : 0,
+        reviewed_by: identity.identity_id as string,
+      },
     },
     occurred_at: tEnd,
   });
@@ -220,6 +237,31 @@ export async function runDecision(req: DecisionRequest, deps: DecisionDeps = {})
 
   const chain = buildEvidenceChain(evidence);
   const orphans = findOrphans(evidence);
+
+  // Koppeling 3: ook de beslissingsketen bewaren — juist díe keten bevat de
+  // menselijke review waar de trust- en correctiecriteria uit rekenen.
+  let evidenceStore: EvidenceStoreOutcome;
+  if (!chain.ok || orphans.length > 0) {
+    evidenceStore = {
+      decision: "DENY",
+      executed: false,
+      stored: false,
+      reason: "chain_invalid_not_stored",
+    };
+  } else {
+    evidenceStore = await storeEvidenceChain({
+      gateway,
+      workspace_id,
+      task_id,
+      run_id,
+      attempt_id,
+      requested_by: operator,
+      evidence,
+      label,
+      storeFn,
+      storeSecret: deps.storeSecret,
+    });
+  }
 
   return {
     ok: stored.ok && chain.ok && orphans.length === 0,
@@ -229,6 +271,7 @@ export async function runDecision(req: DecisionRequest, deps: DecisionDeps = {})
     ...(stored.ok ? {} : { error: stored.error }),
     receipt_id: settled.settlement.receipt_id,
     evidence,
+    evidenceStore,
     chainValid: chain.ok,
     orphans: orphans.length,
   };

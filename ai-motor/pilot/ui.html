@@ -112,6 +112,12 @@
     <div id="history" style="font-size:14px; line-height:1.6; color:var(--muted)">laden…</div>
   </div>
 
+  <div class="panel" id="metricsPanel">
+    <label>Actieve meetcriteria — live uit opgeslagen evidence</label>
+    <div class="chips" id="metricChips" style="margin-bottom:6px"></div>
+    <div id="metrics" style="font-size:13px; color:var(--muted)">laden…</div>
+  </div>
+
   <footer>
     Concepten zijn altijd ter goedkeuring aan jou — publiceren doe je handmatig op het platform.
     Elke run legt een evidence-keten vast; de publish-actie wordt bewust geweigerd (DENY).
@@ -190,12 +196,53 @@ async function decide(runId, decision, btn) {
       return;
     }
     loadHistory();
+    loadEvaluation();
   } catch {
     btn.disabled = false;
     alert("Netwerkfout bij beslissing.");
   }
 }
 loadHistory();
+
+async function loadEvaluation() {
+  const el = $("metrics");
+  const chips = $("metricChips");
+  try {
+    const r = await fetch("/evaluation");
+    const d = await r.json();
+    if (!d.ok) {
+      el.textContent = d.error === "node_not_allowed"
+        ? "Geen toegang vanaf dit apparaat (node-login)."
+        : "Kon de metingen niet lezen.";
+      return;
+    }
+    const e = d.evaluation;
+    const c = e.criteria;
+    const pct = (v) => Math.round(v * 100) + "%";
+    chips.innerHTML = "";
+    const items = [
+      ["", "1 · taak-succes: " + pct(c.task_success_rate)],
+      [c.human_corrections_per_10_tasks <= 2 ? "green" : "amber",
+        "2 · correcties: " + c.human_corrections_per_10_tasks.toFixed(1) + " / 10"],
+      [c.unauthorized_actions === 0 ? "green" : "amber",
+        "3 · ongeautoriseerd: " + c.unauthorized_actions],
+      ["", "7 · kosten/succes: " + c.cost_per_successful_task_cents.toFixed(0) + " cent"],
+      [c.operator_trust_score >= 0.8 ? "green" : "amber",
+        "16 · vertrouwen: " + c.operator_trust_score.toFixed(2)],
+    ];
+    for (const [cls, text] of items) {
+      const chip = document.createElement("span");
+      chip.className = "chip" + (cls ? " " + cls : "");
+      chip.textContent = text;
+      chips.appendChild(chip);
+    }
+    el.textContent = e.chains_used + " ketens meetellend (" + e.records_used +
+      " records)" + (e.chains_skipped_invalid > 0
+        ? " · " + e.chains_skipped_invalid + " keten(s) overgeslagen (integriteit!)"
+        : "");
+  } catch { el.textContent = "Metingen onbereikbaar."; }
+}
+loadEvaluation();
 
 $("go").addEventListener("click", async () => {
   const review = $("review").value.trim();
@@ -222,6 +269,9 @@ $("go").addEventListener("click", async () => {
       d.store && d.store.stored
         ? ["green", "opgeslagen ✓ (gateway ALLOW)"]
         : ["amber", "niet opgeslagen"],
+      d.evidenceStore && d.evidenceStore.stored
+        ? ["green", "evidence bewaard ✓"]
+        : ["amber", "evidence niet bewaard"],
       ["amber", "publicatie: DENY (handmatig)"],
       ["", secs + " s · " + d.modelMeta.model],
     ];
@@ -234,6 +284,7 @@ $("go").addEventListener("click", async () => {
     $("resultPanel").classList.remove("hidden");
     $("status").textContent = "";
     loadHistory();
+    loadEvaluation();
   } catch (e) {
     $("status").textContent = "Fout: " + e.message;
   } finally {
