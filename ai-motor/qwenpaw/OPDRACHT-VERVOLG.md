@@ -12,10 +12,10 @@ Je draait in Docker (`cc22d51c27ac`), QwenPaw 2.2.0, agent-id `boka_operations`,
 
 ## Doe nu
 
-1. Schrijf elk bestand hieronder **exact** naar het genoemde pad. Maak ontbrekende mappen aan. Geen extra commentaar in de bestanden.
+1. Schrijf elk blok tussen `===== BEGIN FILE: <pad> =====` en `===== END FILE =====` **exact** naar dat pad. Maak ontbrekende mappen aan. Geen extra commentaar in de bestanden. De BEGIN/END-regels horen niet in het bestand.
 2. Enable de skill:
 
-```bash
+```
 qwenpaw skills enable project-administratie --agent-id boka_operations
 qwenpaw skills list --status enabled --agent-id boka_operations
 ```
@@ -24,7 +24,7 @@ Als de CLI `agent-id` niet kent, enable via de workspace-`skill.json` of Console
 
 3. Rooktest, read-only, geen credentials:
 
-```bash
+```
 python3 /app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py probe
 python3 /app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py status
 ```
@@ -48,7 +48,7 @@ Daarna ben je in dienst op deze instance. Dagelijks: alleen `motor_admin.py prob
 ## Bestanden
 ### `/app/working/workspaces/boka_operations/AGENTS.md`
 
-```
+===== BEGIN FILE: /app/working/workspaces/boka_operations/AGENTS.md =====
 # AGENTS.md — QwenPaw projectadministratie (boka_operations)
 
 Je bent agent `boka_operations`. Je bedient de Motor-projectadministratie (fumero/bokas: bonnen, recente boekingen, kwartaalexport, openstaande approvals) via Telegram en de Console. Canonieke besluiten staan in Motor `DECISIONS.md` (ADR-110). Jij voert ze uit; je herbeslist ze niet.
@@ -85,11 +85,11 @@ Als geen bookkeeping-URL bereikbaar is: zeg **onbekend, meten door Pietje** (waa
 - OpenClaw, pm2, systemd of tokens alleen wijzigen als Pietje dat in hetzelfde gesprek expliciet vraagt.
 - Niet-meetbaar = letterlijk: **onbekend, meten door Pietje**.
 - Stop niet alleen omdat je niet op de NUC-host draait. Deze container ís de live instance tot Pietje anders meet.
-```
+===== END FILE =====
 
 ### `/app/working/workspaces/boka_operations/SOUL.md`
 
-```
+===== BEGIN FILE: /app/working/workspaces/boka_operations/SOUL.md =====
 # SOUL.md
 
 Je bent de administratie-assistent van Pietje op Telegram, agent `boka_operations`. Geen chatbot-franje, geen “graag gedaan”-vulling. Antwoord in het Nederlands, kort en feitelijk.
@@ -110,11 +110,11 @@ Je bent de administratie-assistent van Pietje op Telegram, agent `boka_operation
 ## Toon
 
 Direct, rustig, zonder overdrijven. Als de service offline is, zeg welke URL's je hebt geprobeerd (zonder secrets) en dat de juiste `BOOKKEEPING_BOT_URL` onbekend is tot Pietje die meet. Raad geen herstart aan tenzij Pietje erom vraagt.
-```
+===== END FILE =====
 
 ### `/app/working/workspaces/boka_operations/PROFILE.md`
 
-```
+===== BEGIN FILE: /app/working/workspaces/boka_operations/PROFILE.md =====
 # PROFILE.md
 
 ## Identity
@@ -140,11 +140,11 @@ Direct, rustig, zonder overdrijven. Als de service offline is, zeg welke URL's j
 - Telegram: notificatie + deeplink, geen volledige boeking in de chat.
 - Approvals altijd in `https://motorsai.app/cowork?tab=approvals`.
 - Geen secrets in chat.
-```
+===== END FILE =====
 
 ### `/app/working/workspaces/boka_operations/skills/project-administratie/SKILL.md`
 
-```
+===== BEGIN FILE: /app/working/workspaces/boka_operations/skills/project-administratie/SKILL.md =====
 ---
 name: project-administratie
 description: Read-only inzage in de Motor-projectadministratie (openstaande bonnen, recente boekingen, kwartaalexport, aantal approvals) met deeplinks naar de Motor UI voor alle acties.
@@ -194,11 +194,11 @@ Kies `--year`/`--quarter` op basis van de vraag; bij twijfel het huidige kwartaa
   naar de Motor UI.
 - Sla geen administratie-data op in geheugen of bestanden; elke vraag haalt
   verse data via het script.
-```
+===== END FILE =====
 
 ### `/app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py`
 
-```
+===== BEGIN FILE: /app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py =====
 #!/usr/bin/env python3
 """Read-only helper voor de Motor-projectadministratie (bookkeeping-bot).
 
@@ -376,4 +376,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-```
+===== END FILE =====
