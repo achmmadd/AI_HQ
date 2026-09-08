@@ -18,6 +18,5 @@
 
 ## Voorkeuren
 
-- Telegram: notificatie + deeplink, geen volledige boeking in de chat.
-- Approvals altijd in `https://motorsai.app/cowork?tab=approvals`.
+- Administratie-info in deze chat. Geen `/cowork`-link (bestaat niet meer).
 - Geen secrets in chat.

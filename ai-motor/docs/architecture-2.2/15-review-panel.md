@@ -210,3 +210,7 @@ Impact op de bindende amendementen:
 ## 41.13 Delta-memo 2026-09-08 — skill live, geen Motor-token
 
 **Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer). `boka_operations` heeft skill `project-administratie` enabled en meldt OFFLINE. Hun helper vroeg `MOTOR_API_URL` + optioneel `MOTOR_API_TOKEN`. Dat tokenpad is **afgewezen**: geen Motor-sessie in de harness (ADR-110/AM-4). Canonieke bron blijft de bookkeeping-bot zonder credentials, of OFFLINE. Telegram is nog console-only; token alleen via de Console door de eigenaar, niet in chat.
+
+## 41.14 Delta-memo 2026-09-08 — `/cowork` weg, info in QwenPaw
+
+**Eigenaar:** Pietje (`https://motorsai.app/cowork?tab=approvals` bestaat niet meer; “daarom wil ik de info aan qwenpaw geven”). Scoped AM-4-uitzondering: de privéchat met de eigenaar ís het lees-oppervlak. Geen dode cowork-deeplink. Schrijven blijft uit in QwenPaw. Geen MEMORY.md, geen groepen, geen Motor-token. In de repo bestaat `/bokas/bonnen` nog als Motor-boekhoudpagina; dat vervangt de dode cowork-URL niet als QwenPaw-doel.

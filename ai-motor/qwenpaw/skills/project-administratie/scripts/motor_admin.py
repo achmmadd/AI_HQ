@@ -18,8 +18,12 @@ import sys
 import urllib.error
 import urllib.request
 
-UI_BASE = os.environ.get("MOTOR_UI_BASE", "https://motorsai.app").rstrip("/")
 TIMEOUT = 8
+INFO_FOOTER = (
+    "Dit antwoord IS de administratie-info. "
+    "Geen /cowork-link — die Motor-pagina bestaat niet meer. "
+    "Schrijven (boeken/approven) doe je niet in QwenPaw."
+)
 
 _resolved_base = None
 
@@ -94,7 +98,7 @@ def cmd_probe() -> None:
     if not any_ok:
         print("Geen kandidaat bereikbaar. BOOKKEEPING_BOT_URL is onbekend, meten door Pietje.")
         sys.exit(2)
-    print(f"Approvals afhandelen in Motor UI: {UI_BASE}/cowork?tab=approvals")
+    print(INFO_FOOTER)
 
 
 def cmd_status() -> None:
@@ -110,7 +114,7 @@ def cmd_status() -> None:
     print(f"Retry-queue: {retry}")
     if isinstance(disk, (int, float)):
         print(f"Schijf vrij: {disk} MB")
-    print(f"Approvals afhandelen in Motor UI: {UI_BASE}/cowork?tab=approvals")
+    print(INFO_FOOTER)
 
 
 def cmd_recent() -> None:
@@ -118,7 +122,7 @@ def cmd_recent() -> None:
     receipts = data.get("receipts") if isinstance(data, dict) else data
     if not isinstance(receipts, list) or not receipts:
         print("Geen recente bonnen gevonden.")
-        print(f"Administratie openen: {UI_BASE}/cowork")
+        print(INFO_FOOTER)
         return
     print(f"Recente bonnen ({len(receipts)}):")
     for receipt in receipts[:15]:
@@ -131,7 +135,7 @@ def cmd_recent() -> None:
         status = pick(receipt, "status")
         delen = [deel for deel in (datum, wie, bedrag, status) if deel]
         print(f"- {' | '.join(delen) if delen else json.dumps(receipt, ensure_ascii=False)[:160]}")
-    print(f"Details/bewerken in Motor UI: {UI_BASE}/cowork")
+    print(INFO_FOOTER)
 
 
 def cmd_documents(year: str, quarter: str) -> None:
@@ -147,7 +151,7 @@ def cmd_documents(year: str, quarter: str) -> None:
                 print(f"- {naam or json.dumps(item, ensure_ascii=False)[:160]}")
             else:
                 print(f"- {item}")
-    print(f"Export beheren in Motor UI: {UI_BASE}/cowork")
+    print(INFO_FOOTER)
 
 
 def main() -> None:

@@ -17,7 +17,7 @@ python3 skills/project-administratie/scripts/motor_admin.py documents --year YYY
 
 Paden zijn relatief tot deze workspace. Bij twijfel over het kwartaal: het huidige.
 
-Sluit elk antwoord af met de deeplink(s) die het script print. Acties (approven, boeken, editen, exporteren) gebeuren in de Motor UI, nooit hier.
+Het script-output is het antwoord. Geen `/cowork`-link. Acties (approven, boeken) doe je niet in QwenPaw.
 
 Als geen bookkeeping-URL bereikbaar is: zeg **onbekend, meten door Pietje** (waar de bookkeeping-bot luistert t.o.v. deze container). Verzin geen URL en vraag geen token.
 

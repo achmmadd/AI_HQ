@@ -1,6 +1,6 @@
 ---
 name: project-administratie
-description: Read-only inzage in de Motor-projectadministratie (openstaande bonnen, recente boekingen, kwartaalexport, aantal approvals) met deeplinks naar de Motor UI voor alle acties.
+description: Read-only inzage in de Motor-projectadministratie (openstaande bonnen, recente boekingen, kwartaalexport, aantal approvals). Antwoordt met de info zelf; geen /cowork-deeplink.
 ---
 
 # Projectadministratie (Motor)
@@ -26,25 +26,24 @@ Het script staat in de `scripts/`-map van deze skill, bijvoorbeeld
 Kies `--year`/`--quarter` op basis van de vraag; bij twijfel het huidige kwartaal.
 
 - `status` — gezondheid van de administratie-service: `pending_approvals`,
-  `retry_queue`, vrije schijfruimte, plus de deeplink naar de approvals-inbox.
+  `retry_queue`, vrije schijfruimte. Dit is de info.
 - `recent` — recent geboekte bonnen (datum, leverancier, bedrag voor zover
   beschikbaar).
 - `documents` — exportdocumenten van een kwartaal voor de boekhouder.
 
 ## Regels (bindend)
 
-- Antwoord in het Nederlands en compact. Sluit elk antwoord af met de
-  deeplink(s) die het script print, zodat de eigenaar acties in de Motor UI
-  uitvoert.
+- Antwoord in het Nederlands en compact. Het script-output **is** de info:
+  geen `/cowork`-deeplink (die Motor-pagina bestaat niet meer). Geef de
+  cijfers/regels in de privéchat. Niet in MEMORY.md zetten.
 - Voer NOOIT schrijfacties uit: geen boekingen, approvals, edits, exports of
   uploads. Bij een actieverzoek ("boek deze bon", "keur dit goed") antwoord je
-  vriendelijk dat dat in de Motor UI moet, met de bijbehorende deeplink.
+  vriendelijk dat QwenPaw alleen leest; schrijven doe je niet hier.
 - Print het script `OFFLINE` (exitcode 2), meld dan welke URL's zijn
   geprobeerd en dat `BOOKKEEPING_BOT_URL` **onbekend, meten door Pietje**
   is. Raad nooit een herstart aan zonder expliciete vraag van de eigenaar.
 - Deel administratie-inhoud alleen in de privéchat met de eigenaar. In
-  groepschats: geen bedragen, leveranciers of documentnamen — alleen verwijzen
-  naar de Motor UI.
+  groepschats: geen bedragen, leveranciers of documentnamen.
 - Sla geen administratie-data op in geheugen of bestanden; elke vraag haalt
   verse data via het script.
 - Geen `MOTOR_API_TOKEN`, geen Motor-sessiecookie, geen Authorization-header.

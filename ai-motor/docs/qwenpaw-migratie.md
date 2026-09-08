@@ -1,13 +1,13 @@
 # Runbook — QwenPaw-migratie: projectadministratie + Telegram
 
 > **Eigenaar:** Pietje · **Datum:** 2026-09-08
-> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.12](architecture-2.2/15-review-panel.md)
+> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.14](architecture-2.2/15-review-panel.md)
 > **Artefacten:** [`../qwenpaw/`](../qwenpaw/)
 > **Live target:** agent `boka_operations`, workspace `/app/working/workspaces/boka_operations` (QwenPaw 2.2.0, Docker)
 
 ## Doel en scope
 
-De eigenaar bedient de projectadministratie (bonnen/administratie per project, fumero/bokas) via Telegram op QwenPaw. **De NUC is niet nodig.** Runtime = de bestaande Docker-instance, agent `boka_operations`. Hetzner blijft durable control; Motor UI blijft de plek voor schrijfacties.
+De eigenaar krijgt projectadministratie-info in QwenPaw (bonnen/status/export). **De NUC is niet nodig.** `/cowork?tab=approvals` bestaat live niet meer. Runtime = Docker, agent `boka_operations`. Hetzner blijft durable control. Schrijven in QwenPaw blijft uit.
 
 Wat de skill **wel** doet (read-only, R0):
 
@@ -29,6 +29,7 @@ Wat **niet** verandert:
 - Eerste keer / nieuwe chat: [`../qwenpaw/OPDRACHT.md`](../qwenpaw/OPDRACHT.md)
 - Agent die nog op de NUC wacht: eerst [`../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md`](../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md), daarna [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md).
 - Skill staat enabled maar vraagt om `MOTOR_API_TOKEN`: [`../qwenpaw/OPDRACHT-GEEN-TOKEN.md`](../qwenpaw/OPDRACHT-GEEN-TOKEN.md). **Geen Motor-sessietoken zetten.**
+- `/cowork` bestaat niet meer; QwenPaw geeft de info: [`../qwenpaw/OPDRACHT-INFO.md`](../qwenpaw/OPDRACHT-INFO.md).
 
 Persona voor deze agent:
 
@@ -83,7 +84,7 @@ python3 $WS/motor_admin.py recent
 python3 $WS/motor_admin.py documents --year 2026 --quarter 3
 ```
 
-`OFFLINE` + exit 2 is geldig degradatiegedrag. Telegram-vraag: *"Wat staat er nog open in de administratie?"* — cijfers of OFFLINE + deeplink. “Keur goed” moet geweigerd worden met Motor UI-link.
+`OFFLINE` + exit 2 is geldig degradatiegedrag. Telegram/console-vraag: *"Wat staat er nog open in de administratie?"* — cijfers of OFFLINE, **geen** `/cowork`-link. “Keur goed” weigeren.
 
 ## Stap 6 — Documentatie
 
@@ -99,6 +100,6 @@ Meetresultaten in 00-HUIDIGE-STAAT; ADR-110-acceptatie afvinken met bewijs. Bij 
 
 - [ ] `boka_operations` heeft skill + persona en beantwoordt een administratie-vraag of documenteert OFFLINE-probe
 - [ ] Geen tweede poller op hetzelfde bot-token (OpenClaw alleen als die nog pollen)
-- [ ] Approvals/boekingen via Motor UI-deeplinks
+- [ ] QwenPaw geeft de info in chat; geen `/cowork`-link
 - [ ] Geen Motor-sessietoken of side-effect-credential in QwenPaw
 - [ ] `00-HUIDIGE-STAAT.md` bijgewerkt

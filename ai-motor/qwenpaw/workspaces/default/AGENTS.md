@@ -15,7 +15,7 @@ python3 skills/project-administratie/scripts/motor_admin.py recent
 python3 skills/project-administratie/scripts/motor_admin.py documents --year YYYY --quarter N
 ```
 
-Paden relatief tot de workspace. Bij twijfel over het kwartaal: het huidige. Sluit af met de deeplinks van het script. Acties alleen in de Motor UI.
+Paden relatief tot de workspace. Bij twijfel over het kwartaal: het huidige. Het script-output is het antwoord. Geen `/cowork`-link.
 
 Als geen URL bereikbaar is: **onbekend, meten door Pietje**. Geen token, geen verzonnen URL.
 

@@ -491,16 +491,16 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 ### Besluit
 
 1. **QwenPaw is kanaal/assistent-harness, geen orchestrator.** Engine, Kernel en Gateway blijven op Hetzner (ADR-105/108). **De NUC is geen voorwaarde en geen uitvoeringsdoel** voor projectadministratie + Telegram. **Live:** QwenPaw 2.2.0, agent **`boka_operations`**, Docker-hostname `cc22d51c27ac`, workspace `/app/working/workspaces/boka_operations`. Bestanden en skill horen in díe workspace. QwenPaw neemt de Telegram-kanaalrol voor de eigenaar over van OpenClaw. Of de Docker-host toevallig de NUC is, is irrelevant voor deze taak.
-2. **Projectadministratie via QwenPaw is read-only (R0).** De skill leest `/health`, `/recent` en `/export/documents` **zonder credentials**. Eerst `BOOKKEEPING_BOT_URL` indien gezet; anders `127.0.0.1:8001`, daarna Docker-host-kandidaten. **`MOTOR_API_TOKEN` / Motor-sessietoken is verboden**, ook “optioneel”. Geen `MOTOR_API_URL` verzinnen. Boekingen, approvals, edits en exports blijven in de Motor UI (ADR-109, AM-4). Als geen URL bereikbaar is: **OFFLINE** + **onbekend, meten door Pietje**.
+2. **QwenPaw is het lees-oppervlak voor projectadministratie.** Live `https://motorsai.app/cowork?tab=approvals` bestaat niet meer (eigenaar 2026-09-08). De skill geeft de info zelf (status, recente bonnen, exportdocumenten) in de privéchat. Bron: bookkeeping-bot zonder credentials (`BOOKKEEPING_BOT_URL` of loopback/Docker-host). **`MOTOR_API_TOKEN` verboden.** Geen `/cowork`-deeplink. Schrijven (boeken/approven) blijft verboden in QwenPaw. Inhoud niet in MEMORY.md; niet in groepschats. OFFLINE + **onbekend, meten door Pietje** als de bot onbereikbaar is.
 3. **Telegram-token: één poller.** Eén bot-token mag niet door twee pollers tegelijk. Als OpenClaw hetzelfde token nog pollen, dat kanaal daar uit — dat is geen NUC-setup voor QwenPaw. Motor-notificaties (`lib/telegram.ts`, alleen `sendMessage`) mogen hetzelfde token gebruiken. Token roteren via @BotFather bij de verhuizing.
 4. **Toegangscontrole:** `dm_policy: "allowlist"` met alleen het Telegram-user-id van de eigenaar, `group_policy: "allowlist"`, `/setprivacy` ENABLED en `/setjoingroups` DISABLED in @BotFather. De bot gebruikersnaam wordt niet publiek gedeeld.
 5. **AM-1-impact:** QwenPaw start als **Incubation**. OpenClaw blijft de Core-kanaalcomponent (na hardening, ADR-106) tot de QwenPaw-Telegram-migratie live is bewezen; daarna telt QwenPaw als de kanaalcomponent binnen de maximaal acht Production Core-componenten en vervalt OpenClaw naar Incubation. Het componentenaantal stijgt niet.
-6. **AM-4-impact:** het verwerkingsregister (Art. 30) en de subverwerkerslijst moeten QwenPaw opnemen zodra AM-4 wordt uitgevoerd. Telegram blijft subverwerker met dataminimalisatie (notificatie + deeplink, geen inhoud). QwenPaw zelf is self-hosted en geen subverwerker, maar de achterliggende modelprovider is dat wél zodra een cloud-route wordt gebruikt; de dataklassen uit AM-4 punt 2 bepalen welke routes mogen. QwenPaw's eigen geheugen (ReMe) is harness-intern en wordt geen tweede memorylaag voor Motor-data (ADR-107): er wordt geen Motor-data in QwenPaw-memory opgeslagen buiten vluchtige sessiecontext.
+6. **AM-4-impact:** Telegram blijft subverwerker. Omdat de cowork-deeplink dood is, mag de **privéchat met de eigenaar** de administratie-cijfers bevatten (scoped uitzondering op “alleen link”). Geen groepen, geen MEMORY.md, geen Motor-token. Verwerkingsregister moet QwenPaw + modelprovider dekken bij AM-4-uitvoering.
 7. **Legacy project-/taakborden** (`EXECUTION_BOARD.db`, `mission_control.py`, root-`projects/`) migreren **niet** naar QwenPaw; AM-5 (bevriezen → 30 dagen → verwijderen) blijft ongewijzigd.
 
 ### Gevolgen
 
-- De eigenaar doet projectadministratie-vragen (openstaande bonnen, recente boekingen, exportstatus, aantal te approven items) via Telegram aan QwenPaw; de antwoorden bevatten deeplinks naar de Motor UI voor elke actie.
+- De eigenaar krijgt administratie-info in QwenPaw (Console/Telegram), niet via `/cowork`.
 - OpenClaw verliest het Telegram-kanaal; overige OpenClaw-functies en de hardeningseisen uit ADR-106 blijven gelden zolang OpenClaw aan staat.
 - K1/K2-waardewerk (AM-2) verandert niet van volgorde; QwenPaw is een extra bedieningslaag, geen nieuwe workflow-engine.
 - Uitvoering staat in runbook [`qwenpaw-migratie.md`](qwenpaw-migratie.md); artefacten in [`../qwenpaw/`](../qwenpaw/). Live target: agent `boka_operations`. Als de git-checkout in de container ontbreekt, schrijft de agent de bestanden uit [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md).
@@ -509,7 +509,7 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 
 - [x] Agent `boka_operations` heeft een enabled skill + persona en documenteerde OFFLINE (2026-09-08); helper moet nog credential-loos (`probe`, geen `MOTOR_API_TOKEN`)
 - [ ] Geen tweede poller op hetzelfde bot-token (OpenClaw-Telegram alleen uitzetten als die nog pollen; geen NUC-werk voor QwenPaw)
-- [ ] Approvals/boekingen gebeuren aantoonbaar nog in de Motor UI (deeplink-flow), niet in Telegram
+- [ ] QwenPaw geeft administratie-info in de privéchat zonder `/cowork`-link; schrijven blijft geweigerd
 - [ ] Geen Motor-sessietoken of side-effect-credential in de QwenPaw-config of -omgeving
 - [ ] `00-HUIDIGE-STAAT.md` is bijgewerkt met de live metingen van de migratie
 
@@ -550,3 +550,4 @@ Telegram-kanaal in QwenPaw uitzetten (`enabled: false`). Als OpenClaw het token 
 | 2026-09-08 | ADR-110 aangescherpt: live instance is agent `boka_operations` in Docker 2.2.0; opdracht stopt niet meer op “niet de NUC”; bookkeeping-URL via probe i.p.v. alleen loopback |
 | 2026-09-08 | ADR-110 + ADR-108-amendement: NUC is niet nodig voor QwenPaw-projectadministratie/Telegram; kanaalrol = bestaande Docker-instance |
 | 2026-09-08 | ADR-110: `MOTOR_API_TOKEN` expliciet verboden; QwenPaw-skill staat enabled met gedocumenteerde OFFLINE |
+| 2026-09-08 | ADR-110: `/cowork?tab=approvals` live weg; QwenPaw is het lees-oppervlak (info in privéchat, geen dode deeplink) |

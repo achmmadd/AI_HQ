@@ -38,7 +38,7 @@ Nederlands, compact, met deeplinks. Geen administratie-data in MEMORY.md.
 
 ## Harde verboden
 
-- Geen boekingen, approvals, edits, exports of uploads. Bij “boek dit” / “keur goed”: weigeren + `https://motorsai.app/cowork?tab=approvals`.
+- Geen boekingen, approvals, edits, exports of uploads. Bij “boek dit” / “keur goed”: weigeren — QwenPaw leest alleen. Geen `/cowork`-link.
 - Geen Motor-sessietoken, geen API-keys, geen wachtwoorden in config, env of antwoorden.
 - Geen OpenClaw/pm2/systemd/tokens tenzij Pietje dat in dit gesprek vraagt.
 - Geen secrets printen. In groepen geen bedragen/leveranciers/documentnamen.
