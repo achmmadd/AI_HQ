@@ -491,7 +491,7 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 ### Besluit
 
 1. **QwenPaw is kanaal/assistent-harness, geen orchestrator.** Engine, Kernel en Gateway blijven op Hetzner (ADR-105/108). **De NUC is geen voorwaarde en geen uitvoeringsdoel** voor projectadministratie + Telegram. **Live:** QwenPaw 2.2.0, agent **`boka_operations`**, Docker-hostname `cc22d51c27ac`, workspace `/app/working/workspaces/boka_operations`. Bestanden en skill horen in díe workspace. QwenPaw neemt de Telegram-kanaalrol voor de eigenaar over van OpenClaw. Of de Docker-host toevallig de NUC is, is irrelevant voor deze taak.
-2. **Projectadministratie via QwenPaw is read-only (R0).** De skill `project-administratie` leest `/health`, `/recent` en `/export/documents` zonder credentials. Eerst `BOOKKEEPING_BOT_URL` indien gezet; anders `127.0.0.1:8001`, daarna Docker-host-kandidaten (`host.docker.internal`, `172.17.0.1`). Geen Motor-sessietoken. Boekingen, approvals, edits en exports blijven in de Motor UI (ADR-109, AM-4 punt 4). Geen side-effect-credentials in de QwenPaw-context. Als geen URL bereikbaar is: **onbekend, meten door Pietje** — geen verzonnen endpoint.
+2. **Projectadministratie via QwenPaw is read-only (R0).** De skill leest `/health`, `/recent` en `/export/documents` **zonder credentials**. Eerst `BOOKKEEPING_BOT_URL` indien gezet; anders `127.0.0.1:8001`, daarna Docker-host-kandidaten. **`MOTOR_API_TOKEN` / Motor-sessietoken is verboden**, ook “optioneel”. Geen `MOTOR_API_URL` verzinnen. Boekingen, approvals, edits en exports blijven in de Motor UI (ADR-109, AM-4). Als geen URL bereikbaar is: **OFFLINE** + **onbekend, meten door Pietje**.
 3. **Telegram-token: één poller.** Eén bot-token mag niet door twee pollers tegelijk. Als OpenClaw hetzelfde token nog pollen, dat kanaal daar uit — dat is geen NUC-setup voor QwenPaw. Motor-notificaties (`lib/telegram.ts`, alleen `sendMessage`) mogen hetzelfde token gebruiken. Token roteren via @BotFather bij de verhuizing.
 4. **Toegangscontrole:** `dm_policy: "allowlist"` met alleen het Telegram-user-id van de eigenaar, `group_policy: "allowlist"`, `/setprivacy` ENABLED en `/setjoingroups` DISABLED in @BotFather. De bot gebruikersnaam wordt niet publiek gedeeld.
 5. **AM-1-impact:** QwenPaw start als **Incubation**. OpenClaw blijft de Core-kanaalcomponent (na hardening, ADR-106) tot de QwenPaw-Telegram-migratie live is bewezen; daarna telt QwenPaw als de kanaalcomponent binnen de maximaal acht Production Core-componenten en vervalt OpenClaw naar Incubation. Het componentenaantal stijgt niet.
@@ -507,7 +507,7 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 
 ### Acceptatie
 
-- [ ] Agent `boka_operations` heeft skill + persona-bestanden en beantwoordt een administratie-vraag met live data of een gedocumenteerde OFFLINE-probe (commandoutput als bewijs)
+- [x] Agent `boka_operations` heeft een enabled skill + persona en documenteerde OFFLINE (2026-09-08); helper moet nog credential-loos (`probe`, geen `MOTOR_API_TOKEN`)
 - [ ] Geen tweede poller op hetzelfde bot-token (OpenClaw-Telegram alleen uitzetten als die nog pollen; geen NUC-werk voor QwenPaw)
 - [ ] Approvals/boekingen gebeuren aantoonbaar nog in de Motor UI (deeplink-flow), niet in Telegram
 - [ ] Geen Motor-sessietoken of side-effect-credential in de QwenPaw-config of -omgeving
@@ -549,3 +549,4 @@ Telegram-kanaal in QwenPaw uitzetten (`enabled: false`). Als OpenClaw het token 
 | 2026-09-08 | ADR-110 toegevoegd: QwenPaw als assistent-harness voor projectadministratie; Telegram-kanaal verhuist van OpenClaw naar QwenPaw (eigenaarsopdracht) |
 | 2026-09-08 | ADR-110 aangescherpt: live instance is agent `boka_operations` in Docker 2.2.0; opdracht stopt niet meer op “niet de NUC”; bookkeeping-URL via probe i.p.v. alleen loopback |
 | 2026-09-08 | ADR-110 + ADR-108-amendement: NUC is niet nodig voor QwenPaw-projectadministratie/Telegram; kanaalrol = bestaande Docker-instance |
+| 2026-09-08 | ADR-110: `MOTOR_API_TOKEN` expliciet verboden; QwenPaw-skill staat enabled met gedocumenteerde OFFLINE |

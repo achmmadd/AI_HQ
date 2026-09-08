@@ -206,3 +206,7 @@ Impact op de bindende amendementen:
 - Uitvoering blijft op agent `boka_operations` in de bestaande container.
 - Hetzner blijft durable control. Motor UI/approvals blijven de plek voor schrijfacties (ADR-109).
 - OpenClaw-Telegram uitzetten alleen als die hetzelfde bot-token nog pollen — geen NUC-setupstap voor QwenPaw.
+
+## 41.13 Delta-memo 2026-09-08 — skill live, geen Motor-token
+
+**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer). `boka_operations` heeft skill `project-administratie` enabled en meldt OFFLINE. Hun helper vroeg `MOTOR_API_URL` + optioneel `MOTOR_API_TOKEN`. Dat tokenpad is **afgewezen**: geen Motor-sessie in de harness (ADR-110/AM-4). Canonieke bron blijft de bookkeeping-bot zonder credentials, of OFFLINE. Telegram is nog console-only; token alleen via de Console door de eigenaar, niet in chat.

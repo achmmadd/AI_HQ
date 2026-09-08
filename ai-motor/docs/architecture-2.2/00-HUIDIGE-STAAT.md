@@ -18,14 +18,16 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 
 **Eigenaarsbesluit dezelfde avond:** de NUC is **niet nodig** voor deze taak. Docker-host = NUC is geen meetpunt en geen blokkade. Uitvoering = deze container.
 
-| Vraag | Status op 2026-09-08 laat |
+**Gemeten 2026-09-08 later (QwenPaw, doorgestuurd door de eigenaar):** skill `project-administratie` staat **enabled** (`customized`, scanner `safe=True`). Persona-regels zijn in `PROFILE.md` gezet. `agent.json` is niet aangeraakt. Rooktest **OFFLINE**. Telegram-kanaal: **niet actief** (console-instance). QwenPaw schreef een eigen helper die `MOTOR_API_URL` + optioneel `MOTOR_API_TOKEN` leest. **`MOTOR_API_TOKEN` is verboden** (ADR-110); niet zetten. Canonieke helper blijft credential-loos (`BOOKKEEPING_BOT_URL` of loopback/Docker-host-probe).
+
+| Vraag | Status op 2026-09-08 later |
 |---|---|
-| Draait QwenPaw, waar, welke versie? | **2.2.0** in container `cc22d51c27ac`, agent `boka_operations`, workspace `/app/working/workspaces/boka_operations`. NUC niet vereist. |
-| Is het Telegram-kanaal in QwenPaw actief met allowlist? | **onbekend, meten door agent `boka_operations`** (read-only in `agent.json`, token niet printen) |
-| Tweede Telegram-poller (OpenClaw) op hetzelfde token? | **onbekend, meten door eigenaar** alleen als dezelfde bot nog via OpenClaw antwoordt; geen NUC-setup |
-| Is de read-only skill `project-administratie` geïnstalleerd en enabled? | **nee** op het meetmoment; vervolgopdracht schrijft de bestanden in deze workspace |
-| Bevat de QwenPaw-omgeving een Motor-sessietoken of side-effect-credential? | **onbekend, meten door eigenaar** (acceptatie: nee) |
-| Bookkeeping-bot bereikbaar vanuit de container (`127.0.0.1:8001` / Docker-host)? | **onbekend, meten door agent `boka_operations`** via `motor_admin.py probe` |
+| Draait QwenPaw, waar, welke versie? | **2.2.0** in container `cc22d51c27ac`, agent `boka_operations`. NUC niet vereist. |
+| Skill `project-administratie` enabled? | **ja** (eigen variant; moet credential-loos gemaakt worden) |
+| Rooktest | **OFFLINE** (geldig) — hun script wachtte op `MOTOR_API_URL`; dat is niet de canonieke bron |
+| Telegram-allowlist / kanaal actief? | **nee** — console-only; token alleen via Console door de eigenaar, niet in chat |
+| Motor-sessietoken in QwenPaw-env? | **niet gezet** (goed). Niet alsnog `MOTOR_API_TOKEN` exporteren. |
+| Bookkeeping-bot bereikbaar? | **onbekend, meten door Pietje** — `motor_admin.py probe` zonder token |
 
 Meetcommando's in de QwenPaw-container (deel uitvoer zonder secrets):
 

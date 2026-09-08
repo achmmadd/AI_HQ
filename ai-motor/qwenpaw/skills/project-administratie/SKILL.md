@@ -47,3 +47,6 @@ Kies `--year`/`--quarter` op basis van de vraag; bij twijfel het huidige kwartaa
   naar de Motor UI.
 - Sla geen administratie-data op in geheugen of bestanden; elke vraag haalt
   verse data via het script.
+- Geen `MOTOR_API_TOKEN`, geen Motor-sessiecookie, geen Authorization-header.
+  Geen `MOTOR_API_URL` naar de Motor Next-app. Alleen de bookkeeping-bot
+  (credential-loos) of OFFLINE.
