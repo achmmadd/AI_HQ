@@ -1,0 +1,17 @@
+{
+  "name": "AI Motor (ai-motor)",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "ai-motor dev",
+      "command": "cd ai-motor && npm run dev",
+      "description": "Next.js dev server for the ai-motor app on http://localhost:3040 (SQLite fallback, no external services required)."
+    }
+  ],
+  "ports": [
+    {
+      "name": "ai-motor web",
+      "port": 3040
+    }
+  ]
+}
