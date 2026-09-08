@@ -44,8 +44,9 @@ Kies `--year`/`--quarter` op basis van de vraag; bij twijfel het huidige kwartaa
   is. Raad nooit een herstart aan zonder expliciete vraag van de eigenaar.
 - Deel administratie-inhoud alleen in de privéchat met de eigenaar. In
   groepschats: geen bedragen, leveranciers of documentnamen.
-- Sla geen administratie-data op in geheugen of bestanden; elke vraag haalt
-  verse data via het script.
+- Elke vraag: eerst het script. Bij OFFLINE: `STAND.md` in de workspace.
+  Als Pietje info plakt: die in `STAND.md` zetten (bron + datum). Niet in
+  MEMORY.md. Geen rijen verzinnen.
 - Geen `MOTOR_API_TOKEN`, geen Motor-sessiecookie, geen Authorization-header.
   Geen `MOTOR_API_URL` naar de Motor Next-app. Alleen de bookkeeping-bot
   (credential-loos) of OFFLINE.

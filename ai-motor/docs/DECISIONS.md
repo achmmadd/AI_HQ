@@ -491,7 +491,7 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 ### Besluit
 
 1. **QwenPaw is kanaal/assistent-harness, geen orchestrator.** Engine, Kernel en Gateway blijven op Hetzner (ADR-105/108). **De NUC is geen voorwaarde en geen uitvoeringsdoel** voor projectadministratie + Telegram. **Live:** QwenPaw 2.2.0, agent **`boka_operations`**, Docker-hostname `cc22d51c27ac`, workspace `/app/working/workspaces/boka_operations`. Bestanden en skill horen in díe workspace. QwenPaw neemt de Telegram-kanaalrol voor de eigenaar over van OpenClaw. Of de Docker-host toevallig de NUC is, is irrelevant voor deze taak.
-2. **QwenPaw is het lees-oppervlak voor projectadministratie.** Live `https://motorsai.app/cowork?tab=approvals` bestaat niet meer (eigenaar 2026-09-08). De skill geeft de info zelf (status, recente bonnen, exportdocumenten) in de privéchat. Bron: bookkeeping-bot zonder credentials (`BOOKKEEPING_BOT_URL` of loopback/Docker-host). **`MOTOR_API_TOKEN` verboden.** Geen `/cowork`-deeplink. Schrijven (boeken/approven) blijft verboden in QwenPaw. Inhoud niet in MEMORY.md; niet in groepschats. OFFLINE + **onbekend, meten door Pietje** als de bot onbereikbaar is.
+2. **QwenPaw neemt de operatorrol over** (eigenaar 2026-09-08: “de info geven zodat hij het kan overnemen”). Lees-oppervlak + bijhouden. Bronnen, in volgorde: (a) bookkeeping-bot zonder credentials; (b) workspace-`STAND.md` als Pietje de stand plakt of de bot OFFLINE is. `OVERDRACHT.md` is de werkwijze. **`MOTOR_API_TOKEN` verboden.** Geen `/cowork`. Geen approve/boek-API. `STAND.md` is geen Motor-SSOT (ADR-107): bron + datum verplicht; live probe wint bij conflict. Geen administratie-rijen in MEMORY.md/ReMe. Geen groepen.
 3. **Telegram-token: één poller.** Eén bot-token mag niet door twee pollers tegelijk. Als OpenClaw hetzelfde token nog pollen, dat kanaal daar uit — dat is geen NUC-setup voor QwenPaw. Motor-notificaties (`lib/telegram.ts`, alleen `sendMessage`) mogen hetzelfde token gebruiken. Token roteren via @BotFather bij de verhuizing.
 4. **Toegangscontrole:** `dm_policy: "allowlist"` met alleen het Telegram-user-id van de eigenaar, `group_policy: "allowlist"`, `/setprivacy` ENABLED en `/setjoingroups` DISABLED in @BotFather. De bot gebruikersnaam wordt niet publiek gedeeld.
 5. **AM-1-impact:** QwenPaw start als **Incubation**. OpenClaw blijft de Core-kanaalcomponent (na hardening, ADR-106) tot de QwenPaw-Telegram-migratie live is bewezen; daarna telt QwenPaw als de kanaalcomponent binnen de maximaal acht Production Core-componenten en vervalt OpenClaw naar Incubation. Het componentenaantal stijgt niet.
@@ -500,7 +500,7 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 
 ### Gevolgen
 
-- De eigenaar krijgt administratie-info in QwenPaw (Console/Telegram), niet via `/cowork`.
+- QwenPaw (`boka_operations`) heeft de administratie-operatorrol overgenomen; Pietje levert ontbrekende stand aan of de bot komt later online.
 - OpenClaw verliest het Telegram-kanaal; overige OpenClaw-functies en de hardeningseisen uit ADR-106 blijven gelden zolang OpenClaw aan staat.
 - K1/K2-waardewerk (AM-2) verandert niet van volgorde; QwenPaw is een extra bedieningslaag, geen nieuwe workflow-engine.
 - Uitvoering staat in runbook [`qwenpaw-migratie.md`](qwenpaw-migratie.md); artefacten in [`../qwenpaw/`](../qwenpaw/). Live target: agent `boka_operations`. Als de git-checkout in de container ontbreekt, schrijft de agent de bestanden uit [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md).
@@ -551,3 +551,4 @@ Telegram-kanaal in QwenPaw uitzetten (`enabled: false`). Als OpenClaw het token 
 | 2026-09-08 | ADR-110 + ADR-108-amendement: NUC is niet nodig voor QwenPaw-projectadministratie/Telegram; kanaalrol = bestaande Docker-instance |
 | 2026-09-08 | ADR-110: `MOTOR_API_TOKEN` expliciet verboden; QwenPaw-skill staat enabled met gedocumenteerde OFFLINE |
 | 2026-09-08 | ADR-110: `/cowork?tab=approvals` live weg; QwenPaw is het lees-oppervlak (info in privéchat, geen dode deeplink) |
+| 2026-09-08 | ADR-110: overname-operatorrol; `OVERDRACHT.md` + `STAND.md` (Pietje-plak of probe); nog steeds geen schrijf-API/token |

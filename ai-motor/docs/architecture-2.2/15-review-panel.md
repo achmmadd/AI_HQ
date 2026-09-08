@@ -214,3 +214,7 @@ Impact op de bindende amendementen:
 ## 41.14 Delta-memo 2026-09-08 — `/cowork` weg, info in QwenPaw
 
 **Eigenaar:** Pietje (`https://motorsai.app/cowork?tab=approvals` bestaat niet meer; “daarom wil ik de info aan qwenpaw geven”). Scoped AM-4-uitzondering: de privéchat met de eigenaar ís het lees-oppervlak. Geen dode cowork-deeplink. Schrijven blijft uit in QwenPaw. Geen MEMORY.md, geen groepen, geen Motor-token. In de repo bestaat `/bokas/bonnen` nog als Motor-boekhoudpagina; dat vervangt de dode cowork-URL niet als QwenPaw-doel.
+
+## 41.15 Delta-memo 2026-09-08 — overname met overdracht + stand
+
+**Eigenaar:** Pietje (“kunnen we hem niet de info geven en dat hij het kan overnemen”). Ja, scoped: QwenPaw krijgt `OVERDRACHT.md` (werkwijze uit de Motor-repo) en mag `STAND.md` vullen met wat Pietje plakt of wat `probe` levert. Dat is harness-werkset, geen tweede Motor-SSOT en geen Gateway-schrijven. Live cijfers uit deze audit-VM hebben we niet — die moet Pietje plakken of de bot moet bereikbaar worden.

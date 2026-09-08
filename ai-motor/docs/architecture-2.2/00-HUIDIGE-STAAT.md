@@ -12,7 +12,7 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 
 ## Aanvulling 2026-09-08 — QwenPaw en Telegram-migratie
 
-**Besluit:** [ADR-110](../DECISIONS.md) · **Uitvoering:** [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md) · **Opdracht (info in QwenPaw, geen /cowork):** [`../qwenpaw/OPDRACHT-INFO.md`](../qwenpaw/OPDRACHT-INFO.md)
+**Besluit:** [ADR-110](../DECISIONS.md) · **Uitvoering:** [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md) · **Opdracht (overname):** [`../qwenpaw/OPDRACHT-OVERNAME.md`](../qwenpaw/OPDRACHT-OVERNAME.md)
 
 **Gemeten 2026-09-08 (QwenPaw zelf, doorgestuurd door de eigenaar):** QwenPaw **2.2.0** draait in een Docker-container, hostname `cc22d51c27ac` (`/.dockerenv` aanwezig), werkdirectory `/app/working/workspaces/boka_operations`, agent-id **`boka_operations`**. `~/AI_HQ/ai-motor/qwenpaw` en `~/.qwenpaw/workspaces/default` ontbreken in die container. Skill `project-administratie` en `motor_admin.py` waren op dat moment niet aanwezig.
 

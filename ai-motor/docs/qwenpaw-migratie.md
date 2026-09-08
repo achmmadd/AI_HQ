@@ -15,11 +15,11 @@ Wat de skill **wel** doet (read-only, R0):
 - status (`pending_approvals`, `retry_queue`, disk);
 - recent geboekte bonnen;
 - exportdocumenten per kwartaal;
-- deeplinks naar de Motor UI.
+- de info zelf in de privéchat (geen `/cowork`-deeplink).
 
 Wat **niet** verandert:
 
-- Boeken, approven, editen en exporteren blijven in de Motor UI (ADR-109, AM-4).
+- Boeken/approven in QwenPaw blijft uit (geen schrijfacties, geen dode cowork-link).
 - Geen Motor-sessietoken en geen side-effect-credentials in de QwenPaw-context.
 - QwenPaw is geen orchestrator en geen memorylaag voor Motor-data (ADR-105/107/108).
 - Motor-notificaties via `lib/telegram.ts` (`sendMessage`) mogen hetzelfde bot-token gebruiken.
@@ -30,6 +30,7 @@ Wat **niet** verandert:
 - Agent die nog op de NUC wacht: eerst [`../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md`](../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md), daarna [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md).
 - Skill staat enabled maar vraagt om `MOTOR_API_TOKEN`: [`../qwenpaw/OPDRACHT-GEEN-TOKEN.md`](../qwenpaw/OPDRACHT-GEEN-TOKEN.md). **Geen Motor-sessietoken zetten.**
 - `/cowork` bestaat niet meer; QwenPaw geeft de info: [`../qwenpaw/OPDRACHT-INFO.md`](../qwenpaw/OPDRACHT-INFO.md).
+- Overname (werkwijze + stand): [`../qwenpaw/OPDRACHT-OVERNAME.md`](../qwenpaw/OPDRACHT-OVERNAME.md). Pietje plakt daarna de actuele inbox als probe OFFLINE is.
 
 Persona voor deze agent:
 
