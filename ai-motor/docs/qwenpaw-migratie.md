@@ -22,6 +22,16 @@ Wat **niet** verandert:
 - QwenPaw is geen orchestrator en geen memorylaag voor Motor-data (ADR-105/107/108).
 - Motor-notificaties via `lib/telegram.ts` (alleen `sendMessage`) blijven werken; versturen conflicteert niet met pollen.
 
+## Opdracht aan QwenPaw
+
+De plakklare opdracht staat in [`../qwenpaw/OPDRACHT.md`](../qwenpaw/OPDRACHT.md). Pietje plakt dat bestand **in zijn geheel** in de QwenPaw Console-chat of in de privé-Telegramchat. Dat is de opdracht; QwenPaw installeert daarna zelf skill + persona-bestanden en doet de rooktest.
+
+Persona-bestanden (staan daarna in de workspace, worden het systeemprompt):
+
+- [`../qwenpaw/workspaces/default/AGENTS.md`](../qwenpaw/workspaces/default/AGENTS.md)
+- [`../qwenpaw/workspaces/default/SOUL.md`](../qwenpaw/workspaces/default/SOUL.md)
+- [`../qwenpaw/workspaces/default/PROFILE.md`](../qwenpaw/workspaces/default/PROFILE.md)
+
 ## Voorwaarden
 
 1. QwenPaw is geïnstalleerd op de NUC (`qwenpaw --version` werkt) en er is een workspace (default: `~/.qwenpaw/workspaces/default`).
@@ -54,10 +64,14 @@ Zodra stap 2 live is (QwenPaw antwoordt in Telegram):
 ## Stap 4 — Skill `project-administratie` installeren
 
 ```bash
-# op de NUC, vanuit de repo-checkout:
-mkdir -p ~/.qwenpaw/workspaces/default/skills/project-administratie
-cp -r ~/AI_HQ/ai-motor/qwenpaw/skills/project-administratie/* \
-      ~/.qwenpaw/workspaces/default/skills/project-administratie/
+# op de NUC, vanuit de repo-checkout (of laat QwenPaw dit doen via OPDRACHT.md):
+REPO="${HOME}/AI_HQ/ai-motor/qwenpaw"
+WS="${HOME}/.qwenpaw/workspaces/default"
+mkdir -p "$WS/skills/project-administratie"
+cp -R "$REPO/skills/project-administratie/." "$WS/skills/project-administratie/"
+cp "$REPO/workspaces/default/AGENTS.md" "$WS/AGENTS.md"
+cp "$REPO/workspaces/default/SOUL.md" "$WS/SOUL.md"
+cp "$REPO/workspaces/default/PROFILE.md" "$WS/PROFILE.md"
 qwenpaw skills enable project-administratie --agent-id default
 qwenpaw skills list --status enabled --agent-id default
 ```
