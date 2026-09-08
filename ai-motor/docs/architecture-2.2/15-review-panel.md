@@ -174,3 +174,17 @@ Met AM-1 t/m AM-5 verwerkt beoordeelt het panel het plan als uitvoerbaar: SRE 7/
 5. **Geef ieder stapdeliverable een pad en benoem de beslis-hiërarchie.** Stap 2 had geen doelbestand en “doc 15 bindend” versus “DECISIONS één waarheid” vereiste interpretatie; leg vast dat doc 15 scope/amendementen bevat en `DECISIONS.md` canonieke ADR-tekst.
 
 De eigenaar bepaalt welke verbeteringen in een volgende opdrachtversie landen; er wordt tijdens AM-1 geen nieuwe promptversie aangemaakt.
+
+## 41.10 Delta-memo 2026-09-08 — QwenPaw voor projectadministratie + Telegram
+
+**Eigenaar:** Pietje. De eigenaar heeft QwenPaw (self-hosted AgentScope-assistent) beschikbaar en heeft opdracht gegeven de projectadministratie (bonnen-/administratie-domein per project) en het Telegram-kanaal daarop over te zetten. Vastgelegd als **ADR-110** in [`../DECISIONS.md`](../DECISIONS.md); uitvoering via runbook [`../qwenpaw-migratie.md`](../qwenpaw-migratie.md).
+
+Impact op de bindende amendementen:
+
+- **AM-1 (scope):** QwenPaw start als Incubation en telt pas mee als Production Core-kanaalcomponent zodra de Telegram-migratie live is bewezen; dan vervalt OpenClaw in die rol. Het maximum van acht Core-componenten wordt niet overschreden. Dit is een vervanging van een kanaal-harness, geen nieuwe component erbij.
+- **AM-2 (volgorde):** ongewijzigd. QwenPaw is een bedieningslaag over de bestaande stack, geen nieuw Playbook en geen versnelling van K1/K2.
+- **AM-3 / ADR-105/108:** QwenPaw is kanaal/assistent-harness op de NUC, géén durable orchestrator. Engine, Kernel en Gateway blijven op Hetzner.
+- **AM-4 (compliance):** het expliciete Telegram-besluit uit punt 1 moet bij uitvoering ook QwenPaw dekken; Telegram blijft subverwerker met notificatie+deeplink-minimalisatie. De modelprovider achter QwenPaw is een subverwerker zodra een cloud-route wordt gebruikt — de dataklassen uit punt 2 bepalen welke administratie-vragen via welke route mogen. QwenPaw's eigen geheugen (ReMe) wordt geen tweede memorylaag voor Motor-data (ADR-107).
+- **Beveiligingsregel ongewijzigd:** geen side-effect-credentials en geen Motor-sessietoken in de QwenPaw-context; de administratie-skill is read-only via loopback. Approvals en boekingen blijven in de Motor UI (ADR-109).
+
+**Open meting:** host, versie en kanaalstatus van QwenPaw zijn op 2026-09-08 niet live gemeten — zie de meetcommando's in [`00-HUIDIGE-STAAT.md`](00-HUIDIGE-STAAT.md).

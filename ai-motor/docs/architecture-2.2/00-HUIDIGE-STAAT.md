@@ -10,6 +10,33 @@
 
 De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowledge_documents` en API-auth: `/api/chat/*` en `/api/conversations/*` staan niet meer in `PUBLIC_PATHS` en de routes hebben tenantchecks. De runtime is echter niet aantoonbaar groen. Vanaf deze auditomgeving was geen SSH-toegang tot NUC of Hetzner beschikbaar en `https://motorsai.app` gaf op het meetmoment Cloudflare-fout 1033/HTTP 530. OpenClaw-hardening volgens ADR-106 is niet bewezen en grotendeels niet als serverconfiguratie in de repo aanwezig. ADR-002 loopt achter: het migratiescript en Postgres-schema bestaan, maar `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de applicatierouting niet aan; daardoor is M4 “Postgres SSOT” in de code niet bereikt. Van de nieuwe 2.2-laag bestaan vooral deelstukken: Inngest heeft één geïntegreerde HITL-workflow, maar Kernel, Action Gateway en Playbook-registry bestaan nog niet als 2.2-component.
 
+## Aanvulling 2026-09-08 — QwenPaw en Telegram-migratie
+
+**Nieuw feit (eigenaarsmelding, geen meting):** de eigenaar meldt dat QwenPaw beschikbaar is en heeft opdracht gegeven projectadministratie en het Telegram-kanaal naar QwenPaw over te zetten. Besluit vastgelegd in [ADR-110](../DECISIONS.md); uitvoering via [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md). Deze aanvulling verandert de metingen hieronder niet; alle QwenPaw-velden zijn **onbekend, meten door eigenaar op de NUC**.
+
+| Vraag | Status op 2026-09-08 |
+|---|---|
+| Draait QwenPaw, waar, welke versie? | **onbekend, meten door eigenaar op NUC** |
+| Is het Telegram-kanaal in QwenPaw actief met allowlist? | **onbekend, meten door eigenaar op NUC** |
+| Is het Telegram-kanaal in OpenClaw uit (één poller op het bot-token)? | **onbekend, meten door eigenaar op NUC** |
+| Is de read-only skill `project-administratie` geïnstalleerd en enabled? | **onbekend, meten door eigenaar op NUC** |
+| Bevat de QwenPaw-omgeving een Motor-sessietoken of side-effect-credential? | **onbekend, meten door eigenaar op NUC** (acceptatie: nee) |
+
+Meetcommando's voor de eigenaar op de NUC (deel uitvoer zonder secrets):
+
+```bash
+qwenpaw --version
+ps aux | grep -i qwenpaw | grep -v grep
+ls ~/.qwenpaw/workspaces/
+qwenpaw skills list --agent-id default
+# Telegram-kanaalconfig zonder token te tonen:
+python3 -c "import json;c=json.load(open('$HOME/.qwenpaw/workspaces/default/agent.json'));t=c.get('channels',{}).get('telegram',{});t['bot_token']='***' if t.get('bot_token') else '';print(json.dumps(t,indent=2))"
+# OpenClaw-Telegram uit? (mag geen telegram-poller meer tonen)
+systemctl --user --no-pager status openclaw-gateway.service
+# Skill rooktest (read-only, loopback):
+python3 ~/.qwenpaw/workspaces/default/skills/project-administratie/scripts/motor_admin.py status
+```
+
 ## Meetmethode en bewijslimiet
 
 De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. De mechanische bundel `MOTOR-AI-2.2-COMPLEET.md` is niet als bron gebruikt en in consolidatiestap 3 verwijderd om dubbele waarheid te voorkomen.

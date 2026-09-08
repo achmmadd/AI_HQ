@@ -474,6 +474,49 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 
 ---
 
+## ADR-110 — QwenPaw als assistent-harness voor projectadministratie; Telegram verhuist mee
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** — uitvoering/migratie open |
+| **Datum** | 2026-09-08 |
+| **Beslisser** | Pietje (mondelinge opdracht in eigenaarsessie: "project administratie overzetten op qwenpaw en de telegram mee") |
+
+### Context
+
+De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met Telegram-kanaal en skills) beschikbaar en wil daar de projectadministratie — het bonnen-/administratie-domein per project (fumero/bokas), in Motor UI onder "Bonnen en administratie" — op draaien, met het Telegram-kanaal erbij. Dit raakt ADR-105 (OpenClaw als kanaal-harness), ADR-106 (OpenClaw-hardening) en ADR-108 (kanalen op de NUC).
+
+### Besluit
+
+1. **QwenPaw draait op de NUC** — dezelfde node die ADR-108 aan kanalen/UI/glue toewijst. QwenPaw neemt de Telegram-kanaalrol voor de eigenaar over van OpenClaw. QwenPaw is een kanaal/assistent-harness, **géén durable orchestrator**: ADR-105 en ADR-108 blijven ongewijzigd voor engine, Kernel en Gateway op Hetzner.
+2. **Projectadministratie via QwenPaw is read-only (R0).** De QwenPaw-skill `project-administratie` leest uitsluitend via loopback uit de bestaande bookkeeping-bot (`127.0.0.1:8001`: `/health`, `/recent`, `/export/documents`) en antwoordt met deeplinks naar de Motor UI. Boekingen, approvals, edits en exports blijven in de Motor UI (ADR-109, AM-4 punt 4). QwenPaw krijgt **geen side-effect-credentials** en er komt **geen Motor-sessietoken** in de QwenPaw-context; daarmee blijft de regel "geen side-effect-credentials in agentcontext" overeind en is er geen netwerktoegang nodig buiten loopback.
+3. **Telegram-token verhuist éénmalig.** Eén bot-token mag niet door twee pollers tegelijk worden gebruikt (getUpdates-conflict). Zodra QwenPaw-Telegram live is, gaat het Telegram-kanaal in OpenClaw uit. Motor-notificaties (`lib/telegram.ts`, alleen `sendMessage`) mogen hetzelfde token blijven gebruiken — versturen conflicteert niet met pollen. Het token wordt bij de verhuizing geroteerd via @BotFather.
+4. **Toegangscontrole:** `dm_policy: "allowlist"` met alleen het Telegram-user-id van de eigenaar, `group_policy: "allowlist"`, `/setprivacy` ENABLED en `/setjoingroups` DISABLED in @BotFather. De bot gebruikersnaam wordt niet publiek gedeeld.
+5. **AM-1-impact:** QwenPaw start als **Incubation**. OpenClaw blijft de Core-kanaalcomponent (na hardening, ADR-106) tot de QwenPaw-Telegram-migratie live is bewezen; daarna telt QwenPaw als de kanaalcomponent binnen de maximaal acht Production Core-componenten en vervalt OpenClaw naar Incubation. Het componentenaantal stijgt niet.
+6. **AM-4-impact:** het verwerkingsregister (Art. 30) en de subverwerkerslijst moeten QwenPaw opnemen zodra AM-4 wordt uitgevoerd. Telegram blijft subverwerker met dataminimalisatie (notificatie + deeplink, geen inhoud). QwenPaw zelf is self-hosted en geen subverwerker, maar de achterliggende modelprovider is dat wél zodra een cloud-route wordt gebruikt; de dataklassen uit AM-4 punt 2 bepalen welke routes mogen. QwenPaw's eigen geheugen (ReMe) is harness-intern en wordt geen tweede memorylaag voor Motor-data (ADR-107): er wordt geen Motor-data in QwenPaw-memory opgeslagen buiten vluchtige sessiecontext.
+7. **Legacy project-/taakborden** (`EXECUTION_BOARD.db`, `mission_control.py`, root-`projects/`) migreren **niet** naar QwenPaw; AM-5 (bevriezen → 30 dagen → verwijderen) blijft ongewijzigd.
+
+### Gevolgen
+
+- De eigenaar doet projectadministratie-vragen (openstaande bonnen, recente boekingen, exportstatus, aantal te approven items) via Telegram aan QwenPaw; de antwoorden bevatten deeplinks naar de Motor UI voor elke actie.
+- OpenClaw verliest het Telegram-kanaal; overige OpenClaw-functies en de hardeningseisen uit ADR-106 blijven gelden zolang OpenClaw aan staat.
+- K1/K2-waardewerk (AM-2) verandert niet van volgorde; QwenPaw is een extra bedieningslaag, geen nieuwe workflow-engine.
+- Uitvoering staat in runbook [`qwenpaw-migratie.md`](qwenpaw-migratie.md); artefacten in [`../qwenpaw/`](../qwenpaw/).
+
+### Acceptatie
+
+- [ ] QwenPaw draait op de NUC met Telegram-kanaal op allowlist en beantwoordt een administratie-vraag met live data (commandoutput als bewijs)
+- [ ] OpenClaw-Telegram is uit; er is één actieve poller op het bot-token
+- [ ] Approvals/boekingen gebeuren aantoonbaar nog in de Motor UI (deeplink-flow), niet in Telegram
+- [ ] Geen Motor-sessietoken of side-effect-credential in de QwenPaw-config of -omgeving
+- [ ] `00-HUIDIGE-STAAT.md` is bijgewerkt met de live metingen van de migratie
+
+### Rollback
+
+Telegram-kanaal in QwenPaw uitzetten (`enabled: false`), OpenClaw-Telegram weer aan, token opnieuw roteren. De read-only skill heeft geen state en laat geen spoor achter in Motor-data; er is niets terug te zetten in de databases.
+
+---
+
 ## ADR-index (overzicht)
 
 | ID | Onderwerp | Status |
@@ -490,6 +533,7 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 | ADR-107 | Geen tweede memorylaag | ✅ Besloten |
 | ADR-108 | Runtime-topologie | ✅ Hetzner durable control |
 | ADR-109 | Gateway-enforcementmodel | ✅ Credential-broker/proxy |
+| ADR-110 | QwenPaw voor projectadministratie; Telegram verhuist mee | ✅ Besloten 2026-09-08; migratie open |
 
 ---
 
@@ -500,3 +544,4 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 | 2026-06-06 | ADR-001 dual-search + ADR-002 Postgres milestones (M0–M6) |
 | 2026-06-06 | Sprint 1.3: Qdrant payload schema, master_contexts, PM2 single-instance note |
 | 2026-07-27 | ADR-101 t/m ADR-109 geconsolideerd uit Motor AI 2.2 AM-1 t/m AM-5; ADR-108/109 toegevoegd |
+| 2026-09-08 | ADR-110 toegevoegd: QwenPaw als assistent-harness voor projectadministratie op de NUC; Telegram-kanaal verhuist van OpenClaw naar QwenPaw (eigenaarsopdracht) |
