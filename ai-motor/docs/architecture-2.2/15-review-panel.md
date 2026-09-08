@@ -183,7 +183,7 @@ Impact op de bindende amendementen:
 
 - **AM-1 (scope):** QwenPaw start als Incubation en telt pas mee als Production Core-kanaalcomponent zodra de Telegram-migratie live is bewezen; dan vervalt OpenClaw in die rol. Het maximum van acht Core-componenten wordt niet overschreden. Dit is een vervanging van een kanaal-harness, geen nieuwe component erbij.
 - **AM-2 (volgorde):** ongewijzigd. QwenPaw is een bedieningslaag over de bestaande stack, geen nieuw Playbook en geen versnelling van K1/K2.
-- **AM-3 / ADR-105/108:** QwenPaw is kanaal/assistent-harness op de NUC, géén durable orchestrator. Engine, Kernel en Gateway blijven op Hetzner.
+- **AM-3 / ADR-105/108:** QwenPaw is kanaal/assistent-harness, géén durable orchestrator. Engine, Kernel en Gateway blijven op Hetzner. Telegram voor administratie zit vanaf het amendement van dezelfde avond **niet** op de NUC (zie §41.12).
 - **AM-4 (compliance):** het expliciete Telegram-besluit uit punt 1 moet bij uitvoering ook QwenPaw dekken; Telegram blijft subverwerker met notificatie+deeplink-minimalisatie. De modelprovider achter QwenPaw is een subverwerker zodra een cloud-route wordt gebruikt — de dataklassen uit punt 2 bepalen welke administratie-vragen via welke route mogen. QwenPaw's eigen geheugen (ReMe) wordt geen tweede memorylaag voor Motor-data (ADR-107).
 - **Beveiligingsregel ongewijzigd:** geen side-effect-credentials en geen Motor-sessietoken in de QwenPaw-context; de administratie-skill is read-only via loopback. Approvals en boekingen blijven in de Motor UI (ADR-109).
 
@@ -191,9 +191,18 @@ Impact op de bindende amendementen:
 
 ## 41.11 Delta-memo 2026-09-08 avond — QwenPaw draait als `boka_operations` in Docker
 
-**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer). De eerste opdracht stopte terecht: die eiste de NUC-host en `~/AI_HQ`. Dat is geen topologiewijziging van ADR-108 (kanalen blijven NUC-doel). Het is een runtimefeit: de actieve harness is deze container/agent. Gevolg voor uitvoering:
+**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer). De eerste opdracht stopte terecht: die eiste de NUC-host en `~/AI_HQ`. De actieve harness is deze container/agent. Gevolg voor uitvoering:
 
 - Doelworkspace = `/app/working/workspaces/boka_operations`, niet `default` / `~/.qwenpaw`.
 - Skill-bestanden mogen door de agent zelf worden geschreven (repo ontbreekt in de container); geen Motor-token, geen `agent.json`-overschrijf.
 - Bookkeeping via read-only probe (loopback + Docker-host). Geen bereik = **onbekend, meten door Pietje**, geen nieuwe store of Motor-API.
-- AM-1/AM-4 ongewijzigd. Docker-host = NUC? nog **onbekend, meten door eigenaar**.
+- AM-1/AM-4 ongewijzigd.
+
+## 41.12 Delta-memo 2026-09-08 laat — NUC niet nodig voor QwenPaw-administratie
+
+**Eigenaar:** Pietje (“de nuc is toch niet nodig”). Scoped amendement op ADR-108/110:
+
+- Projectadministratie + Telegram via QwenPaw vereisen **geen NUC** en geen meting of de Docker-host de NUC is.
+- Uitvoering blijft op agent `boka_operations` in de bestaande container.
+- Hetzner blijft durable control. Motor UI/approvals blijven de plek voor schrijfacties (ADR-109).
+- OpenClaw-Telegram uitzetten alleen als die hetzelfde bot-token nog pollen — geen NUC-setupstap voor QwenPaw.

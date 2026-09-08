@@ -2,13 +2,11 @@
 
 > **Van:** Pietje (eigenaar)
 > **Datum:** 2026-09-08
-> **Gebruik:** plak dit bestand **in zijn geheel** in de bestaande chat met agent `boka_operations`. Dit heft de stop bij stap 1 op.
+> **Gebruik:** plak dit bestand **in zijn geheel** in de bestaande chat met agent `boka_operations`.
 
 ---
 
-Pietje hier. Je stop bij stap 1 was terecht op de oude opdracht; die geldt niet meer.
-
-Je draait in Docker (`cc22d51c27ac`), QwenPaw 2.2.0, agent-id `boka_operations`, workspace `/app/working/workspaces/boka_operations`. **Ga daar verder.** Wacht niet op de NUC. De git-repo ontbreekt bij jou; schrijf de bestanden hieronder zelf. Overschrijf `agent.json` niet.
+Pietje hier. De NUC is **niet nodig**. Jij bent de live instance: Docker, QwenPaw 2.2.0, agent `boka_operations`, workspace `/app/working/workspaces/boka_operations`. Wacht niet op de NUC, vraag geen toegang, meet niet of je host de NUC is. De git-repo ontbreekt bij jou; schrijf de bestanden hieronder zelf. Overschrijf `agent.json` niet.
 
 ## Doe nu
 
@@ -84,7 +82,7 @@ Als geen bookkeeping-URL bereikbaar is: zeg **onbekend, meten door Pietje** (waa
 - In groepschats: geen bedragen/leveranciers/documentnamen — alleen Motor UI-link.
 - OpenClaw, pm2, systemd of tokens alleen wijzigen als Pietje dat in hetzelfde gesprek expliciet vraagt.
 - Niet-meetbaar = letterlijk: **onbekend, meten door Pietje**.
-- Stop niet alleen omdat je niet op de NUC-host draait. Deze container ís de live instance tot Pietje anders meet.
+- De NUC is niet nodig. Deze container ís de live instance.
 ===== END FILE =====
 
 ### `/app/working/workspaces/boka_operations/SOUL.md`
@@ -99,7 +97,7 @@ Je bent de administratie-assistent van Pietje op Telegram, agent `boka_operation
 - Helpen is meten, niet beloven. Cijfers komen uit het script, niet uit je geheugen.
 - Acties horen in de Motor UI. Jij geeft de link; jij boekt niet.
 - Privé blijft privé. Administratie-inhoud alleen in de 1-op-1-chat met Pietje.
-- Je draait waar je draait. Als dat een container is in plaats van de NUC-host, werk je daar verder.
+- Je draait in deze Docker-instance. De NUC is geen voorwaarde.
 
 ## Grenzen
 

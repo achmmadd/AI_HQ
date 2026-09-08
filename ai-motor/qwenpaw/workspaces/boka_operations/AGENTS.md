@@ -33,4 +33,4 @@ Als geen bookkeeping-URL bereikbaar is: zeg **onbekend, meten door Pietje** (waa
 - In groepschats: geen bedragen/leveranciers/documentnamen — alleen Motor UI-link.
 - OpenClaw, pm2, systemd of tokens alleen wijzigen als Pietje dat in hetzelfde gesprek expliciet vraagt.
 - Niet-meetbaar = letterlijk: **onbekend, meten door Pietje**.
-- Stop niet alleen omdat je niet op de NUC-host draait. Deze container ís de live instance tot Pietje anders meet.
+- De NUC is niet nodig. Deze container ís de live instance.

@@ -405,15 +405,17 @@ Er zijn drie nodes: NUC, Hetzner 16 GB en een Ryzen 7/32 GB/RTX 3090-PC in aanbo
 | Node | Verantwoordelijkheid |
 |---|---|
 | **Hetzner** | Postgres SSOT, canonieke engine, Kernel-API, Action Gateway, Qdrant, LiteLLM, n8n-adapter en Uptime Kuma/Beszel-hub |
-| **NUC** | Motor UI, gehard OpenClaw, Telegram/kanalen, local-executor/PC-bridge-glue en ingress |
+| **NUC** | Motor UI, gehard OpenClaw (tot ADR-110-cutover), local-executor/PC-bridge-glue en ingress. **Telegram voor projectadministratie: niet hier — zie ADR-110.** |
 | **Inference-PC** | Stateless lokale LLM-/batchworker via Tailscale; geen DB of publiek endpoint |
 
-De eigenaar mag de NUC informeel “orchestrator” noemen voor kanalen/UI; de enige **durable orchestrator** is de engine op Hetzner. De inference-PC krijgt geen taken vóór SSH, runbook en Gateway/policy.
+De eigenaar mag de NUC informeel “orchestrator” noemen voor UI/glue; de enige **durable orchestrator** is de engine op Hetzner. De inference-PC krijgt geen taken vóór SSH, runbook en Gateway/policy.
+
+**Amendement 2026-09-08 (ADR-110):** Telegram + projectadministratie via QwenPaw vereisen **geen NUC**. Die kanaalrol draait op de bestaande QwenPaw-instance (Docker, agent `boka_operations`). Dit wijzigt Hetzner-durable-control en de inference-PC-blokkade niet.
 
 ### Gevolgen
 
 - Engine↔Postgres-checkpoints blijven lokaal op Hetzner; cross-node inference/glue meet nog steeds Tailscale-latency (ADR-101 gate 4).
-- NUC-uitval raakt kanalen, niet durable state.
+- NUC-uitval raakt Motor UI/ingress, niet durable state. QwenPaw-Telegram (ADR-110) is daar niet van afhankelijk.
 - Monitoring op Hetzner bewaakt de thuissite.
 - Inngest vereist een apart engine-store-backupobject.
 
@@ -488,9 +490,9 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 
 ### Besluit
 
-1. **QwenPaw is kanaal/assistent-harness, geen orchestrator.** ADR-105 en ADR-108 blijven: engine, Kernel en Gateway op Hetzner; kanalen horen op de NUC. **Live gemeten 2026-09-08:** QwenPaw 2.2.0 draait als agent **`boka_operations`** in een Docker-container (hostname `cc22d51c27ac`, workspace `/app/working/workspaces/boka_operations`). Of die container op de NUC-host staat is onbekend tot de eigenaar de Docker-host meet. De uitvoeringsopdracht stopt niet meer op “niet de NUC”: bestanden en skill horen in díe workspace. QwenPaw neemt de Telegram-kanaalrol voor de eigenaar over van OpenClaw.
+1. **QwenPaw is kanaal/assistent-harness, geen orchestrator.** Engine, Kernel en Gateway blijven op Hetzner (ADR-105/108). **De NUC is geen voorwaarde en geen uitvoeringsdoel** voor projectadministratie + Telegram. **Live:** QwenPaw 2.2.0, agent **`boka_operations`**, Docker-hostname `cc22d51c27ac`, workspace `/app/working/workspaces/boka_operations`. Bestanden en skill horen in díe workspace. QwenPaw neemt de Telegram-kanaalrol voor de eigenaar over van OpenClaw. Of de Docker-host toevallig de NUC is, is irrelevant voor deze taak.
 2. **Projectadministratie via QwenPaw is read-only (R0).** De skill `project-administratie` leest `/health`, `/recent` en `/export/documents` zonder credentials. Eerst `BOOKKEEPING_BOT_URL` indien gezet; anders `127.0.0.1:8001`, daarna Docker-host-kandidaten (`host.docker.internal`, `172.17.0.1`). Geen Motor-sessietoken. Boekingen, approvals, edits en exports blijven in de Motor UI (ADR-109, AM-4 punt 4). Geen side-effect-credentials in de QwenPaw-context. Als geen URL bereikbaar is: **onbekend, meten door Pietje** — geen verzonnen endpoint.
-3. **Telegram-token verhuist éénmalig.** Eén bot-token mag niet door twee pollers tegelijk worden gebruikt (getUpdates-conflict). Zodra QwenPaw-Telegram live is, gaat het Telegram-kanaal in OpenClaw uit. Motor-notificaties (`lib/telegram.ts`, alleen `sendMessage`) mogen hetzelfde token blijven gebruiken — versturen conflicteert niet met pollen. Het token wordt bij de verhuizing geroteerd via @BotFather.
+3. **Telegram-token: één poller.** Eén bot-token mag niet door twee pollers tegelijk. Als OpenClaw hetzelfde token nog pollen, dat kanaal daar uit — dat is geen NUC-setup voor QwenPaw. Motor-notificaties (`lib/telegram.ts`, alleen `sendMessage`) mogen hetzelfde token gebruiken. Token roteren via @BotFather bij de verhuizing.
 4. **Toegangscontrole:** `dm_policy: "allowlist"` met alleen het Telegram-user-id van de eigenaar, `group_policy: "allowlist"`, `/setprivacy` ENABLED en `/setjoingroups` DISABLED in @BotFather. De bot gebruikersnaam wordt niet publiek gedeeld.
 5. **AM-1-impact:** QwenPaw start als **Incubation**. OpenClaw blijft de Core-kanaalcomponent (na hardening, ADR-106) tot de QwenPaw-Telegram-migratie live is bewezen; daarna telt QwenPaw als de kanaalcomponent binnen de maximaal acht Production Core-componenten en vervalt OpenClaw naar Incubation. Het componentenaantal stijgt niet.
 6. **AM-4-impact:** het verwerkingsregister (Art. 30) en de subverwerkerslijst moeten QwenPaw opnemen zodra AM-4 wordt uitgevoerd. Telegram blijft subverwerker met dataminimalisatie (notificatie + deeplink, geen inhoud). QwenPaw zelf is self-hosted en geen subverwerker, maar de achterliggende modelprovider is dat wél zodra een cloud-route wordt gebruikt; de dataklassen uit AM-4 punt 2 bepalen welke routes mogen. QwenPaw's eigen geheugen (ReMe) is harness-intern en wordt geen tweede memorylaag voor Motor-data (ADR-107): er wordt geen Motor-data in QwenPaw-memory opgeslagen buiten vluchtige sessiecontext.
@@ -506,14 +508,14 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 ### Acceptatie
 
 - [ ] Agent `boka_operations` heeft skill + persona-bestanden en beantwoordt een administratie-vraag met live data of een gedocumenteerde OFFLINE-probe (commandoutput als bewijs)
-- [ ] OpenClaw-Telegram is uit; er is één actieve poller op het bot-token
+- [ ] Geen tweede poller op hetzelfde bot-token (OpenClaw-Telegram alleen uitzetten als die nog pollen; geen NUC-werk voor QwenPaw)
 - [ ] Approvals/boekingen gebeuren aantoonbaar nog in de Motor UI (deeplink-flow), niet in Telegram
 - [ ] Geen Motor-sessietoken of side-effect-credential in de QwenPaw-config of -omgeving
 - [ ] `00-HUIDIGE-STAAT.md` is bijgewerkt met de live metingen van de migratie
 
 ### Rollback
 
-Telegram-kanaal in QwenPaw uitzetten (`enabled: false`), OpenClaw-Telegram weer aan, token opnieuw roteren. De read-only skill heeft geen state en laat geen spoor achter in Motor-data; er is niets terug te zetten in de databases.
+Telegram-kanaal in QwenPaw uitzetten (`enabled: false`). Als OpenClaw het token eerder pollen: dat kanaal daar weer aan en token roteren. De read-only skill heeft geen state; er is niets in databases terug te zetten. Geen NUC-stap.
 
 ---
 
@@ -546,3 +548,4 @@ Telegram-kanaal in QwenPaw uitzetten (`enabled: false`), OpenClaw-Telegram weer 
 | 2026-07-27 | ADR-101 t/m ADR-109 geconsolideerd uit Motor AI 2.2 AM-1 t/m AM-5; ADR-108/109 toegevoegd |
 | 2026-09-08 | ADR-110 toegevoegd: QwenPaw als assistent-harness voor projectadministratie; Telegram-kanaal verhuist van OpenClaw naar QwenPaw (eigenaarsopdracht) |
 | 2026-09-08 | ADR-110 aangescherpt: live instance is agent `boka_operations` in Docker 2.2.0; opdracht stopt niet meer op “niet de NUC”; bookkeeping-URL via probe i.p.v. alleen loopback |
+| 2026-09-08 | ADR-110 + ADR-108-amendement: NUC is niet nodig voor QwenPaw-projectadministratie/Telegram; kanaalrol = bestaande Docker-instance |

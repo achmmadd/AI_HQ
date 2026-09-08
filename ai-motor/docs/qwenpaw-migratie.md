@@ -1,13 +1,13 @@
 # Runbook — QwenPaw-migratie: projectadministratie + Telegram
 
 > **Eigenaar:** Pietje · **Datum:** 2026-09-08
-> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.11](architecture-2.2/15-review-panel.md)
+> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.12](architecture-2.2/15-review-panel.md)
 > **Artefacten:** [`../qwenpaw/`](../qwenpaw/)
 > **Live target:** agent `boka_operations`, workspace `/app/working/workspaces/boka_operations` (QwenPaw 2.2.0, Docker)
 
 ## Doel en scope
 
-De eigenaar bedient de projectadministratie (bonnen/administratie per project, fumero/bokas) via Telegram op QwenPaw. ADR-108 blijft: kanalen horen op de NUC. De gemeten runtime is een Docker-container met agent `boka_operations`; of die host de NUC is, is onbekend tot gemeten.
+De eigenaar bedient de projectadministratie (bonnen/administratie per project, fumero/bokas) via Telegram op QwenPaw. **De NUC is niet nodig.** Runtime = de bestaande Docker-instance, agent `boka_operations`. Hetzner blijft durable control; Motor UI blijft de plek voor schrijfacties.
 
 Wat de skill **wel** doet (read-only, R0):
 
@@ -27,7 +27,7 @@ Wat **niet** verandert:
 ## Opdracht aan QwenPaw
 
 - Eerste keer / nieuwe chat: [`../qwenpaw/OPDRACHT.md`](../qwenpaw/OPDRACHT.md)
-- Agent `boka_operations` die stopte bij “niet de NUC”: plak [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md) in diezelfde chat. Dat bestand bevat de te schrijven skill- en persona-bestanden (de git-repo ontbreekt in de container).
+- Agent die nog op de NUC wacht: eerst [`../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md`](../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md), daarna [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md) (skill + persona, omdat de git-repo in de container ontbreekt).
 
 Persona voor deze agent:
 
@@ -43,7 +43,7 @@ Persona voor deze agent:
 
 ## Stap 1 — Nulmeting
 
-Al gedaan voor versie/host/agent (zie 00-HUIDIGE-STAAT). Residual: Docker-host, Telegram-allowlist, OpenClaw-poller, bookkeeping-bereik.
+Al gedaan voor versie/host/agent (zie 00-HUIDIGE-STAAT). Residual: Telegram-allowlist, bookkeeping-bereik, en alleen indien nodig een tweede poller op hetzelfde bot-token.
 
 ## Stap 2 — Telegram-token roteren en verhuizen
 
@@ -55,9 +55,9 @@ Eén bot-token mag niet door twee pollers tegelijk. Eerst roteren, dan verhuizen
 4. Merge [`../qwenpaw/agent.json.example`](../qwenpaw/agent.json.example) in `/app/working/workspaces/boka_operations/agent.json` (niet overschrijven). `allow_from` = alleen eigenaar-user-id. Of Console → Control → Channels → Telegram.
 5. Opslaan / herladen.
 
-## Stap 3 — OpenClaw-Telegram uitzetten
+## Stap 3 — Tweede poller (alleen als die bestaat)
 
-Op de NUC, zodra QwenPaw in Telegram antwoordt: Telegram-kanaal in OpenClaw uit, `systemctl --user restart openclaw-gateway.service`. Bewijs: één poller.
+Geen NUC-werk. Als dezelfde Telegram-bot nog via OpenClaw antwoordt: dat kanaal daar uitzetten zodat er één poller overblijft. Als OpenClaw dit token niet pollen, sla deze stap over.
 
 ## Stap 4 — Skill installeren
 
@@ -91,13 +91,13 @@ Meetresultaten in 00-HUIDIGE-STAAT; ADR-110-acceptatie afvinken met bewijs. Bij 
 ## Rollback
 
 1. `channels.telegram.enabled: false` in de `boka_operations`-`agent.json`, herladen.
-2. OpenClaw-Telegram weer aan (NUC), token roteren.
+2. Als OpenClaw het token eerder pollen: dat kanaal daar weer aan en token roteren. Geen NUC-verplichting.
 3. `qwenpaw skills disable project-administratie --agent-id boka_operations`. Geen DB-rollback nodig.
 
 ## Acceptatie (spiegelt ADR-110)
 
 - [ ] `boka_operations` heeft skill + persona en beantwoordt een administratie-vraag of documenteert OFFLINE-probe
-- [ ] Precies één actieve Telegram-poller (OpenClaw-Telegram uit)
+- [ ] Geen tweede poller op hetzelfde bot-token (OpenClaw alleen als die nog pollen)
 - [ ] Approvals/boekingen via Motor UI-deeplinks
 - [ ] Geen Motor-sessietoken of side-effect-credential in QwenPaw
 - [ ] `00-HUIDIGE-STAAT.md` bijgewerkt
