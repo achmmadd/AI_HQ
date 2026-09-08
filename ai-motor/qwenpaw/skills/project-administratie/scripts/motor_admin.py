@@ -5,6 +5,9 @@ Spiegelt de read-only GET-paden die de Motor-app zelf gebruikt
 (ai-motor/app/api/bookkeeping/*). Doet bewust geen enkele schrijfactie:
 approvals, boekingen en exports blijven in de Motor UI (ADR-109/110).
 
+Zonder BOOKKEEPING_BOT_URL probeert het script loopback en daarna de
+gebruikelijke Docker-host-adressen. Geen Motor-sessietoken, geen writes.
+
 Exitcode 0 = gelukt, 2 = service offline of ongeldig antwoord.
 """
 
@@ -15,13 +18,51 @@ import sys
 import urllib.error
 import urllib.request
 
-BOT_BASE = os.environ.get("BOOKKEEPING_BOT_URL", "http://127.0.0.1:8001").rstrip("/")
 UI_BASE = os.environ.get("MOTOR_UI_BASE", "https://motorsai.app").rstrip("/")
 TIMEOUT = 8
 
+_resolved_base = None
+
+
+def candidate_bases():
+    env = os.environ.get("BOOKKEEPING_BOT_URL", "").strip()
+    if env:
+        return [env.rstrip("/")]
+    return [
+        "http://127.0.0.1:8001",
+        "http://host.docker.internal:8001",
+        "http://172.17.0.1:8001",
+    ]
+
+
+def fetch_health(base: str):
+    url = f"{base.rstrip('/')}/health"
+    with urllib.request.urlopen(url, timeout=TIMEOUT) as res:
+        return json.loads(res.read().decode("utf-8"))
+
+
+def resolve_base():
+    global _resolved_base
+    if _resolved_base:
+        return _resolved_base
+    errors = []
+    for base in candidate_bases():
+        try:
+            fetch_health(base)
+            _resolved_base = base
+            return base
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            errors.append(f"{base}: {exc}")
+    print("OFFLINE: administratie-service niet bereikbaar.")
+    print("Geprobeerd:")
+    for line in errors:
+        print(f"- {line}")
+    print("Zet BOOKKEEPING_BOT_URL als de bot elders luistert. Geen credentials nodig.")
+    sys.exit(2)
+
 
 def get_json(path: str):
-    url = f"{BOT_BASE}{path}"
+    url = f"{resolve_base()}{path}"
     try:
         with urllib.request.urlopen(url, timeout=TIMEOUT) as res:
             return json.loads(res.read().decode("utf-8"))
@@ -38,12 +79,32 @@ def pick(item: dict, *keys: str) -> str:
     return ""
 
 
+def cmd_probe() -> None:
+    any_ok = False
+    print("Read-only probe (geen secrets):")
+    for base in candidate_bases():
+        try:
+            data = fetch_health(base)
+            status = data.get("status", "onbekend")
+            pending = data.get("pending_approvals", "?")
+            print(f"- {base} → bereikbaar, status={status}, pending_approvals={pending}")
+            any_ok = True
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            print(f"- {base} → niet bereikbaar ({exc})")
+    if not any_ok:
+        print("Geen kandidaat bereikbaar. BOOKKEEPING_BOT_URL is onbekend, meten door Pietje.")
+        sys.exit(2)
+    print(f"Approvals afhandelen in Motor UI: {UI_BASE}/cowork?tab=approvals")
+
+
 def cmd_status() -> None:
+    base = resolve_base()
     data = get_json("/health")
     status = data.get("status", "onbekend")
     pending = data.get("pending_approvals", 0)
     retry = data.get("retry_queue", 0)
     disk = data.get("disk_free_mb")
+    print(f"Administratie-bron: {base}")
     print(f"Administratie-service: {status}")
     print(f"Open approvals: {pending}")
     print(f"Retry-queue: {retry}")
@@ -94,6 +155,7 @@ def main() -> None:
         description="Read-only Motor-projectadministratie via de bookkeeping-bot."
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("probe", help="Welke bookkeeping-URL bereikbaar is (loopback/Docker-host)")
     sub.add_parser("status", help="Gezondheid + open approvals/retry-queue")
     sub.add_parser("recent", help="Recent geboekte bonnen")
     docs = sub.add_parser("documents", help="Exportdocumenten per kwartaal")
@@ -101,7 +163,9 @@ def main() -> None:
     docs.add_argument("--quarter", required=True, choices=["1", "2", "3", "4"])
     args = parser.parse_args()
 
-    if args.command == "status":
+    if args.command == "probe":
+        cmd_probe()
+    elif args.command == "status":
         cmd_status()
     elif args.command == "recent":
         cmd_recent()

@@ -15,13 +15,14 @@ Draai het meegeleverde helper-script. Het is read-only, draait op loopback en
 heeft geen credentials nodig:
 
 ```bash
+python3 scripts/motor_admin.py probe
 python3 scripts/motor_admin.py status
 python3 scripts/motor_admin.py recent
 python3 scripts/motor_admin.py documents --year 2026 --quarter 3
 ```
 
-Het script staat in de `scripts/`-map van deze skill
-(`~/.qwenpaw/workspaces/<agent_id>/skills/project-administratie/scripts/motor_admin.py`).
+Het script staat in de `scripts/`-map van deze skill, bijvoorbeeld
+`/app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py`.
 Kies `--year`/`--quarter` op basis van de vraag; bij twijfel het huidige kwartaal.
 
 - `status` — gezondheid van de administratie-service: `pending_approvals`,
@@ -38,10 +39,9 @@ Kies `--year`/`--quarter` op basis van de vraag; bij twijfel het huidige kwartaa
 - Voer NOOIT schrijfacties uit: geen boekingen, approvals, edits, exports of
   uploads. Bij een actieverzoek ("boek deze bon", "keur dit goed") antwoord je
   vriendelijk dat dat in de Motor UI moet, met de bijbehorende deeplink.
-- Print het script `OFFLINE` (exitcode 2), meld dan dat de
-  administratie-service niet bereikbaar is en adviseer op de NUC
-  `pm2 list` en de bookkeeping-bot-service te controleren. Raad nooit aan de
-  service "even" te herstarten zonder dat de eigenaar daar expliciet om vraagt.
+- Print het script `OFFLINE` (exitcode 2), meld dan welke URL's zijn
+  geprobeerd en dat `BOOKKEEPING_BOT_URL` **onbekend, meten door Pietje**
+  is. Raad nooit een herstart aan zonder expliciete vraag van de eigenaar.
 - Deel administratie-inhoud alleen in de privéchat met de eigenaar. In
   groepschats: geen bedragen, leveranciers of documentnamen — alleen verwijzen
   naar de Motor UI.

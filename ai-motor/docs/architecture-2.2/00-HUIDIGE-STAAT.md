@@ -12,29 +12,36 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 
 ## Aanvulling 2026-09-08 — QwenPaw en Telegram-migratie
 
-**Nieuw feit (eigenaarsmelding, geen meting):** de eigenaar meldt dat QwenPaw beschikbaar is en heeft opdracht gegeven projectadministratie en het Telegram-kanaal naar QwenPaw over te zetten. Besluit vastgelegd in [ADR-110](../DECISIONS.md); uitvoering via [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md). Deze aanvulling verandert de metingen hieronder niet; alle QwenPaw-velden zijn **onbekend, meten door eigenaar op de NUC**.
+**Besluit:** [ADR-110](../DECISIONS.md) · **Uitvoering:** [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md) · **Opdracht:** [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md)
 
-| Vraag | Status op 2026-09-08 |
+**Gemeten 2026-09-08 (QwenPaw zelf, doorgestuurd door de eigenaar):** QwenPaw **2.2.0** draait in een Docker-container, hostname `cc22d51c27ac` (`/.dockerenv` aanwezig), werkdirectory `/app/working/workspaces/boka_operations`, agent-id **`boka_operations`**. `~/AI_HQ/ai-motor/qwenpaw` en `~/.qwenpaw/workspaces/default` ontbreken in die container. Skill `project-administratie` en `motor_admin.py` waren op dat moment niet aanwezig. Of de Docker-host de NUC is, is **onbekend, meten door eigenaar** (`docker inspect` / host-hostname). ADR-108 blijft: kanalen horen op de NUC; dit is de huidige runtime, geen bewijs dat de NUC-host de QwenPaw-processpace is.
+
+| Vraag | Status op 2026-09-08 avond |
 |---|---|
-| Draait QwenPaw, waar, welke versie? | **onbekend, meten door eigenaar op NUC** |
-| Is het Telegram-kanaal in QwenPaw actief met allowlist? | **onbekend, meten door eigenaar op NUC** |
+| Draait QwenPaw, waar, welke versie? | **2.2.0** in container `cc22d51c27ac`, agent `boka_operations`, workspace `/app/working/workspaces/boka_operations`. Docker-host = **onbekend, meten door eigenaar** |
+| Is het Telegram-kanaal in QwenPaw actief met allowlist? | **onbekend, meten door agent `boka_operations`** (read-only in `agent.json`, token niet printen) |
 | Is het Telegram-kanaal in OpenClaw uit (één poller op het bot-token)? | **onbekend, meten door eigenaar op NUC** |
-| Is de read-only skill `project-administratie` geïnstalleerd en enabled? | **onbekend, meten door eigenaar op NUC** |
-| Bevat de QwenPaw-omgeving een Motor-sessietoken of side-effect-credential? | **onbekend, meten door eigenaar op NUC** (acceptatie: nee) |
+| Is de read-only skill `project-administratie` geïnstalleerd en enabled? | **nee** op het meetmoment; vervolgopdracht schrijft de bestanden in deze workspace |
+| Bevat de QwenPaw-omgeving een Motor-sessietoken of side-effect-credential? | **onbekend, meten door eigenaar** (acceptatie: nee) |
+| Bookkeeping-bot bereikbaar vanuit de container (`127.0.0.1:8001` / Docker-host)? | **onbekend, meten door agent `boka_operations`** via `motor_admin.py probe` |
 
-Meetcommando's voor de eigenaar op de NUC (deel uitvoer zonder secrets):
+Meetcommando's in de QwenPaw-container (deel uitvoer zonder secrets):
 
 ```bash
 qwenpaw --version
-ps aux | grep -i qwenpaw | grep -v grep
-ls ~/.qwenpaw/workspaces/
-qwenpaw skills list --agent-id default
-# Telegram-kanaalconfig zonder token te tonen:
-python3 -c "import json;c=json.load(open('$HOME/.qwenpaw/workspaces/default/agent.json'));t=c.get('channels',{}).get('telegram',{});t['bot_token']='***' if t.get('bot_token') else '';print(json.dumps(t,indent=2))"
-# OpenClaw-Telegram uit? (mag geen telegram-poller meer tonen)
+hostname
+pwd
+ls /app/working/workspaces/boka_operations
+qwenpaw skills list --status enabled --agent-id boka_operations
+python3 /app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py probe
+# Telegram zonder token:
+python3 -c "import json;c=json.load(open('/app/working/workspaces/boka_operations/agent.json'));t=c.get('channels',{}).get('telegram',{});t['bot_token']='***' if t.get('bot_token') else '';print(json.dumps({k:t.get(k) for k in ('enabled','dm_policy','group_policy','allow_from')},indent=2))"
+```
+
+OpenClaw-Telegram (NUC, als die de Docker-host is) blijft een aparte meting:
+
+```bash
 systemctl --user --no-pager status openclaw-gateway.service
-# Skill rooktest (read-only, loopback):
-python3 ~/.qwenpaw/workspaces/default/skills/project-administratie/scripts/motor_admin.py status
 ```
 
 ## Meetmethode en bewijslimiet

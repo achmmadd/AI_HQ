@@ -187,4 +187,13 @@ Impact op de bindende amendementen:
 - **AM-4 (compliance):** het expliciete Telegram-besluit uit punt 1 moet bij uitvoering ook QwenPaw dekken; Telegram blijft subverwerker met notificatie+deeplink-minimalisatie. De modelprovider achter QwenPaw is een subverwerker zodra een cloud-route wordt gebruikt — de dataklassen uit punt 2 bepalen welke administratie-vragen via welke route mogen. QwenPaw's eigen geheugen (ReMe) wordt geen tweede memorylaag voor Motor-data (ADR-107).
 - **Beveiligingsregel ongewijzigd:** geen side-effect-credentials en geen Motor-sessietoken in de QwenPaw-context; de administratie-skill is read-only via loopback. Approvals en boekingen blijven in de Motor UI (ADR-109).
 
-**Open meting:** host, versie en kanaalstatus van QwenPaw zijn op 2026-09-08 niet live gemeten — zie de meetcommando's in [`00-HUIDIGE-STAAT.md`](00-HUIDIGE-STAAT.md).
+**Meting 2026-09-08 avond:** QwenPaw 2.2.0 antwoordde zelf: Docker-container `cc22d51c27ac`, agent `boka_operations`, workspace `/app/working/workspaces/boka_operations`, geen AI_HQ-checkout in die container. Zie [`00-HUIDIGE-STAAT.md`](00-HUIDIGE-STAAT.md).
+
+## 41.11 Delta-memo 2026-09-08 avond — QwenPaw draait als `boka_operations` in Docker
+
+**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer). De eerste opdracht stopte terecht: die eiste de NUC-host en `~/AI_HQ`. Dat is geen topologiewijziging van ADR-108 (kanalen blijven NUC-doel). Het is een runtimefeit: de actieve harness is deze container/agent. Gevolg voor uitvoering:
+
+- Doelworkspace = `/app/working/workspaces/boka_operations`, niet `default` / `~/.qwenpaw`.
+- Skill-bestanden mogen door de agent zelf worden geschreven (repo ontbreekt in de container); geen Motor-token, geen `agent.json`-overschrijf.
+- Bookkeeping via read-only probe (loopback + Docker-host). Geen bereik = **onbekend, meten door Pietje**, geen nieuwe store of Motor-API.
+- AM-1/AM-4 ongewijzigd. Docker-host = NUC? nog **onbekend, meten door eigenaar**.
