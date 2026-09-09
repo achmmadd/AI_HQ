@@ -222,3 +222,7 @@ Impact op de bindende amendementen:
 ## 41.16 Delta-memo 2026-09-09 — administratie zit in Odoo, niet in een plaklijst
 
 **Eigenaar:** Pietje (“maar alles zat toch op odoo”). De eerdere vraag om inbox/retry/verwerkt te plakken was fout. Canonieke facturenbron = **Odoo**, gelezen door de bookkeeping-bot (`GET /odoo/bills`; Motor-UI `/bokas/bonnen` gebruikt intern dezelfde route). QwenPaw: `motor_admin.py odoo --year --quarter`. Geen Odoo-inlog in de harness. Geen Nango. Geen Motor-token. Als de bot OFFLINE blijft: alleen `BOOKKEEPING_BOT_URL` meten, geen factuurlijsten van Pietje eisen. `STAND.md` blijft fallback, geen tweede SSOT.
+
+## 41.17 Delta-memo 2026-09-09 — QwenPaw-probe weigert :8001 op de Docker-host
+
+**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer na OPDRACHT-ODOO). `probe` en `odoo` **OFFLINE**, connection refused op loopback, `host.docker.internal` en `172.17.0.1` poort 8001. Dat is geldig: de bot zit niet bij deze QwenPaw-container. Residual is uitsluitend `BOOKKEEPING_BOT_URL` (Console-env of `--base` met een URL die Pietje meet). Chat-markdown eet Python-dunders; volgende opdrachten geen `__name__`-wacht in plaktekst. Geen publieke :8001, geen Odoo-wachtwoord in QwenPaw.

@@ -1,5 +1,7 @@
 # Opdracht aan QwenPaw — administratie zit in Odoo
 
+> Chat-plak: YAML-frontmatter van SKILL.md begint met drie streepjes. Python-onderaan is `main()` — geen `if __name__` (chat eet dunders op tot `name`/`main`).
+>
 > **Van:** Pietje. Plak in de `boka_operations`-chat.
 
 ---
@@ -467,6 +469,6 @@ def main() -> None:
         cmd_documents(args.year, args.quarter)
 
 
-if __name__ == "__main__":
-    main()
+# CLI-entrypoint. Geen if-name-wacht (chat-markdown eet dunders op tot name/main).
+main()
 ===== END FILE =====

@@ -31,6 +31,7 @@ Het script staat in de `scripts/`-map van deze skill, bijvoorbeeld
 
 - `odoo` — vendor bills uit Odoo (datum, leverancier, bedrag, btw, status).
   Dit is het antwoord op “wat zit er in de administratie”.
+- `--base URL` — alleen als Pietje een URL geeft. Verzin geen host.
 - `status` — gezondheid van de administratie-service: `pending_approvals`,
   `retry_queue`, vrije schijfruimte.
 - `recent` — recente bonnen uit de bot-inbox (niet hetzelfde als Odoo).

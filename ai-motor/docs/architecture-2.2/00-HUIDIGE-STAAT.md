@@ -29,7 +29,9 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 | Motor-sessietoken in QwenPaw-env? | **niet gezet** (goed). Niet alsnog `MOTOR_API_TOKEN` exporteren. |
 | Bookkeeping-bot bereikbaar? | **onbekend, meten door Pietje** — `motor_admin.py probe` zonder token |
 
-**Gemeten 2026-09-09 (QwenPaw, doorgestuurd door de eigenaar):** overname gedaan. `OVERDRACHT.md` + lege `STAND.md` (`Bron: probe OFFLINE`). Probe health/recent/documents OFFLINE. QwenPaw vroeg Pietje om inbox/retry/verwerkt/export. **Eigenaar 2026-09-09:** “maar alles zat toch op odoo” — facturen niet laten plakken; bron is Odoo via bookkeeping-bot `GET /odoo/bills` (`motor_admin.py odoo`). Die route is vanaf QwenPaw **nog niet gemeten**. In deze repo en audit-VM zitten **geen** live bonnen. `BOOKKEEPING_BOT_URL` = **onbekend, meten door Pietje**. Geen `MOTOR_API_URL`, geen Odoo-wachtwoord in QwenPaw.
+**Gemeten 2026-09-09 later (QwenPaw, doorgestuurd door de eigenaar):** OPDRACHT-ODOO overschreven en gerund. `probe` en `odoo --year 2026 --quarter 3` beide **OFFLINE** (exit 2). Connection refused op `127.0.0.1:8001`, `host.docker.internal:8001` en `172.17.0.1:8001`. De bookkeeping-bot luistert dus **niet** in de QwenPaw-container en **niet** op poort 8001 van die Docker-host. `BOOKKEEPING_BOT_URL` blijft **onbekend, meten door Pietje**. Chat-markdown at `__name__`/`__main__` op tot `name`/`main`; QwenPaw herstelde dat lokaal. Geen Odoo-wachtwoord, geen Motor-token, geen factuurlijst.
+
+**Repo-plan (niet live bewezen vanaf QwenPaw):** bookkeeping-bot hoort op de Motor-host (documenten: NUC) op `:8001`, Motor default `http://127.0.0.1:8001`. Dat loopback-adres is een andere machine dan de QwenPaw-container. Meetcommando's voor Pietje: zie [`qwenpaw-migratie.md`](../qwenpaw-migratie.md) stap “BOOKKEEPING_BOT_URL meten”.
 
 Meetcommando's in de QwenPaw-container (deel uitvoer zonder secrets):
 

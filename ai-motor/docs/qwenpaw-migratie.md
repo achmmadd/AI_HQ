@@ -1,7 +1,7 @@
 # Runbook — QwenPaw-migratie: projectadministratie + Telegram
 
 > **Eigenaar:** Pietje · **Datum:** 2026-09-08
-> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.16](architecture-2.2/15-review-panel.md)
+> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.17](architecture-2.2/15-review-panel.md)
 > **Artefacten:** [`../qwenpaw/`](../qwenpaw/)
 > **Live target:** agent `boka_operations`, workspace `/app/working/workspaces/boka_operations` (QwenPaw 2.2.0, Docker)
 
@@ -33,6 +33,7 @@ Wat **niet** verandert:
 - `/cowork` bestaat niet meer; QwenPaw geeft de info: [`../qwenpaw/OPDRACHT-INFO.md`](../qwenpaw/OPDRACHT-INFO.md).
 - Overname (werkwijze + stand): [`../qwenpaw/OPDRACHT-OVERNAME.md`](../qwenpaw/OPDRACHT-OVERNAME.md).
 - Nog geen lijst om te plakken: **niet plakken** — data zit in Odoo: [`../qwenpaw/OPDRACHT-ODOO.md`](../qwenpaw/OPDRACHT-ODOO.md). [`OPDRACHT-STAND-ONBEKEND.md`](../qwenpaw/OPDRACHT-STAND-ONBEKEND.md) is verouderd voor factuurlijsten.
+- Probe OFFLINE na Odoo-opdracht: [`../qwenpaw/OPDRACHT-BOT-URL.md`](../qwenpaw/OPDRACHT-BOT-URL.md). `BOOKKEEPING_BOT_URL` meten (hieronder).
 
 Persona voor deze agent:
 
@@ -75,7 +76,26 @@ qwenpaw skills enable project-administratie --agent-id boka_operations
 qwenpaw skills list --status enabled --agent-id boka_operations
 ```
 
-Optioneel: `BOOKKEEPING_BOT_URL` (alleen als probe alle kandidaten mist) en `MOTOR_UI_BASE` (default `https://motorsai.app`). Geen sessietoken.
+Optioneel: `BOOKKEEPING_BOT_URL` (alleen als probe alle kandidaten mist). Geen sessietoken. Zetten in QwenPaw Console, niet in chat, `agent.json` niet overschrijven.
+
+## Stap 4b — `BOOKKEEPING_BOT_URL` meten (Pietje)
+
+Live 2026-09-09: QwenPaw-container ziet **geen** bookkeeping op loopback, `host.docker.internal:8001` of `172.17.0.1:8001` (connection refused). Repo-plan zet de bot op de Motor-host (NUC) `:8001`; dat is geen bewijs dat die host nu luistert.
+
+Op de machine waar Motor/bookkeeping **hoort** te draaien (niet in de QwenPaw-chat):
+
+```bash
+curl -sS -m 5 http://127.0.0.1:8001/health
+ss -ltn | grep 8001 || netstat -ltn | grep 8001 || true
+```
+
+| Uitslag | Betekenis |
+|---|---|
+| `/health` JSON | Bot leeft op die host. QwenPaw heeft een URL nodig **vanaf die container** (niet `127.0.0.1` van de NUC). Vaak Tailscale-IP van de bot-host + `:8001`, en alleen als de bot niet uitsluitend op loopback bindt. |
+| connection refused / niets op 8001 | Bot draait niet (of andere poort). Eerst daar starten/vinden; geen URL verzinnen. |
+| Bot alleen op `127.0.0.1` | Andere hosts (QwenPaw-Docker) zien hem niet. Niet `:8001` op internet zetten. Binnen Tailscale binden of tunnelen is **onbekend, meten/beslissen door Pietje**. |
+
+Gevonden bereikbare URL (geen wachtwoord) → QwenPaw Console-env `BOOKKEEPING_BOT_URL=http://…:8001` → daarna `OPDRACHT-BOT-URL.md` in de chat. Geen Odoo-wachtwoord, geen Motor-token.
 
 ## Stap 5 — Testen
 

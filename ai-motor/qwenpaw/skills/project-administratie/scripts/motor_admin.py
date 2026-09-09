@@ -28,9 +28,12 @@ INFO_FOOTER = (
 )
 
 _resolved_base = None
+_cli_base = None
 
 
 def candidate_bases():
+    if _cli_base:
+        return [_cli_base]
     env = os.environ.get("BOOKKEEPING_BOT_URL", "").strip()
     if env:
         return [env.rstrip("/")]
@@ -194,20 +197,44 @@ def cmd_documents(year: str, quarter: str) -> None:
 
 
 def main() -> None:
+    global _cli_base
     parser = argparse.ArgumentParser(
         description="Read-only Motor-projectadministratie via de bookkeeping-bot."
     )
+    parent = argparse.ArgumentParser(add_help=False)
+    parent.add_argument(
+        "--base",
+        help="Alleen deze URL voor deze run (geen credentials). Verzin geen URL.",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("probe", help="Welke bookkeeping-URL bereikbaar is (loopback/Docker-host)")
-    sub.add_parser("status", help="Gezondheid + open approvals/retry-queue")
-    sub.add_parser("recent", help="Recent geboekte bonnen")
-    docs = sub.add_parser("documents", help="Exportdocumenten per kwartaal")
+    sub.add_parser(
+        "probe",
+        parents=[parent],
+        help="Welke bookkeeping-URL bereikbaar is (loopback/Docker-host)",
+    )
+    sub.add_parser(
+        "status",
+        parents=[parent],
+        help="Gezondheid + open approvals/retry-queue",
+    )
+    sub.add_parser("recent", parents=[parent], help="Recent geboekte bonnen")
+    docs = sub.add_parser(
+        "documents",
+        parents=[parent],
+        help="Exportdocumenten per kwartaal",
+    )
     docs.add_argument("--year", required=True)
     docs.add_argument("--quarter", required=True, choices=["1", "2", "3", "4"])
-    odoo = sub.add_parser("odoo", help="Odoo vendor bills (via bookkeeping-bot, geen Odoo-wachtwoord)")
+    odoo = sub.add_parser(
+        "odoo",
+        parents=[parent],
+        help="Odoo vendor bills (via bookkeeping-bot, geen Odoo-wachtwoord)",
+    )
     odoo.add_argument("--year", required=True)
     odoo.add_argument("--quarter", choices=["1", "2", "3", "4"])
     args = parser.parse_args()
+    if args.base:
+        _cli_base = args.base.strip().rstrip("/")
 
     if args.command == "probe":
         cmd_probe()
@@ -221,5 +248,5 @@ def main() -> None:
         cmd_documents(args.year, args.quarter)
 
 
-if __name__ == "__main__":
-    main()
+# CLI-entrypoint. Geen if-__name__-wacht (chat-markdown eet dunders op tot name/main).
+main()
