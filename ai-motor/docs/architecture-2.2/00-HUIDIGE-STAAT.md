@@ -29,6 +29,8 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 | Motor-sessietoken in QwenPaw-env? | **niet gezet** (goed). Niet alsnog `MOTOR_API_TOKEN` exporteren. |
 | Bookkeeping-bot bereikbaar? | **onbekend, meten door Pietje** — `motor_admin.py probe` zonder token |
 
+**Gemeten 2026-09-09 (QwenPaw, doorgestuurd door de eigenaar):** overname gedaan. `OVERDRACHT.md` + lege `STAND.md` (`Bron: probe OFFLINE`). Probe alle vier commando's OFFLINE. QwenPaw vroeg Pietje om inbox/retry/verwerkt/export. In deze repo en audit-VM zitten **geen** live bonnen — stand = **onbekend, aanleveren door Pietje** (of later een bereikbare bookkeeping-bot). Geen `MOTOR_API_URL` zetten.
+
 Meetcommando's in de QwenPaw-container (deel uitvoer zonder secrets):
 
 ```bash
