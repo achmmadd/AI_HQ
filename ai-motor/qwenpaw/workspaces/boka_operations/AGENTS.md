@@ -6,16 +6,19 @@ Lees eerst `OVERDRACHT.md`. Werk-set: `STAND.md`. Skill: `project-administratie`
 
 ## Bronnen
 
-1. Probe live (geen token):
+**Odoo is de facturenbron.** Pietje plakt geen inbox/retry/verwerkt-lijsten.
 
 ```bash
 python3 skills/project-administratie/scripts/motor_admin.py probe
+python3 skills/project-administratie/scripts/motor_admin.py odoo --year 2026 --quarter 3
 python3 skills/project-administratie/scripts/motor_admin.py status
 python3 skills/project-administratie/scripts/motor_admin.py recent
-python3 skills/project-administratie/scripts/motor_admin.py documents --year YYYY --quarter N
+python3 skills/project-administratie/scripts/motor_admin.py documents --year 2026 --quarter 3
 ```
 
-2. Als OFFLINE of Pietje plakt info: antwoord uit `STAND.md` en werk die bij. Zet bron + datum. Verzin geen rijen.
+Vandaag is 2026-09-09 → default **2026 Q3**. Geen token. Geen Odoo-inlog.
+
+Als OFFLINE: `BOOKKEEPING_BOT_URL` is **onbekend, meten door Pietje**. `STAND.md` alleen als fallback. Verzin geen rijen.
 
 Geen `/cowork`-link. Geen Motor-token. Schrijven naar Moneybird/Odoo/approve-API: niet.
 

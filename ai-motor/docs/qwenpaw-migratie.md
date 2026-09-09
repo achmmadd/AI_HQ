@@ -1,7 +1,7 @@
 # Runbook — QwenPaw-migratie: projectadministratie + Telegram
 
 > **Eigenaar:** Pietje · **Datum:** 2026-09-08
-> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.14](architecture-2.2/15-review-panel.md)
+> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.16](architecture-2.2/15-review-panel.md)
 > **Artefacten:** [`../qwenpaw/`](../qwenpaw/)
 > **Live target:** agent `boka_operations`, workspace `/app/working/workspaces/boka_operations` (QwenPaw 2.2.0, Docker)
 
@@ -13,9 +13,10 @@ Wat de skill **wel** doet (read-only, R0):
 
 - `probe` — welke bookkeeping-URL bereikbaar is (loopback, daarna Docker-host);
 - status (`pending_approvals`, `retry_queue`, disk);
+- **Odoo vendor bills** (`GET /odoo/bills` — canonieke facturenbron);
 - recent geboekte bonnen;
 - exportdocumenten per kwartaal;
-- de info zelf in de privéchat (geen `/cowork`-deeplink).
+- de info zelf in de privéchat (geen `/cowork`-deeplink). Pietje plakt geen factuurlijsten.
 
 Wat **niet** verandert:
 
@@ -31,7 +32,7 @@ Wat **niet** verandert:
 - Skill staat enabled maar vraagt om `MOTOR_API_TOKEN`: [`../qwenpaw/OPDRACHT-GEEN-TOKEN.md`](../qwenpaw/OPDRACHT-GEEN-TOKEN.md). **Geen Motor-sessietoken zetten.**
 - `/cowork` bestaat niet meer; QwenPaw geeft de info: [`../qwenpaw/OPDRACHT-INFO.md`](../qwenpaw/OPDRACHT-INFO.md).
 - Overname (werkwijze + stand): [`../qwenpaw/OPDRACHT-OVERNAME.md`](../qwenpaw/OPDRACHT-OVERNAME.md).
-- Nog geen lijst om te plakken: [`../qwenpaw/OPDRACHT-STAND-ONBEKEND.md`](../qwenpaw/OPDRACHT-STAND-ONBEKEND.md).
+- Nog geen lijst om te plakken: **niet plakken** — data zit in Odoo: [`../qwenpaw/OPDRACHT-ODOO.md`](../qwenpaw/OPDRACHT-ODOO.md). [`OPDRACHT-STAND-ONBEKEND.md`](../qwenpaw/OPDRACHT-STAND-ONBEKEND.md) is verouderd voor factuurlijsten.
 
 Persona voor deze agent:
 
@@ -82,6 +83,7 @@ Optioneel: `BOOKKEEPING_BOT_URL` (alleen als probe alle kandidaten mist) en `MOT
 WS=/app/working/workspaces/boka_operations/skills/project-administratie/scripts
 python3 $WS/motor_admin.py probe
 python3 $WS/motor_admin.py status
+python3 $WS/motor_admin.py odoo --year 2026 --quarter 3
 python3 $WS/motor_admin.py recent
 python3 $WS/motor_admin.py documents --year 2026 --quarter 3
 ```

@@ -2,8 +2,10 @@
 """Read-only helper voor de Motor-projectadministratie (bookkeeping-bot).
 
 Spiegelt de read-only GET-paden die de Motor-app zelf gebruikt
-(ai-motor/app/api/bookkeeping/*). Doet bewust geen enkele schrijfactie:
-approvals, boekingen en exports blijven in de Motor UI (ADR-109/110).
+(ai-motor/app/api/bookkeeping/*), inclusief GET /odoo/bills (Odoo vendor
+bills). Odoo-credentials blijven op de bot. Doet bewust geen enkele
+schrijfactie: approvals, boekingen en exports blijven buiten QwenPaw
+(ADR-109/110).
 
 Zonder BOOKKEEPING_BOT_URL probeert het script loopback en daarna de
 gebruikelijke Docker-host-adressen. Geen Motor-sessietoken, geen writes.
@@ -138,6 +140,43 @@ def cmd_recent() -> None:
     print(INFO_FOOTER)
 
 
+def cmd_odoo(year: str, quarter=None) -> None:
+    path = f"/odoo/bills?year={year}"
+    if quarter:
+        path += f"&quarter={quarter}"
+    data = get_json(path)
+    items = data.get("items") if isinstance(data, dict) else data
+    label = f"{year}" + (f" Q{quarter}" if quarter else "")
+    if isinstance(data, dict):
+        err = data.get("error")
+        if err:
+            print(f"Odoo: {err}")
+        summary = data.get("summary")
+        if isinstance(summary, dict):
+            count = summary.get("count", "")
+            total = summary.get("total_incl", "")
+            tax = summary.get("total_tax", "")
+            print(f"Odoo-facturen {label}: count={count} totaal_incl={total} btw={tax}")
+    if not isinstance(items, list) or not items:
+        print(f"Geen Odoo-facturen voor {label}.")
+        print(INFO_FOOTER)
+        return
+    print(f"Odoo vendor bills {label} ({len(items)}):")
+    for bill in items[:40]:
+        if not isinstance(bill, dict):
+            print(f"- {bill}")
+            continue
+        datum = pick(bill, "invoice_date", "date", "datum")
+        wie = pick(bill, "vendor", "leverancier", "name")
+        bedrag = pick(bill, "amount_total", "amount", "bedrag")
+        btw = pick(bill, "amount_tax", "btw")
+        status = pick(bill, "state", "status")
+        ref = pick(bill, "ref", "id")
+        delen = [deel for deel in (datum, wie, bedrag, btw, status, ref) if deel]
+        print(f"- {' | '.join(delen)}")
+    print(INFO_FOOTER)
+
+
 def cmd_documents(year: str, quarter: str) -> None:
     data = get_json(f"/export/documents?year={year}&quarter={quarter}")
     items = data.get("items") if isinstance(data, dict) else data
@@ -165,6 +204,9 @@ def main() -> None:
     docs = sub.add_parser("documents", help="Exportdocumenten per kwartaal")
     docs.add_argument("--year", required=True)
     docs.add_argument("--quarter", required=True, choices=["1", "2", "3", "4"])
+    odoo = sub.add_parser("odoo", help="Odoo vendor bills (via bookkeeping-bot, geen Odoo-wachtwoord)")
+    odoo.add_argument("--year", required=True)
+    odoo.add_argument("--quarter", choices=["1", "2", "3", "4"])
     args = parser.parse_args()
 
     if args.command == "probe":
@@ -173,6 +215,8 @@ def main() -> None:
         cmd_status()
     elif args.command == "recent":
         cmd_recent()
+    elif args.command == "odoo":
+        cmd_odoo(args.year, args.quarter)
     else:
         cmd_documents(args.year, args.quarter)
 

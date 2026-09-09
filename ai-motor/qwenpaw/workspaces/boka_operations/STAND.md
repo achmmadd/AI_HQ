@@ -1,26 +1,19 @@
 # Stand administratie
 
 - **Bijgewerkt:** (nog leeg)
-- **Bron:** leeg — wacht op Pietje-plak of geslaagde `probe`
-- **Kwartaal in scope:** 2026 Q? (invullen)
+- **Bron:** leeg — wacht op geslaagde `motor_admin.py odoo` (Odoo via bookkeeping-bot). Geen Pietje-plak van factuurlijsten.
+- **Kwartaal in scope:** 2026 Q3 (vandaag 2026-09-09)
 
-## Inbox (wacht op goedkeuring)
+## Odoo-facturen (canonieke bron)
 
-| datum | leverancier | bedrag | status | id |
-|---|---|---|---|---|
-| — | — | — | — | — |
+| datum | leverancier | bedrag | btw | status | ref |
+|---|---|---|---|---|---|
+| — | — | — | — | — | — |
 
-## Retry-queue
+## Bot-health (als bereikbaar)
 
-| datum | leverancier | bedrag | retries | id |
-|---|---|---|---|---|
-| — | — | — | — | — |
-
-## Recent verwerkt
-
-| datum | leverancier | bedrag | status | id |
-|---|---|---|---|---|
-| — | — | — | — | — |
+- pending_approvals: —
+- retry_queue: —
 
 ## Export / documenten
 
@@ -28,6 +21,6 @@
 |---|---|---|---|
 | — | — | — | — |
 
-## Notities van Pietje
+## Notities
 
-(nog geen)
+(geen)

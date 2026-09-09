@@ -217,4 +217,8 @@ Impact op de bindende amendementen:
 
 ## 41.15 Delta-memo 2026-09-08 — overname met overdracht + stand
 
-**Eigenaar:** Pietje (“kunnen we hem niet de info geven en dat hij het kan overnemen”). Ja, scoped: QwenPaw krijgt `OVERDRACHT.md` (werkwijze uit de Motor-repo) en mag `STAND.md` vullen met wat Pietje plakt of wat `probe` levert. Dat is harness-werkset, geen tweede Motor-SSOT en geen Gateway-schrijven. Live cijfers uit deze audit-VM hebben we niet — die moet Pietje plakken of de bot moet bereikbaar worden.
+**Eigenaar:** Pietje (“kunnen we hem niet de info geven en dat hij het kan overnemen”). Ja, scoped: QwenPaw krijgt `OVERDRACHT.md` (werkwijze uit de Motor-repo) en mag `STAND.md` vullen met wat de live probe levert. Dat is harness-werkset, geen tweede Motor-SSOT en geen Gateway-schrijven.
+
+## 41.16 Delta-memo 2026-09-09 — administratie zit in Odoo, niet in een plaklijst
+
+**Eigenaar:** Pietje (“maar alles zat toch op odoo”). De eerdere vraag om inbox/retry/verwerkt te plakken was fout. Canonieke facturenbron = **Odoo**, gelezen door de bookkeeping-bot (`GET /odoo/bills`; Motor-UI `/bokas/bonnen` gebruikt intern dezelfde route). QwenPaw: `motor_admin.py odoo --year --quarter`. Geen Odoo-inlog in de harness. Geen Nango. Geen Motor-token. Als de bot OFFLINE blijft: alleen `BOOKKEEPING_BOT_URL` meten, geen factuurlijsten van Pietje eisen. `STAND.md` blijft fallback, geen tweede SSOT.

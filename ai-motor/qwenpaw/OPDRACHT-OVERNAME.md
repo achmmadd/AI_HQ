@@ -1,5 +1,7 @@
 # Opdracht aan QwenPaw — je neemt de administratie over
 
+> **Correctie 2026-09-09:** facturen zitten in Odoo, niet in een plaklijst. Gebruik daarna [`OPDRACHT-ODOO.md`](OPDRACHT-ODOO.md).
+
 > **Van:** Pietje. Plak in de `boka_operations`-chat.
 
 ---
