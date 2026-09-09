@@ -10,6 +10,44 @@
 
 De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowledge_documents` en API-auth: `/api/chat/*` en `/api/conversations/*` staan niet meer in `PUBLIC_PATHS` en de routes hebben tenantchecks. De runtime is echter niet aantoonbaar groen. Vanaf deze auditomgeving was geen SSH-toegang tot NUC of Hetzner beschikbaar en `https://motorsai.app` gaf op het meetmoment Cloudflare-fout 1033/HTTP 530. OpenClaw-hardening volgens ADR-106 is niet bewezen en grotendeels niet als serverconfiguratie in de repo aanwezig. ADR-002 loopt achter: het migratiescript en Postgres-schema bestaan, maar `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de applicatierouting niet aan; daardoor is M4 “Postgres SSOT” in de code niet bereikt. Van de nieuwe 2.2-laag bestaan vooral deelstukken: Inngest heeft één geïntegreerde HITL-workflow, maar Kernel, Action Gateway en Playbook-registry bestaan nog niet als 2.2-component.
 
+## Aanvulling 2026-09-08 — QwenPaw en Telegram-migratie
+
+**Besluit:** [ADR-110](../DECISIONS.md) · **Uitvoering:** [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md) · **Opdracht (overname):** [`../qwenpaw/OPDRACHT-OVERNAME.md`](../qwenpaw/OPDRACHT-OVERNAME.md)
+
+**Gemeten 2026-09-08 (QwenPaw zelf, doorgestuurd door de eigenaar):** QwenPaw **2.2.0** draait in een Docker-container, hostname `cc22d51c27ac` (`/.dockerenv` aanwezig), werkdirectory `/app/working/workspaces/boka_operations`, agent-id **`boka_operations`**. `~/AI_HQ/ai-motor/qwenpaw` en `~/.qwenpaw/workspaces/default` ontbreken in die container. Skill `project-administratie` en `motor_admin.py` waren op dat moment niet aanwezig.
+
+**Eigenaarsbesluit dezelfde avond:** de NUC is **niet nodig** voor deze taak. Docker-host = NUC is geen meetpunt en geen blokkade. Uitvoering = deze container.
+
+**Gemeten 2026-09-08 later (QwenPaw, doorgestuurd door de eigenaar):** skill `project-administratie` staat **enabled** (`customized`, scanner `safe=True`). Persona-regels zijn in `PROFILE.md` gezet. `agent.json` is niet aangeraakt. Rooktest **OFFLINE**. Telegram-kanaal: **niet actief** (console-instance). QwenPaw schreef een eigen helper die `MOTOR_API_URL` + optioneel `MOTOR_API_TOKEN` leest. **`MOTOR_API_TOKEN` is verboden** (ADR-110); niet zetten. Canonieke helper blijft credential-loos (`BOOKKEEPING_BOT_URL` of loopback/Docker-host-probe).
+
+| Vraag | Status op 2026-09-08 later |
+|---|---|
+| Draait QwenPaw, waar, welke versie? | **2.2.0** in container `cc22d51c27ac`, agent `boka_operations`. NUC niet vereist. |
+| Skill `project-administratie` enabled? | **ja** (eigen variant; moet credential-loos gemaakt worden) |
+| Rooktest | **OFFLINE** (geldig) — hun script wachtte op `MOTOR_API_URL`; dat is niet de canonieke bron |
+| Telegram-allowlist / kanaal actief? | **nee** — console-only; token alleen via Console door de eigenaar, niet in chat |
+| Motor-sessietoken in QwenPaw-env? | **niet gezet** (goed). Niet alsnog `MOTOR_API_TOKEN` exporteren. |
+| Bookkeeping-bot bereikbaar? | **onbekend, meten door Pietje** — `motor_admin.py probe` zonder token |
+
+**Gemeten 2026-09-09 later (QwenPaw, doorgestuurd door de eigenaar):** OPDRACHT-ODOO overschreven en gerund. `probe` en `odoo --year 2026 --quarter 3` beide **OFFLINE** (exit 2). Connection refused op `127.0.0.1:8001`, `host.docker.internal:8001` en `172.17.0.1:8001`. De bookkeeping-bot luistert dus **niet** in de QwenPaw-container en **niet** op poort 8001 van die Docker-host. `BOOKKEEPING_BOT_URL` blijft **onbekend, meten door Pietje**. Chat-markdown at `__name__`/`__main__` op tot `name`/`main`; QwenPaw herstelde dat lokaal. Geen Odoo-wachtwoord, geen Motor-token, geen factuurlijst.
+
+**Repo-plan (niet live bewezen vanaf QwenPaw):** bookkeeping-bot hoort op de Motor-host (documenten: NUC) op `:8001`, Motor default `http://127.0.0.1:8001`. Dat loopback-adres is een andere machine dan de QwenPaw-container. Meetcommando's voor Pietje: zie [`qwenpaw-migratie.md`](../qwenpaw-migratie.md) stap “BOOKKEEPING_BOT_URL meten”.
+
+Meetcommando's in de QwenPaw-container (deel uitvoer zonder secrets):
+
+```bash
+qwenpaw --version
+hostname
+pwd
+ls /app/working/workspaces/boka_operations
+qwenpaw skills list --status enabled --agent-id boka_operations
+python3 /app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py probe
+# Telegram zonder token:
+python3 -c "import json;c=json.load(open('/app/working/workspaces/boka_operations/agent.json'));t=c.get('channels',{}).get('telegram',{});t['bot_token']='***' if t.get('bot_token') else '';print(json.dumps({k:t.get(k) for k in ('enabled','dm_policy','group_policy','allow_from')},indent=2))"
+```
+
+OpenClaw-Telegram is geen QwenPaw-voorwaarde. Alleen meten als dezelfde bot nog via OpenClaw antwoordt.
+
 ## Meetmethode en bewijslimiet
 
 De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. De mechanische bundel `MOTOR-AI-2.2-COMPLEET.md` is niet als bron gebruikt en in consolidatiestap 3 verwijderd om dubbele waarheid te voorkomen.

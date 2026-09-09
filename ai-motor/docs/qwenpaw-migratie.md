@@ -1,0 +1,129 @@
+# Runbook — QwenPaw-migratie: projectadministratie + Telegram
+
+> **Eigenaar:** Pietje · **Datum:** 2026-09-08
+> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.17](architecture-2.2/15-review-panel.md)
+> **Artefacten:** [`../qwenpaw/`](../qwenpaw/)
+> **Live target:** agent `boka_operations`, workspace `/app/working/workspaces/boka_operations` (QwenPaw 2.2.0, Docker)
+
+## Doel en scope
+
+De eigenaar krijgt projectadministratie-info in QwenPaw (bonnen/status/export). **De NUC is niet nodig.** `/cowork?tab=approvals` bestaat live niet meer. Runtime = Docker, agent `boka_operations`. Hetzner blijft durable control. Schrijven in QwenPaw blijft uit.
+
+Wat de skill **wel** doet (read-only, R0):
+
+- `probe` — welke bookkeeping-URL bereikbaar is (loopback, daarna Docker-host);
+- status (`pending_approvals`, `retry_queue`, disk);
+- **Odoo vendor bills** (`GET /odoo/bills` — canonieke facturenbron);
+- recent geboekte bonnen;
+- exportdocumenten per kwartaal;
+- de info zelf in de privéchat (geen `/cowork`-deeplink). Pietje plakt geen factuurlijsten.
+
+Wat **niet** verandert:
+
+- Boeken/approven in QwenPaw blijft uit (geen schrijfacties, geen dode cowork-link).
+- Geen Motor-sessietoken en geen side-effect-credentials in de QwenPaw-context.
+- QwenPaw is geen orchestrator en geen memorylaag voor Motor-data (ADR-105/107/108).
+- Motor-notificaties via `lib/telegram.ts` (`sendMessage`) mogen hetzelfde bot-token gebruiken.
+
+## Opdracht aan QwenPaw
+
+- Eerste keer / nieuwe chat: [`../qwenpaw/OPDRACHT.md`](../qwenpaw/OPDRACHT.md)
+- Agent die nog op de NUC wacht: eerst [`../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md`](../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md), daarna [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md).
+- Skill staat enabled maar vraagt om `MOTOR_API_TOKEN`: [`../qwenpaw/OPDRACHT-GEEN-TOKEN.md`](../qwenpaw/OPDRACHT-GEEN-TOKEN.md). **Geen Motor-sessietoken zetten.**
+- `/cowork` bestaat niet meer; QwenPaw geeft de info: [`../qwenpaw/OPDRACHT-INFO.md`](../qwenpaw/OPDRACHT-INFO.md).
+- Overname (werkwijze + stand): [`../qwenpaw/OPDRACHT-OVERNAME.md`](../qwenpaw/OPDRACHT-OVERNAME.md).
+- Nog geen lijst om te plakken: **niet plakken** — data zit in Odoo: [`../qwenpaw/OPDRACHT-ODOO.md`](../qwenpaw/OPDRACHT-ODOO.md). [`OPDRACHT-STAND-ONBEKEND.md`](../qwenpaw/OPDRACHT-STAND-ONBEKEND.md) is verouderd voor factuurlijsten.
+- Probe OFFLINE na Odoo-opdracht: [`../qwenpaw/OPDRACHT-BOT-URL.md`](../qwenpaw/OPDRACHT-BOT-URL.md). `BOOKKEEPING_BOT_URL` meten (hieronder).
+
+Persona voor deze agent:
+
+- [`../qwenpaw/workspaces/boka_operations/AGENTS.md`](../qwenpaw/workspaces/boka_operations/AGENTS.md)
+- [`../qwenpaw/workspaces/boka_operations/SOUL.md`](../qwenpaw/workspaces/boka_operations/SOUL.md)
+- [`../qwenpaw/workspaces/boka_operations/PROFILE.md`](../qwenpaw/workspaces/boka_operations/PROFILE.md)
+
+## Voorwaarden
+
+1. QwenPaw 2.2.0 bereikbaar (gemeten: container, agent `boka_operations`).
+2. Bookkeeping-bot ergens bereikbaar vanaf die container, of de probe mag `OFFLINE` rapporteren.
+3. Toegang tot @BotFather en het Telegram-user-id van de eigenaar voor de allowlist.
+
+## Stap 1 — Nulmeting
+
+Al gedaan voor versie/host/agent (zie 00-HUIDIGE-STAAT). Residual: Telegram-allowlist, bookkeeping-bereik, en alleen indien nodig een tweede poller op hetzelfde bot-token.
+
+## Stap 2 — Telegram-token roteren en verhuizen
+
+Eén bot-token mag niet door twee pollers tegelijk. Eerst roteren, dan verhuizen:
+
+1. @BotFather: `/revoke` → nieuw token (secrets-store, niet git).
+2. `/setprivacy` ENABLED, `/setjoingroups` DISABLED.
+3. Motor `.env.local` (`TELEGRAM_BOT_TOKEN`) bijwerken voor notificaties.
+4. Merge [`../qwenpaw/agent.json.example`](../qwenpaw/agent.json.example) in `/app/working/workspaces/boka_operations/agent.json` (niet overschrijven). `allow_from` = alleen eigenaar-user-id. Of Console → Control → Channels → Telegram.
+5. Opslaan / herladen.
+
+## Stap 3 — Tweede poller (alleen als die bestaat)
+
+Geen NUC-werk. Als dezelfde Telegram-bot nog via OpenClaw antwoordt: dat kanaal daar uitzetten zodat er één poller overblijft. Als OpenClaw dit token niet pollen, sla deze stap over.
+
+## Stap 4 — Skill installeren
+
+Voorkeur: de agent schrijft de bestanden via OPDRACHT-VERVOLG. Handmatig in de container:
+
+```bash
+WS=/app/working/workspaces/boka_operations
+# bestanden uit OPDRACHT-VERVOLG.md naar $WS/...
+qwenpaw skills enable project-administratie --agent-id boka_operations
+qwenpaw skills list --status enabled --agent-id boka_operations
+```
+
+Optioneel: `BOOKKEEPING_BOT_URL` (alleen als probe alle kandidaten mist). Geen sessietoken. Zetten in QwenPaw Console, niet in chat, `agent.json` niet overschrijven.
+
+## Stap 4b — `BOOKKEEPING_BOT_URL` meten (Pietje)
+
+Live 2026-09-09: QwenPaw-container ziet **geen** bookkeeping op loopback, `host.docker.internal:8001` of `172.17.0.1:8001` (connection refused). Repo-plan zet de bot op de Motor-host (NUC) `:8001`; dat is geen bewijs dat die host nu luistert.
+
+Op de machine waar Motor/bookkeeping **hoort** te draaien (niet in de QwenPaw-chat):
+
+```bash
+curl -sS -m 5 http://127.0.0.1:8001/health
+ss -ltn | grep 8001 || netstat -ltn | grep 8001 || true
+```
+
+| Uitslag | Betekenis |
+|---|---|
+| `/health` JSON | Bot leeft op die host. QwenPaw heeft een URL nodig **vanaf die container** (niet `127.0.0.1` van de NUC). Vaak Tailscale-IP van de bot-host + `:8001`, en alleen als de bot niet uitsluitend op loopback bindt. |
+| connection refused / niets op 8001 | Bot draait niet (of andere poort). Eerst daar starten/vinden; geen URL verzinnen. |
+| Bot alleen op `127.0.0.1` | Andere hosts (QwenPaw-Docker) zien hem niet. Niet `:8001` op internet zetten. Binnen Tailscale binden of tunnelen is **onbekend, meten/beslissen door Pietje**. |
+
+Gevonden bereikbare URL (geen wachtwoord) → QwenPaw Console-env `BOOKKEEPING_BOT_URL=http://…:8001` → daarna `OPDRACHT-BOT-URL.md` in de chat. Geen Odoo-wachtwoord, geen Motor-token.
+
+## Stap 5 — Testen
+
+```bash
+WS=/app/working/workspaces/boka_operations/skills/project-administratie/scripts
+python3 $WS/motor_admin.py probe
+python3 $WS/motor_admin.py status
+python3 $WS/motor_admin.py odoo --year 2026 --quarter 3
+python3 $WS/motor_admin.py recent
+python3 $WS/motor_admin.py documents --year 2026 --quarter 3
+```
+
+`OFFLINE` + exit 2 is geldig degradatiegedrag. Telegram/console-vraag: *"Wat staat er nog open in de administratie?"* — cijfers of OFFLINE, **geen** `/cowork`-link. “Keur goed” weigeren.
+
+## Stap 6 — Documentatie
+
+Meetresultaten in 00-HUIDIGE-STAAT; ADR-110-acceptatie afvinken met bewijs. Bij AM-4: QwenPaw + modelprovider in het verwerkingsregister.
+
+## Rollback
+
+1. `channels.telegram.enabled: false` in de `boka_operations`-`agent.json`, herladen.
+2. Als OpenClaw het token eerder pollen: dat kanaal daar weer aan en token roteren. Geen NUC-verplichting.
+3. `qwenpaw skills disable project-administratie --agent-id boka_operations`. Geen DB-rollback nodig.
+
+## Acceptatie (spiegelt ADR-110)
+
+- [ ] `boka_operations` heeft skill + persona en beantwoordt een administratie-vraag of documenteert OFFLINE-probe
+- [ ] Geen tweede poller op hetzelfde bot-token (OpenClaw alleen als die nog pollen)
+- [ ] QwenPaw geeft de info in chat; geen `/cowork`-link
+- [ ] Geen Motor-sessietoken of side-effect-credential in QwenPaw
+- [ ] `00-HUIDIGE-STAAT.md` bijgewerkt

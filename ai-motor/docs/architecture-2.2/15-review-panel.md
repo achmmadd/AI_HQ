@@ -174,3 +174,55 @@ Met AM-1 t/m AM-5 verwerkt beoordeelt het panel het plan als uitvoerbaar: SRE 7/
 5. **Geef ieder stapdeliverable een pad en benoem de beslis-hiërarchie.** Stap 2 had geen doelbestand en “doc 15 bindend” versus “DECISIONS één waarheid” vereiste interpretatie; leg vast dat doc 15 scope/amendementen bevat en `DECISIONS.md` canonieke ADR-tekst.
 
 De eigenaar bepaalt welke verbeteringen in een volgende opdrachtversie landen; er wordt tijdens AM-1 geen nieuwe promptversie aangemaakt.
+
+## 41.10 Delta-memo 2026-09-08 — QwenPaw voor projectadministratie + Telegram
+
+**Eigenaar:** Pietje. De eigenaar heeft QwenPaw (self-hosted AgentScope-assistent) beschikbaar en heeft opdracht gegeven de projectadministratie (bonnen-/administratie-domein per project) en het Telegram-kanaal daarop over te zetten. Vastgelegd als **ADR-110** in [`../DECISIONS.md`](../DECISIONS.md); uitvoering via runbook [`../qwenpaw-migratie.md`](../qwenpaw-migratie.md).
+
+Impact op de bindende amendementen:
+
+- **AM-1 (scope):** QwenPaw start als Incubation en telt pas mee als Production Core-kanaalcomponent zodra de Telegram-migratie live is bewezen; dan vervalt OpenClaw in die rol. Het maximum van acht Core-componenten wordt niet overschreden. Dit is een vervanging van een kanaal-harness, geen nieuwe component erbij.
+- **AM-2 (volgorde):** ongewijzigd. QwenPaw is een bedieningslaag over de bestaande stack, geen nieuw Playbook en geen versnelling van K1/K2.
+- **AM-3 / ADR-105/108:** QwenPaw is kanaal/assistent-harness, géén durable orchestrator. Engine, Kernel en Gateway blijven op Hetzner. Telegram voor administratie zit vanaf het amendement van dezelfde avond **niet** op de NUC (zie §41.12).
+- **AM-4 (compliance):** het expliciete Telegram-besluit uit punt 1 moet bij uitvoering ook QwenPaw dekken; Telegram blijft subverwerker met notificatie+deeplink-minimalisatie. De modelprovider achter QwenPaw is een subverwerker zodra een cloud-route wordt gebruikt — de dataklassen uit punt 2 bepalen welke administratie-vragen via welke route mogen. QwenPaw's eigen geheugen (ReMe) wordt geen tweede memorylaag voor Motor-data (ADR-107).
+- **Beveiligingsregel ongewijzigd:** geen side-effect-credentials en geen Motor-sessietoken in de QwenPaw-context; de administratie-skill is read-only via loopback. Approvals en boekingen blijven in de Motor UI (ADR-109).
+
+**Meting 2026-09-08 avond:** QwenPaw 2.2.0 antwoordde zelf: Docker-container `cc22d51c27ac`, agent `boka_operations`, workspace `/app/working/workspaces/boka_operations`, geen AI_HQ-checkout in die container. Zie [`00-HUIDIGE-STAAT.md`](00-HUIDIGE-STAAT.md).
+
+## 41.11 Delta-memo 2026-09-08 avond — QwenPaw draait als `boka_operations` in Docker
+
+**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer). De eerste opdracht stopte terecht: die eiste de NUC-host en `~/AI_HQ`. De actieve harness is deze container/agent. Gevolg voor uitvoering:
+
+- Doelworkspace = `/app/working/workspaces/boka_operations`, niet `default` / `~/.qwenpaw`.
+- Skill-bestanden mogen door de agent zelf worden geschreven (repo ontbreekt in de container); geen Motor-token, geen `agent.json`-overschrijf.
+- Bookkeeping via read-only probe (loopback + Docker-host). Geen bereik = **onbekend, meten door Pietje**, geen nieuwe store of Motor-API.
+- AM-1/AM-4 ongewijzigd.
+
+## 41.12 Delta-memo 2026-09-08 laat — NUC niet nodig voor QwenPaw-administratie
+
+**Eigenaar:** Pietje (“de nuc is toch niet nodig”). Scoped amendement op ADR-108/110:
+
+- Projectadministratie + Telegram via QwenPaw vereisen **geen NUC** en geen meting of de Docker-host de NUC is.
+- Uitvoering blijft op agent `boka_operations` in de bestaande container.
+- Hetzner blijft durable control. Motor UI/approvals blijven de plek voor schrijfacties (ADR-109).
+- OpenClaw-Telegram uitzetten alleen als die hetzelfde bot-token nog pollen — geen NUC-setupstap voor QwenPaw.
+
+## 41.13 Delta-memo 2026-09-08 — skill live, geen Motor-token
+
+**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer). `boka_operations` heeft skill `project-administratie` enabled en meldt OFFLINE. Hun helper vroeg `MOTOR_API_URL` + optioneel `MOTOR_API_TOKEN`. Dat tokenpad is **afgewezen**: geen Motor-sessie in de harness (ADR-110/AM-4). Canonieke bron blijft de bookkeeping-bot zonder credentials, of OFFLINE. Telegram is nog console-only; token alleen via de Console door de eigenaar, niet in chat.
+
+## 41.14 Delta-memo 2026-09-08 — `/cowork` weg, info in QwenPaw
+
+**Eigenaar:** Pietje (`https://motorsai.app/cowork?tab=approvals` bestaat niet meer; “daarom wil ik de info aan qwenpaw geven”). Scoped AM-4-uitzondering: de privéchat met de eigenaar ís het lees-oppervlak. Geen dode cowork-deeplink. Schrijven blijft uit in QwenPaw. Geen MEMORY.md, geen groepen, geen Motor-token. In de repo bestaat `/bokas/bonnen` nog als Motor-boekhoudpagina; dat vervangt de dode cowork-URL niet als QwenPaw-doel.
+
+## 41.15 Delta-memo 2026-09-08 — overname met overdracht + stand
+
+**Eigenaar:** Pietje (“kunnen we hem niet de info geven en dat hij het kan overnemen”). Ja, scoped: QwenPaw krijgt `OVERDRACHT.md` (werkwijze uit de Motor-repo) en mag `STAND.md` vullen met wat de live probe levert. Dat is harness-werkset, geen tweede Motor-SSOT en geen Gateway-schrijven.
+
+## 41.16 Delta-memo 2026-09-09 — administratie zit in Odoo, niet in een plaklijst
+
+**Eigenaar:** Pietje (“maar alles zat toch op odoo”). De eerdere vraag om inbox/retry/verwerkt te plakken was fout. Canonieke facturenbron = **Odoo**, gelezen door de bookkeeping-bot (`GET /odoo/bills`; Motor-UI `/bokas/bonnen` gebruikt intern dezelfde route). QwenPaw: `motor_admin.py odoo --year --quarter`. Geen Odoo-inlog in de harness. Geen Nango. Geen Motor-token. Als de bot OFFLINE blijft: alleen `BOOKKEEPING_BOT_URL` meten, geen factuurlijsten van Pietje eisen. `STAND.md` blijft fallback, geen tweede SSOT.
+
+## 41.17 Delta-memo 2026-09-09 — QwenPaw-probe weigert :8001 op de Docker-host
+
+**Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer na OPDRACHT-ODOO). `probe` en `odoo` **OFFLINE**, connection refused op loopback, `host.docker.internal` en `172.17.0.1` poort 8001. Dat is geldig: de bot zit niet bij deze QwenPaw-container. Residual is uitsluitend `BOOKKEEPING_BOT_URL` (Console-env of `--base` met een URL die Pietje meet). Chat-markdown eet Python-dunders; volgende opdrachten geen `__name__`-wacht in plaktekst. Geen publieke :8001, geen Odoo-wachtwoord in QwenPaw.
