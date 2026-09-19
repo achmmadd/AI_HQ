@@ -18,10 +18,8 @@ fi
 python3 --version
 
 # Byte-compile the skill client to catch syntax errors early. stdlib only.
+# Invoked as `python3 scripts/motor_admin.py ...`, so no executable bit needed.
 python3 -m py_compile "$SCRIPT"
 echo "install.sh: motor_admin.py compiles (stdlib only)"
-
-# Keep the client executable for direct invocation.
-chmod +x "$SCRIPT"
 
 echo "install.sh: done"
