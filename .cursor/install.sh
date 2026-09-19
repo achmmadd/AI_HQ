@@ -1,33 +1,27 @@
 #!/usr/bin/env bash
-# Idempotent install for the active Motor app (ai-motor). Safe to run repeatedly.
+# Idempotent setup for the active project: QwenPaw project-administratie skill.
+#
+# QwenPaw itself is an external agent runtime (Telegram assistant on the NUC).
+# The only runnable code in this repo is the read-only `project-administratie`
+# skill client, which is pure Python standard library (no pip dependencies).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO_ROOT/ai-motor"
+SKILL_DIR="$REPO_ROOT/ai-motor/qwenpaw/skills/project-administratie"
+SCRIPT="$SKILL_DIR/scripts/motor_admin.py"
 
-# Deterministic install from the committed lockfile.
-npm ci
-
-# Fail fast if the runtime Node major does not match .nvmrc (22).
-node scripts/assert-node-version.mjs
-
-# Ensure better-sqlite3 native binding matches the current Node ABI.
-bash scripts/ensure-sqlite.sh
-
-# Provide predictable dev credentials + SQLite-only config if not already present.
-# demo123 is the app's built-in development password (see lib/auth-session.ts);
-# these are dev-only, non-secret defaults. .env.local is gitignored.
-if [ ! -f .env.local ]; then
-  cat > .env.local <<'EOF'
-# Auto-generated dev env for Cloud Agent (SQLite, no external services).
-MOTORSAI_PASSWORD=demo123
-MOTORSAI_SESSION_SECRET=dev-local-session-secret-change-me
-USE_POSTGRES=0
-POSTGRES_PRIMARY=0
-SQLITE_FALLBACK=1
-MOTORSAI_DEV_PANEL=1
-EOF
-  echo "install.sh: created ai-motor/.env.local with dev defaults"
+# Require Python 3 (present in the default base image).
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "install.sh: python3 not found on PATH" >&2
+  exit 1
 fi
+python3 --version
+
+# Byte-compile the skill client to catch syntax errors early. stdlib only.
+python3 -m py_compile "$SCRIPT"
+echo "install.sh: motor_admin.py compiles (stdlib only)"
+
+# Keep the client executable for direct invocation.
+chmod +x "$SCRIPT"
 
 echo "install.sh: done"
