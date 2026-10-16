@@ -1,27 +1,27 @@
 # 00 — Huidige staat Motor AI 2.2
 
 > **Eigenaar:** Pietje
-> **Meetdatum:** 2026-07-27
-> **Bron:** PR #9, head `7f89408`
+> **Meetdatum:** 2026-07-27 (repo-nulmeting) · **SSH-delta:** 2026-10-16 · **RTX-vrijwaring:** 2026-10-16
+> **Bron:** PR #9, head `7f89408`; SSH-delta + RTX-vrijwaring: eigenaar-opdracht + Cloud Agent-probe
 > **Status:** Stap 1 goedgekeurd op 2026-07-27; live runtimevelden blijven open
 > **Gerelateerd:** [Master Build Plan](../MASTER-BUILD-PLAN.md) · [ADR-001/002](../DECISIONS.md) · [bindend review-panel](15-review-panel.md)
 
 ## Uitkomst in één minuut
 
-De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowledge_documents` en API-auth: `/api/chat/*` en `/api/conversations/*` staan niet meer in `PUBLIC_PATHS` en de routes hebben tenantchecks. De runtime is echter niet aantoonbaar groen. Vanaf deze auditomgeving was geen SSH-toegang tot NUC of Hetzner beschikbaar en `https://motorsai.app` gaf op het meetmoment Cloudflare-fout 1033/HTTP 530. OpenClaw-hardening volgens ADR-106 is niet bewezen en grotendeels niet als serverconfiguratie in de repo aanwezig. ADR-002 loopt achter: het migratiescript en Postgres-schema bestaan, maar `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de applicatierouting niet aan; daardoor is M4 “Postgres SSOT” in de code niet bereikt. Van de nieuwe 2.2-laag bestaan vooral deelstukken: Inngest heeft één geïntegreerde HITL-workflow, maar Kernel, Action Gateway en Playbook-registry bestaan nog niet als 2.2-component.
+De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowledge_documents` en API-auth: `/api/chat/*` en `/api/conversations/*` staan niet meer in `PUBLIC_PATHS` en de routes hebben tenantchecks. De runtime is echter niet aantoonbaar groen. Cursor Cloud Agents kunnen niet SSH’en naar NUC of Hetzner; `https://motorsai.app` gaf op 2026-07-27 en opnieuw op 2026-10-16 Cloudflare-fout 1033/HTTP 530. OpenClaw-hardening volgens ADR-106 is niet bewezen en grotendeels niet als serverconfiguratie in de repo aanwezig. ADR-002 loopt achter: het migratiescript en Postgres-schema bestaan, maar `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de applicatierouting niet aan; daardoor is M4 “Postgres SSOT” in de code niet bereikt. Van de nieuwe 2.2-laag bestaan vooral deelstukken: Inngest heeft één geïntegreerde HITL-workflow, maar Kernel, Action Gateway en Playbook-registry bestaan nog niet als 2.2-component.
 
 ## Meetmethode en bewijslimiet
 
 De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. De mechanische bundel `MOTOR-AI-2.2-COMPLEET.md` is niet als bron gebruikt en in consolidatiestap 3 verwijderd om dubbele waarheid te voorkomen.
 
-De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken.
+De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken. Op 2026-10-16 bevestigde de eigenaar: **een Cloud Agent kan niet SSH-connecten**, en gaf **vrijwaring voor de RTX 3090** omdat de agent daar niet op kan. SSH en RTX-hostwerk blijven eigenaar/laptop.
 
 | Bron | Gemeten resultaat |
 |---|---|
 | Git/repository | Statische inspectie van PR #9 op `7f89408`; aanwezigheid en aanroep van code is wel bewijs, een bestand of checklist is geen runtimebewijs. |
 | Auditomgeving | `USE_POSTGRES`, `POSTGRES_PRIMARY`, `SQLITE_FALLBACK` en `DATABASE_URL` zijn hier unset; `$HOME/AI_HQ/data/ai-motor.db` ontbreekt. Deze VM is niet de NUC. |
-| NUC/Hetzner | Geen SSH-configuratie, sleutel, agent of resolveerbare hostalias beschikbaar. Daarom: **onbekend, meten door eigenaar op NUC/Hetzner**. |
-| Publieke ingress | `GET https://motorsai.app/api/health` gaf `error code: 1033`; unauthenticated probes op `/api/chat`, `/api/chat/stream` en `/api/conversations` gaven HTTP 530. Dit bewijst een niet-beschikbare Cloudflare-route op het meetmoment, niet dat de interne NUC-processen uitstaan. |
+| NUC/Hetzner | Geen SSH vanuit Cursor Cloud Agent. Daarom: **onbekend, meten door eigenaar op NUC/Hetzner**. |
+| Publieke ingress | `GET https://motorsai.app/api/health` gaf `error code: 1033` op 2026-07-27 en opnieuw op 2026-10-16 (HTTP 530). Unauthenticated probes op `/api/chat`, `/api/chat/stream` en `/api/conversations` gaven in juli HTTP 530. Dit bewijst een niet-beschikbare Cloudflare-route, niet dat de interne NUC-processen uitstaan. |
 | Tests en scripts | Niet uitgevoerd. Alleen aanwezigheid en inhoud zijn geïnspecteerd; er is geen groen resultaat verondersteld. |
 
 Statussen hieronder betekenen:
@@ -30,6 +30,28 @@ Statussen hieronder betekenen:
 - **Deels:** een bruikbaar deel bestaat, maar niet het volledige acceptatiecriterium.
 - **Niet aangetroffen:** gezocht in de huidige branch, zonder passend artefact.
 - **Runtime onbekend:** **onbekend, meten door de genoemde eigenaar/operator**.
+
+## Cursor Cloud Agent: geen SSH, RTX-vrijwaring
+
+**Meetdatum:** 2026-10-16. **Beslisser:** Pietje. Dit is een runtimefeit, geen topologiewijziging (ADR-108 blijft).
+
+Cursor Cloud Agents zien de GitHub-repo, niet de hosts. SSH naar NUC, Hetzner of de inference-PC vanuit de cloud-VM is niet mogelijk. Sleutels, host-IP’s of Tailscale horen niet in de Cloud Agent-environment. Een Cursor self-hosted worker is geen login-shell en vervangt geen hosttoegang.
+
+**RTX-vrijwaring:** de eigenaar stelde de Cloud Agent vrij van toegang tot de RTX 3090-inference-PC. Geen GPU-livebewijs, geen modelserver, geen agentblokkade door ontbrekende 3090-SSH. De vrijwaring dekt niet: productietaken op die box, Gateway/policy, of NUC/Hetzner-hostmetingen. Die blijven **onbekend, meten door eigenaar**.
+
+Live probe in deze audit-VM (`hostname cursor`, user `ubuntu`):
+
+| Check | Resultaat 2026-10-16 |
+|---|---|
+| SSH-client | Aanwezig (`OpenSSH_9.6`) |
+| `$HOME/.ssh` / keys / `config` | Ontbreekt |
+| SSH-agent | Geen verbinding / geen identiteiten |
+| Tailscale | Niet aanwezig |
+| Hostalias `hetzner-motor` / `openclaw-nuc` / `nuc` | Lost niet op |
+| TCP :22 naar doc-adressen `192.168.178.43` en `100.93.43.111` | Timeout |
+| `GET https://motorsai.app/api/health` | HTTP 530, body `error code: 1033` |
+
+Golf 0-hostcommando’s uit dit document voert de eigenaar uit op de echte machine. De cloud-agent mag die uitvoer alleen verwerken als de eigenaar hem aanlevert, zonder secrets.
 
 ## Golf 0 en Fase 0
 
@@ -173,8 +195,8 @@ De laatste gecommitte snapshots zijn te oud om als actuele status te gelden: op 
 
 | Onderdeel | Plan zegt | Huidige staat | Open punt |
 |---|---|---|---|
-| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | In aanbouw; geen runtimebewijs | **onbekend, bevestigen door eigenaar** |
-| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Nog geen taken toegestaan vóór Gateway/policy | Geen afwijking: dit is een harde blokkade |
+| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | In aanbouw; geen runtimebewijs | **onbekend, bevestigen door eigenaar**; Cloud Agent heeft RTX-vrijwaring en meet dit niet |
+| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Nog geen taken toegestaan vóór Gateway/policy | Harde blokkade voor productietaken blijft; Cloud Agent is vrijgesteld van RTX-hostwerk |
 | Locatie | Prompt laat dit bewust open | **onbekend, bevestigen door eigenaar** | Vastleggen vóór ingebruikname; bepaalt single-site-risico |
 | Voeding | Doc 12 adviseert ≥850 W en twee aparte PCIe-kabels | **onbekend, bevestigen door eigenaar** | Bevestigen vóór GPU-belasting |
 | Opslag | Doc 12 adviseert 1–2 TB NVMe | **onbekend, bevestigen door eigenaar** | Capaciteit/modelcachebeleid vastleggen |
@@ -182,7 +204,7 @@ De laatste gecommitte snapshots zijn te oud om als actuele status te gelden: op 
 
 ## Nog uit te voeren live metingen
 
-Deze metingen veranderen niets en moeten door de genoemde operator op de echte hosts worden uitgevoerd. Deel uitvoer zonder secrets.
+Deze metingen veranderen niets en moeten door de genoemde operator op de echte hosts worden uitgevoerd. Cursor Cloud Agents voeren ze niet via SSH uit. Deel uitvoer zonder secrets.
 
 ### Eigenaar op NUC
 
