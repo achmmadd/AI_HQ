@@ -1,6 +1,6 @@
 # AGENTS.md — AI_HQ / Motor AI
 
-> **Eigenaar:** Pietje · **Datum:** 2026-07-27 · **SSH-regel:** 2026-10-16
+> **Eigenaar:** Pietje · **Datum:** 2026-07-27 · **SSH-regel:** 2026-10-16 · **RTX-vrijwaring:** 2026-10-16
 > Dit bestand is een kaart. Het uitvoeringsentrypoint is [`ai-motor/docs/architecture-2.2/00-START-HIER.md`](ai-motor/docs/architecture-2.2/00-START-HIER.md).
 
 ## Verplichte leesvolgorde
@@ -53,13 +53,15 @@ Doc 07 §30 is alleen een ADR-index. De verwijderde mechanische bundel is geen b
 | **Hetzner** | Postgres, canonieke engine, Kernel-API, Action Gateway, Qdrant, LiteLLM, n8n-adapter en monitoring-hub |
 | **Inference-PC** | Stateless lokale LLM-/batchworker via Tailscale |
 
-De inference-PC krijgt **geen taak** vóór SSH, Tailscale, runbook en Gateway/policy. SSH daarvoor is eigenaar/laptop (Tailscale), nooit een Cursor Cloud Agent. Zodra de eigenaar SSH heeft: eerst de read-only nulmeting uit `00-HUIDIGE-STAAT`, daarna pas de eerstvolgende START-HIER-stap.
+De inference-PC krijgt **geen taak** vóór SSH, Tailscale, runbook en Gateway/policy. SSH daarvoor is eigenaar/laptop (Tailscale), nooit een Cursor Cloud Agent. De eigenaar gaf de Cloud Agent op 2026-10-16 **vrijwaring voor de RTX 3090**: geen hosttoegang, geen GPU-meting, geen modelserver. Ontbrekende RTX-SSH is geen agentblokkade. Zodra de eigenaar zelf SSH heeft: eerst de read-only nulmeting uit `00-HUIDIGE-STAAT`, daarna pas de eerstvolgende START-HIER-stap.
 
-## Cursor Cloud Agent — geen host-SSH
+## Cursor Cloud Agent — geen host-SSH; RTX-vrijwaring
 
 Cursor Cloud Agents draaien in een geïsoleerde VM met alleen GitHub `AI_HQ`. Ze **SSH'en niet** naar NUC, Hetzner of de inference-PC. Ze vragen geen SSH-sleutels, host-IP’s of Tailscale in de Cloud Agent-environment, en zetten die daar ook niet. Een Cursor self-hosted worker is geen login-shell en vervangt geen hosttoegang.
 
-Live hostcommando’s (`pm2`, `docker ps`, `systemctl`, productieflags, SQLite↔PG-tellingen) blijven **onbekend, meten door eigenaar op NUC/Hetzner**. Een cloud-agent mag die uitvoer alleen verwerken als de eigenaar hem aanlevert, zonder secrets.
+**RTX-vrijwaring (eigenaar, 2026-10-16):** omdat de Cloud Agent niet op de RTX 3090 kan, is hij vrijgesteld van inference-PC-toegang, GPU-livebewijs en RTX-hostwerk. Dat heft de productietaak-blokkade van de PC niet op (Gateway/policy blijven verplicht voor de eigenaar).
+
+Live hostcommando’s (`pm2`, `docker ps`, `systemctl`, productieflags, SQLite↔PG-tellingen) blijven **onbekend, meten door eigenaar op NUC/Hetzner**. RTX-velden blijven **onbekend, meten door eigenaar op de inference-PC**. Een cloud-agent mag die uitvoer alleen verwerken als de eigenaar hem aanlevert, zonder secrets.
 
 ## Wat nu wel mag
 
@@ -80,6 +82,7 @@ Daarnaast:
 - Geen ClawHub/community-skills.
 - Geen side-effect-credentials in OpenClaw, n8n of agentcontext toevoegen.
 - Geen SSH-sleutels of Tailscale-auth in de Cursor Cloud Agent-environment.
+- Geen RTX/inference-PC-hostwerk vanuit de Cloud Agent; de RTX-vrijwaring dekt ontbrekende GPU-toegang, niet productietaken op die box.
 - Geen klant-/personeelsdata naar cloud vóór AM-4-punten 1–5 groen zijn; geen Art. 9-Playbook zonder DPIA.
 
 ## Bewijsplicht

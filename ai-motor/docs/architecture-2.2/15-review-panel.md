@@ -175,10 +175,12 @@ Met AM-1 t/m AM-5 verwerkt beoordeelt het panel het plan als uitvoerbaar: SRE 7/
 
 De eigenaar bepaalt welke verbeteringen in een volgende opdrachtversie landen; er wordt tijdens AM-1 geen nieuwe promptversie aangemaakt.
 
-## 41.10 Delta-memo 2026-10-16 — Cloud Agent geen SSH
+## 41.10 Delta-memo 2026-10-16 — Cloud Agent geen SSH; RTX-vrijwaring
 
 **Eigenaar:** Pietje. **Feit:** een Cursor Cloud Agent kan niet SSH-connecten naar NUC, Hetzner of de inference-PC.
 
-Dit wijzigt AM-3/ADR-108 niet. SSH blijft eigenaar/laptop via Tailscale. Cloud Agents krijgen geen host-sleutels, geen Tailscale in de environment, en behandelen een Cursor-worker niet als login-shell. Live hostmetingen uit `00-HUIDIGE-STAAT.md` blijven **onbekend, meten door eigenaar op NUC/Hetzner**, tot de eigenaar uitvoer aanlevert.
+**Vrijwaring:** omdat de Cloud Agent niet op de RTX 3090 kan, is hij vrijgesteld van inference-PC-toegang, GPU-livebewijs en RTX-hostwerk. Ontbrekende 3090-SSH is geen agentblokkade voor repo-/docwerk.
+
+Dit wijzigt AM-3/ADR-108 niet. SSH blijft eigenaar/laptop via Tailscale. De PC krijgt nog geen productietaken vóór Gateway/policy. Cloud Agents krijgen geen host-sleutels, geen Tailscale in de environment, en behandelen een Cursor-worker niet als login-shell. Live hostmetingen uit `00-HUIDIGE-STAAT.md` blijven **onbekend, meten door eigenaar**, tot de eigenaar uitvoer aanlevert.
 
 Canonieke plekken: [`00-HUIDIGE-STAAT.md`](00-HUIDIGE-STAAT.md), [`00-START-HIER.md`](00-START-HIER.md), root-[`AGENTS.md`](../../../AGENTS.md).

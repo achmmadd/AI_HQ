@@ -1,8 +1,8 @@
 # 00 — Huidige staat Motor AI 2.2
 
 > **Eigenaar:** Pietje
-> **Meetdatum:** 2026-07-27 (repo-nulmeting) · **SSH-delta:** 2026-10-16
-> **Bron:** PR #9, head `7f89408`; SSH-delta: eigenaar-opdracht + Cloud Agent-probe
+> **Meetdatum:** 2026-07-27 (repo-nulmeting) · **SSH-delta:** 2026-10-16 · **RTX-vrijwaring:** 2026-10-16
+> **Bron:** PR #9, head `7f89408`; SSH-delta + RTX-vrijwaring: eigenaar-opdracht + Cloud Agent-probe
 > **Status:** Stap 1 goedgekeurd op 2026-07-27; live runtimevelden blijven open
 > **Gerelateerd:** [Master Build Plan](../MASTER-BUILD-PLAN.md) · [ADR-001/002](../DECISIONS.md) · [bindend review-panel](15-review-panel.md)
 
@@ -14,7 +14,7 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 
 De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. De mechanische bundel `MOTOR-AI-2.2-COMPLEET.md` is niet als bron gebruikt en in consolidatiestap 3 verwijderd om dubbele waarheid te voorkomen.
 
-De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken. Op 2026-10-16 bevestigde de eigenaar bovendien: **een Cloud Agent kan niet SSH-connecten**. SSH blijft eigenaar/laptop.
+De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken. Op 2026-10-16 bevestigde de eigenaar: **een Cloud Agent kan niet SSH-connecten**, en gaf **vrijwaring voor de RTX 3090** omdat de agent daar niet op kan. SSH en RTX-hostwerk blijven eigenaar/laptop.
 
 | Bron | Gemeten resultaat |
 |---|---|
@@ -31,11 +31,13 @@ Statussen hieronder betekenen:
 - **Niet aangetroffen:** gezocht in de huidige branch, zonder passend artefact.
 - **Runtime onbekend:** **onbekend, meten door de genoemde eigenaar/operator**.
 
-## Cursor Cloud Agent: geen SSH
+## Cursor Cloud Agent: geen SSH, RTX-vrijwaring
 
 **Meetdatum:** 2026-10-16. **Beslisser:** Pietje. Dit is een runtimefeit, geen topologiewijziging (ADR-108 blijft).
 
 Cursor Cloud Agents zien de GitHub-repo, niet de hosts. SSH naar NUC, Hetzner of de inference-PC vanuit de cloud-VM is niet mogelijk. Sleutels, host-IP’s of Tailscale horen niet in de Cloud Agent-environment. Een Cursor self-hosted worker is geen login-shell en vervangt geen hosttoegang.
+
+**RTX-vrijwaring:** de eigenaar stelde de Cloud Agent vrij van toegang tot de RTX 3090-inference-PC. Geen GPU-livebewijs, geen modelserver, geen agentblokkade door ontbrekende 3090-SSH. De vrijwaring dekt niet: productietaken op die box, Gateway/policy, of NUC/Hetzner-hostmetingen. Die blijven **onbekend, meten door eigenaar**.
 
 Live probe in deze audit-VM (`hostname cursor`, user `ubuntu`):
 
@@ -193,8 +195,8 @@ De laatste gecommitte snapshots zijn te oud om als actuele status te gelden: op 
 
 | Onderdeel | Plan zegt | Huidige staat | Open punt |
 |---|---|---|---|
-| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | In aanbouw; geen runtimebewijs | **onbekend, bevestigen door eigenaar** |
-| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Nog geen taken toegestaan vóór Gateway/policy | Geen afwijking: dit is een harde blokkade |
+| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | In aanbouw; geen runtimebewijs | **onbekend, bevestigen door eigenaar**; Cloud Agent heeft RTX-vrijwaring en meet dit niet |
+| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Nog geen taken toegestaan vóór Gateway/policy | Harde blokkade voor productietaken blijft; Cloud Agent is vrijgesteld van RTX-hostwerk |
 | Locatie | Prompt laat dit bewust open | **onbekend, bevestigen door eigenaar** | Vastleggen vóór ingebruikname; bepaalt single-site-risico |
 | Voeding | Doc 12 adviseert ≥850 W en twee aparte PCIe-kabels | **onbekend, bevestigen door eigenaar** | Bevestigen vóór GPU-belasting |
 | Opslag | Doc 12 adviseert 1–2 TB NVMe | **onbekend, bevestigen door eigenaar** | Capaciteit/modelcachebeleid vastleggen |
