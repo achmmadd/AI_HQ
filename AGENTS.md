@@ -1,6 +1,6 @@
 # AGENTS.md — AI_HQ / Motor AI
 
-> **Eigenaar:** Pietje · **Datum:** 2026-07-27
+> **Eigenaar:** Pietje · **Datum:** 2026-07-27 · **SSH-regel:** 2026-10-16
 > Dit bestand is een kaart. Het uitvoeringsentrypoint is [`ai-motor/docs/architecture-2.2/00-START-HIER.md`](ai-motor/docs/architecture-2.2/00-START-HIER.md).
 
 ## Verplichte leesvolgorde
@@ -53,11 +53,17 @@ Doc 07 §30 is alleen een ADR-index. De verwijderde mechanische bundel is geen b
 | **Hetzner** | Postgres, canonieke engine, Kernel-API, Action Gateway, Qdrant, LiteLLM, n8n-adapter en monitoring-hub |
 | **Inference-PC** | Stateless lokale LLM-/batchworker via Tailscale |
 
-De inference-PC krijgt **geen taak** vóór SSH, Tailscale, runbook en Gateway/policy. Zodra SSH beschikbaar is: eerst de read-only nulmeting uit `00-HUIDIGE-STAAT`, daarna pas de eerstvolgende START-HIER-stap.
+De inference-PC krijgt **geen taak** vóór SSH, Tailscale, runbook en Gateway/policy. SSH daarvoor is eigenaar/laptop (Tailscale), nooit een Cursor Cloud Agent. Zodra de eigenaar SSH heeft: eerst de read-only nulmeting uit `00-HUIDIGE-STAAT`, daarna pas de eerstvolgende START-HIER-stap.
+
+## Cursor Cloud Agent — geen host-SSH
+
+Cursor Cloud Agents draaien in een geïsoleerde VM met alleen GitHub `AI_HQ`. Ze **SSH'en niet** naar NUC, Hetzner of de inference-PC. Ze vragen geen SSH-sleutels, host-IP’s of Tailscale in de Cloud Agent-environment, en zetten die daar ook niet. Een Cursor self-hosted worker is geen login-shell en vervangt geen hosttoegang.
+
+Live hostcommando’s (`pm2`, `docker ps`, `systemctl`, productieflags, SQLite↔PG-tellingen) blijven **onbekend, meten door eigenaar op NUC/Hetzner**. Een cloud-agent mag die uitvoer alleen verwerken als de eigenaar hem aanlevert, zonder secrets.
 
 ## Wat nu wel mag
 
-- Golf 0 verifiëren/afronden: auth 401/403, OpenClaw-hardening, secrets-inventaris, health.
+- Golf 0-docs en repo-controles. Live auth 401/403, OpenClaw-hardening, secrets-inventaris en health: alleen als de eigenaar hostuitvoer aanlevert of het zelf op NUC/Hetzner meet.
 - ADR-002 live meten en M4 aantoonbaar afronden of expliciet herplannen.
 - K2 reviews op bestaande n8n met Telegram-notificatie + approval in Motor UI.
 - K1 bonnetjes v1 daarna: route `extract` cloud-tier, elke boeking handmatig approven.
@@ -73,6 +79,7 @@ Daarnaast:
 - `/api/chat/*` en `/api/conversations/*` nooit opnieuw algemeen publiek maken.
 - Geen ClawHub/community-skills.
 - Geen side-effect-credentials in OpenClaw, n8n of agentcontext toevoegen.
+- Geen SSH-sleutels of Tailscale-auth in de Cursor Cloud Agent-environment.
 - Geen klant-/personeelsdata naar cloud vóór AM-4-punten 1–5 groen zijn; geen Art. 9-Playbook zonder DPIA.
 
 ## Bewijsplicht

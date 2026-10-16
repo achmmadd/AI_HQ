@@ -1,11 +1,11 @@
 # 00 — START HIER · Motor AI 2.2
 
-> **Eigenaar:** Pietje · **Datum:** 2026-07-27 · **Status:** Definitief uitvoeringsentrypoint
+> **Eigenaar:** Pietje · **Datum:** 2026-07-27 · **SSH-delta:** 2026-10-16 · **Status:** Definitief uitvoeringsentrypoint
 > **Voor wie:** één technicus + 2–3 niet-technische helpers
 
 ## In 60 seconden
 
-Motor AI heeft bruikbare app-, auth-, Qdrant-, Postgres- en Inngest-delen, maar is nog geen complete agent-runtime: OpenClaw-hardening is niet live bewezen, ADR-002 M4 (Postgres als SSOT) is in code niet gehaald en Motor Kernel/Action Gateway bestaan nog niet. De NUC is de informele kanaal/UI-orchestrator; durable engine, Kernel en Gateway horen op Hetzner naast Postgres; de Ryzen 7/32 GB/RTX 3090-PC wordt een stateless lokale LLM-worker. SSH en actuele NUC/Hetzner-metingen ontbreken. Daarom geldt: eerst toegang en Golf 0 live groen, daarna K2 en K1 op de bestaande stack; de inference-PC krijgt geen taak vóór SSH, runbook en Gateway/policy.
+Motor AI heeft bruikbare app-, auth-, Qdrant-, Postgres- en Inngest-delen, maar is nog geen complete agent-runtime: OpenClaw-hardening is niet live bewezen, ADR-002 M4 (Postgres als SSOT) is in code niet gehaald en Motor Kernel/Action Gateway bestaan nog niet. De NUC is de informele kanaal/UI-orchestrator; durable engine, Kernel en Gateway horen op Hetzner naast Postgres; de Ryzen 7/32 GB/RTX 3090-PC wordt een stateless lokale LLM-worker. SSH naar die hosts doet de eigenaar vanaf laptop/NUC (Tailscale). Een Cursor Cloud Agent kan dat niet en vraagt daarvoor geen sleutels. Live NUC/Hetzner-metingen blijven daardoor open tot de eigenaar ze aanlevert. Eerst toegang en Golf 0 live groen, daarna K2 en K1 op de bestaande stack; de inference-PC krijgt geen taak vóór SSH, runbook en Gateway/policy.
 
 ## Niet opnieuw beslissen
 
@@ -29,10 +29,10 @@ Bij een nieuw runtimefeit wordt `00-HUIDIGE-STAAT.md` bijgewerkt. Bij een beslui
 
 ## Wat er deze week gebeurt
 
-1. **Toegang en Golf 0:** SSH/hostnamen vastleggen; NUC/Hetzner live meten; auth 401/403 bewijzen; OpenClaw versie/bind/token/origin/allowlist hardenen; secrets inventariseren.
+1. **Toegang en Golf 0:** eigenaar legt SSH/hostnamen vast op laptop/NUC (niet in de Cloud Agent-environment); NUC/Hetzner live meten; auth 401/403 bewijzen; OpenClaw versie/bind/token/origin/allowlist hardenen; secrets inventariseren.
 2. **ADR-002 eerlijk maken:** productieflags en SQLite↔PG-rijtellingen meten; M4 aantoonbaar afronden of expliciet herplannen in `DECISIONS.md`.
 3. **K2 review-automation (#1):** op bestaande n8n; Telegram alleen notificatie+deeplink, approval in Motor UI; bewust wegwerp.
-4. **Geen inference-PC-werk:** alleen hardwaregegevens/SSH voorbereiden; geen modelserver of taak vóór Gateway/policy.
+4. **Geen inference-PC-werk:** alleen hardwaregegevens/SSH voorbereiden door de eigenaar; geen modelserver of taak vóór Gateway/policy.
 
 Daarna blijft AM-2 bindend:
 
@@ -97,4 +97,4 @@ De overige twaalf criteria uit doc 09 zijn observaties zonder gate-status tot mi
 - Approvals: [`approval-runbook.md`](../approval-runbook.md)
 - Live bewijs: [`motor-test-playbook.md`](../motor-test-playbook.md)
 
-**Startregel voor iedere medewerker of agent:** lees dit bestand, controleer daarna `00-HUIDIGE-STAAT`, en voer alleen de eerstvolgende niet-geblokkeerde regel uit.
+**Startregel voor iedere medewerker of agent:** lees dit bestand, controleer daarna `00-HUIDIGE-STAAT`, en voer alleen de eerstvolgende niet-geblokkeerde regel uit. Een Cloud Agent stopt bij host-SSH: die regel is voor de eigenaar op laptop/NUC.
