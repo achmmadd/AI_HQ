@@ -94,6 +94,18 @@ Daarnaast:
 | Live verificatie | `ai-motor/docs/motor-test-playbook.md` |
 | Qdrant restore | `factory-os/docs/QDRANT_RESTORE_RUNBOOK.md` (alleen runbookreferentie; stack blijft legacy) |
 
+## Cursor Cloud
+
+De actieve ontwikkelapp is `ai-motor` (Next.js, Node 22 via `.nvmrc`, poort 3040). Legacy-generaties en de root-Dockerstacks starten niet mee.
+
+- Install vanaf de repo-root: `cd ai-motor`, daarna `npm ci`, daarna `bash scripts/ensure-sqlite.sh`.
+- Dev-server: `npm run dev -- --hostname 0.0.0.0` in `ai-motor`. Zet `NEXT_DEV_ALLOWED_ORIGINS=127.0.0.1,localhost`, anders blokkeert Next 16 de dev-assets op `http://127.0.0.1:3040` en hydrateert de UI niet. `http://localhost:3040` werkt ook zonder die variabele.
+- SQLite ontstaat bij de eerste import op `$HOME/AI_HQ/data/ai-motor.db`. `DATABASE_URL`, Qdrant, n8n en Dify zijn niet nodig om in te loggen of een taak op `/agenda` te bewaren.
+- Niet-productie login: een e-mailadres plus het ontwikkelwachtwoord uit `lib/auth-session.ts` (`demo123` zolang `MOTORSAI_PASSWORD` leeg is en `NODE_ENV` niet `production` is).
+- Unit tests: `cd ai-motor && npx tsx --test lib/auth-guards.test.ts`. `tsx` komt mee via de lockfile.
+- `GET /api/health` antwoordt 503 zolang n8n en Dify ontbreken. Gebruik `/login` als liveness-check.
+- `npx tsc --noEmit` en `npx eslint .` zijn draaibaar. Bestaande type- en lintfouten in de app zijn geen teken dat de installatie faalde.
+
 ## Sessies en continuïteit
 
 In een directe eigenaarsessie: lees `SOUL.md`, `USER.md`, de dagnotities van vandaag/gisteren en `MEMORY.md` als die bestaan. Persoonlijke context mag nooit productbeslissingen, securityregels of de canonieke docs overschrijven.
