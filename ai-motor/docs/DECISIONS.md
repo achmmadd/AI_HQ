@@ -405,15 +405,17 @@ Er zijn drie nodes: NUC, Hetzner 16 GB en een Ryzen 7/32 GB/RTX 3090-PC in aanbo
 | Node | Verantwoordelijkheid |
 |---|---|
 | **Hetzner** | Postgres SSOT, canonieke engine, Kernel-API, Action Gateway, Qdrant, LiteLLM, n8n-adapter en Uptime Kuma/Beszel-hub |
-| **NUC** | Motor UI, gehard OpenClaw, Telegram/kanalen, local-executor/PC-bridge-glue en ingress |
+| **NUC** | Motor UI, gehard OpenClaw (tot ADR-110-cutover), local-executor/PC-bridge-glue en ingress. **Telegram voor projectadministratie: niet hier — zie ADR-110.** |
 | **Inference-PC** | Stateless lokale LLM-/batchworker via Tailscale; geen DB of publiek endpoint |
 
-De eigenaar mag de NUC informeel “orchestrator” noemen voor kanalen/UI; de enige **durable orchestrator** is de engine op Hetzner. De inference-PC krijgt geen taken vóór SSH, runbook en Gateway/policy.
+De eigenaar mag de NUC informeel “orchestrator” noemen voor UI/glue; de enige **durable orchestrator** is de engine op Hetzner. De inference-PC krijgt geen taken vóór SSH, runbook en Gateway/policy.
+
+**Amendement 2026-09-08 (ADR-110):** Telegram + projectadministratie via QwenPaw vereisen **geen NUC**. Die kanaalrol draait op de bestaande QwenPaw-instance (Docker, agent `boka_operations`). Dit wijzigt Hetzner-durable-control en de inference-PC-blokkade niet.
 
 ### Gevolgen
 
 - Engine↔Postgres-checkpoints blijven lokaal op Hetzner; cross-node inference/glue meet nog steeds Tailscale-latency (ADR-101 gate 4).
-- NUC-uitval raakt kanalen, niet durable state.
+- NUC-uitval raakt Motor UI/ingress, niet durable state. QwenPaw-Telegram (ADR-110) is daar niet van afhankelijk.
 - Monitoring op Hetzner bewaakt de thuissite.
 - Inngest vereist een apart engine-store-backupobject.
 
@@ -474,6 +476,49 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 
 ---
 
+## ADR-110 — QwenPaw als assistent-harness voor projectadministratie; Telegram verhuist mee
+
+| Veld | Waarde |
+|------|--------|
+| **Status** | ✅ **Besloten** — uitvoering/migratie open |
+| **Datum** | 2026-09-08 |
+| **Beslisser** | Pietje (mondelinge opdracht in eigenaarsessie: "project administratie overzetten op qwenpaw en de telegram mee") |
+
+### Context
+
+De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met Telegram-kanaal en skills) beschikbaar en wil daar de projectadministratie — het bonnen-/administratie-domein per project (fumero/bokas), in Motor UI onder "Bonnen en administratie" — op draaien, met het Telegram-kanaal erbij. Dit raakt ADR-105 (OpenClaw als kanaal-harness), ADR-106 (OpenClaw-hardening) en ADR-108 (kanalen op de NUC).
+
+### Besluit
+
+1. **QwenPaw is kanaal/assistent-harness, geen orchestrator.** Engine, Kernel en Gateway blijven op Hetzner (ADR-105/108). **De NUC is geen voorwaarde en geen uitvoeringsdoel** voor projectadministratie + Telegram. **Live:** QwenPaw 2.2.0, agent **`boka_operations`**, Docker-hostname `cc22d51c27ac`, workspace `/app/working/workspaces/boka_operations`. Bestanden en skill horen in díe workspace. QwenPaw neemt de Telegram-kanaalrol voor de eigenaar over van OpenClaw. Of de Docker-host toevallig de NUC is, is irrelevant voor deze taak.
+2. **QwenPaw neemt de operatorrol over** (eigenaar 2026-09-08: “de info geven zodat hij het kan overnemen”; 2026-09-09: “maar alles zat toch op odoo”). Lees-oppervlak + bijhouden. **Odoo is de canonieke facturenbron.** Bronnen, in volgorde: (a) bookkeeping-bot zonder credentials — `/health`, `/recent`, `/export/documents`, **`/odoo/bills`** (`motor_admin.py odoo`); (b) workspace-`STAND.md` alleen als de bot OFFLINE blijft. Pietje plakt geen inbox/retry/verwerkt-lijsten. Geen Odoo-inlog, geen Nango, geen Odoo-wachtwoord in QwenPaw. `OVERDRACHT.md` is de werkwijze. **`MOTOR_API_TOKEN` verboden.** Geen `/cowork`. Geen approve/boek-API. `STAND.md` is geen Motor-SSOT (ADR-107): bron + datum verplicht; live probe wint bij conflict. Geen administratie-rijen in MEMORY.md/ReMe. Geen groepen.
+3. **Telegram-token: één poller.** Eén bot-token mag niet door twee pollers tegelijk. Als OpenClaw hetzelfde token nog pollen, dat kanaal daar uit — dat is geen NUC-setup voor QwenPaw. Motor-notificaties (`lib/telegram.ts`, alleen `sendMessage`) mogen hetzelfde token gebruiken. Token roteren via @BotFather bij de verhuizing.
+4. **Toegangscontrole:** `dm_policy: "allowlist"` met alleen het Telegram-user-id van de eigenaar, `group_policy: "allowlist"`, `/setprivacy` ENABLED en `/setjoingroups` DISABLED in @BotFather. De bot gebruikersnaam wordt niet publiek gedeeld.
+5. **AM-1-impact:** QwenPaw start als **Incubation**. OpenClaw blijft de Core-kanaalcomponent (na hardening, ADR-106) tot de QwenPaw-Telegram-migratie live is bewezen; daarna telt QwenPaw als de kanaalcomponent binnen de maximaal acht Production Core-componenten en vervalt OpenClaw naar Incubation. Het componentenaantal stijgt niet.
+6. **AM-4-impact:** Telegram blijft subverwerker. Omdat de cowork-deeplink dood is, mag de **privéchat met de eigenaar** de administratie-cijfers bevatten (scoped uitzondering op “alleen link”). Geen groepen, geen MEMORY.md, geen Motor-token. Verwerkingsregister moet QwenPaw + modelprovider dekken bij AM-4-uitvoering.
+7. **Legacy project-/taakborden** (`EXECUTION_BOARD.db`, `mission_control.py`, root-`projects/`) migreren **niet** naar QwenPaw; AM-5 (bevriezen → 30 dagen → verwijderen) blijft ongewijzigd.
+
+### Gevolgen
+
+- QwenPaw (`boka_operations`) heeft de administratie-operatorrol overgenomen. Facturen komen uit Odoo via de bookkeeping-bot. Als de bot OFFLINE is: `BOOKKEEPING_BOT_URL` is **onbekend, meten door Pietje**. Geen factuurlijsten laten plakken.
+- OpenClaw verliest het Telegram-kanaal; overige OpenClaw-functies en de hardeningseisen uit ADR-106 blijven gelden zolang OpenClaw aan staat.
+- K1/K2-waardewerk (AM-2) verandert niet van volgorde; QwenPaw is een extra bedieningslaag, geen nieuwe workflow-engine.
+- Uitvoering staat in runbook [`qwenpaw-migratie.md`](qwenpaw-migratie.md); artefacten in [`../qwenpaw/`](../qwenpaw/). Live target: agent `boka_operations`. Odoo-correctie: [`../qwenpaw/OPDRACHT-ODOO.md`](../qwenpaw/OPDRACHT-ODOO.md). Als de git-checkout in de container ontbreekt, schrijft de agent die bestanden.
+
+### Acceptatie
+
+- [x] Agent `boka_operations` heeft een enabled skill + persona en documenteerde OFFLINE (2026-09-08); helper moet nog credential-loos (`probe`, geen `MOTOR_API_TOKEN`)
+- [ ] Geen tweede poller op hetzelfde bot-token (OpenClaw-Telegram alleen uitzetten als die nog pollen; geen NUC-werk voor QwenPaw)
+- [ ] QwenPaw geeft administratie-info in de privéchat zonder `/cowork`-link; schrijven blijft geweigerd
+- [ ] Geen Motor-sessietoken of side-effect-credential in de QwenPaw-config of -omgeving
+- [ ] `00-HUIDIGE-STAAT.md` is bijgewerkt met de live metingen van de migratie
+
+### Rollback
+
+Telegram-kanaal in QwenPaw uitzetten (`enabled: false`). Als OpenClaw het token eerder pollen: dat kanaal daar weer aan en token roteren. De read-only skill heeft geen state; er is niets in databases terug te zetten. Geen NUC-stap.
+
+---
+
 ## ADR-index (overzicht)
 
 | ID | Onderwerp | Status |
@@ -490,6 +535,7 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 | ADR-107 | Geen tweede memorylaag | ✅ Besloten |
 | ADR-108 | Runtime-topologie | ✅ Hetzner durable control |
 | ADR-109 | Gateway-enforcementmodel | ✅ Credential-broker/proxy |
+| ADR-110 | QwenPaw voor projectadministratie; Telegram verhuist mee | ✅ Besloten 2026-09-08; migratie open |
 
 ---
 
@@ -500,3 +546,10 @@ Gateway uit betekent alle side-effect-tools uit en autonomie A1. Credentials ter
 | 2026-06-06 | ADR-001 dual-search + ADR-002 Postgres milestones (M0–M6) |
 | 2026-06-06 | Sprint 1.3: Qdrant payload schema, master_contexts, PM2 single-instance note |
 | 2026-07-27 | ADR-101 t/m ADR-109 geconsolideerd uit Motor AI 2.2 AM-1 t/m AM-5; ADR-108/109 toegevoegd |
+| 2026-09-08 | ADR-110 toegevoegd: QwenPaw als assistent-harness voor projectadministratie; Telegram-kanaal verhuist van OpenClaw naar QwenPaw (eigenaarsopdracht) |
+| 2026-09-08 | ADR-110 aangescherpt: live instance is agent `boka_operations` in Docker 2.2.0; opdracht stopt niet meer op “niet de NUC”; bookkeeping-URL via probe i.p.v. alleen loopback |
+| 2026-09-08 | ADR-110 + ADR-108-amendement: NUC is niet nodig voor QwenPaw-projectadministratie/Telegram; kanaalrol = bestaande Docker-instance |
+| 2026-09-08 | ADR-110: `MOTOR_API_TOKEN` expliciet verboden; QwenPaw-skill staat enabled met gedocumenteerde OFFLINE |
+| 2026-09-08 | ADR-110: `/cowork?tab=approvals` live weg; QwenPaw is het lees-oppervlak (info in privéchat, geen dode deeplink) |
+| 2026-09-08 | ADR-110: overname-operatorrol; `OVERDRACHT.md` + `STAND.md` (Pietje-plak of probe); nog steeds geen schrijf-API/token |
+| 2026-09-09 | ADR-110: Odoo is de facturenbron (`GET /odoo/bills` via de bot); Pietje plakt geen inbox-lijsten |
