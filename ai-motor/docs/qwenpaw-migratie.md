@@ -1,7 +1,8 @@
 # Runbook — QwenPaw-migratie: projectadministratie + Telegram
 
 > **Eigenaar:** Pietje · **Datum:** 2026-09-08
-> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.17](architecture-2.2/15-review-panel.md)
+> **Besluit:** [ADR-110](DECISIONS.md) · **Staat:** [00-HUIDIGE-STAAT](architecture-2.2/00-HUIDIGE-STAAT.md) · **Delta:** [doc 15 §41.10–41.18](architecture-2.2/15-review-panel.md)
+> **Infra-project:** [qwenpaw-infra-project.md](qwenpaw-infra-project.md)
 > **Artefacten:** [`../qwenpaw/`](../qwenpaw/)
 > **Live target:** agent `boka_operations`, workspace `/app/working/workspaces/boka_operations` (QwenPaw 2.2.0, Docker)
 
@@ -78,7 +79,9 @@ qwenpaw skills list --status enabled --agent-id boka_operations
 
 Optioneel: `BOOKKEEPING_BOT_URL` (alleen als probe alle kandidaten mist). Geen sessietoken. Zetten in QwenPaw Console, niet in chat, `agent.json` niet overschrijven.
 
-## Stap 4b — `BOOKKEEPING_BOT_URL` meten (Pietje)
+## Stap 4b — `BOOKKEEPING_BOT_URL` meten (infra-project)
+
+**Projectbrief voor infra:** [`qwenpaw-infra-project.md`](qwenpaw-infra-project.md) — geef die door als opdracht.
 
 Live 2026-09-09: QwenPaw-container ziet **geen** bookkeeping op loopback, `host.docker.internal:8001` of `172.17.0.1:8001` (connection refused). Repo-plan zet de bot op de Motor-host (NUC) `:8001`; dat is geen bewijs dat die host nu luistert.
 

@@ -31,7 +31,7 @@ De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowl
 
 **Gemeten 2026-09-09 later (QwenPaw, doorgestuurd door de eigenaar):** OPDRACHT-ODOO overschreven en gerund. `probe` en `odoo --year 2026 --quarter 3` beide **OFFLINE** (exit 2). Connection refused op `127.0.0.1:8001`, `host.docker.internal:8001` en `172.17.0.1:8001`. De bookkeeping-bot luistert dus **niet** in de QwenPaw-container en **niet** op poort 8001 van die Docker-host. `BOOKKEEPING_BOT_URL` blijft **onbekend, meten door Pietje**. Chat-markdown at `__name__`/`__main__` op tot `name`/`main`; QwenPaw herstelde dat lokaal. Geen Odoo-wachtwoord, geen Motor-token, geen factuurlijst.
 
-**Repo-plan (niet live bewezen vanaf QwenPaw):** bookkeeping-bot hoort op de Motor-host (documenten: NUC) op `:8001`, Motor default `http://127.0.0.1:8001`. Dat loopback-adres is een andere machine dan de QwenPaw-container. Meetcommando's voor Pietje: zie [`qwenpaw-migratie.md`](../qwenpaw-migratie.md) stap “BOOKKEEPING_BOT_URL meten”.
+**Repo-plan (niet live bewezen vanaf QwenPaw):** bookkeeping-bot hoort op de Motor-host (documenten: NUC) op `:8001`, Motor default `http://127.0.0.1:8001`. Dat loopback-adres is een andere machine dan de QwenPaw-container. **Infra-projectbrief (2026-10-20):** [`qwenpaw-infra-project.md`](../qwenpaw-infra-project.md) — `BOOKKEEPING_BOT_URL` meten/zetten is infra-werk.
 
 Meetcommando's in de QwenPaw-container (deel uitvoer zonder secrets):
 

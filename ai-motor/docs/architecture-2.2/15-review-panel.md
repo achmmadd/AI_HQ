@@ -226,3 +226,7 @@ Impact op de bindende amendementen:
 ## 41.17 Delta-memo 2026-09-09 — QwenPaw-probe weigert :8001 op de Docker-host
 
 **Eigenaar:** Pietje (doorgestuurde QwenPaw-uitvoer na OPDRACHT-ODOO). `probe` en `odoo` **OFFLINE**, connection refused op loopback, `host.docker.internal` en `172.17.0.1` poort 8001. Dat is geldig: de bot zit niet bij deze QwenPaw-container. Residual is uitsluitend `BOOKKEEPING_BOT_URL` (Console-env of `--base` met een URL die Pietje meet). Chat-markdown eet Python-dunders; volgende opdrachten geen `__name__`-wacht in plaktekst. Geen publieke :8001, geen Odoo-wachtwoord in QwenPaw.
+
+## 41.18 Delta-memo 2026-10-20 — residual als infra-project
+
+**Eigenaar:** Pietje (“wil dit als project geven aan mn infra”). Residual ADR-110-leespad (QwenPaw OFFLINE → `BOOKKEEPING_BOT_URL`) is een **infra-opdracht**, geen agent-architectuurwerk. Brief: [`../qwenpaw-infra-project.md`](../qwenpaw-infra-project.md). Scope: bot vinden/starten, private pad (Tailscale) naar QwenPaw-container, Console-env, acceptatietest `probe`+`odoo`. Geen publieke :8001, geen Motor-token, geen Odoo-wachtwoord in QwenPaw.
