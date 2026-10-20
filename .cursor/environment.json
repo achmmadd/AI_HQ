@@ -1,0 +1,4 @@
+{
+  "name": "QwenPaw project-administratie",
+  "install": "bash .cursor/install.sh"
+}

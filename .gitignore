@@ -24,6 +24,10 @@ __pycache__/
 
 # IDE / tooling
 .cursor/
+# Cloud Agent environment config is tracked (repository-managed environment).
+!.cursor/
+!.cursor/environment.json
+!.cursor/install.sh
 
 # OS & media (repo root clutter)
 .DS_Store
