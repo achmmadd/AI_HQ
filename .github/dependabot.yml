@@ -1,4 +1,5 @@
-# Dependabot version updates only. No auto-merge.
+# Dependabot version updates. Minor/patch auto-merge via
+# .github/workflows/dependabot-auto-merge.yml (majors blijven handmatig).
 version: 2
 updates:
   - package-ecosystem: npm
