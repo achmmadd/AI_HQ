@@ -1,0 +1,60 @@
+# Path → label mapping for actions/labeler@v5.
+# Labels follow real top-level areas on master (geen qwenpaw-map aanwezig).
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - '*.md'
+          - ai-motor/docs/**
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - Dockerfile
+          - docker-compose*.yml
+          - '**/Dockerfile'
+          - '**/docker-compose*.yml'
+          - ai-motor/infra/**
+
+agents:
+  - changed-files:
+      - any-glob-to-any-file:
+          - agents/**
+          - agent_service/**
+          - holding/agents/**
+          - scripts/agent_workers.py
+
+cloudflare:
+  - changed-files:
+      - any-glob-to-any-file:
+          - cloudflare_bridge.py
+          - scripts/cloudflared*
+
+ai-motor:
+  - changed-files:
+      - any-glob-to-any-file: ai-motor/**
+
+holding:
+  - changed-files:
+      - any-glob-to-any-file:
+          - holding/**
+          - pages/**
+
+factory-os:
+  - changed-files:
+      - any-glob-to-any-file: factory-os/**
+
+evomap:
+  - changed-files:
+      - any-glob-to-any-file: evomap/**
+
+tools:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tools/**
+          - motors-vscode/**
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: .github/**
