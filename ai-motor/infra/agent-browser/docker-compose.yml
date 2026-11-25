@@ -49,7 +49,7 @@ services:
   # Placeholder for Stagehand sidecar — enable in Fase 3 when replacing browserless.
   stagehand:
     profiles: ["on-demand", "stagehand"]
-    image: alpine:3.20
+    image: alpine:3.24
     container_name: motor-stagehand-placeholder
     restart: "no"
     command: ["sh", "-c", "echo Stagehand sidecar skeleton — wire in Fase 3 && sleep infinity"]

@@ -1,54 +1,65 @@
 # 00 — Huidige staat Motor AI 2.2
 
 > **Eigenaar:** Pietje
-> **Meetdatum:** 2026-07-27
-> **Bron:** PR #9, head `7f89408`
+> **Meetdatum:** 2026-07-27 (repo-nulmeting) · **SSH-delta:** 2026-10-16 · **RTX-vrijwaring:** 2026-10-16
+> **Bron:** PR #9, head `7f89408`; SSH-delta + RTX-vrijwaring: eigenaar-opdracht + Cloud Agent-probe
 > **Status:** Stap 1 goedgekeurd op 2026-07-27; live runtimevelden blijven open
 > **Gerelateerd:** [Master Build Plan](../MASTER-BUILD-PLAN.md) · [ADR-001/002](../DECISIONS.md) · [bindend review-panel](15-review-panel.md)
 
 ## Uitkomst in één minuut
 
-De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowledge_documents` en API-auth: `/api/chat/*` en `/api/conversations/*` staan niet meer in `PUBLIC_PATHS` en de routes hebben tenantchecks. De runtime is echter niet aantoonbaar groen. Vanaf deze auditomgeving was geen SSH-toegang tot NUC of Hetzner beschikbaar en `https://motorsai.app` gaf op het meetmoment Cloudflare-fout 1033/HTTP 530. OpenClaw-hardening volgens ADR-106 is niet bewezen en grotendeels niet als serverconfiguratie in de repo aanwezig. ADR-002 loopt achter: het migratiescript en Postgres-schema bestaan, maar `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de applicatierouting niet aan; daardoor is M4 “Postgres SSOT” in de code niet bereikt. Van de nieuwe 2.2-laag bestaan vooral deelstukken: Inngest heeft één geïntegreerde HITL-workflow, maar Kernel, Action Gateway en Playbook-registry bestaan nog niet als 2.2-component.
+De repository is verder dan de oorspronkelijke 2.2-nulmeting voor Qdrant, `knowledge_documents` en API-auth: `/api/chat/*` en `/api/conversations/*` staan niet meer in `PUBLIC_PATHS` en de routes hebben tenantchecks. De runtime is echter niet aantoonbaar groen. Cursor Cloud Agents kunnen niet SSH’en naar NUC of Hetzner; `https://motorsai.app` gaf op 2026-07-27 en opnieuw op 2026-10-16 Cloudflare-fout 1033/HTTP 530. OpenClaw-hardening volgens ADR-106 is niet bewezen en grotendeels niet als serverconfiguratie in de repo aanwezig. ADR-002 loopt achter: het migratiescript en Postgres-schema bestaan, maar `POSTGRES_PRIMARY` en `SQLITE_FALLBACK` sturen de applicatierouting niet aan; daardoor is M4 “Postgres SSOT” in de code niet bereikt. Van de nieuwe 2.2-laag bestaan vooral deelstukken: Inngest heeft één geïntegreerde HITL-workflow, maar Kernel, Action Gateway en Playbook-registry bestaan nog niet als 2.2-component.
 
 ## Aanvulling 2026-09-08 — QwenPaw en Telegram-migratie
 
-**Nieuw feit (eigenaarsmelding, geen meting):** de eigenaar meldt dat QwenPaw beschikbaar is en heeft opdracht gegeven projectadministratie en het Telegram-kanaal naar QwenPaw over te zetten. Besluit vastgelegd in [ADR-110](../DECISIONS.md); uitvoering via [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md). Deze aanvulling verandert de metingen hieronder niet; alle QwenPaw-velden zijn **onbekend, meten door eigenaar op de NUC**.
+**Besluit:** [ADR-110](../DECISIONS.md) · **Uitvoering:** [runbook `qwenpaw-migratie.md`](../qwenpaw-migratie.md) · **Opdracht (overname, archief):** [`../qwenpaw/archive/OPDRACHT-OVERNAME.md`](../qwenpaw/archive/OPDRACHT-OVERNAME.md)
 
-| Vraag | Status op 2026-09-08 |
+**Gemeten 2026-09-08 (QwenPaw zelf, doorgestuurd door de eigenaar):** QwenPaw **2.2.0** draait in een Docker-container, hostname `cc22d51c27ac` (`/.dockerenv` aanwezig), werkdirectory `/app/working/workspaces/boka_operations`, agent-id **`boka_operations`**. `~/AI_HQ/ai-motor/qwenpaw` en `~/.qwenpaw/workspaces/default` ontbreken in die container. Skill `project-administratie` en `motor_admin.py` waren op dat moment niet aanwezig.
+
+**Eigenaarsbesluit dezelfde avond:** de NUC is **niet nodig** voor deze taak. Docker-host = NUC is geen meetpunt en geen blokkade. Uitvoering = deze container.
+
+**Gemeten 2026-09-08 later (QwenPaw, doorgestuurd door de eigenaar):** skill `project-administratie` staat **enabled** (`customized`, scanner `safe=True`). Persona-regels zijn in `PROFILE.md` gezet. `agent.json` is niet aangeraakt. Rooktest **OFFLINE**. Telegram-kanaal: **niet actief** (console-instance). QwenPaw schreef een eigen helper die `MOTOR_API_URL` + optioneel `MOTOR_API_TOKEN` leest. **`MOTOR_API_TOKEN` is verboden** (ADR-110); niet zetten. Canonieke helper blijft credential-loos (`BOOKKEEPING_BOT_URL` of loopback/Docker-host-probe).
+
+| Vraag | Status op 2026-09-08 later |
 |---|---|
-| Draait QwenPaw, waar, welke versie? | **onbekend, meten door eigenaar op NUC** |
-| Is het Telegram-kanaal in QwenPaw actief met allowlist? | **onbekend, meten door eigenaar op NUC** |
-| Is het Telegram-kanaal in OpenClaw uit (één poller op het bot-token)? | **onbekend, meten door eigenaar op NUC** |
-| Is de read-only skill `project-administratie` geïnstalleerd en enabled? | **onbekend, meten door eigenaar op NUC** |
-| Bevat de QwenPaw-omgeving een Motor-sessietoken of side-effect-credential? | **onbekend, meten door eigenaar op NUC** (acceptatie: nee) |
+| Draait QwenPaw, waar, welke versie? | **2.2.0** in container `cc22d51c27ac`, agent `boka_operations`. NUC niet vereist. |
+| Skill `project-administratie` enabled? | **ja** (eigen variant; moet credential-loos gemaakt worden) |
+| Rooktest | **OFFLINE** (geldig) — hun script wachtte op `MOTOR_API_URL`; dat is niet de canonieke bron |
+| Telegram-allowlist / kanaal actief? | **nee** — console-only; token alleen via Console door de eigenaar, niet in chat |
+| Motor-sessietoken in QwenPaw-env? | **niet gezet** (goed). Niet alsnog `MOTOR_API_TOKEN` exporteren. |
+| Bookkeeping-bot bereikbaar? | **onbekend, meten door Pietje** — `motor_admin.py probe` zonder token |
 
-Meetcommando's voor de eigenaar op de NUC (deel uitvoer zonder secrets):
+**Gemeten 2026-09-09 later (QwenPaw, doorgestuurd door de eigenaar):** OPDRACHT-ODOO overschreven en gerund. `probe` en `odoo --year 2026 --quarter 3` beide **OFFLINE** (exit 2). Connection refused op `127.0.0.1:8001`, `host.docker.internal:8001` en `172.17.0.1:8001`. De bookkeeping-bot luistert dus **niet** in de QwenPaw-container en **niet** op poort 8001 van die Docker-host. `BOOKKEEPING_BOT_URL` blijft **onbekend, meten door Pietje**. Chat-markdown at `__name__`/`__main__` op tot `name`/`main`; QwenPaw herstelde dat lokaal. Geen Odoo-wachtwoord, geen Motor-token, geen factuurlijst.
+
+**Repo-plan (niet live bewezen vanaf QwenPaw):** bookkeeping-bot hoort op de Motor-host (documenten: NUC) op `:8001`, Motor default `http://127.0.0.1:8001`. Dat loopback-adres is een andere machine dan de QwenPaw-container. **Infra-projectbrief (2026-10-20):** [`qwenpaw-infra-project.md`](../qwenpaw-infra-project.md) — `BOOKKEEPING_BOT_URL` meten/zetten is infra-werk.
+
+Meetcommando's in de QwenPaw-container (deel uitvoer zonder secrets):
 
 ```bash
 qwenpaw --version
-ps aux | grep -i qwenpaw | grep -v grep
-ls ~/.qwenpaw/workspaces/
-qwenpaw skills list --agent-id default
-# Telegram-kanaalconfig zonder token te tonen:
-python3 -c "import json;c=json.load(open('$HOME/.qwenpaw/workspaces/default/agent.json'));t=c.get('channels',{}).get('telegram',{});t['bot_token']='***' if t.get('bot_token') else '';print(json.dumps(t,indent=2))"
-# OpenClaw-Telegram uit? (mag geen telegram-poller meer tonen)
-systemctl --user --no-pager status openclaw-gateway.service
-# Skill rooktest (read-only, loopback):
-python3 ~/.qwenpaw/workspaces/default/skills/project-administratie/scripts/motor_admin.py status
+hostname
+pwd
+ls /app/working/workspaces/boka_operations
+qwenpaw skills list --status enabled --agent-id boka_operations
+python3 /app/working/workspaces/boka_operations/skills/project-administratie/scripts/motor_admin.py probe
+# Telegram zonder token:
+python3 -c "import json;c=json.load(open('/app/working/workspaces/boka_operations/agent.json'));t=c.get('channels',{}).get('telegram',{});t['bot_token']='***' if t.get('bot_token') else '';print(json.dumps({k:t.get(k) for k in ('enabled','dm_policy','group_policy','allow_from')},indent=2))"
 ```
+
+OpenClaw-Telegram is geen QwenPaw-voorwaarde. Alleen meten als dezelfde bot nog via OpenClaw antwoordt.
 
 ## Meetmethode en bewijslimiet
 
 De voorcontrole is geslaagd: PR-head `7f89408` bevatte vóór deze nulmeting de opgegeven 19 bestanden; doc 15, het masterplan en `DECISIONS.md` zijn aanwezig. De mechanische bundel `MOTOR-AI-2.2-COMPLEET.md` is niet als bron gebruikt en in consolidatiestap 3 verwijderd om dubbele waarheid te voorkomen.
 
-De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken.
+De eigenaar bevestigde daarna: de NUC is de informele kanaal/UI-orchestrator en de nieuwe PC wordt de lokale LLM-worker zodra SSH beschikbaar is. Conform bindend AM-3 blijven durable engine, Kernel en Gateway op Hetzner; de PC krijgt vóór SSH plus Gateway/policy geen taken. Op 2026-10-16 bevestigde de eigenaar: **een Cloud Agent kan niet SSH-connecten**, en gaf **vrijwaring voor de RTX 3090** omdat de agent daar niet op kan. SSH en RTX-hostwerk blijven eigenaar/laptop.
 
 | Bron | Gemeten resultaat |
 |---|---|
 | Git/repository | Statische inspectie van PR #9 op `7f89408`; aanwezigheid en aanroep van code is wel bewijs, een bestand of checklist is geen runtimebewijs. |
 | Auditomgeving | `USE_POSTGRES`, `POSTGRES_PRIMARY`, `SQLITE_FALLBACK` en `DATABASE_URL` zijn hier unset; `$HOME/AI_HQ/data/ai-motor.db` ontbreekt. Deze VM is niet de NUC. |
-| NUC/Hetzner | Geen SSH-configuratie, sleutel, agent of resolveerbare hostalias beschikbaar. Daarom: **onbekend, meten door eigenaar op NUC/Hetzner**. |
-| Publieke ingress | `GET https://motorsai.app/api/health` gaf `error code: 1033`; unauthenticated probes op `/api/chat`, `/api/chat/stream` en `/api/conversations` gaven HTTP 530. Dit bewijst een niet-beschikbare Cloudflare-route op het meetmoment, niet dat de interne NUC-processen uitstaan. |
+| NUC/Hetzner | Geen SSH vanuit Cursor Cloud Agent. Daarom: **onbekend, meten door eigenaar op NUC/Hetzner**. |
+| Publieke ingress | `GET https://motorsai.app/api/health` gaf `error code: 1033` op 2026-07-27 en opnieuw op 2026-10-16 (HTTP 530). Unauthenticated probes op `/api/chat`, `/api/chat/stream` en `/api/conversations` gaven in juli HTTP 530. Dit bewijst een niet-beschikbare Cloudflare-route, niet dat de interne NUC-processen uitstaan. |
 | Tests en scripts | Niet uitgevoerd. Alleen aanwezigheid en inhoud zijn geïnspecteerd; er is geen groen resultaat verondersteld. |
 
 Statussen hieronder betekenen:
@@ -57,6 +68,28 @@ Statussen hieronder betekenen:
 - **Deels:** een bruikbaar deel bestaat, maar niet het volledige acceptatiecriterium.
 - **Niet aangetroffen:** gezocht in de huidige branch, zonder passend artefact.
 - **Runtime onbekend:** **onbekend, meten door de genoemde eigenaar/operator**.
+
+## Cursor Cloud Agent: geen SSH, RTX-vrijwaring
+
+**Meetdatum:** 2026-10-16. **Beslisser:** Pietje. Dit is een runtimefeit, geen topologiewijziging (ADR-108 blijft).
+
+Cursor Cloud Agents zien de GitHub-repo, niet de hosts. SSH naar NUC, Hetzner of de inference-PC vanuit de cloud-VM is niet mogelijk. Sleutels, host-IP’s of Tailscale horen niet in de Cloud Agent-environment. Een Cursor self-hosted worker is geen login-shell en vervangt geen hosttoegang.
+
+**RTX-vrijwaring:** de eigenaar stelde de Cloud Agent vrij van toegang tot de RTX 3090-inference-PC. Geen GPU-livebewijs, geen modelserver, geen agentblokkade door ontbrekende 3090-SSH. De vrijwaring dekt niet: productietaken op die box, Gateway/policy, of NUC/Hetzner-hostmetingen. Die blijven **onbekend, meten door eigenaar**.
+
+Live probe in deze audit-VM (`hostname cursor`, user `ubuntu`):
+
+| Check | Resultaat 2026-10-16 |
+|---|---|
+| SSH-client | Aanwezig (`OpenSSH_9.6`) |
+| `$HOME/.ssh` / keys / `config` | Ontbreekt |
+| SSH-agent | Geen verbinding / geen identiteiten |
+| Tailscale | Niet aanwezig |
+| Hostalias `hetzner-motor` / `openclaw-nuc` / `nuc` | Lost niet op |
+| TCP :22 naar doc-adressen `192.168.178.43` en `100.93.43.111` | Timeout |
+| `GET https://motorsai.app/api/health` | HTTP 530, body `error code: 1033` |
+
+Golf 0-hostcommando’s uit dit document voert de eigenaar uit op de echte machine. De cloud-agent mag die uitvoer alleen verwerken als de eigenaar hem aanlevert, zonder secrets.
 
 ## Golf 0 en Fase 0
 
@@ -200,8 +233,8 @@ De laatste gecommitte snapshots zijn te oud om als actuele status te gelden: op 
 
 | Onderdeel | Plan zegt | Huidige staat | Open punt |
 |---|---|---|---|
-| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | In aanbouw; geen runtimebewijs | **onbekend, bevestigen door eigenaar** |
-| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Nog geen taken toegestaan vóór Gateway/policy | Geen afwijking: dit is een harde blokkade |
+| Hardware/OS | Ryzen 7, 32 GB, RTX 3090, Ubuntu LTS headless | In aanbouw; geen runtimebewijs | **onbekend, bevestigen door eigenaar**; Cloud Agent heeft RTX-vrijwaring en meet dit niet |
+| Rol | Stateless inference-worker in execution plane; alleen via Tailscale/LiteLLM | Nog geen taken toegestaan vóór Gateway/policy | Harde blokkade voor productietaken blijft; Cloud Agent is vrijgesteld van RTX-hostwerk |
 | Locatie | Prompt laat dit bewust open | **onbekend, bevestigen door eigenaar** | Vastleggen vóór ingebruikname; bepaalt single-site-risico |
 | Voeding | Doc 12 adviseert ≥850 W en twee aparte PCIe-kabels | **onbekend, bevestigen door eigenaar** | Bevestigen vóór GPU-belasting |
 | Opslag | Doc 12 adviseert 1–2 TB NVMe | **onbekend, bevestigen door eigenaar** | Capaciteit/modelcachebeleid vastleggen |
@@ -209,7 +242,7 @@ De laatste gecommitte snapshots zijn te oud om als actuele status te gelden: op 
 
 ## Nog uit te voeren live metingen
 
-Deze metingen veranderen niets en moeten door de genoemde operator op de echte hosts worden uitgevoerd. Deel uitvoer zonder secrets.
+Deze metingen veranderen niets en moeten door de genoemde operator op de echte hosts worden uitgevoerd. Cursor Cloud Agents voeren ze niet via SSH uit. Deel uitvoer zonder secrets.
 
 ### Eigenaar op NUC
 
