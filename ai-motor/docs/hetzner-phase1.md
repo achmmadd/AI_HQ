@@ -22,6 +22,8 @@ openclaw update   # 2026.4.15 → 2026.5.22 (incl. doctor + daemon restart)
 
 ## Blokker: Hetzner SSH
 
+Cursor Cloud Agents kunnen deze blokker **niet** opheffen: vanuit de cloud-VM is SSH naar NUC/Hetzner niet mogelijk, en sleutels horen niet in de Cloud Agent-environment. SSH blijft eigenaar/laptop (of lokaal op de NUC).
+
 Op de NUC is **geen** `~/.ssh/config` en **geen** Hetzner-IP in documentatie. Wel aanwezig:
 
 - `~/.ssh/motor2_ed25519` (+ `.pub`) — waarschijnlijk voor de nieuwe server
