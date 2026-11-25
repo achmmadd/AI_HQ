@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motor AI — Review-concepten</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #12181f;
+    --panel-2: #0e141b;
+    --border: #1f2a35;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --accent: #4c9aff;
+    --accent-strong: #2f7fe0;
+    --green: #3fb950;
+    --amber: #d29922;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 70% -10%, #14202c 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 28px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: 0.2px; }
+  .badge {
+    font-size: 12px; color: var(--muted); border: 1px solid var(--border);
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .badge.live { color: var(--green); border-color: var(--green); }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+  textarea {
+    width: 100%; min-height: 130px; resize: vertical;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-size: 15px; line-height: 1.5;
+    font-family: inherit;
+  }
+  textarea:focus { outline: 2px solid var(--accent-strong); border-color: transparent; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  details textarea { min-height: 90px; margin-top: 10px; font-size: 14px; }
+  .row { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+  button.primary {
+    background: var(--accent-strong); color: #fff; border: 0;
+    padding: 12px 22px; font-size: 15px; font-weight: 600;
+    border-radius: 10px; cursor: pointer; transition: background .15s;
+  }
+  button.primary:hover { background: var(--accent); }
+  button.primary:disabled { opacity: .5; cursor: wait; }
+  .status { font-size: 13px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .chip.green { color: var(--green); border-color: var(--green); }
+  .chip.amber { color: var(--amber); border-color: var(--amber); }
+  #output {
+    white-space: pre-wrap; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; font-size: 15px; line-height: 1.6; min-height: 80px;
+  }
+  button.copy {
+    margin-top: 12px; background: transparent; color: var(--accent);
+    border: 1px solid var(--accent-strong); padding: 8px 16px;
+    border-radius: 8px; cursor: pointer; font-size: 14px;
+  }
+  button.copy:hover { background: rgba(76,154,255,.1); }
+  .hidden { display: none; }
+  footer { margin-top: 28px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Motor AI — Review-concepten</h1>
+    <span class="badge" id="healthBadge">verbinden…</span>
+  </header>
+
+  <div class="panel">
+    <label for="review">Review van de gast</label>
+    <textarea id="review" placeholder="Plak hier de review, bijv. ★★★★☆ — Fijne B&B …"></textarea>
+    <!-- Bewust géén contextveld: bedrijfscontext komt uitsluitend uit de
+         server-side CONTEXT_MODE (demo of het privé-volume), nooit uit de
+         browser. -->
+
+    <div class="row">
+      <button class="primary" id="go">Genereer concept</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="resultPanel">
+    <div class="chips" id="chips"></div>
+    <div id="output"></div>
+    <button class="copy" id="copy">Kopieer concept</button>
+  </div>
+
+  <div class="panel" id="historyPanel">
+    <label>Recente concepten (via de API, append-only store)</label>
+    <div id="history" style="font-size:14px; line-height:1.6; color:var(--muted)">laden…</div>
+  </div>
+
+  <footer>
+    Concepten zijn altijd ter goedkeuring aan jou — publiceren doe je handmatig op het platform.
+    Elke run legt een evidence-keten vast; de publish-actie wordt bewust geweigerd (DENY).
+    Deze pagina is alleen bereikbaar via het tailnet.
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function health() {
+  try {
+    const r = await fetch("/health");
+    const d = await r.json();
+    const b = $("healthBadge");
+    if (d.ok && d.model) { b.textContent = "live · model bereikbaar"; b.classList.add("live"); }
+    else { b.textContent = "API ok · model onbereikbaar"; }
+  } catch { $("healthBadge").textContent = "API onbereikbaar"; }
+}
+health();
+
+async function loadHistory() {
+  const el = $("history");
+  try {
+    const r = await fetch("/drafts?limit=5");
+    const d = await r.json();
+    if (!d.ok) {
+      el.textContent = d.error === "node_not_allowed"
+        ? "Geen toegang vanaf dit apparaat (node-login)."
+        : "Kon de store niet lezen.";
+      return;
+    }
+    if (!d.drafts.length) { el.textContent = "Nog geen concepten opgeslagen."; return; }
+    el.innerHTML = "";
+    const decisions = d.decisions ?? [];
+    for (const rec of d.drafts) {
+      const div = document.createElement("div");
+      div.style.cssText = "padding:8px 0; border-bottom:1px solid var(--border)";
+      const when = rec.stored_at.replace("T", " ").slice(0, 19);
+      const decided = decisions.find((x) => x.draft_run_id === rec.run_id);
+      const label = document.createElement("span");
+      label.textContent = `${when} — ${rec.review.slice(0, 80)}${rec.review.length > 80 ? "…" : ""}`;
+      div.appendChild(label);
+      if (decided) {
+        const chip = document.createElement("span");
+        chip.className = "chip " + (decided.decision === "approved" ? "green" : "amber");
+        chip.style.marginLeft = "8px";
+        chip.textContent = decided.decision === "approved" ? "goedgekeurd" : "afgekeurd";
+        div.appendChild(chip);
+      } else {
+        for (const [value, text] of [["approved", "Keur goed"], ["rejected", "Keur af"]]) {
+          const btn = document.createElement("button");
+          btn.textContent = text;
+          btn.style.cssText = "margin-left:8px; padding:2px 10px; font-size:12px";
+          btn.onclick = () => decide(rec.run_id, value, btn);
+          div.appendChild(btn);
+        }
+      }
+      el.appendChild(div);
+    }
+  } catch { el.textContent = "Store onbereikbaar."; }
+}
+
+async function decide(runId, decision, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch("/decision", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ draft_run_id: runId, decision }),
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      btn.disabled = false;
+      alert("Beslissing mislukt: " + (d.error ?? r.status));
+      return;
+    }
+    loadHistory();
+  } catch {
+    btn.disabled = false;
+    alert("Netwerkfout bij beslissing.");
+  }
+}
+loadHistory();
+
+$("go").addEventListener("click", async () => {
+  const review = $("review").value.trim();
+  if (!review) { $("status").textContent = "Plak eerst een review."; return; }
+  $("go").disabled = true;
+  $("status").textContent = "Het model denkt… (±3 seconden)";
+  $("resultPanel").classList.add("hidden");
+  const t0 = performance.now();
+  try {
+    const r = await fetch("/draft", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ review }),
+    });
+    const d = await r.json();
+    const secs = ((performance.now() - t0) / 1000).toFixed(1);
+    if (!d.ok) { $("status").textContent = "Mislukt: " + (d.error || "onbekend"); return; }
+    $("output").textContent = d.draft;
+    $("chips").innerHTML = "";
+    const chips = [
+      ["green", "evidence-keten " + (d.chainValid ? "valide" : "onvalide")],
+      ["green", "kernel: " + d.kernelTaskStatus],
+      ["", "context: " + (d.contextSource === "volume" ? "privé-volume" : "demo")],
+      d.store && d.store.stored
+        ? ["green", "opgeslagen ✓ (gateway ALLOW)"]
+        : ["amber", "niet opgeslagen"],
+      ["amber", "publicatie: DENY (handmatig)"],
+      ["", secs + " s · " + d.modelMeta.model],
+    ];
+    for (const [cls, text] of chips) {
+      const el = document.createElement("span");
+      el.className = "chip" + (cls ? " " + cls : "");
+      el.textContent = text;
+      $("chips").appendChild(el);
+    }
+    $("resultPanel").classList.remove("hidden");
+    $("status").textContent = "";
+    loadHistory();
+  } catch (e) {
+    $("status").textContent = "Fout: " + e.message;
+  } finally {
+    $("go").disabled = false;
+  }
+});
+
+$("copy").addEventListener("click", async () => {
+  const text = $("output").textContent.split("GEBRUIKTE FEITEN:")[0]
+    .replace(/^CONCEPTTEKST:\s*/, "").trim();
+  await navigator.clipboard.writeText(text);
+  $("copy").textContent = "Gekopieerd ✓";
+  setTimeout(() => ($("copy").textContent = "Kopieer concept"), 1500);
+});
+</script>
+</body>
+</html>

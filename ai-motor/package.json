@@ -13,7 +13,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "deploy:safe": "bash scripts/safe-deploy.sh",
-    "prebuild": "bash scripts/pm2-stop-for-build.sh"
+    "prebuild": "bash scripts/pm2-stop-for-build.sh",
+    "audit:motor-runtime": "node scripts/audit-motor-runtime.mjs",
+    "test:audit-motor-runtime": "node --test scripts/audit-motor-runtime.test.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

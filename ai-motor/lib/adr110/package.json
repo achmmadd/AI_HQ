@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "ADR-110 pure contract proof. Scoped module marker so Node runs these .ts files as ES modules without reparsing warnings. No dependencies."
+}
