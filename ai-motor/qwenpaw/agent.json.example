@@ -1,0 +1,17 @@
+{
+  "system_prompt_files": ["AGENTS.md", "SOUL.md", "PROFILE.md"],
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "bot_prefix": "[BOT]",
+      "bot_token": "PLAATS_HIER_HET_GEROTEERDE_BOT_TOKEN",
+      "dm_policy": "allowlist",
+      "group_policy": "allowlist",
+      "allow_from": ["TELEGRAM_USER_ID_EIGENAAR"],
+      "deny_message": "Deze bot is prive.",
+      "require_mention": true,
+      "http_proxy": "",
+      "http_proxy_auth": ""
+    }
+  }
+}
