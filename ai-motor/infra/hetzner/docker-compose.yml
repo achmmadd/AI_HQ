@@ -43,7 +43,7 @@ services:
           memory: 2g
 
   qdrant:
-    image: qdrant/qdrant:v1.13.2
+    image: qdrant/qdrant:v1.20.2
     container_name: motor-qdrant
     restart: unless-stopped
     ports:
