@@ -30,7 +30,7 @@
     "drizzle-orm": "^0.44.2",
     "framer-motion": "^11.15.0",
     "geist": "^1.7.2",
-    "inngest": "^3.54.2",
+    "inngest": "^4.26.2",
     "jszip": "^3.10.1",
     "langfuse": "^3.38.20",
     "lucide-react": "^0.468.0",
