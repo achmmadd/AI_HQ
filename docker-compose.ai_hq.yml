@@ -7,7 +7,7 @@ name: ai_hq
 
 services:
   open-webui:
-    image: ghcr.io/open-webui/open-webui:v0.8.11
+    image: ghcr.io/open-webui/open-webui:v0.13.5
     container_name: open-webui
     restart: unless-stopped
     ports:
