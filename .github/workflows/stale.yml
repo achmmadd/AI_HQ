@@ -1,0 +1,33 @@
+name: Stale
+
+on:
+  schedule:
+    # Weekly Monday 05:00 UTC ≈ 06:00/07:00 Europe/Amsterdam
+    - cron: "0 5 * * 1"
+
+permissions: {}
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 30
+          days-before-close: -1
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: pinned,security,keep
+          exempt-pr-labels: pinned,security,keep
+          exempt-draft-pr: true
+          stale-issue-message: >-
+            Dit issue is 30 dagen inactief en krijgt het label `stale`.
+            Reageer of verwijder het label om het actief te houden.
+            Issues worden niet automatisch gesloten.
+          stale-pr-message: >-
+            Deze pull request is 30 dagen inactief en krijgt het label `stale`.
+            Reageer of verwijder het label om hem actief te houden.
+            PRs worden niet automatisch gesloten.

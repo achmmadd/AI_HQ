@@ -362,7 +362,7 @@ flowchart TD
 | L7 | **Stripe/billing**: wanneer? | Na team invites (Fase 4) |
 | L8 | ~~Qdrant naming~~ | ✅ ADR-001 dual-search in [`DECISIONS.md`](DECISIONS.md) |
 | L11 | ~~SQLite → PG cutover~~ | ✅ ADR-002: SSOT **26 jul 2026** in [`DECISIONS.md`](DECISIONS.md) |
-| L9 | **Hetzner SSH/IP**: zie `hetzner-phase1.md` | Eenmalig invullen |
+| L9 | **Hetzner SSH/IP**: zie `hetzner-phase1.md` | Eenmalig invullen door eigenaar/laptop; Cloud Agent SSH’t niet |
 | L10 | **design-system locatie**: `motor-ai/design-system/` vs in-repo | Besluit Fase 4 start |
 
 ---
