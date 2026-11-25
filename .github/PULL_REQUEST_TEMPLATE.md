@@ -1,5 +1,7 @@
 ## Wat verandert er?
 
+## Taak: <!-- Nextcloud Tables-rij-id, bijv. 123 — zie .github/NEXTCLOUD-TAKEN-SYNC.md -->
+
 ## Type: [ ] Agent / [ ] Infra / [ ] Fix / [ ] Config
 
 ## Checklist:

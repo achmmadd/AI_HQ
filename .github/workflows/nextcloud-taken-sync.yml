@@ -1,0 +1,105 @@
+# Writes branch / PR / CI / deploy status to Nextcloud Tables "Taken".
+# Fail-soft: this workflow must never fail a pull request.
+name: Nextcloud Taken sync
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed, edited]
+  workflow_run:
+    workflows:
+      - Holding Checks
+      - Deploy to NUC
+    types: [completed]
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      row_id:
+        description: Nextcloud Tables row id (test row)
+        required: true
+        type: string
+      branch:
+        description: Optional branch value to write
+        required: false
+        type: string
+      pr_url:
+        description: Optional PR URL to write
+        required: false
+        type: string
+      ci_status:
+        description: Optional CI-status value (pending/success/failure/merged/closed)
+        required: false
+        type: string
+      deploy:
+        description: Optional Deploy value
+        required: false
+        type: string
+      dry_run:
+        description: Log payload without writing to Nextcloud
+        required: false
+        type: boolean
+        default: false
+
+# Default: no permissions. Job below grants the minimum needed.
+permissions: {}
+
+concurrency:
+  group: nextcloud-taken-${{ github.event.pull_request.number || github.event.workflow_run.id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  sync-taken:
+    name: Sync naar Nextcloud Taken
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Public repo: never write (and never receive secrets) for fork PRs.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout trusted workflow sources
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          # workflow_run / deployment_status must not execute PR head code.
+          # pull_request is same-repo only (forks skipped above).
+          # workflow_dispatch checks out the ref the owner selected.
+          ref: ${{ (github.event_name == 'workflow_run' || github.event_name == 'deployment_status') && github.event.repository.default_branch || github.sha }}
+
+      - name: Self-test taak-id conventie
+        continue-on-error: true
+        run: bash .github/scripts/sync-nextcloud-taken.sh --self-test
+
+      - name: Schrijf status naar Nextcloud Tables
+        continue-on-error: true
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NEXTCLOUD_URL: ${{ vars.NEXTCLOUD_URL || 'https://cloud.motorsai.app' }}
+          NEXTCLOUD_TAKEN_TABLE_ID: ${{ vars.NEXTCLOUD_TAKEN_TABLE_ID || '3' }}
+          NEXTCLOUD_USER: ${{ secrets.NEXTCLOUD_USER }}
+          NEXTCLOUD_APP_PASSWORD: ${{ secrets.NEXTCLOUD_APP_PASSWORD }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HTML_URL: ${{ github.event.pull_request.html_url }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          WR_NAME: ${{ github.event.workflow_run.name }}
+          WR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WR_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          WR_PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          DS_STATE: ${{ github.event.deployment_status.state }}
+          DS_REF: ${{ github.event.deployment.ref }}
+          DS_SHA: ${{ github.event.deployment.sha }}
+          INPUT_ROW_ID: ${{ inputs.row_id }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_PR_URL: ${{ inputs.pr_url }}
+          INPUT_CI_STATUS: ${{ inputs.ci_status }}
+          INPUT_DEPLOY: ${{ inputs.deploy }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: bash .github/scripts/sync-nextcloud-taken.sh
