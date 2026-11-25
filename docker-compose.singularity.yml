@@ -54,7 +54,7 @@ services:
       start_period: 30s
 
   bu_marketing:
-    image: alpine:3.18
+    image: alpine:3.24
     container_name: bu_marketing
     working_dir: /workspace
     command: ["sleep", "infinity"]
@@ -68,7 +68,7 @@ services:
       - "omega.bu=marketing"
 
   bu_app_studio:
-    image: alpine:3.18
+    image: alpine:3.24
     container_name: bu_app_studio
     working_dir: /workspace
     command: ["sleep", "infinity"]
@@ -82,7 +82,7 @@ services:
       - "omega.bu=app_studio"
 
   bu_finance:
-    image: alpine:3.18
+    image: alpine:3.24
     container_name: bu_finance
     working_dir: /workspace
     command: ["sleep", "infinity"]

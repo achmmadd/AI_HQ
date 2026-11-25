@@ -28,13 +28,15 @@ Wat **niet** verandert:
 
 ## Opdracht aan QwenPaw
 
-- Eerste keer / nieuwe chat: [`../qwenpaw/OPDRACHT.md`](../qwenpaw/OPDRACHT.md)
-- Agent die nog op de NUC wacht: eerst [`../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md`](../qwenpaw/OPDRACHT-NUC-NIET-NODIG.md), daarna [`../qwenpaw/OPDRACHT-VERVOLG.md`](../qwenpaw/OPDRACHT-VERVOLG.md).
-- Skill staat enabled maar vraagt om `MOTOR_API_TOKEN`: [`../qwenpaw/OPDRACHT-GEEN-TOKEN.md`](../qwenpaw/OPDRACHT-GEEN-TOKEN.md). **Geen Motor-sessietoken zetten.**
-- `/cowork` bestaat niet meer; QwenPaw geeft de info: [`../qwenpaw/OPDRACHT-INFO.md`](../qwenpaw/OPDRACHT-INFO.md).
-- Overname (werkwijze + stand): [`../qwenpaw/OPDRACHT-OVERNAME.md`](../qwenpaw/OPDRACHT-OVERNAME.md).
-- Nog geen lijst om te plakken: **niet plakken** — data zit in Odoo: [`../qwenpaw/OPDRACHT-ODOO.md`](../qwenpaw/OPDRACHT-ODOO.md). [`OPDRACHT-STAND-ONBEKEND.md`](../qwenpaw/OPDRACHT-STAND-ONBEKEND.md) is verouderd voor factuurlijsten.
-- Probe OFFLINE na Odoo-opdracht: [`../qwenpaw/OPDRACHT-BOT-URL.md`](../qwenpaw/OPDRACHT-BOT-URL.md). `BOOKKEEPING_BOT_URL` meten (hieronder).
+Eenmalige chat-plakteksten staan in [`../qwenpaw/archive/`](../qwenpaw/archive/) en zijn geen canonieke docs. Infra-plak blijft [`../qwenpaw/OPDRACHT-INFRA.md`](../qwenpaw/OPDRACHT-INFRA.md).
+
+- Eerste keer / nieuwe chat: [`../qwenpaw/archive/OPDRACHT.md`](../qwenpaw/archive/OPDRACHT.md)
+- Agent die nog op de NUC wacht: eerst [`../qwenpaw/archive/OPDRACHT-NUC-NIET-NODIG.md`](../qwenpaw/archive/OPDRACHT-NUC-NIET-NODIG.md), daarna [`../qwenpaw/archive/OPDRACHT-VERVOLG.md`](../qwenpaw/archive/OPDRACHT-VERVOLG.md).
+- Skill staat enabled maar vraagt om `MOTOR_API_TOKEN`: [`../qwenpaw/archive/OPDRACHT-GEEN-TOKEN.md`](../qwenpaw/archive/OPDRACHT-GEEN-TOKEN.md). **Geen Motor-sessietoken zetten.**
+- `/cowork` bestaat niet meer; QwenPaw geeft de info: [`../qwenpaw/archive/OPDRACHT-INFO.md`](../qwenpaw/archive/OPDRACHT-INFO.md).
+- Overname (werkwijze + stand): [`../qwenpaw/archive/OPDRACHT-OVERNAME.md`](../qwenpaw/archive/OPDRACHT-OVERNAME.md).
+- Nog geen lijst om te plakken: **niet plakken** — data zit in Odoo: [`../qwenpaw/archive/OPDRACHT-ODOO.md`](../qwenpaw/archive/OPDRACHT-ODOO.md). [`OPDRACHT-STAND-ONBEKEND.md`](../qwenpaw/archive/OPDRACHT-STAND-ONBEKEND.md) is verouderd voor factuurlijsten.
+- Probe OFFLINE na Odoo-opdracht: [`../qwenpaw/archive/OPDRACHT-BOT-URL.md`](../qwenpaw/archive/OPDRACHT-BOT-URL.md). `BOOKKEEPING_BOT_URL` meten (hieronder).
 
 Persona voor deze agent:
 
@@ -68,7 +70,7 @@ Geen NUC-werk. Als dezelfde Telegram-bot nog via OpenClaw antwoordt: dat kanaal 
 
 ## Stap 4 — Skill installeren
 
-Voorkeur: de agent schrijft de bestanden via OPDRACHT-VERVOLG. Handmatig in de container:
+Voorkeur: de agent schrijft de bestanden via de gearchiveerde OPDRACHT-VERVOLG. Handmatig in de container:
 
 ```bash
 WS=/app/working/workspaces/boka_operations
@@ -98,7 +100,7 @@ ss -ltn | grep 8001 || netstat -ltn | grep 8001 || true
 | connection refused / niets op 8001 | Bot draait niet (of andere poort). Eerst daar starten/vinden; geen URL verzinnen. |
 | Bot alleen op `127.0.0.1` | Andere hosts (QwenPaw-Docker) zien hem niet. Niet `:8001` op internet zetten. Binnen Tailscale binden of tunnelen is **onbekend, meten/beslissen door Pietje**. |
 
-Gevonden bereikbare URL (geen wachtwoord) → QwenPaw Console-env `BOOKKEEPING_BOT_URL=http://…:8001` → daarna `OPDRACHT-BOT-URL.md` in de chat. Geen Odoo-wachtwoord, geen Motor-token.
+Gevonden bereikbare URL (geen wachtwoord) → QwenPaw Console-env `BOOKKEEPING_BOT_URL=http://…:8001` → daarna `archive/OPDRACHT-BOT-URL.md` in de chat. Geen Odoo-wachtwoord, geen Motor-token.
 
 ## Stap 5 — Testen
 

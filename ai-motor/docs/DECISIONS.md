@@ -503,7 +503,7 @@ De eigenaar heeft QwenPaw (AgentScope persoonlijke-assistent, self-hosted, met T
 - QwenPaw (`boka_operations`) heeft de administratie-operatorrol overgenomen. Facturen komen uit Odoo via de bookkeeping-bot. Als de bot OFFLINE is: `BOOKKEEPING_BOT_URL` is **onbekend, meten door Pietje**. Geen factuurlijsten laten plakken.
 - OpenClaw verliest het Telegram-kanaal; overige OpenClaw-functies en de hardeningseisen uit ADR-106 blijven gelden zolang OpenClaw aan staat.
 - K1/K2-waardewerk (AM-2) verandert niet van volgorde; QwenPaw is een extra bedieningslaag, geen nieuwe workflow-engine.
-- Uitvoering staat in runbook [`qwenpaw-migratie.md`](qwenpaw-migratie.md); artefacten in [`../qwenpaw/`](../qwenpaw/). Live target: agent `boka_operations`. Odoo-correctie: [`../qwenpaw/OPDRACHT-ODOO.md`](../qwenpaw/OPDRACHT-ODOO.md). Als de git-checkout in de container ontbreekt, schrijft de agent die bestanden.
+- Uitvoering staat in runbook [`qwenpaw-migratie.md`](qwenpaw-migratie.md); artefacten in [`../qwenpaw/`](../qwenpaw/). Live target: agent `boka_operations`. Odoo-correctie (archief): [`../qwenpaw/archive/OPDRACHT-ODOO.md`](../qwenpaw/archive/OPDRACHT-ODOO.md). Als de git-checkout in de container ontbreekt, schrijft de agent die bestanden.
 
 ### Acceptatie
 
